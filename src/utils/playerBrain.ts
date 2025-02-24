@@ -1,3 +1,4 @@
+
 import { NeuralNet, Position, TeamContext, Player, PITCH_WIDTH } from '../types/football';
 import { createNeuralInput, isNetworkValid } from './neuralHelpers';
 import { createPlayerBrain } from './neuralNetwork';
@@ -58,11 +59,12 @@ export const updatePlayerBrain = (
     const ballVerticalSpeed = Math.abs(ball.velocity.y);
     const verticalSpeedFactor = Math.min(1, (verticalDistance / 30) + (ballVerticalSpeed * 0.5));
     
-    const predictedBallY = ball.position.y + (ball.velocity.y * 15);
+    // Predicción aumentada significativamente para mejor anticipación
+    const predictedBallY = ball.position.y + (ball.velocity.y * 30);
     const verticalDirection = (predictedBallY > player.position.y) ? 1 : -1;
     
     const verticalMovement = verticalDirection * (0.85 + verticalSpeedFactor * 0.6);
-    
+
     const goalLineX = GOALKEEPER_LINE_X[player.team];
     const horizontalDistance = Math.abs(goalLineX - player.position.x);
     

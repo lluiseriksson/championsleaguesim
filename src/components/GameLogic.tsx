@@ -77,14 +77,17 @@ const GameLogic: React.FC<GameLogicProps> = ({
       updatePlayerPositions();
       
       setBall((prevBall) => {
-        // Dividimos el movimiento en 16 pasos de 1ms cada uno
-        for (let step = 1; step <= 16; step++) {
+        // División del movimiento en pasos más pequeños para mejor detección de colisiones
+        const STEPS = 32; // Aumentado de 16 a 32 pasos
+        let newBallState = { ...prevBall };
+
+        for (let step = 1; step <= STEPS; step++) {
           const stepMovement = {
-            x: prevBall.position.x + prevBall.velocity.x * (step/16),
-            y: prevBall.position.y + prevBall.velocity.y * (step/16),
+            x: newBallState.position.x + (newBallState.velocity.x / STEPS),
+            y: newBallState.position.y + (newBallState.velocity.y / STEPS),
           };
 
-          // Revisamos colisiones con cada jugador, dando prioridad a los porteros
+          // Priorizar porteros en la detección de colisiones
           const goalkeepers = players.filter(p => p.role === 'goalkeeper');
           const fieldPlayers = players.filter(p => p.role !== 'goalkeeper');
           const allPlayers = [...goalkeepers, ...fieldPlayers];
@@ -92,29 +95,36 @@ const GameLogic: React.FC<GameLogicProps> = ({
           for (const player of allPlayers) {
             if (checkCollision(stepMovement, player.position)) {
               const newVelocity = calculateNewVelocity(
-                stepMovement, 
-                player.position, 
-                prevBall.velocity,
+                stepMovement,
+                player.position,
+                newBallState.velocity,
                 player.role === 'goalkeeper'
               );
-              return {
+
+              // Calcular nueva posición después de la colisión
+              const collisionAngle = Math.atan2(
+                stepMovement.y - player.position.y,
+                stepMovement.x - player.position.x
+              );
+
+              newBallState = {
                 position: {
-                  x: player.position.x + (PLAYER_RADIUS + BALL_RADIUS) * Math.cos(Math.atan2(stepMovement.y - player.position.y, stepMovement.x - player.position.x)),
-                  y: player.position.y + (PLAYER_RADIUS + BALL_RADIUS) * Math.sin(Math.atan2(stepMovement.y - player.position.y, stepMovement.x - player.position.x))
+                  x: player.position.x + (PLAYER_RADIUS + BALL_RADIUS) * Math.cos(collisionAngle),
+                  y: player.position.y + (PLAYER_RADIUS + BALL_RADIUS) * Math.sin(collisionAngle)
                 },
                 velocity: newVelocity
               };
+
+              break;
             }
           }
+
+          // Actualizar la posición para el siguiente sub-paso
+          newBallState.position = stepMovement;
         }
 
-        // Movimiento final si no hubo colisiones
-        const newPosition = {
-          x: prevBall.position.x + prevBall.velocity.x,
-          y: prevBall.position.y + prevBall.velocity.y,
-        };
-
-        const scoringTeam = checkGoal(newPosition);
+        // Verificar goles y límites del campo
+        const scoringTeam = checkGoal(newBallState.position);
         if (scoringTeam) {
           return {
             position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
@@ -122,20 +132,21 @@ const GameLogic: React.FC<GameLogicProps> = ({
           };
         }
 
-        const newVelocity = { ...prevBall.velocity };
-        if (newPosition.x <= BALL_RADIUS || newPosition.x >= PITCH_WIDTH - BALL_RADIUS) {
-          newVelocity.x = -prevBall.velocity.x * 0.9;
+        // Rebote en los límites del campo
+        if (newBallState.position.x <= BALL_RADIUS || newBallState.position.x >= PITCH_WIDTH - BALL_RADIUS) {
+          newBallState.velocity.x = -newBallState.velocity.x * 0.9;
         }
-        if (newPosition.y <= BALL_RADIUS || newPosition.y >= PITCH_HEIGHT - BALL_RADIUS) {
-          newVelocity.y = -prevBall.velocity.y * 0.9;
+        if (newBallState.position.y <= BALL_RADIUS || newBallState.position.y >= PITCH_HEIGHT - BALL_RADIUS) {
+          newBallState.velocity.y = -newBallState.velocity.y * 0.9;
         }
 
+        // Asegurar que el balón no salga del campo
         return {
           position: {
-            x: Math.max(BALL_RADIUS, Math.min(PITCH_WIDTH - BALL_RADIUS, newPosition.x)),
-            y: Math.max(BALL_RADIUS, Math.min(PITCH_HEIGHT - BALL_RADIUS, newPosition.y))
+            x: Math.max(BALL_RADIUS, Math.min(PITCH_WIDTH - BALL_RADIUS, newBallState.position.x)),
+            y: Math.max(BALL_RADIUS, Math.min(PITCH_HEIGHT - BALL_RADIUS, newBallState.position.y))
           },
-          velocity: newVelocity
+          velocity: newBallState.velocity
         };
       });
     };
