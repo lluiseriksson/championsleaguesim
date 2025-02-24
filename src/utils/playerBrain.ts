@@ -46,13 +46,36 @@ export const updatePlayerBrain = (
       passBall: input.isInPassingRange * 1.5,
       intercept: 0.8
     };
-  } else {
+  } else { // goalkeeper
+    // Calcular la distancia a la portería
+    const distanceToGoal = Math.sqrt(
+      Math.pow(player.position.x - context.ownGoal.x, 2) +
+      Math.pow(player.position.y - context.ownGoal.y, 2)
+    );
+
+    // Calcular si el balón se dirige hacia la portería
+    const ballMovingTowardsGoal = (
+      player.team === 'red' && ball.velocity.x < 0 ||
+      player.team === 'blue' && ball.velocity.x > 0
+    );
+
+    // Determinar si el portero debe ser más agresivo
+    const shouldBeAggressive = 
+      distanceToGoal < 100 && // Cerca de la portería
+      ballMovingTowardsGoal && // Balón se acerca
+      Math.abs(ball.position.y - context.ownGoal.y) < 100; // Balón alineado con la portería
+
     targetOutput = {
-      moveX: (player.position.x - ball.position.x) > 0 ? -0.3 : 0.3,
-      moveY: (player.position.y - ball.position.y) > 0 ? -1 : 1,
-      shootBall: 0.1,
-      passBall: input.isInPassingRange * 2,
-      intercept: 1
+      moveX: shouldBeAggressive 
+        ? (ball.position.x - player.position.x) > 0 ? 0.8 : -0.8 
+        : (player.position.x - context.ownGoal.x) > 30 ? -0.6 : 
+          (player.position.x - context.ownGoal.x) < -30 ? 0.6 : 0,
+      moveY: shouldBeAggressive
+        ? (ball.position.y - player.position.y) > 0 ? 1 : -1
+        : (ball.position.y - context.ownGoal.y) > 0 ? -1 : 1,
+      shootBall: shouldBeAggressive ? 0.9 : 0.2,
+      passBall: input.isInPassingRange * (shouldBeAggressive ? 0.5 : 2),
+      intercept: shouldBeAggressive ? 1 : 0.5
     };
   }
 
