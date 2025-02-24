@@ -280,8 +280,37 @@ const FootballPitch: React.FC = () => {
     const gameLoop = () => {
       updatePlayerPositions();
       
-      // Primera actualización del frame (8ms)
       setBall((prevBall) => {
+        // Primera actualización (4ms)
+        const quarterMovement = {
+          x: prevBall.position.x + prevBall.velocity.x * 0.25,
+          y: prevBall.position.y + prevBall.velocity.y * 0.25,
+        };
+
+        for (const player of players) {
+          if (checkCollision(quarterMovement, player.position)) {
+            const dx = quarterMovement.x - player.position.x;
+            const dy = quarterMovement.y - player.position.y;
+            const angle = Math.atan2(dy, dx);
+            const speed = Math.sqrt(
+              prevBall.velocity.x * prevBall.velocity.x + 
+              prevBall.velocity.y * prevBall.velocity.y
+            ) * 1.1;
+
+            return {
+              position: {
+                x: player.position.x + (PLAYER_RADIUS + BALL_RADIUS) * Math.cos(angle),
+                y: player.position.y + (PLAYER_RADIUS + BALL_RADIUS) * Math.sin(angle)
+              },
+              velocity: {
+                x: speed * Math.cos(angle),
+                y: speed * Math.sin(angle)
+              }
+            };
+          }
+        }
+
+        // Segunda actualización (8ms)
         const halfMovement = {
           x: prevBall.position.x + prevBall.velocity.x * 0.5,
           y: prevBall.position.y + prevBall.velocity.y * 0.5,
@@ -310,7 +339,36 @@ const FootballPitch: React.FC = () => {
           }
         }
 
-        // Segunda actualización del frame (16ms completo)
+        // Tercera actualización (12ms)
+        const threeQuarterMovement = {
+          x: prevBall.position.x + prevBall.velocity.x * 0.75,
+          y: prevBall.position.y + prevBall.velocity.y * 0.75,
+        };
+
+        for (const player of players) {
+          if (checkCollision(threeQuarterMovement, player.position)) {
+            const dx = threeQuarterMovement.x - player.position.x;
+            const dy = threeQuarterMovement.y - player.position.y;
+            const angle = Math.atan2(dy, dx);
+            const speed = Math.sqrt(
+              prevBall.velocity.x * prevBall.velocity.x + 
+              prevBall.velocity.y * prevBall.velocity.y
+            ) * 1.1;
+
+            return {
+              position: {
+                x: player.position.x + (PLAYER_RADIUS + BALL_RADIUS) * Math.cos(angle),
+                y: player.position.y + (PLAYER_RADIUS + BALL_RADIUS) * Math.sin(angle)
+              },
+              velocity: {
+                x: speed * Math.cos(angle),
+                y: speed * Math.sin(angle)
+              }
+            };
+          }
+        }
+
+        // Cuarta actualización (16ms completo)
         const newPosition = {
           x: prevBall.position.x + prevBall.velocity.x,
           y: prevBall.position.y + prevBall.velocity.y,
