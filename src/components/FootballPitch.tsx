@@ -1,108 +1,15 @@
+
 import React from 'react';
 import { motion } from 'framer-motion';
-import * as brain from 'brain.js';
-
-interface Position {
-  x: number;
-  y: number;
-}
-
-interface NeuralNet {
-  net: brain.NeuralNetwork<{ ballX: number, ballY: number, playerX: number, playerY: number }, { moveX: number, moveY: number }>;
-  lastOutput: { x: number; y: number };
-}
-
-interface Player {
-  id: number;
-  position: Position;
-  role: 'goalkeeper' | 'defender' | 'midfielder' | 'forward';
-  team: 'red' | 'blue';
-  brain: NeuralNet;
-  targetPosition: Position;
-}
-
-interface Ball {
-  position: Position;
-  velocity: Position;
-}
-
-interface Score {
-  red: number;
-  blue: number;
-}
-
-const PITCH_WIDTH = 800;
-const PITCH_HEIGHT = 600;
-const GOAL_WIDTH = 120;
-const GOAL_HEIGHT = 160;
-const PLAYER_RADIUS = 12;
-const BALL_RADIUS = 6;
-const PLAYER_SPEED = 2;
-
-const createPlayerBrain = (): NeuralNet => {
-  const net = new brain.NeuralNetwork<
-    { ballX: number, ballY: number, playerX: number, playerY: number },
-    { moveX: number, moveY: number }
-  >({
-    hiddenLayers: [4],
-  });
-
-  // Entrenamiento inicial básico
-  net.train([
-    { input: { ballX: 0, ballY: 0, playerX: 0, playerY: 0 }, output: { moveX: 1, moveY: 0 } },
-    { input: { ballX: 1, ballY: 1, playerX: 0, playerY: 0 }, output: { moveX: 1, moveY: 1 } },
-    { input: { ballX: 0, ballY: 1, playerX: 1, playerY: 0 }, output: { moveX: -1, moveY: 1 } },
-  ], {
-    iterations: 1000,
-    errorThresh: 0.005
-  });
-
-  return {
-    net,
-    lastOutput: { x: 0, y: 0 },
-  };
-};
-
-const updatePlayerBrain = (
-  brain: NeuralNet, 
-  isScoring: boolean, 
-  ball: { position: Position },
-  player: { position: Position }
-) => {
-  const normalizedInput = {
-    ballX: ball.position.x / PITCH_WIDTH,
-    ballY: ball.position.y / PITCH_HEIGHT,
-    playerX: player.position.x / PITCH_WIDTH,
-    playerY: player.position.y / PITCH_HEIGHT
-  };
-
-  // Ajustamos el comportamiento basado en si el equipo marcó o recibió el gol
-  const learningRate = isScoring ? 0.3 : 0.1;
-  const targetOutput = isScoring ? {
-    // Si marcó, reforzamos el comportamiento que llevó al gol
-    moveX: (ball.position.x - player.position.x) > 0 ? 1 : -1,
-    moveY: (ball.position.y - player.position.y) > 0 ? 1 : -1
-  } : {
-    // Si recibió el gol, ajustamos para mejorar la defensa
-    moveX: (player.position.x - ball.position.x) > 0 ? -1 : 1,
-    moveY: (player.position.y - ball.position.y) > 0 ? -1 : 1
-  };
-
-  // Entrenamiento incremental
-  brain.net.train([{
-    input: normalizedInput,
-    output: targetOutput
-  }], {
-    iterations: 100,
-    errorThresh: 0.05,
-    learningRate
-  });
-
-  return {
-    net: brain.net,
-    lastOutput: brain.lastOutput
-  };
-};
+import PitchLayout from './PitchLayout';
+import ScoreDisplay from './ScoreDisplay';
+import { createPlayerBrain, updatePlayerBrain } from '../utils/playerBrain';
+import { checkCollision, calculateNewVelocity } from '../utils/gamePhysics';
+import {
+  Player, Ball, Score, Position,
+  PITCH_WIDTH, PITCH_HEIGHT, GOAL_HEIGHT,
+  BALL_RADIUS, PLAYER_RADIUS, PLAYER_SPEED
+} from '../types/football';
 
 const FootballPitch: React.FC = () => {
   const [players, setPlayers] = React.useState<Player[]>([]);
@@ -161,6 +68,46 @@ const FootballPitch: React.FC = () => {
 
     setPlayers(initialPlayers);
   }, []);
+
+  const checkGoal = (position: Position) => {
+    const goalY = PITCH_HEIGHT / 2;
+    const goalTop = goalY - GOAL_HEIGHT / 2;
+    const goalBottom = goalY + GOAL_HEIGHT / 2;
+
+    if (position.x <= BALL_RADIUS && position.y >= goalTop && position.y <= goalBottom) {
+      setScore(prev => ({ ...prev, blue: prev.blue + 1 }));
+      setPlayers(currentPlayers => 
+        currentPlayers.map(player => ({
+          ...player,
+          brain: updatePlayerBrain(
+            player.brain,
+            player.team === 'blue',
+            { position },
+            player
+          )
+        }))
+      );
+      return 'blue';
+    }
+    
+    if (position.x >= PITCH_WIDTH - BALL_RADIUS && position.y >= goalTop && position.y <= goalBottom) {
+      setScore(prev => ({ ...prev, red: prev.red + 1 }));
+      setPlayers(currentPlayers => 
+        currentPlayers.map(player => ({
+          ...player,
+          brain: updatePlayerBrain(
+            player.brain,
+            player.team === 'red',
+            { position },
+            player
+          )
+        }))
+      );
+      return 'red';
+    }
+
+    return null;
+  };
 
   const updatePlayerPositions = React.useCallback(() => {
     setPlayers(currentPlayers => 
@@ -229,53 +176,6 @@ const FootballPitch: React.FC = () => {
     );
   }, [ball.position]);
 
-  const checkGoal = (position: Position) => {
-    const goalY = PITCH_HEIGHT / 2;
-    const goalTop = goalY - GOAL_HEIGHT / 2;
-    const goalBottom = goalY + GOAL_HEIGHT / 2;
-
-    if (position.x <= BALL_RADIUS && position.y >= goalTop && position.y <= goalBottom) {
-      setScore(prev => ({ ...prev, blue: prev.blue + 1 }));
-      setPlayers(currentPlayers => 
-        currentPlayers.map(player => ({
-          ...player,
-          brain: updatePlayerBrain(
-            player.brain,
-            player.team === 'blue', // true si el equipo marcó, false si recibió
-            { position }, // posición actual de la pelota
-            player
-          )
-        }))
-      );
-      return 'blue';
-    }
-    
-    if (position.x >= PITCH_WIDTH - BALL_RADIUS && position.y >= goalTop && position.y <= goalBottom) {
-      setScore(prev => ({ ...prev, red: prev.red + 1 }));
-      setPlayers(currentPlayers => 
-        currentPlayers.map(player => ({
-          ...player,
-          brain: updatePlayerBrain(
-            player.brain,
-            player.team === 'red', // true si el equipo marcó, false si recibió
-            { position }, // posición actual de la pelota
-            player
-          )
-        }))
-      );
-      return 'red';
-    }
-
-    return null;
-  };
-
-  const checkCollision = (ballPos: Position, playerPos: Position) => {
-    const dx = ballPos.x - playerPos.x;
-    const dy = ballPos.y - playerPos.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    return distance < (PLAYER_RADIUS + BALL_RADIUS);
-  };
-
   React.useEffect(() => {
     const gameLoop = () => {
       updatePlayerPositions();
@@ -289,23 +189,13 @@ const FootballPitch: React.FC = () => {
 
         for (const player of players) {
           if (checkCollision(quarterMovement, player.position)) {
-            const dx = quarterMovement.x - player.position.x;
-            const dy = quarterMovement.y - player.position.y;
-            const angle = Math.atan2(dy, dx);
-            const speed = Math.sqrt(
-              prevBall.velocity.x * prevBall.velocity.x + 
-              prevBall.velocity.y * prevBall.velocity.y
-            ) * 1.1;
-
+            const newVelocity = calculateNewVelocity(quarterMovement, player.position, prevBall.velocity);
             return {
               position: {
-                x: player.position.x + (PLAYER_RADIUS + BALL_RADIUS) * Math.cos(angle),
-                y: player.position.y + (PLAYER_RADIUS + BALL_RADIUS) * Math.sin(angle)
+                x: player.position.x + (PLAYER_RADIUS + BALL_RADIUS) * Math.cos(Math.atan2(quarterMovement.y - player.position.y, quarterMovement.x - player.position.x)),
+                y: player.position.y + (PLAYER_RADIUS + BALL_RADIUS) * Math.sin(Math.atan2(quarterMovement.y - player.position.y, quarterMovement.x - player.position.x))
               },
-              velocity: {
-                x: speed * Math.cos(angle),
-                y: speed * Math.sin(angle)
-              }
+              velocity: newVelocity
             };
           }
         }
@@ -318,23 +208,13 @@ const FootballPitch: React.FC = () => {
 
         for (const player of players) {
           if (checkCollision(halfMovement, player.position)) {
-            const dx = halfMovement.x - player.position.x;
-            const dy = halfMovement.y - player.position.y;
-            const angle = Math.atan2(dy, dx);
-            const speed = Math.sqrt(
-              prevBall.velocity.x * prevBall.velocity.x + 
-              prevBall.velocity.y * prevBall.velocity.y
-            ) * 1.1;
-
+            const newVelocity = calculateNewVelocity(halfMovement, player.position, prevBall.velocity);
             return {
               position: {
-                x: player.position.x + (PLAYER_RADIUS + BALL_RADIUS) * Math.cos(angle),
-                y: player.position.y + (PLAYER_RADIUS + BALL_RADIUS) * Math.sin(angle)
+                x: player.position.x + (PLAYER_RADIUS + BALL_RADIUS) * Math.cos(Math.atan2(halfMovement.y - player.position.y, halfMovement.x - player.position.x)),
+                y: player.position.y + (PLAYER_RADIUS + BALL_RADIUS) * Math.sin(Math.atan2(halfMovement.y - player.position.y, halfMovement.x - player.position.x))
               },
-              velocity: {
-                x: speed * Math.cos(angle),
-                y: speed * Math.sin(angle)
-              }
+              velocity: newVelocity
             };
           }
         }
@@ -347,23 +227,13 @@ const FootballPitch: React.FC = () => {
 
         for (const player of players) {
           if (checkCollision(threeQuarterMovement, player.position)) {
-            const dx = threeQuarterMovement.x - player.position.x;
-            const dy = threeQuarterMovement.y - player.position.y;
-            const angle = Math.atan2(dy, dx);
-            const speed = Math.sqrt(
-              prevBall.velocity.x * prevBall.velocity.x + 
-              prevBall.velocity.y * prevBall.velocity.y
-            ) * 1.1;
-
+            const newVelocity = calculateNewVelocity(threeQuarterMovement, player.position, prevBall.velocity);
             return {
               position: {
-                x: player.position.x + (PLAYER_RADIUS + BALL_RADIUS) * Math.cos(angle),
-                y: player.position.y + (PLAYER_RADIUS + BALL_RADIUS) * Math.sin(angle)
+                x: player.position.x + (PLAYER_RADIUS + BALL_RADIUS) * Math.cos(Math.atan2(threeQuarterMovement.y - player.position.y, threeQuarterMovement.x - player.position.x)),
+                y: player.position.y + (PLAYER_RADIUS + BALL_RADIUS) * Math.sin(Math.atan2(threeQuarterMovement.y - player.position.y, threeQuarterMovement.x - player.position.x))
               },
-              velocity: {
-                x: speed * Math.cos(angle),
-                y: speed * Math.sin(angle)
-              }
+              velocity: newVelocity
             };
           }
         }
@@ -376,23 +246,13 @@ const FootballPitch: React.FC = () => {
 
         for (const player of players) {
           if (checkCollision(newPosition, player.position)) {
-            const dx = newPosition.x - player.position.x;
-            const dy = newPosition.y - player.position.y;
-            const angle = Math.atan2(dy, dx);
-            const speed = Math.sqrt(
-              prevBall.velocity.x * prevBall.velocity.x + 
-              prevBall.velocity.y * prevBall.velocity.y
-            ) * 1.1;
-
+            const newVelocity = calculateNewVelocity(newPosition, player.position, prevBall.velocity);
             return {
               position: {
-                x: player.position.x + (PLAYER_RADIUS + BALL_RADIUS) * Math.cos(angle),
-                y: player.position.y + (PLAYER_RADIUS + BALL_RADIUS) * Math.sin(angle)
+                x: player.position.x + (PLAYER_RADIUS + BALL_RADIUS) * Math.cos(Math.atan2(newPosition.y - player.position.y, newPosition.x - player.position.x)),
+                y: player.position.y + (PLAYER_RADIUS + BALL_RADIUS) * Math.sin(Math.atan2(newPosition.y - player.position.y, newPosition.x - player.position.x))
               },
-              velocity: {
-                x: speed * Math.cos(angle),
-                y: speed * Math.sin(angle)
-              }
+              velocity: newVelocity
             };
           }
         }
@@ -429,20 +289,8 @@ const FootballPitch: React.FC = () => {
 
   return (
     <div className="relative w-[800px] h-[600px] bg-pitch mx-auto overflow-hidden rounded-lg shadow-lg">
-      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white/80 px-4 py-2 rounded-full font-bold text-xl shadow-md">
-        <span className="text-team-red">{score.red}</span>
-        <span className="mx-2">-</span>
-        <span className="text-team-blue">{score.blue}</span>
-      </div>
-
-      <div className="absolute inset-0">
-        <div className="absolute left-1/2 top-1/2 w-32 h-32 border-2 border-pitch-lines rounded-full transform -translate-x-1/2 -translate-y-1/2" />
-        <div className="absolute left-1/2 top-0 w-0.5 h-full bg-pitch-lines transform -translate-x-1/2" />
-        <div className="absolute left-0 top-1/2 w-4 h-[160px] border-2 border-pitch-lines transform -translate-y-1/2 bg-white/20" />
-        <div className="absolute right-0 top-1/2 w-4 h-[160px] border-2 border-pitch-lines transform -translate-y-1/2 bg-white/20" />
-        <div className="absolute left-0 top-1/2 w-36 h-72 border-2 border-pitch-lines transform -translate-y-1/2" />
-        <div className="absolute right-0 top-1/2 w-36 h-72 border-2 border-pitch-lines transform -translate-y-1/2" />
-      </div>
+      <ScoreDisplay score={score} />
+      <PitchLayout />
 
       {players.map((player) => (
         <motion.div
