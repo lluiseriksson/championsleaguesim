@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
 import * as brain from 'brain.js';
@@ -280,7 +279,38 @@ const FootballPitch: React.FC = () => {
   React.useEffect(() => {
     const gameLoop = () => {
       updatePlayerPositions();
+      
+      // Primera actualización del frame (8ms)
       setBall((prevBall) => {
+        const halfMovement = {
+          x: prevBall.position.x + prevBall.velocity.x * 0.5,
+          y: prevBall.position.y + prevBall.velocity.y * 0.5,
+        };
+
+        for (const player of players) {
+          if (checkCollision(halfMovement, player.position)) {
+            const dx = halfMovement.x - player.position.x;
+            const dy = halfMovement.y - player.position.y;
+            const angle = Math.atan2(dy, dx);
+            const speed = Math.sqrt(
+              prevBall.velocity.x * prevBall.velocity.x + 
+              prevBall.velocity.y * prevBall.velocity.y
+            ) * 1.1;
+
+            return {
+              position: {
+                x: player.position.x + (PLAYER_RADIUS + BALL_RADIUS) * Math.cos(angle),
+                y: player.position.y + (PLAYER_RADIUS + BALL_RADIUS) * Math.sin(angle)
+              },
+              velocity: {
+                x: speed * Math.cos(angle),
+                y: speed * Math.sin(angle)
+              }
+            };
+          }
+        }
+
+        // Segunda actualización del frame (16ms completo)
         const newPosition = {
           x: prevBall.position.x + prevBall.velocity.x,
           y: prevBall.position.y + prevBall.velocity.y,
