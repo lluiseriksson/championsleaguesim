@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
 import PitchLayout from './PitchLayout';
@@ -182,81 +181,32 @@ const FootballPitch: React.FC = () => {
       updatePlayerPositions();
       
       setBall((prevBall) => {
-        // Primera actualización (4ms)
-        const quarterMovement = {
-          x: prevBall.position.x + prevBall.velocity.x * 0.25,
-          y: prevBall.position.y + prevBall.velocity.y * 0.25,
-        };
+        // Dividimos el movimiento en 16 pasos de 1ms cada uno
+        for (let step = 1; step <= 16; step++) {
+          const stepMovement = {
+            x: prevBall.position.x + prevBall.velocity.x * (step/16),
+            y: prevBall.position.y + prevBall.velocity.y * (step/16),
+          };
 
-        for (const player of players) {
-          if (checkCollision(quarterMovement, player.position)) {
-            const newVelocity = calculateNewVelocity(quarterMovement, player.position, prevBall.velocity);
-            return {
-              position: {
-                x: player.position.x + (PLAYER_RADIUS + BALL_RADIUS) * Math.cos(Math.atan2(quarterMovement.y - player.position.y, quarterMovement.x - player.position.x)),
-                y: player.position.y + (PLAYER_RADIUS + BALL_RADIUS) * Math.sin(Math.atan2(quarterMovement.y - player.position.y, quarterMovement.x - player.position.x))
-              },
-              velocity: newVelocity
-            };
+          for (const player of players) {
+            if (checkCollision(stepMovement, player.position)) {
+              const newVelocity = calculateNewVelocity(stepMovement, player.position, prevBall.velocity);
+              return {
+                position: {
+                  x: player.position.x + (PLAYER_RADIUS + BALL_RADIUS) * Math.cos(Math.atan2(stepMovement.y - player.position.y, stepMovement.x - player.position.x)),
+                  y: player.position.y + (PLAYER_RADIUS + BALL_RADIUS) * Math.sin(Math.atan2(stepMovement.y - player.position.y, stepMovement.x - player.position.x))
+                },
+                velocity: newVelocity
+              };
+            }
           }
         }
 
-        // Segunda actualización (8ms)
-        const halfMovement = {
-          x: prevBall.position.x + prevBall.velocity.x * 0.5,
-          y: prevBall.position.y + prevBall.velocity.y * 0.5,
-        };
-
-        for (const player of players) {
-          if (checkCollision(halfMovement, player.position)) {
-            const newVelocity = calculateNewVelocity(halfMovement, player.position, prevBall.velocity);
-            return {
-              position: {
-                x: player.position.x + (PLAYER_RADIUS + BALL_RADIUS) * Math.cos(Math.atan2(halfMovement.y - player.position.y, halfMovement.x - player.position.x)),
-                y: player.position.y + (PLAYER_RADIUS + BALL_RADIUS) * Math.sin(Math.atan2(halfMovement.y - player.position.y, halfMovement.x - player.position.x))
-              },
-              velocity: newVelocity
-            };
-          }
-        }
-
-        // Tercera actualización (12ms)
-        const threeQuarterMovement = {
-          x: prevBall.position.x + prevBall.velocity.x * 0.75,
-          y: prevBall.position.y + prevBall.velocity.y * 0.75,
-        };
-
-        for (const player of players) {
-          if (checkCollision(threeQuarterMovement, player.position)) {
-            const newVelocity = calculateNewVelocity(threeQuarterMovement, player.position, prevBall.velocity);
-            return {
-              position: {
-                x: player.position.x + (PLAYER_RADIUS + BALL_RADIUS) * Math.cos(Math.atan2(threeQuarterMovement.y - player.position.y, threeQuarterMovement.x - player.position.x)),
-                y: player.position.y + (PLAYER_RADIUS + BALL_RADIUS) * Math.sin(Math.atan2(threeQuarterMovement.y - player.position.y, threeQuarterMovement.x - player.position.x))
-              },
-              velocity: newVelocity
-            };
-          }
-        }
-
-        // Cuarta actualización (16ms completo)
+        // Movimiento final si no hubo colisiones
         const newPosition = {
           x: prevBall.position.x + prevBall.velocity.x,
           y: prevBall.position.y + prevBall.velocity.y,
         };
-
-        for (const player of players) {
-          if (checkCollision(newPosition, player.position)) {
-            const newVelocity = calculateNewVelocity(newPosition, player.position, prevBall.velocity);
-            return {
-              position: {
-                x: player.position.x + (PLAYER_RADIUS + BALL_RADIUS) * Math.cos(Math.atan2(newPosition.y - player.position.y, newPosition.x - player.position.x)),
-                y: player.position.y + (PLAYER_RADIUS + BALL_RADIUS) * Math.sin(Math.atan2(newPosition.y - player.position.y, newPosition.x - player.position.x))
-              },
-              velocity: newVelocity
-            };
-          }
-        }
 
         const scoringTeam = checkGoal(newPosition);
         if (scoringTeam) {
