@@ -1,4 +1,3 @@
-
 import { NeuralNet, Position, TeamContext, Player, PITCH_WIDTH } from '../types/football';
 import { createNeuralInput, isNetworkValid } from './neuralHelpers';
 import { createPlayerBrain } from './neuralNetwork';
@@ -7,8 +6,8 @@ export { createPlayerBrain, createUntrained } from './neuralNetwork';
 
 // Constants
 const GOALKEEPER_LINE_X = {
-  red: 30,
-  blue: PITCH_WIDTH - 30
+  red: 60,
+  blue: PITCH_WIDTH - 60
 };
 
 export const updatePlayerBrain = (
@@ -53,73 +52,64 @@ export const updatePlayerBrain = (
       intercept: 0.8
     };
   } else { // goalkeeper
-    // Calcular la posición vertical óptima para el portero basada en la posición de la pelota
-    const optimalY = context.ownGoal.y + (ball.position.y - context.ownGoal.y) * 0.95;
+    const optimalY = context.ownGoal.y + (ball.position.y - context.ownGoal.y) * 0.98;
     
-    // Factor de velocidad vertical basado en la distancia y velocidad del balón
     const verticalDistance = Math.abs(optimalY - player.position.y);
     const ballVerticalSpeed = Math.abs(ball.velocity.y);
-    const verticalSpeedFactor = Math.min(1, (verticalDistance / 50) + (ballVerticalSpeed * 0.3));
+    const verticalSpeedFactor = Math.min(1, (verticalDistance / 30) + (ballVerticalSpeed * 0.5));
     
-    // Dirección vertical con ajuste por velocidad del balón
-    const predictedBallY = ball.position.y + (ball.velocity.y * 10);
+    const predictedBallY = ball.position.y + (ball.velocity.y * 15);
     const verticalDirection = (predictedBallY > player.position.y) ? 1 : -1;
     
-    // Movimiento vertical más agresivo
-    const verticalMovement = verticalDirection * (0.7 + verticalSpeedFactor * 0.5);
-
-    // Posicionamiento horizontal más dinámico
+    const verticalMovement = verticalDirection * (0.85 + verticalSpeedFactor * 0.6);
+    
     const goalLineX = GOALKEEPER_LINE_X[player.team];
     const horizontalDistance = Math.abs(goalLineX - player.position.x);
     
-    // Ajustar posición horizontal basada en la cercanía del balón
     const ballToGoalDistance = Math.abs(ball.position.x - goalLineX);
-    const maxAdvance = Math.min(50, ballToGoalDistance * 0.4); // Avance máximo proporcional a la distancia del balón
+    const maxAdvance = Math.min(100, ballToGoalDistance * 0.6);
     
-    const shouldAdvance = (player.team === 'red' && ball.position.x < PITCH_WIDTH / 3) ||
-                         (player.team === 'blue' && ball.position.x > (PITCH_WIDTH * 2) / 3);
+    const shouldAdvance = (player.team === 'red' && ball.position.x < PITCH_WIDTH / 2.5) ||
+                         (player.team === 'blue' && ball.position.x > (PITCH_WIDTH * 1.5) / 2.5);
     
     const targetX = shouldAdvance ? 
       (player.team === 'red' ? goalLineX + maxAdvance : goalLineX - maxAdvance) :
       goalLineX;
     
     const horizontalDirection = targetX > player.position.x ? 1 : -1;
-    const horizontalSpeedFactor = Math.min(1, horizontalDistance / 30);
+    const horizontalSpeedFactor = Math.min(1, horizontalDistance / 20);
     const horizontalMovement = horizontalDirection * horizontalSpeedFactor;
 
-    // Ser más agresivo cuando el balón está cerca
     const distanceToBall = Math.sqrt(
       Math.pow(ball.position.x - player.position.x, 2) +
       Math.pow(ball.position.y - player.position.y, 2)
     );
 
     const isCloseAndDangerous = 
-      distanceToBall < 120 && // Aumentado el rango de interceptación
-      ((player.team === 'red' && ball.position.x < PITCH_WIDTH / 3) ||
-       (player.team === 'blue' && ball.position.x > (PITCH_WIDTH * 2) / 3));
+      distanceToBall < 150 &&
+      ((player.team === 'red' && ball.position.x < PITCH_WIDTH / 2.5) ||
+       (player.team === 'blue' && ball.position.x > (PITCH_WIDTH * 1.5) / 2.5));
 
     if (isCloseAndDangerous) {
-      // Movimiento más agresivo hacia el balón cuando está cerca
       const angleToInterceptBall = Math.atan2(
-        ball.position.y + ball.velocity.y * 5 - player.position.y,
-        ball.position.x + ball.velocity.x * 5 - player.position.x
+        ball.position.y + ball.velocity.y * 8 - player.position.y,
+        ball.position.x + ball.velocity.x * 8 - player.position.x
       );
       
       targetOutput = {
-        moveX: Math.cos(angleToInterceptBall),
-        moveY: Math.sin(angleToInterceptBall),
+        moveX: Math.cos(angleToInterceptBall) * 1.2,
+        moveY: Math.sin(angleToInterceptBall) * 1.2,
         shootBall: 1,
         passBall: 0,
         intercept: 1
       };
     } else {
-      // Comportamiento normal de posicionamiento mejorado
       targetOutput = {
-        moveX: horizontalMovement,
-        moveY: verticalMovement,
-        shootBall: distanceToBall < 60 ? 1 : 0,
-        passBall: input.isInPassingRange && distanceToBall < 80 ? 1 : 0,
-        intercept: Math.min(1, (120 - distanceToBall) / 120)
+        moveX: horizontalMovement * 1.2,
+        moveY: verticalMovement * 1.2,
+        shootBall: distanceToBall < 80 ? 1 : 0,
+        passBall: input.isInPassingRange && distanceToBall < 100 ? 1 : 0,
+        intercept: Math.min(1, (150 - distanceToBall) / 150)
       };
     }
   }
