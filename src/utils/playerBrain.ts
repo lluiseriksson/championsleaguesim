@@ -5,6 +5,12 @@ import { createPlayerBrain } from './neuralNetwork';
 
 export { createPlayerBrain, createUntrained } from './neuralNetwork';
 
+// Constants
+const GOALKEEPER_LINE_X = {
+  red: 30,
+  blue: PITCH_WIDTH - 30
+};
+
 export const updatePlayerBrain = (
   brain: NeuralNet,
   isScoring: boolean,
@@ -61,7 +67,7 @@ export const updatePlayerBrain = (
     const verticalMovement = verticalDirection * (0.5 + verticalSpeedFactor * 0.5);
 
     // Mantener al portero cerca de su línea de gol
-    const goalLineX = player.team === 'red' ? 30 : PITCH_WIDTH - 30;
+    const goalLineX = GOALKEEPER_LINE_X[player.team];
     const horizontalDistance = Math.abs(goalLineX - player.position.x);
     const horizontalSpeedFactor = Math.min(1, horizontalDistance / 50);
     const horizontalDirection = goalLineX > player.position.x ? 1 : -1;
