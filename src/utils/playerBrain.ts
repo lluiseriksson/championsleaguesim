@@ -54,23 +54,37 @@ export const updatePlayerBrain = (
     };
   } else { // goalkeeper
     // Calcular la posición vertical óptima para el portero basada en la posición de la pelota
-    const optimalY = context.ownGoal.y + (ball.position.y - context.ownGoal.y) * 0.9;
+    const optimalY = context.ownGoal.y + (ball.position.y - context.ownGoal.y) * 0.95;
     
-    // Calcular el factor de velocidad vertical basado en la distancia al punto óptimo
+    // Factor de velocidad vertical basado en la distancia y velocidad del balón
     const verticalDistance = Math.abs(optimalY - player.position.y);
-    const verticalSpeedFactor = Math.min(1, verticalDistance / 100); // Más rápido cuanto más lejos esté
+    const ballVerticalSpeed = Math.abs(ball.velocity.y);
+    const verticalSpeedFactor = Math.min(1, (verticalDistance / 50) + (ballVerticalSpeed * 0.3));
     
-    // Determinar la dirección vertical
-    const verticalDirection = optimalY > player.position.y ? 1 : -1;
+    // Dirección vertical con ajuste por velocidad del balón
+    const predictedBallY = ball.position.y + (ball.velocity.y * 10);
+    const verticalDirection = (predictedBallY > player.position.y) ? 1 : -1;
     
-    // Calcular el movimiento vertical final
-    const verticalMovement = verticalDirection * (0.5 + verticalSpeedFactor * 0.5);
+    // Movimiento vertical más agresivo
+    const verticalMovement = verticalDirection * (0.7 + verticalSpeedFactor * 0.5);
 
-    // Mantener al portero cerca de su línea de gol
+    // Posicionamiento horizontal más dinámico
     const goalLineX = GOALKEEPER_LINE_X[player.team];
     const horizontalDistance = Math.abs(goalLineX - player.position.x);
-    const horizontalSpeedFactor = Math.min(1, horizontalDistance / 50);
-    const horizontalDirection = goalLineX > player.position.x ? 1 : -1;
+    
+    // Ajustar posición horizontal basada en la cercanía del balón
+    const ballToGoalDistance = Math.abs(ball.position.x - goalLineX);
+    const maxAdvance = Math.min(50, ballToGoalDistance * 0.4); // Avance máximo proporcional a la distancia del balón
+    
+    const shouldAdvance = (player.team === 'red' && ball.position.x < PITCH_WIDTH / 3) ||
+                         (player.team === 'blue' && ball.position.x > (PITCH_WIDTH * 2) / 3);
+    
+    const targetX = shouldAdvance ? 
+      (player.team === 'red' ? goalLineX + maxAdvance : goalLineX - maxAdvance) :
+      goalLineX;
+    
+    const horizontalDirection = targetX > player.position.x ? 1 : -1;
+    const horizontalSpeedFactor = Math.min(1, horizontalDistance / 30);
     const horizontalMovement = horizontalDirection * horizontalSpeedFactor;
 
     // Ser más agresivo cuando el balón está cerca
@@ -80,27 +94,32 @@ export const updatePlayerBrain = (
     );
 
     const isCloseAndDangerous = 
-      distanceToBall < 100 && 
-      ((player.team === 'red' && ball.position.x < PITCH_WIDTH / 4) ||
-       (player.team === 'blue' && ball.position.x > (PITCH_WIDTH * 3) / 4));
+      distanceToBall < 120 && // Aumentado el rango de interceptación
+      ((player.team === 'red' && ball.position.x < PITCH_WIDTH / 3) ||
+       (player.team === 'blue' && ball.position.x > (PITCH_WIDTH * 2) / 3));
 
     if (isCloseAndDangerous) {
-      // Si el balón está cerca y en zona peligrosa, ir directamente a por él
+      // Movimiento más agresivo hacia el balón cuando está cerca
+      const angleToInterceptBall = Math.atan2(
+        ball.position.y + ball.velocity.y * 5 - player.position.y,
+        ball.position.x + ball.velocity.x * 5 - player.position.x
+      );
+      
       targetOutput = {
-        moveX: Math.sign(ball.position.x - player.position.x),
-        moveY: Math.sign(ball.position.y - player.position.y),
+        moveX: Math.cos(angleToInterceptBall),
+        moveY: Math.sin(angleToInterceptBall),
         shootBall: 1,
         passBall: 0,
         intercept: 1
       };
     } else {
-      // Comportamiento normal de posicionamiento
+      // Comportamiento normal de posicionamiento mejorado
       targetOutput = {
         moveX: horizontalMovement,
         moveY: verticalMovement,
-        shootBall: distanceToBall < 50 ? 1 : 0,
-        passBall: input.isInPassingRange && distanceToBall < 70 ? 1 : 0,
-        intercept: distanceToBall < 80 ? 1 : 0
+        shootBall: distanceToBall < 60 ? 1 : 0,
+        passBall: input.isInPassingRange && distanceToBall < 80 ? 1 : 0,
+        intercept: Math.min(1, (120 - distanceToBall) / 120)
       };
     }
   }
