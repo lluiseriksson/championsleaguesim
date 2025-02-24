@@ -1,5 +1,5 @@
 
-import { NeuralNet, Position, TeamContext, Player } from '../types/football';
+import { NeuralNet, Position, TeamContext, Player, PITCH_WIDTH } from '../types/football';
 import { createNeuralInput, isNetworkValid } from './neuralHelpers';
 import { createPlayerBrain } from './neuralNetwork';
 
