@@ -1,19 +1,16 @@
-import React, { forwardRef, useImperativeHandle } from 'react';
+
+import React from 'react';
 import PitchLayout from './PitchLayout';
 import ScoreDisplay from './ScoreDisplay';
 import Ball from './Ball';
 import PlayerSprite from './PlayerSprite';
 import GameLogic from './GameLogic';
-import { createPlayerBrain, createUntrained } from '../utils/playerBrain';
+import { createPlayerBrain } from '../utils/playerBrain';
 import {
   Player, Ball as BallType, Score, PITCH_WIDTH, PITCH_HEIGHT
 } from '../types/football';
 
-export interface FootballPitchRef {
-  initializePlayers: (mode: 'trained-vs-trained' | 'red-vs-untrained' | 'blue-vs-untrained') => void;
-}
-
-const FootballPitch = forwardRef<FootballPitchRef>((props, ref) => {
+const FootballPitch: React.FC = () => {
   const [players, setPlayers] = React.useState<Player[]>([]);
   const [ball, setBall] = React.useState<BallType>({
     position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
@@ -21,10 +18,9 @@ const FootballPitch = forwardRef<FootballPitchRef>((props, ref) => {
   });
   const [score, setScore] = React.useState<Score>({ red: 0, blue: 0 });
 
-  const initializePlayers = React.useCallback((mode: 'trained-vs-trained' | 'red-vs-untrained' | 'blue-vs-untrained') => {
+  React.useEffect(() => {
     const initialPlayers: Player[] = [];
     
-    // Equipo rojo
     [
       { x: 50, y: PITCH_HEIGHT/2, role: 'goalkeeper' },
       { x: 150, y: PITCH_HEIGHT/4, role: 'defender' },
@@ -42,12 +38,11 @@ const FootballPitch = forwardRef<FootballPitchRef>((props, ref) => {
         position: { x: pos.x, y: pos.y },
         role: pos.role as Player['role'],
         team: 'red',
-        brain: mode === 'blue-vs-untrained' ? createPlayerBrain() : createUntrained(),
+        brain: createPlayerBrain(),
         targetPosition: { x: pos.x, y: pos.y }
       });
     });
 
-    // Equipo azul
     [
       { x: PITCH_WIDTH - 50, y: PITCH_HEIGHT/2, role: 'goalkeeper' },
       { x: PITCH_WIDTH - 150, y: PITCH_HEIGHT/4, role: 'defender' },
@@ -65,22 +60,13 @@ const FootballPitch = forwardRef<FootballPitchRef>((props, ref) => {
         position: { x: pos.x, y: pos.y },
         role: pos.role as Player['role'],
         team: 'blue',
-        brain: mode === 'red-vs-untrained' ? createPlayerBrain() : createUntrained(),
+        brain: createPlayerBrain(),
         targetPosition: { x: pos.x, y: pos.y }
       });
     });
 
     setPlayers(initialPlayers);
-    setScore({ red: 0, blue: 0 });
-    setBall({
-      position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
-      velocity: { x: 2, y: 2 },
-    });
   }, []);
-
-  useImperativeHandle(ref, () => ({
-    initializePlayers
-  }));
 
   const updatePlayerPositions = React.useCallback(() => {
     setPlayers(currentPlayers => 
@@ -149,10 +135,6 @@ const FootballPitch = forwardRef<FootballPitchRef>((props, ref) => {
     );
   }, [ball.position]);
 
-  const handleStartGame = (mode: 'trained-vs-trained' | 'red-vs-untrained' | 'blue-vs-untrained') => {
-    initializePlayers(mode);
-  };
-
   return (
     <div className="relative w-[800px] h-[600px] bg-pitch mx-auto overflow-hidden rounded-lg shadow-lg">
       <ScoreDisplay score={score} />
@@ -175,8 +157,6 @@ const FootballPitch = forwardRef<FootballPitchRef>((props, ref) => {
       />
     </div>
   );
-});
-
-FootballPitch.displayName = 'FootballPitch';
+};
 
 export default FootballPitch;
