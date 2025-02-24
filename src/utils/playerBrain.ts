@@ -59,23 +59,33 @@ export const updatePlayerBrain = (
       player.team === 'blue' && ball.velocity.x > 0
     );
 
+    // Calcular la posición vertical óptima para el portero basada en la posición de la pelota
+    const optimalY = context.ownGoal.y + (ball.position.y - context.ownGoal.y) * 0.7;
+    const verticalAdjustment = (optimalY - player.position.y) / 100;
+
     // Determinar si el portero debe ser más agresivo
     const shouldBeAggressive = 
-      distanceToGoal < 100 && // Cerca de la portería
+      distanceToGoal < 150 && // Aumentamos el rango de acción
       ballMovingTowardsGoal && // Balón se acerca
-      Math.abs(ball.position.y - context.ownGoal.y) < 100; // Balón alineado con la portería
+      Math.abs(ball.position.y - context.ownGoal.y) < 120; // Aumentamos el rango vertical
+
+    // Calcular la distancia máxima que el portero puede alejarse de la portería
+    const maxXDistance = player.team === 'red' ? 80 : -80;
+    const currentXOffset = player.position.x - context.ownGoal.x;
+    const xAdjustment = (shouldBeAggressive && Math.abs(currentXOffset) < Math.abs(maxXDistance)) ? 
+      (ball.position.x - player.position.x) / 100 : 
+      -currentXOffset / 50;
 
     targetOutput = {
       moveX: shouldBeAggressive 
-        ? (ball.position.x - player.position.x) > 0 ? 0.8 : -0.8 
-        : (player.position.x - context.ownGoal.x) > 30 ? -0.6 : 
-          (player.position.x - context.ownGoal.x) < -30 ? 0.6 : 0,
+        ? (ball.position.x - player.position.x) > 0 ? 0.9 : -0.9
+        : Math.max(-1, Math.min(1, xAdjustment)),
       moveY: shouldBeAggressive
         ? (ball.position.y - player.position.y) > 0 ? 1 : -1
-        : (ball.position.y - context.ownGoal.y) > 0 ? -1 : 1,
-      shootBall: shouldBeAggressive ? 0.9 : 0.2,
-      passBall: input.isInPassingRange * (shouldBeAggressive ? 0.5 : 2),
-      intercept: shouldBeAggressive ? 1 : 0.5
+        : Math.max(-1, Math.min(1, verticalAdjustment * 2)),
+      shootBall: shouldBeAggressive ? 1 : 0.3,
+      passBall: input.isInPassingRange * (shouldBeAggressive ? 0.3 : 1.5),
+      intercept: shouldBeAggressive ? 1 : 0.7
     };
   }
 
