@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef, useImperativeHandle } from 'react';
 import PitchLayout from './PitchLayout';
 import ScoreDisplay from './ScoreDisplay';
 import Ball from './Ball';
@@ -9,7 +9,11 @@ import {
   Player, Ball as BallType, Score, PITCH_WIDTH, PITCH_HEIGHT
 } from '../types/football';
 
-const FootballPitch: React.FC = () => {
+export interface FootballPitchRef {
+  initializePlayers: (mode: 'trained-vs-trained' | 'red-vs-untrained' | 'blue-vs-untrained') => void;
+}
+
+const FootballPitch = forwardRef<FootballPitchRef>((props, ref) => {
   const [players, setPlayers] = React.useState<Player[]>([]);
   const [ball, setBall] = React.useState<BallType>({
     position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
@@ -73,6 +77,10 @@ const FootballPitch: React.FC = () => {
       velocity: { x: 2, y: 2 },
     });
   }, []);
+
+  useImperativeHandle(ref, () => ({
+    initializePlayers
+  }));
 
   const updatePlayerPositions = React.useCallback(() => {
     setPlayers(currentPlayers => 
@@ -167,6 +175,8 @@ const FootballPitch: React.FC = () => {
       />
     </div>
   );
-};
+});
+
+FootballPitch.displayName = 'FootballPitch';
 
 export default FootballPitch;
