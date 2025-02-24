@@ -63,6 +63,35 @@ const createNeuralInput = (
   };
 };
 
+const isNetworkValid = (net: brain.NeuralNetwork<NeuralInput, NeuralOutput>): boolean => {
+  try {
+    // Crear una entrada de prueba simple
+    const testInput = createNeuralInput(
+      { 
+        position: { x: PITCH_WIDTH/2, y: PITCH_HEIGHT/2 }, 
+        velocity: { x: 0, y: 0 } 
+      },
+      { x: PITCH_WIDTH/2, y: PITCH_HEIGHT/2 },
+      {
+        teammates: [{ x: PITCH_WIDTH/2, y: PITCH_HEIGHT/2 }],
+        opponents: [{ x: PITCH_WIDTH/2, y: PITCH_HEIGHT/2 }],
+        ownGoal: { x: 0, y: PITCH_HEIGHT/2 },
+        opponentGoal: { x: PITCH_WIDTH, y: PITCH_HEIGHT/2 }
+      }
+    );
+
+    const output = net.run(testInput);
+    
+    // Verificar que ningún valor sea NaN o Infinity
+    return Object.values(output).every(value => 
+      !isNaN(value) && isFinite(value)
+    );
+  } catch (error) {
+    console.warn("Error validando la red:", error);
+    return false;
+  }
+};
+
 export const createPlayerBrain = (): NeuralNet => {
   const net = new brain.NeuralNetwork<NeuralInput, NeuralOutput>({
     hiddenLayers: [32, 32, 16],
@@ -104,13 +133,19 @@ export const createPlayerBrain = (): NeuralNet => {
     });
   }
 
-  // Aseguramos que la red se entrene al menos una vez
+  // Entrenamiento inicial con validación
   net.train(trainingData, {
     iterations: 5000,
     errorThresh: 0.0001,
     log: true,
     logPeriod: 100
   });
+
+  // Verificar si la red es válida después del entrenamiento
+  if (!isNetworkValid(net)) {
+    console.warn("Red neuronal inválida después del entrenamiento inicial, reinicializando...");
+    return createPlayerBrain(); // Intentar crear una nueva red
+  }
 
   return {
     net,
@@ -125,26 +160,26 @@ export const createUntrained = (): NeuralNet => {
     learningRate: 0.01,
   });
 
-  // Mínima inicialización
-  const randomPosition = () => ({ 
+  // Mínima inicialización con valores seguros
+  const centerPosition = { 
     x: PITCH_WIDTH/2, 
     y: PITCH_HEIGHT/2 
-  });
+  };
 
   const context: TeamContext = {
-    teammates: [randomPosition()],
-    opponents: [randomPosition()],
+    teammates: [centerPosition],
+    opponents: [centerPosition],
     ownGoal: { x: 0, y: PITCH_HEIGHT/2 },
     opponentGoal: { x: PITCH_WIDTH, y: PITCH_HEIGHT/2 }
   };
 
   const input = createNeuralInput(
-    { position: randomPosition(), velocity: { x: 0, y: 0 } },
-    randomPosition(),
+    { position: centerPosition, velocity: { x: 0, y: 0 } },
+    centerPosition,
     context
   );
 
-  // Aseguramos que la red se entrene al menos una vez
+  // Entrenamiento mínimo con validación
   net.train([{
     input,
     output: {
@@ -155,9 +190,14 @@ export const createUntrained = (): NeuralNet => {
       intercept: 0.5
     }
   }], {
-    iterations: 1,
-    errorThresh: 0.1
+    iterations: 100,
+    errorThresh: 0.01
   });
+
+  if (!isNetworkValid(net)) {
+    console.warn("Red neuronal no entrenada inválida, reinicializando...");
+    return createUntrained(); // Intentar crear una nueva red
+  }
 
   return {
     net,
@@ -171,9 +211,15 @@ export const updatePlayerBrain = (
   ball: { position: Position, velocity: Position },
   player: Player,
   context: TeamContext
-) => {
-  const input = createNeuralInput(ball, player.position, context);
+): NeuralNet => {
+  // Verificar si la red está "apagada"
+  if (!isNetworkValid(brain.net)) {
+    console.warn(`Red neuronal ${player.team} ${player.role} #${player.id} apagada, reinicializando...`);
+    return createPlayerBrain();
+  }
 
+  const input = createNeuralInput(ball, player.position, context);
+  
   // Recompensas basadas en el rol y la situación
   const rewardMultiplier = isScoring ? 2 : 1;
   let targetOutput: NeuralOutput;
@@ -217,6 +263,7 @@ export const updatePlayerBrain = (
     targetOutput[key] *= rewardMultiplier;
   });
 
+  // Entrenamiento con validación
   brain.net.train([{
     input,
     output: targetOutput
@@ -228,12 +275,13 @@ export const updatePlayerBrain = (
     logPeriod: 50
   });
 
-  // Solo intentamos acceder a los pesos si la red está entrenada
+  // Verificar el estado de la red después del entrenamiento
+  const currentOutput = brain.net.run(input);
+  
   try {
-    // Mostrar estado de la red de forma segura
     console.log(`Red neuronal ${player.team} ${player.role} #${player.id}:`, {
       input,
-      output: brain.net.run(input),
+      output: currentOutput,
       targetOutput,
       weightsShape: brain.net.weights ? {
         inputToHidden1: brain.net.weights[0]?.length,
@@ -246,9 +294,20 @@ export const updatePlayerBrain = (
     console.warn(`Error al acceder a los pesos de la red ${player.team} ${player.role} #${player.id}:`, error);
   }
 
+  // Si detectamos valores NaN, reiniciamos la red
+  if (!isNetworkValid(brain.net)) {
+    console.warn(`Red neuronal ${player.team} ${player.role} #${player.id} se volvió inválida después del entrenamiento, reinicializando...`);
+    return createPlayerBrain();
+  }
+
   return {
     net: brain.net,
-    lastOutput: brain.lastOutput,
-    lastAction: brain.lastAction
+    lastOutput: { 
+      x: currentOutput.moveX || 0,
+      y: currentOutput.moveY || 0
+    },
+    lastAction: currentOutput.shootBall > 0.7 ? 'shoot' :
+                currentOutput.passBall > 0.7 ? 'pass' :
+                currentOutput.intercept > 0.7 ? 'intercept' : 'move'
   };
 };
