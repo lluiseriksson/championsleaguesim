@@ -136,7 +136,8 @@ const FootballPitch: React.FC = () => {
             maxDistance = distanceToBall < 100 ? 40 : 20;
             break;
           case 'defender':
-            maxDistance = distanceToBall < 150 ? 80 : 50;
+            // Aumentamos el rango en un 20%
+            maxDistance = distanceToBall < 150 ? 96 : 60; // 80 * 1.2 = 96, 50 * 1.2 = 60
             break;
           case 'midfielder':
             maxDistance = distanceToBall < 200 ? 120 : 80;
