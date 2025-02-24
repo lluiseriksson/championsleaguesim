@@ -1,6 +1,20 @@
 
 import { Position, PLAYER_RADIUS, BALL_RADIUS } from '../types/football';
 
+const MAX_BALL_SPEED = 15; // Velocidad máxima del balón
+
+const limitSpeed = (velocity: Position): Position => {
+  const speed = Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+  if (speed > MAX_BALL_SPEED) {
+    const factor = MAX_BALL_SPEED / speed;
+    return {
+      x: velocity.x * factor,
+      y: velocity.y * factor
+    };
+  }
+  return velocity;
+};
+
 export const checkCollision = (ballPos: Position, playerPos: Position) => {
   const dx = ballPos.x - playerPos.x;
   const dy = ballPos.y - playerPos.y;
@@ -38,10 +52,10 @@ export const calculateNewVelocity = (
       // Calcular componente vertical del rebote basado en el punto de impacto
       const verticalFactor = dy / (PLAYER_RADIUS + BALL_RADIUS);
       
-      return {
+      return limitSpeed({
         x: deflectionX * currentSpeed * 0.8,
         y: verticalFactor * currentSpeed * 1.2
-      };
+      });
     }
   }
 
@@ -52,8 +66,8 @@ export const calculateNewVelocity = (
     currentVelocity.y * currentVelocity.y
   ) * (isGoalkeeper ? 1.2 : 1.1);
 
-  return {
+  return limitSpeed({
     x: speed * Math.cos(angle),
     y: speed * Math.sin(angle)
-  };
+  });
 };
