@@ -1,5 +1,5 @@
 
-import { Position, PLAYER_RADIUS, BALL_RADIUS, GOALKEEPER_ARM_LENGTH, GOALKEEPER_ARM_WIDTH } from '../types/football';
+import { Position, PLAYER_RADIUS, BALL_RADIUS } from '../types/football';
 
 export const checkCollision = (ballPos: Position, playerPos: Position) => {
   const dx = ballPos.x - playerPos.x;
