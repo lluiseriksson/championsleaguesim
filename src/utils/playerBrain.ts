@@ -26,6 +26,28 @@ export const createPlayerBrain = (): NeuralNet => {
   };
 };
 
+export const createUntrained = (): NeuralNet => {
+  const net = new brain.NeuralNetwork<
+    { ballX: number, ballY: number, playerX: number, playerY: number },
+    { moveX: number, moveY: number }
+  >({
+    hiddenLayers: [4],
+  });
+
+  // Inicializamos la red con un entrenamiento mínimo usando un valor válido de errorThresh
+  net.train([
+    { input: { ballX: 0.5, ballY: 0.5, playerX: 0.5, playerY: 0.5 }, output: { moveX: 0.5, moveY: 0.5 } }
+  ], {
+    iterations: 1,
+    errorThresh: 0.05  // Cambiamos el valor de 1 a 0.05
+  });
+
+  return {
+    net,
+    lastOutput: { x: 0, y: 0 },
+  };
+};
+
 export const updatePlayerBrain = (
   brain: NeuralNet, 
   isScoring: boolean, 
