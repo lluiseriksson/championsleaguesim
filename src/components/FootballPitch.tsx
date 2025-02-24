@@ -1,18 +1,18 @@
+
 import React from 'react';
-import { motion } from 'framer-motion';
 import PitchLayout from './PitchLayout';
 import ScoreDisplay from './ScoreDisplay';
-import { createPlayerBrain, updatePlayerBrain } from '../utils/playerBrain';
-import { checkCollision, calculateNewVelocity } from '../utils/gamePhysics';
+import Ball from './Ball';
+import PlayerSprite from './PlayerSprite';
+import GameLogic from './GameLogic';
+import { createPlayerBrain } from '../utils/playerBrain';
 import {
-  Player, Ball, Score, Position,
-  PITCH_WIDTH, PITCH_HEIGHT, GOAL_HEIGHT,
-  BALL_RADIUS, PLAYER_RADIUS, PLAYER_SPEED
+  Player, Ball as BallType, Score, PITCH_WIDTH, PITCH_HEIGHT
 } from '../types/football';
 
 const FootballPitch: React.FC = () => {
   const [players, setPlayers] = React.useState<Player[]>([]);
-  const [ball, setBall] = React.useState<Ball>({
+  const [ball, setBall] = React.useState<BallType>({
     position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
     velocity: { x: 2, y: 2 },
   });
@@ -29,7 +29,7 @@ const FootballPitch: React.FC = () => {
       { x: 300, y: PITCH_HEIGHT/3, role: 'midfielder' },
       { x: 300, y: PITCH_HEIGHT/2, role: 'midfielder' },
       { x: 300, y: (PITCH_HEIGHT*2)/3, role: 'midfielder' },
-      { x: 500, y: PITCH_HEIGHT/4, role: 'forward' }, // Adelantamos a los delanteros
+      { x: 500, y: PITCH_HEIGHT/4, role: 'forward' },
       { x: 500, y: PITCH_HEIGHT/2, role: 'forward' },
       { x: 500, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
     ].forEach((pos, index) => {
@@ -51,7 +51,7 @@ const FootballPitch: React.FC = () => {
       { x: PITCH_WIDTH - 300, y: PITCH_HEIGHT/3, role: 'midfielder' },
       { x: PITCH_WIDTH - 300, y: PITCH_HEIGHT/2, role: 'midfielder' },
       { x: PITCH_WIDTH - 300, y: (PITCH_HEIGHT*2)/3, role: 'midfielder' },
-      { x: PITCH_WIDTH - 500, y: PITCH_HEIGHT/4, role: 'forward' }, // Adelantamos a los delanteros
+      { x: PITCH_WIDTH - 500, y: PITCH_HEIGHT/4, role: 'forward' },
       { x: PITCH_WIDTH - 500, y: PITCH_HEIGHT/2, role: 'forward' },
       { x: PITCH_WIDTH - 500, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
     ].forEach((pos, index) => {
@@ -67,46 +67,6 @@ const FootballPitch: React.FC = () => {
 
     setPlayers(initialPlayers);
   }, []);
-
-  const checkGoal = (position: Position) => {
-    const goalY = PITCH_HEIGHT / 2;
-    const goalTop = goalY - GOAL_HEIGHT / 2;
-    const goalBottom = goalY + GOAL_HEIGHT / 2;
-
-    if (position.x <= BALL_RADIUS && position.y >= goalTop && position.y <= goalBottom) {
-      setScore(prev => ({ ...prev, blue: prev.blue + 1 }));
-      setPlayers(currentPlayers => 
-        currentPlayers.map(player => ({
-          ...player,
-          brain: updatePlayerBrain(
-            player.brain,
-            player.team === 'blue',
-            { position },
-            player
-          )
-        }))
-      );
-      return 'blue';
-    }
-    
-    if (position.x >= PITCH_WIDTH - BALL_RADIUS && position.y >= goalTop && position.y <= goalBottom) {
-      setScore(prev => ({ ...prev, red: prev.red + 1 }));
-      setPlayers(currentPlayers => 
-        currentPlayers.map(player => ({
-          ...player,
-          brain: updatePlayerBrain(
-            player.brain,
-            player.team === 'red',
-            { position },
-            player
-          )
-        }))
-      );
-      return 'red';
-    }
-
-    return null;
-  };
 
   const updatePlayerPositions = React.useCallback(() => {
     setPlayers(currentPlayers => 
@@ -135,20 +95,19 @@ const FootballPitch: React.FC = () => {
             maxDistance = distanceToBall < 100 ? 40 : 20;
             break;
           case 'defender':
-            // Aumentamos el rango en un 20%
-            maxDistance = distanceToBall < 150 ? 96 : 60; // 80 * 1.2 = 96, 50 * 1.2 = 60
+            maxDistance = distanceToBall < 150 ? 96 : 60;
             break;
           case 'midfielder':
             maxDistance = distanceToBall < 200 ? 120 : 80;
             break;
           case 'forward':
-            maxDistance = distanceToBall < 250 ? 200 : 120; // Aumentamos el rango de los delanteros
+            maxDistance = distanceToBall < 250 ? 200 : 120;
             break;
         }
 
         const newPosition = {
-          x: player.position.x + player.brain.lastOutput.x * PLAYER_SPEED,
-          y: player.position.y + player.brain.lastOutput.y * PLAYER_SPEED,
+          x: player.position.x + player.brain.lastOutput.x * 2,
+          y: player.position.y + player.brain.lastOutput.y * 2,
         };
 
         const distanceFromStart = Math.sqrt(
@@ -165,8 +124,8 @@ const FootballPitch: React.FC = () => {
           newPosition.y = player.targetPosition.y + Math.sin(angle) * maxDistance;
         }
 
-        newPosition.x = Math.max(PLAYER_RADIUS, Math.min(PITCH_WIDTH - PLAYER_RADIUS, newPosition.x));
-        newPosition.y = Math.max(PLAYER_RADIUS, Math.min(PITCH_HEIGHT - PLAYER_RADIUS, newPosition.y));
+        newPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, newPosition.x));
+        newPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, newPosition.y));
 
         return {
           ...player,
@@ -176,106 +135,25 @@ const FootballPitch: React.FC = () => {
     );
   }, [ball.position]);
 
-  React.useEffect(() => {
-    const gameLoop = () => {
-      updatePlayerPositions();
-      
-      setBall((prevBall) => {
-        // Dividimos el movimiento en 16 pasos de 1ms cada uno
-        for (let step = 1; step <= 16; step++) {
-          const stepMovement = {
-            x: prevBall.position.x + prevBall.velocity.x * (step/16),
-            y: prevBall.position.y + prevBall.velocity.y * (step/16),
-          };
-
-          for (const player of players) {
-            if (checkCollision(stepMovement, player.position)) {
-              const newVelocity = calculateNewVelocity(stepMovement, player.position, prevBall.velocity);
-              return {
-                position: {
-                  x: player.position.x + (PLAYER_RADIUS + BALL_RADIUS) * Math.cos(Math.atan2(stepMovement.y - player.position.y, stepMovement.x - player.position.x)),
-                  y: player.position.y + (PLAYER_RADIUS + BALL_RADIUS) * Math.sin(Math.atan2(stepMovement.y - player.position.y, stepMovement.x - player.position.x))
-                },
-                velocity: newVelocity
-              };
-            }
-          }
-        }
-
-        // Movimiento final si no hubo colisiones
-        const newPosition = {
-          x: prevBall.position.x + prevBall.velocity.x,
-          y: prevBall.position.y + prevBall.velocity.y,
-        };
-
-        const scoringTeam = checkGoal(newPosition);
-        if (scoringTeam) {
-          return {
-            position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
-            velocity: { x: 2 * (scoringTeam === 'red' ? -1 : 1), y: 0 }
-          };
-        }
-
-        const newVelocity = { ...prevBall.velocity };
-        if (newPosition.x <= BALL_RADIUS || newPosition.x >= PITCH_WIDTH - BALL_RADIUS) {
-          newVelocity.x = -prevBall.velocity.x * 0.9;
-        }
-        if (newPosition.y <= BALL_RADIUS || newPosition.y >= PITCH_HEIGHT - BALL_RADIUS) {
-          newVelocity.y = -prevBall.velocity.y * 0.9;
-        }
-
-        return {
-          position: {
-            x: Math.max(BALL_RADIUS, Math.min(PITCH_WIDTH - BALL_RADIUS, newPosition.x)),
-            y: Math.max(BALL_RADIUS, Math.min(PITCH_HEIGHT - BALL_RADIUS, newPosition.y))
-          },
-          velocity: newVelocity
-        };
-      });
-    };
-
-    const interval = setInterval(gameLoop, 16);
-    return () => clearInterval(interval);
-  }, [players, updatePlayerPositions]);
-
   return (
     <div className="relative w-[800px] h-[600px] bg-pitch mx-auto overflow-hidden rounded-lg shadow-lg">
       <ScoreDisplay score={score} />
       <PitchLayout />
 
       {players.map((player) => (
-        <motion.div
-          key={player.id}
-          className={`absolute w-6 h-6 rounded-full ${
-            player.team === 'red' ? 'bg-team-red' : 'bg-team-blue'
-          }`}
-          animate={{
-            x: player.position.x,
-            y: player.position.y,
-          }}
-          transition={{
-            type: "spring",
-            damping: 20,
-            stiffness: 100,
-            mass: 0.8
-          }}
-          initial={false}
-        />
+        <PlayerSprite key={player.id} player={player} />
       ))}
 
-      <motion.div
-        className="absolute w-3 h-3 bg-white rounded-full shadow-md"
-        animate={{
-          x: ball.position.x,
-          y: ball.position.y,
-          rotate: ball.velocity.x * 20,
-        }}
-        transition={{
-          type: "tween",
-          duration: 0.016,
-          ease: "linear"
-        }}
-        initial={false}
+      <Ball ball={ball} />
+
+      <GameLogic
+        players={players}
+        setPlayers={setPlayers}
+        ball={ball}
+        setBall={setBall}
+        score={score}
+        setScore={setScore}
+        updatePlayerPositions={updatePlayerPositions}
       />
     </div>
   );
