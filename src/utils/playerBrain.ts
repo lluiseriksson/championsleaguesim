@@ -1,6 +1,5 @@
-
 import * as brain from 'brain.js';
-import { NeuralNet, Position, NeuralInput, NeuralOutput, TeamContext, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
+import { NeuralNet, Position, NeuralInput, NeuralOutput, TeamContext, PITCH_WIDTH, PITCH_HEIGHT, Player } from '../types/football';
 
 const normalizePosition = (pos: Position): Position => ({
   x: pos.x / PITCH_WIDTH,

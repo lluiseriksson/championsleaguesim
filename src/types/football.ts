@@ -13,7 +13,9 @@ export interface TeamContext {
   opponentGoal: Position;
 }
 
+// Cambiamos NeuralInput para que cumpla con INeuralNetworkData
 export interface NeuralInput {
+  [key: string]: number; // Añadimos index signature
   ballX: number;
   ballY: number;
   playerX: number;
@@ -31,7 +33,9 @@ export interface NeuralInput {
   isDefendingRequired: number;
 }
 
+// Cambiamos NeuralOutput para que cumpla con INeuralNetworkData
 export interface NeuralOutput {
+  [key: string]: number; // Añadimos index signature
   moveX: number;
   moveY: number;
   shootBall: number;

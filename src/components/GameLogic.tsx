@@ -23,6 +23,13 @@ const GameLogic: React.FC<GameLogicProps> = ({
   setScore,
   updatePlayerPositions,
 }) => {
+  const getTeamContext = (player: Player) => ({
+    teammates: players.filter(p => p.team === player.team && p.id !== player.id).map(p => p.position),
+    opponents: players.filter(p => p.team !== player.team).map(p => p.position),
+    ownGoal: player.team === 'red' ? { x: 0, y: PITCH_HEIGHT/2 } : { x: PITCH_WIDTH, y: PITCH_HEIGHT/2 },
+    opponentGoal: player.team === 'red' ? { x: PITCH_WIDTH, y: PITCH_HEIGHT/2 } : { x: 0, y: PITCH_HEIGHT/2 }
+  });
+
   const checkGoal = (position: Position) => {
     const goalY = PITCH_HEIGHT / 2;
     const goalTop = goalY - GOAL_HEIGHT / 2;
@@ -36,8 +43,9 @@ const GameLogic: React.FC<GameLogicProps> = ({
           brain: updatePlayerBrain(
             player.brain,
             player.team === 'blue',
-            { position },
-            player
+            ball,
+            player,
+            getTeamContext(player)
           )
         }))
       );
@@ -52,8 +60,9 @@ const GameLogic: React.FC<GameLogicProps> = ({
           brain: updatePlayerBrain(
             player.brain,
             player.team === 'red',
-            { position },
-            player
+            ball,
+            player,
+            getTeamContext(player)
           )
         }))
       );
