@@ -37,5 +37,3 @@ export const GOAL_HEIGHT = 160;
 export const PLAYER_RADIUS = 12;
 export const BALL_RADIUS = 6;
 export const PLAYER_SPEED = 2;
-export const GOALKEEPER_ARM_LENGTH = 30; // Longitud de los brazos del portero
-export const GOALKEEPER_ARM_WIDTH = 4; // Ancho de los brazos del portero
