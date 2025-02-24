@@ -7,8 +7,7 @@ import { checkCollision, calculateNewVelocity } from '../utils/gamePhysics';
 import {
   Player, Ball, Score, Position,
   PITCH_WIDTH, PITCH_HEIGHT, GOAL_HEIGHT,
-  BALL_RADIUS, PLAYER_RADIUS, PLAYER_SPEED,
-  MATCH_DURATION, MAX_STAMINA, STAMINA_COST, STAMINA_RECOVERY_RATE
+  BALL_RADIUS, PLAYER_RADIUS, PLAYER_SPEED
 } from '../types/football';
 
 const FootballPitch: React.FC = () => {
@@ -18,7 +17,6 @@ const FootballPitch: React.FC = () => {
     velocity: { x: 2, y: 2 },
   });
   const [score, setScore] = React.useState<Score>({ red: 0, blue: 0 });
-  const [matchTime, setMatchTime] = React.useState(MATCH_DURATION);
 
   React.useEffect(() => {
     const initialPlayers: Player[] = [];
@@ -31,7 +29,7 @@ const FootballPitch: React.FC = () => {
       { x: 300, y: PITCH_HEIGHT/3, role: 'midfielder' },
       { x: 300, y: PITCH_HEIGHT/2, role: 'midfielder' },
       { x: 300, y: (PITCH_HEIGHT*2)/3, role: 'midfielder' },
-      { x: 500, y: PITCH_HEIGHT/4, role: 'forward' },
+      { x: 500, y: PITCH_HEIGHT/4, role: 'forward' }, // Adelantamos a los delanteros
       { x: 500, y: PITCH_HEIGHT/2, role: 'forward' },
       { x: 500, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
     ].forEach((pos, index) => {
@@ -41,8 +39,7 @@ const FootballPitch: React.FC = () => {
         role: pos.role as Player['role'],
         team: 'red',
         brain: createPlayerBrain(),
-        targetPosition: { x: pos.x, y: pos.y },
-        stamina: MAX_STAMINA
+        targetPosition: { x: pos.x, y: pos.y }
       });
     });
 
@@ -54,7 +51,7 @@ const FootballPitch: React.FC = () => {
       { x: PITCH_WIDTH - 300, y: PITCH_HEIGHT/3, role: 'midfielder' },
       { x: PITCH_WIDTH - 300, y: PITCH_HEIGHT/2, role: 'midfielder' },
       { x: PITCH_WIDTH - 300, y: (PITCH_HEIGHT*2)/3, role: 'midfielder' },
-      { x: PITCH_WIDTH - 500, y: PITCH_HEIGHT/4, role: 'forward' },
+      { x: PITCH_WIDTH - 500, y: PITCH_HEIGHT/4, role: 'forward' }, // Adelantamos a los delanteros
       { x: PITCH_WIDTH - 500, y: PITCH_HEIGHT/2, role: 'forward' },
       { x: PITCH_WIDTH - 500, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
     ].forEach((pos, index) => {
@@ -64,8 +61,7 @@ const FootballPitch: React.FC = () => {
         role: pos.role as Player['role'],
         team: 'blue',
         brain: createPlayerBrain(),
-        targetPosition: { x: pos.x, y: pos.y },
-        stamina: MAX_STAMINA
+        targetPosition: { x: pos.x, y: pos.y }
       });
     });
 
@@ -120,29 +116,13 @@ const FootballPitch: React.FC = () => {
           ballY: ball.position.y / PITCH_HEIGHT,
           playerX: player.position.x / PITCH_WIDTH,
           playerY: player.position.y / PITCH_HEIGHT,
-          stamina: player.stamina / MAX_STAMINA,
-          timeLeft: matchTime / MATCH_DURATION
         };
 
         const output = player.brain.net.run(input);
-        const movement = { 
+        player.brain.lastOutput = { 
           x: (output.moveX || 0.5) * 2 - 1, 
           y: (output.moveY || 0.5) * 2 - 1 
         };
-
-        if (player.stamina < 10) {
-          movement.x *= 0.2;
-          movement.y *= 0.2;
-        }
-
-        let newStamina = player.stamina;
-        const isMoving = Math.abs(movement.x) > 0.1 || Math.abs(movement.y) > 0.1;
-        
-        if (isMoving) {
-          newStamina = Math.max(0, newStamina - STAMINA_COST);
-        } else {
-          newStamina = Math.min(MAX_STAMINA, newStamina + STAMINA_RECOVERY_RATE);
-        }
 
         let maxDistance = 50;
         const distanceToBall = Math.sqrt(
@@ -155,13 +135,14 @@ const FootballPitch: React.FC = () => {
             maxDistance = distanceToBall < 100 ? 40 : 20;
             break;
           case 'defender':
-            maxDistance = distanceToBall < 150 ? 96 : 60;
+            // Aumentamos el rango en un 20%
+            maxDistance = distanceToBall < 150 ? 96 : 60; // 80 * 1.2 = 96, 50 * 1.2 = 60
             break;
           case 'midfielder':
             maxDistance = distanceToBall < 200 ? 120 : 80;
             break;
           case 'forward':
-            maxDistance = distanceToBall < 250 ? 200 : 120;
+            maxDistance = distanceToBall < 250 ? 200 : 120; // Aumentamos el rango de los delanteros
             break;
         }
 
@@ -190,20 +171,17 @@ const FootballPitch: React.FC = () => {
         return {
           ...player,
           position: newPosition,
-          stamina: newStamina
         };
       })
     );
-  }, [ball.position, matchTime]);
+  }, [ball.position]);
 
   React.useEffect(() => {
     const gameLoop = () => {
-      if (matchTime <= 0) return;
-      
       updatePlayerPositions();
-      setMatchTime(prev => Math.max(0, prev - 16));
-
+      
       setBall((prevBall) => {
+        // Dividimos el movimiento en 16 pasos de 1ms cada uno
         for (let step = 1; step <= 16; step++) {
           const stepMovement = {
             x: prevBall.position.x + prevBall.velocity.x * (step/16),
@@ -224,6 +202,7 @@ const FootballPitch: React.FC = () => {
           }
         }
 
+        // Movimiento final si no hubo colisiones
         const newPosition = {
           x: prevBall.position.x + prevBall.velocity.x,
           y: prevBall.position.y + prevBall.velocity.y,
@@ -257,14 +236,11 @@ const FootballPitch: React.FC = () => {
 
     const interval = setInterval(gameLoop, 16);
     return () => clearInterval(interval);
-  }, [players, updatePlayerPositions, matchTime]);
+  }, [players, updatePlayerPositions]);
 
   return (
     <div className="relative w-[800px] h-[600px] bg-pitch mx-auto overflow-hidden rounded-lg shadow-lg">
       <ScoreDisplay score={score} />
-      <div className="absolute top-12 left-1/2 transform -translate-x-1/2 bg-white/80 px-4 py-2 rounded-full text-sm">
-        Tiempo: {Math.ceil(matchTime / 1000)}s
-      </div>
       <PitchLayout />
 
       {players.map((player) => (
@@ -276,7 +252,6 @@ const FootballPitch: React.FC = () => {
           animate={{
             x: player.position.x,
             y: player.position.y,
-            opacity: 0.5 + (player.stamina / MAX_STAMINA) * 0.5
           }}
           transition={{
             type: "spring",
