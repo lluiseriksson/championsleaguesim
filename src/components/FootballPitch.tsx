@@ -1,11 +1,10 @@
-
 import React from 'react';
 import PitchLayout from './PitchLayout';
 import ScoreDisplay from './ScoreDisplay';
 import Ball from './Ball';
 import PlayerSprite from './PlayerSprite';
 import GameLogic from './GameLogic';
-import { createPlayerBrain } from '../utils/playerBrain';
+import { createPlayerBrain, createUntrained } from '../utils/playerBrain';
 import {
   Player, Ball as BallType, Score, PITCH_WIDTH, PITCH_HEIGHT
 } from '../types/football';
@@ -18,9 +17,10 @@ const FootballPitch: React.FC = () => {
   });
   const [score, setScore] = React.useState<Score>({ red: 0, blue: 0 });
 
-  React.useEffect(() => {
+  const initializePlayers = React.useCallback((mode: 'trained-vs-trained' | 'red-vs-untrained' | 'blue-vs-untrained') => {
     const initialPlayers: Player[] = [];
     
+    // Equipo rojo
     [
       { x: 50, y: PITCH_HEIGHT/2, role: 'goalkeeper' },
       { x: 150, y: PITCH_HEIGHT/4, role: 'defender' },
@@ -38,11 +38,12 @@ const FootballPitch: React.FC = () => {
         position: { x: pos.x, y: pos.y },
         role: pos.role as Player['role'],
         team: 'red',
-        brain: createPlayerBrain(),
+        brain: mode === 'blue-vs-untrained' ? createPlayerBrain() : createUntrained(),
         targetPosition: { x: pos.x, y: pos.y }
       });
     });
 
+    // Equipo azul
     [
       { x: PITCH_WIDTH - 50, y: PITCH_HEIGHT/2, role: 'goalkeeper' },
       { x: PITCH_WIDTH - 150, y: PITCH_HEIGHT/4, role: 'defender' },
@@ -60,12 +61,17 @@ const FootballPitch: React.FC = () => {
         position: { x: pos.x, y: pos.y },
         role: pos.role as Player['role'],
         team: 'blue',
-        brain: createPlayerBrain(),
+        brain: mode === 'red-vs-untrained' ? createPlayerBrain() : createUntrained(),
         targetPosition: { x: pos.x, y: pos.y }
       });
     });
 
     setPlayers(initialPlayers);
+    setScore({ red: 0, blue: 0 });
+    setBall({
+      position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
+      velocity: { x: 2, y: 2 },
+    });
   }, []);
 
   const updatePlayerPositions = React.useCallback(() => {
@@ -134,6 +140,10 @@ const FootballPitch: React.FC = () => {
       })
     );
   }, [ball.position]);
+
+  const handleStartGame = (mode: 'trained-vs-trained' | 'red-vs-untrained' | 'blue-vs-untrained') => {
+    initializePlayers(mode);
+  };
 
   return (
     <div className="relative w-[800px] h-[600px] bg-pitch mx-auto overflow-hidden rounded-lg shadow-lg">
