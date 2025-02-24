@@ -7,7 +7,8 @@ import { checkCollision, calculateNewVelocity } from '../utils/gamePhysics';
 import {
   Player, Ball, Score, Position,
   PITCH_WIDTH, PITCH_HEIGHT, GOAL_HEIGHT,
-  BALL_RADIUS, PLAYER_RADIUS, PLAYER_SPEED
+  BALL_RADIUS, PLAYER_RADIUS, PLAYER_SPEED,
+  GOALKEEPER_ARM_LENGTH
 } from '../types/football';
 
 const FootballPitch: React.FC = () => {
@@ -189,8 +190,9 @@ const FootballPitch: React.FC = () => {
           };
 
           for (const player of players) {
-            if (checkCollision(stepMovement, player.position)) {
-              const newVelocity = calculateNewVelocity(stepMovement, player.position, prevBall.velocity);
+            const isGoalkeeper = player.role === 'goalkeeper';
+            if (checkCollision(stepMovement, player.position, isGoalkeeper)) {
+              const newVelocity = calculateNewVelocity(stepMovement, player.position, prevBall.velocity, isGoalkeeper);
               return {
                 position: {
                   x: player.position.x + (PLAYER_RADIUS + BALL_RADIUS) * Math.cos(Math.atan2(stepMovement.y - player.position.y, stepMovement.x - player.position.x)),
@@ -244,23 +246,45 @@ const FootballPitch: React.FC = () => {
       <PitchLayout />
 
       {players.map((player) => (
-        <motion.div
-          key={player.id}
-          className={`absolute w-6 h-6 rounded-full ${
-            player.team === 'red' ? 'bg-team-red' : 'bg-team-blue'
-          }`}
-          animate={{
-            x: player.position.x,
-            y: player.position.y,
-          }}
-          transition={{
-            type: "spring",
-            damping: 20,
-            stiffness: 100,
-            mass: 0.8
-          }}
-          initial={false}
-        />
+        <React.Fragment key={player.id}>
+          <motion.div
+            className={`absolute w-6 h-6 rounded-full ${
+              player.team === 'red' ? 'bg-team-red' : 'bg-team-blue'
+            }`}
+            animate={{
+              x: player.position.x,
+              y: player.position.y,
+            }}
+            transition={{
+              type: "spring",
+              damping: 20,
+              stiffness: 100,
+              mass: 0.8
+            }}
+            initial={false}
+          />
+          {player.role === 'goalkeeper' && (
+            <motion.div
+              className={`absolute h-1 ${
+                player.team === 'red' ? 'bg-team-red' : 'bg-team-blue'
+              }`}
+              style={{
+                width: GOALKEEPER_ARM_LENGTH,
+              }}
+              animate={{
+                x: player.position.x - GOALKEEPER_ARM_LENGTH/2,
+                y: player.position.y,
+              }}
+              transition={{
+                type: "spring",
+                damping: 20,
+                stiffness: 100,
+                mass: 0.8
+              }}
+              initial={false}
+            />
+          )}
+        </React.Fragment>
       ))}
 
       <motion.div
