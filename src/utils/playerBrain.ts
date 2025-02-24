@@ -1,3 +1,4 @@
+
 import * as brain from 'brain.js';
 import { NeuralNet, Position, NeuralInput, NeuralOutput, TeamContext, PITCH_WIDTH, PITCH_HEIGHT, Player } from '../types/football';
 
@@ -64,8 +65,8 @@ const createNeuralInput = (
 
 export const createPlayerBrain = (): NeuralNet => {
   const net = new brain.NeuralNetwork<NeuralInput, NeuralOutput>({
-    hiddenLayers: [32, 32, 16], // Tres capas ocultas más grandes
-    activation: 'leaky-relu', // Mejor para redes profundas
+    hiddenLayers: [32, 32, 16],
+    activation: 'leaky-relu',
     learningRate: 0.01,
   });
 
@@ -103,6 +104,7 @@ export const createPlayerBrain = (): NeuralNet => {
     });
   }
 
+  // Aseguramos que la red se entrene al menos una vez
   net.train(trainingData, {
     iterations: 5000,
     errorThresh: 0.0001,
@@ -142,6 +144,7 @@ export const createUntrained = (): NeuralNet => {
     context
   );
 
+  // Aseguramos que la red se entrene al menos una vez
   net.train([{
     input,
     output: {
@@ -225,19 +228,23 @@ export const updatePlayerBrain = (
     logPeriod: 50
   });
 
-  // Mostrar estado de la red
-  const weights = brain.net.weights;
-  console.log(`Red neuronal ${player.team} ${player.role} #${player.id}:`, {
-    input,
-    output: brain.net.run(input),
-    targetOutput,
-    weightsShape: {
-      inputToHidden1: weights[0].length,
-      hidden1ToHidden2: weights[1].length,
-      hidden2ToHidden3: weights[2].length,
-      hidden3ToOutput: weights[3].length
-    }
-  });
+  // Solo intentamos acceder a los pesos si la red está entrenada
+  try {
+    // Mostrar estado de la red de forma segura
+    console.log(`Red neuronal ${player.team} ${player.role} #${player.id}:`, {
+      input,
+      output: brain.net.run(input),
+      targetOutput,
+      weightsShape: brain.net.weights ? {
+        inputToHidden1: brain.net.weights[0]?.length,
+        hidden1ToHidden2: brain.net.weights[1]?.length,
+        hidden2ToHidden3: brain.net.weights[2]?.length,
+        hidden3ToOutput: brain.net.weights[3]?.length
+      } : 'Red no entrenada'
+    });
+  } catch (error) {
+    console.warn(`Error al acceder a los pesos de la red ${player.team} ${player.role} #${player.id}:`, error);
+  }
 
   return {
     net: brain.net,
