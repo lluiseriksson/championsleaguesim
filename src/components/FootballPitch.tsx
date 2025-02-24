@@ -265,15 +265,15 @@ const FootballPitch: React.FC = () => {
           />
           {player.role === 'goalkeeper' && (
             <motion.div
-              className={`absolute h-1 ${
+              className={`absolute w-1 ${
                 player.team === 'red' ? 'bg-team-red' : 'bg-team-blue'
               }`}
               style={{
-                width: GOALKEEPER_ARM_LENGTH,
+                height: GOALKEEPER_ARM_LENGTH,
               }}
               animate={{
-                x: player.position.x - GOALKEEPER_ARM_LENGTH/2,
-                y: player.position.y,
+                x: player.position.x,
+                y: player.position.y - GOALKEEPER_ARM_LENGTH/2,
               }}
               transition={{
                 type: "spring",
