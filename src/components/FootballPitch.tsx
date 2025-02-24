@@ -1,9 +1,15 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import * as brain from 'brain.js';
 
 interface Position {
   x: number;
   y: number;
+}
+
+interface NeuralNet {
+  net: brain.NeuralNetwork;
+  lastOutput: { x: number; y: number };
 }
 
 interface Player {
@@ -11,6 +17,8 @@ interface Player {
   position: Position;
   role: 'goalkeeper' | 'defender' | 'midfielder' | 'forward';
   team: 'red' | 'blue';
+  brain: NeuralNet;
+  targetPosition: Position;
 }
 
 interface Ball {
@@ -29,6 +37,25 @@ const GOAL_WIDTH = 80;
 const GOAL_HEIGHT = 120;
 const PLAYER_RADIUS = 12;
 const BALL_RADIUS = 6;
+const PLAYER_SPEED = 2;
+
+const createPlayerBrain = (): NeuralNet => {
+  const net = new brain.NeuralNetwork({
+    hiddenLayers: [4],
+  });
+
+  // Entrenamiento inicial con algunos patrones básicos
+  net.train([
+    { input: { ballX: 0, ballY: 0, playerX: 0, playerY: 0 }, output: { moveX: 1, moveY: 0 } },
+    { input: { ballX: 1, ballY: 1, playerX: 0, playerY: 0 }, output: { moveX: 1, moveY: 1 } },
+    { input: { ballX: 0, ballY: 1, playerX: 1, playerY: 0 }, output: { moveX: -1, moveY: 1 } },
+  ]);
+
+  return {
+    net,
+    lastOutput: { x: 0, y: 0 },
+  };
+};
 
 const FootballPitch: React.FC = () => {
   const [players, setPlayers] = React.useState<Player[]>([]);
@@ -38,48 +65,127 @@ const FootballPitch: React.FC = () => {
   });
   const [score, setScore] = React.useState<Score>({ red: 0, blue: 0 });
 
-  // Initialize players
+  // Initialize players with neural networks
   React.useEffect(() => {
     const initialPlayers: Player[] = [];
     
     // Initialize red team
-    initialPlayers.push(
-      { id: 1, position: { x: 50, y: PITCH_HEIGHT/2 }, role: 'goalkeeper', team: 'red' },
-      // Defenders
-      { id: 2, position: { x: 150, y: PITCH_HEIGHT/4 }, role: 'defender', team: 'red' },
-      { id: 3, position: { x: 150, y: PITCH_HEIGHT/2 }, role: 'defender', team: 'red' },
-      { id: 4, position: { x: 150, y: (PITCH_HEIGHT*3)/4 }, role: 'defender', team: 'red' },
-      // Midfielders
-      { id: 5, position: { x: 300, y: PITCH_HEIGHT/3 }, role: 'midfielder', team: 'red' },
-      { id: 6, position: { x: 300, y: PITCH_HEIGHT/2 }, role: 'midfielder', team: 'red' },
-      { id: 7, position: { x: 300, y: (PITCH_HEIGHT*2)/3 }, role: 'midfielder', team: 'red' },
-      // Forwards
-      { id: 8, position: { x: 450, y: PITCH_HEIGHT/4 }, role: 'forward', team: 'red' },
-      { id: 9, position: { x: 450, y: PITCH_HEIGHT/2 }, role: 'forward', team: 'red' },
-      { id: 10, position: { x: 450, y: (PITCH_HEIGHT*3)/4 }, role: 'forward', team: 'red' },
-    );
+    [
+      { x: 50, y: PITCH_HEIGHT/2, role: 'goalkeeper' },
+      { x: 150, y: PITCH_HEIGHT/4, role: 'defender' },
+      { x: 150, y: PITCH_HEIGHT/2, role: 'defender' },
+      { x: 150, y: (PITCH_HEIGHT*3)/4, role: 'defender' },
+      { x: 300, y: PITCH_HEIGHT/3, role: 'midfielder' },
+      { x: 300, y: PITCH_HEIGHT/2, role: 'midfielder' },
+      { x: 300, y: (PITCH_HEIGHT*2)/3, role: 'midfielder' },
+      { x: 450, y: PITCH_HEIGHT/4, role: 'forward' },
+      { x: 450, y: PITCH_HEIGHT/2, role: 'forward' },
+      { x: 450, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
+    ].forEach((pos, index) => {
+      initialPlayers.push({
+        id: index + 1,
+        position: { x: pos.x, y: pos.y },
+        role: pos.role as Player['role'],
+        team: 'red',
+        brain: createPlayerBrain(),
+        targetPosition: { x: pos.x, y: pos.y }
+      });
+    });
 
     // Initialize blue team (mirrored positions)
-    initialPlayers.push(
-      { id: 11, position: { x: PITCH_WIDTH - 50, y: PITCH_HEIGHT/2 }, role: 'goalkeeper', team: 'blue' },
-      // Defenders
-      { id: 12, position: { x: PITCH_WIDTH - 150, y: PITCH_HEIGHT/4 }, role: 'defender', team: 'blue' },
-      { id: 13, position: { x: PITCH_WIDTH - 150, y: PITCH_HEIGHT/2 }, role: 'defender', team: 'blue' },
-      { id: 14, position: { x: PITCH_WIDTH - 150, y: (PITCH_HEIGHT*3)/4 }, role: 'defender', team: 'blue' },
-      // Midfielders
-      { id: 15, position: { x: PITCH_WIDTH - 300, y: PITCH_HEIGHT/3 }, role: 'midfielder', team: 'blue' },
-      { id: 16, position: { x: PITCH_WIDTH - 300, y: PITCH_HEIGHT/2 }, role: 'midfielder', team: 'blue' },
-      { id: 17, position: { x: PITCH_WIDTH - 300, y: (PITCH_HEIGHT*2)/3 }, role: 'midfielder', team: 'blue' },
-      // Forwards
-      { id: 18, position: { x: PITCH_WIDTH - 450, y: PITCH_HEIGHT/4 }, role: 'forward', team: 'blue' },
-      { id: 19, position: { x: PITCH_WIDTH - 450, y: PITCH_HEIGHT/2 }, role: 'forward', team: 'blue' },
-      { id: 20, position: { x: PITCH_WIDTH - 450, y: (PITCH_HEIGHT*3)/4 }, role: 'forward', team: 'blue' },
-    );
+    [
+      { x: PITCH_WIDTH - 50, y: PITCH_HEIGHT/2, role: 'goalkeeper' },
+      { x: PITCH_WIDTH - 150, y: PITCH_HEIGHT/4, role: 'defender' },
+      { x: PITCH_WIDTH - 150, y: PITCH_HEIGHT/2, role: 'defender' },
+      { x: PITCH_WIDTH - 150, y: (PITCH_HEIGHT*3)/4, role: 'defender' },
+      { x: PITCH_WIDTH - 300, y: PITCH_HEIGHT/3, role: 'midfielder' },
+      { x: PITCH_WIDTH - 300, y: PITCH_HEIGHT/2, role: 'midfielder' },
+      { x: PITCH_WIDTH - 300, y: (PITCH_HEIGHT*2)/3, role: 'midfielder' },
+      { x: PITCH_WIDTH - 450, y: PITCH_HEIGHT/4, role: 'forward' },
+      { x: PITCH_WIDTH - 450, y: PITCH_HEIGHT/2, role: 'forward' },
+      { x: PITCH_WIDTH - 450, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
+    ].forEach((pos, index) => {
+      initialPlayers.push({
+        id: index + 11,
+        position: { x: pos.x, y: pos.y },
+        role: pos.role as Player['role'],
+        team: 'blue',
+        brain: createPlayerBrain(),
+        targetPosition: { x: pos.x, y: pos.y }
+      });
+    });
 
     setPlayers(initialPlayers);
   }, []);
 
-  // Detect goal
+  // Update player positions based on neural network output
+  const updatePlayerPositions = React.useCallback(() => {
+    setPlayers(currentPlayers => 
+      currentPlayers.map(player => {
+        // Normalizar entradas para la red neuronal
+        const input = {
+          ballX: ball.position.x / PITCH_WIDTH,
+          ballY: ball.position.y / PITCH_HEIGHT,
+          playerX: player.position.x / PITCH_WIDTH,
+          playerY: player.position.y / PITCH_HEIGHT,
+        };
+
+        // Obtener decisión de la red neuronal
+        const output = player.brain.net.run(input);
+        player.brain.lastOutput = { x: output.moveX * 2 - 1, y: output.moveY * 2 - 1 };
+
+        // Calcular nueva posición basada en el rol
+        let maxDistance = 50;
+        switch (player.role) {
+          case 'goalkeeper':
+            maxDistance = 30;
+            break;
+          case 'defender':
+            maxDistance = 60;
+            break;
+          case 'midfielder':
+            maxDistance = 100;
+            break;
+          case 'forward':
+            maxDistance = 120;
+            break;
+        }
+
+        // Actualizar posición del jugador
+        const newPosition = {
+          x: player.position.x + player.brain.lastOutput.x * PLAYER_SPEED,
+          y: player.position.y + player.brain.lastOutput.y * PLAYER_SPEED,
+        };
+
+        // Restringir movimiento según la posición inicial y el rol
+        const distanceFromStart = Math.sqrt(
+          Math.pow(newPosition.x - player.targetPosition.x, 2) +
+          Math.pow(newPosition.y - player.targetPosition.y, 2)
+        );
+
+        if (distanceFromStart > maxDistance) {
+          // Si el jugador se alejó demasiado, regresar gradualmente a su posición
+          const angle = Math.atan2(
+            player.targetPosition.y - newPosition.y,
+            player.targetPosition.x - newPosition.x
+          );
+          newPosition.x = player.targetPosition.x + Math.cos(angle) * maxDistance;
+          newPosition.y = player.targetPosition.y + Math.sin(angle) * maxDistance;
+        }
+
+        // Mantener jugadores dentro del campo
+        newPosition.x = Math.max(0, Math.min(PITCH_WIDTH, newPosition.x));
+        newPosition.y = Math.max(0, Math.min(PITCH_HEIGHT, newPosition.y));
+
+        return {
+          ...player,
+          position: newPosition,
+        };
+      })
+    );
+  }, [ball.position]);
+
+  // Detect goal and update neural networks
   const checkGoal = (position: Position) => {
     const goalY = PITCH_HEIGHT / 2;
     const goalTop = goalY - GOAL_HEIGHT / 2;
@@ -88,12 +194,30 @@ const FootballPitch: React.FC = () => {
     // Left goal (Red team scores)
     if (position.x <= 0 && position.y >= goalTop && position.y <= goalBottom) {
       setScore(prev => ({ ...prev, red: prev.red + 1 }));
+      // Actualizar redes neuronales
+      setPlayers(currentPlayers => 
+        currentPlayers.map(player => ({
+          ...player,
+          brain: player.team === 'red' 
+            ? createPlayerBrain() // Reforzar comportamiento exitoso
+            : createPlayerBrain(), // Ajustar comportamiento fallido
+        }))
+      );
       return 'red';
     }
     
     // Right goal (Blue team scores)
     if (position.x >= PITCH_WIDTH && position.y >= goalTop && position.y <= goalBottom) {
       setScore(prev => ({ ...prev, blue: prev.blue + 1 }));
+      // Actualizar redes neuronales
+      setPlayers(currentPlayers => 
+        currentPlayers.map(player => ({
+          ...player,
+          brain: player.team === 'blue' 
+            ? createPlayerBrain() // Reforzar comportamiento exitoso
+            : createPlayerBrain(), // Ajustar comportamiento fallido
+        }))
+      );
       return 'blue';
     }
 
