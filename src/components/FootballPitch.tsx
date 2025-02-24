@@ -247,6 +247,28 @@ const FootballPitch: React.FC = () => {
 
       {players.map((player) => (
         <React.Fragment key={player.id}>
+          {player.role === 'goalkeeper' && (
+            <motion.div
+              className={`absolute w-1 ${
+                player.team === 'red' ? 'bg-team-red' : 'bg-team-blue'
+              }`}
+              style={{
+                height: GOALKEEPER_ARM_LENGTH,
+                transform: 'translate(-50%, -50%)'  // Centramos la barra
+              }}
+              animate={{
+                x: player.position.x,
+                y: player.position.y,
+              }}
+              transition={{
+                type: "spring",
+                damping: 20,
+                stiffness: 100,
+                mass: 0.8
+              }}
+              initial={false}
+            />
+          )}
           <motion.div
             className={`absolute w-6 h-6 rounded-full ${
               player.team === 'red' ? 'bg-team-red' : 'bg-team-blue'
@@ -263,27 +285,6 @@ const FootballPitch: React.FC = () => {
             }}
             initial={false}
           />
-          {player.role === 'goalkeeper' && (
-            <motion.div
-              className={`absolute w-1 ${
-                player.team === 'red' ? 'bg-team-red' : 'bg-team-blue'
-              }`}
-              style={{
-                height: GOALKEEPER_ARM_LENGTH,
-              }}
-              animate={{
-                x: player.position.x,
-                y: player.position.y - GOALKEEPER_ARM_LENGTH/2,
-              }}
-              transition={{
-                type: "spring",
-                damping: 20,
-                stiffness: 100,
-                mass: 0.8
-              }}
-              initial={false}
-            />
-          )}
         </React.Fragment>
       ))}
 
