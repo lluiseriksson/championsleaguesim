@@ -60,32 +60,32 @@ export const updatePlayerBrain = (
     );
 
     // Calcular la posición vertical óptima para el portero basada en la posición de la pelota
-    const optimalY = context.ownGoal.y + (ball.position.y - context.ownGoal.y) * 0.7;
-    const verticalAdjustment = (optimalY - player.position.y) / 100;
+    const optimalY = context.ownGoal.y + (ball.position.y - context.ownGoal.y) * 0.8;
+    const verticalAdjustment = (optimalY - player.position.y) / 50; // Aumentado de 100 a 50 para mayor velocidad
 
     // Determinar si el portero debe ser más agresivo
     const shouldBeAggressive = 
-      distanceToGoal < 150 && // Aumentamos el rango de acción
-      ballMovingTowardsGoal && // Balón se acerca
-      Math.abs(ball.position.y - context.ownGoal.y) < 120; // Aumentamos el rango vertical
+      (distanceToGoal < 200 || // Aumentado el rango de acción
+      (Math.abs(ball.position.x - context.ownGoal.x) < 250 && ballMovingTowardsGoal)) && // Reaccionar antes
+      Math.abs(ball.position.y - context.ownGoal.y) < 150; // Aumentado el rango vertical
 
     // Calcular la distancia máxima que el portero puede alejarse de la portería
-    const maxXDistance = player.team === 'red' ? 80 : -80;
+    const maxXDistance = player.team === 'red' ? 100 : -100; // Aumentado de 80 a 100
     const currentXOffset = player.position.x - context.ownGoal.x;
-    const xAdjustment = (shouldBeAggressive && Math.abs(currentXOffset) < Math.abs(maxXDistance)) ? 
-      (ball.position.x - player.position.x) / 100 : 
-      -currentXOffset / 50;
+    const xAdjustment = shouldBeAggressive ? 
+      (ball.position.x - player.position.x) / 50 : // Aumentado para más velocidad
+      -currentXOffset / 30;
 
     targetOutput = {
       moveX: shouldBeAggressive 
-        ? (ball.position.x - player.position.x) > 0 ? 0.9 : -0.9
-        : Math.max(-1, Math.min(1, xAdjustment)),
+        ? Math.sign(ball.position.x - player.position.x)
+        : Math.max(-1, Math.min(1, xAdjustment * 2)),
       moveY: shouldBeAggressive
-        ? (ball.position.y - player.position.y) > 0 ? 1 : -1
-        : Math.max(-1, Math.min(1, verticalAdjustment * 2)),
-      shootBall: shouldBeAggressive ? 1 : 0.3,
-      passBall: input.isInPassingRange * (shouldBeAggressive ? 0.3 : 1.5),
-      intercept: shouldBeAggressive ? 1 : 0.7
+        ? Math.sign(ball.position.y - player.position.y)
+        : Math.max(-1, Math.min(1, verticalAdjustment * 3)),
+      shootBall: 1, // Siempre intentar despejar
+      passBall: input.isInPassingRange,
+      intercept: 1 // Siempre intentar interceptar
     };
   }
 

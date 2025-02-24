@@ -84,9 +84,19 @@ const GameLogic: React.FC<GameLogicProps> = ({
             y: prevBall.position.y + prevBall.velocity.y * (step/16),
           };
 
-          for (const player of players) {
+          // Revisamos colisiones con cada jugador, dando prioridad a los porteros
+          const goalkeepers = players.filter(p => p.role === 'goalkeeper');
+          const fieldPlayers = players.filter(p => p.role !== 'goalkeeper');
+          const allPlayers = [...goalkeepers, ...fieldPlayers];
+
+          for (const player of allPlayers) {
             if (checkCollision(stepMovement, player.position)) {
-              const newVelocity = calculateNewVelocity(stepMovement, player.position, prevBall.velocity);
+              const newVelocity = calculateNewVelocity(
+                stepMovement, 
+                player.position, 
+                prevBall.velocity,
+                player.role === 'goalkeeper'
+              );
               return {
                 position: {
                   x: player.position.x + (PLAYER_RADIUS + BALL_RADIUS) * Math.cos(Math.atan2(stepMovement.y - player.position.y, stepMovement.x - player.position.x)),
