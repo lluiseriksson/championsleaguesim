@@ -8,7 +8,7 @@ interface Position {
 }
 
 interface NeuralNet {
-  net: brain.NeuralNetwork;
+  net: brain.NeuralNetwork<{ ballX: number, ballY: number, playerX: number, playerY: number }, { moveX: number, moveY: number }>;
   lastOutput: { x: number; y: number };
 }
 
@@ -40,7 +40,10 @@ const BALL_RADIUS = 6;
 const PLAYER_SPEED = 2;
 
 const createPlayerBrain = (): NeuralNet => {
-  const net = new brain.NeuralNetwork({
+  const net = new brain.NeuralNetwork<
+    { ballX: number, ballY: number, playerX: number, playerY: number },
+    { moveX: number, moveY: number }
+  >({
     hiddenLayers: [4],
   });
 
@@ -132,22 +135,31 @@ const FootballPitch: React.FC = () => {
 
         // Obtener decisión de la red neuronal
         const output = player.brain.net.run(input);
-        player.brain.lastOutput = { x: output.moveX * 2 - 1, y: output.moveY * 2 - 1 };
+        player.brain.lastOutput = { 
+          x: (output.moveX || 0.5) * 2 - 1, 
+          y: (output.moveY || 0.5) * 2 - 1 
+        };
 
-        // Calcular nueva posición basada en el rol
+        // Calcular nueva posición basada en el rol y la distancia a la pelota
         let maxDistance = 50;
+        const distanceToBall = Math.sqrt(
+          Math.pow(ball.position.x - player.position.x, 2) +
+          Math.pow(ball.position.y - player.position.y, 2)
+        );
+
+        // Ajustar maxDistance según el rol y la distancia a la pelota
         switch (player.role) {
           case 'goalkeeper':
-            maxDistance = 30;
+            maxDistance = distanceToBall < 100 ? 40 : 20;
             break;
           case 'defender':
-            maxDistance = 60;
+            maxDistance = distanceToBall < 150 ? 80 : 50;
             break;
           case 'midfielder':
-            maxDistance = 100;
+            maxDistance = distanceToBall < 200 ? 120 : 80;
             break;
           case 'forward':
-            maxDistance = 120;
+            maxDistance = distanceToBall < 250 ? 160 : 100;
             break;
         }
 
@@ -174,8 +186,8 @@ const FootballPitch: React.FC = () => {
         }
 
         // Mantener jugadores dentro del campo
-        newPosition.x = Math.max(0, Math.min(PITCH_WIDTH, newPosition.x));
-        newPosition.y = Math.max(0, Math.min(PITCH_HEIGHT, newPosition.y));
+        newPosition.x = Math.max(PLAYER_RADIUS, Math.min(PITCH_WIDTH - PLAYER_RADIUS, newPosition.x));
+        newPosition.y = Math.max(PLAYER_RADIUS, Math.min(PITCH_HEIGHT - PLAYER_RADIUS, newPosition.y));
 
         return {
           ...player,
@@ -232,9 +244,10 @@ const FootballPitch: React.FC = () => {
     return distance < (PLAYER_RADIUS + BALL_RADIUS);
   };
 
-  // Ball movement
+  // Ball movement and game loop
   React.useEffect(() => {
-    const moveBall = () => {
+    const gameLoop = () => {
+      updatePlayerPositions();
       setBall((prevBall) => {
         const newPosition = {
           x: prevBall.position.x + prevBall.velocity.x,
@@ -250,7 +263,7 @@ const FootballPitch: React.FC = () => {
             const speed = Math.sqrt(
               prevBall.velocity.x * prevBall.velocity.x + 
               prevBall.velocity.y * prevBall.velocity.y
-            );
+            ) * 1.1; // Aumentar velocidad en cada rebote
             
             return {
               position: {
@@ -276,26 +289,26 @@ const FootballPitch: React.FC = () => {
 
         // Bounce off walls
         const newVelocity = { ...prevBall.velocity };
-        if (newPosition.x <= 0 || newPosition.x >= PITCH_WIDTH) {
-          newVelocity.x = -prevBall.velocity.x;
+        if (newPosition.x <= BALL_RADIUS || newPosition.x >= PITCH_WIDTH - BALL_RADIUS) {
+          newVelocity.x = -prevBall.velocity.x * 0.9; // Pérdida de energía
         }
-        if (newPosition.y <= 0 || newPosition.y >= PITCH_HEIGHT) {
-          newVelocity.y = -prevBall.velocity.y;
+        if (newPosition.y <= BALL_RADIUS || newPosition.y >= PITCH_HEIGHT - BALL_RADIUS) {
+          newVelocity.y = -prevBall.velocity.y * 0.9; // Pérdida de energía
         }
 
         return {
           position: {
-            x: Math.max(0, Math.min(PITCH_WIDTH, newPosition.x)),
-            y: Math.max(0, Math.min(PITCH_HEIGHT, newPosition.y))
+            x: Math.max(BALL_RADIUS, Math.min(PITCH_WIDTH - BALL_RADIUS, newPosition.x)),
+            y: Math.max(BALL_RADIUS, Math.min(PITCH_HEIGHT - BALL_RADIUS, newPosition.y))
           },
           velocity: newVelocity
         };
       });
     };
 
-    const interval = setInterval(moveBall, 16); // 60fps
+    const interval = setInterval(gameLoop, 16); // 60fps
     return () => clearInterval(interval);
-  }, [players]);
+  }, [players, updatePlayerPositions]);
 
   return (
     <div className="relative w-[800px] h-[600px] bg-pitch mx-auto overflow-hidden rounded-lg shadow-lg">
