@@ -30,9 +30,9 @@ const FootballPitch: React.FC = () => {
       { x: 300, y: PITCH_HEIGHT/3, role: 'midfielder' },
       { x: 300, y: PITCH_HEIGHT/2, role: 'midfielder' },
       { x: 300, y: (PITCH_HEIGHT*2)/3, role: 'midfielder' },
-      { x: 450, y: PITCH_HEIGHT/4, role: 'forward' },
-      { x: 450, y: PITCH_HEIGHT/2, role: 'forward' },
-      { x: 450, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
+      { x: 500, y: PITCH_HEIGHT/4, role: 'forward' }, // Adelantamos a los delanteros
+      { x: 500, y: PITCH_HEIGHT/2, role: 'forward' },
+      { x: 500, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
     ].forEach((pos, index) => {
       initialPlayers.push({
         id: index + 1,
@@ -52,9 +52,9 @@ const FootballPitch: React.FC = () => {
       { x: PITCH_WIDTH - 300, y: PITCH_HEIGHT/3, role: 'midfielder' },
       { x: PITCH_WIDTH - 300, y: PITCH_HEIGHT/2, role: 'midfielder' },
       { x: PITCH_WIDTH - 300, y: (PITCH_HEIGHT*2)/3, role: 'midfielder' },
-      { x: PITCH_WIDTH - 450, y: PITCH_HEIGHT/4, role: 'forward' },
-      { x: PITCH_WIDTH - 450, y: PITCH_HEIGHT/2, role: 'forward' },
-      { x: PITCH_WIDTH - 450, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
+      { x: PITCH_WIDTH - 500, y: PITCH_HEIGHT/4, role: 'forward' }, // Adelantamos a los delanteros
+      { x: PITCH_WIDTH - 500, y: PITCH_HEIGHT/2, role: 'forward' },
+      { x: PITCH_WIDTH - 500, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
     ].forEach((pos, index) => {
       initialPlayers.push({
         id: index + 11,
@@ -143,7 +143,7 @@ const FootballPitch: React.FC = () => {
             maxDistance = distanceToBall < 200 ? 120 : 80;
             break;
           case 'forward':
-            maxDistance = distanceToBall < 250 ? 160 : 100;
+            maxDistance = distanceToBall < 250 ? 200 : 120; // Aumentamos el rango de los delanteros
             break;
         }
 
