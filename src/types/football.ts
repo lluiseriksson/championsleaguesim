@@ -6,9 +6,43 @@ export interface Position {
   y: number;
 }
 
+export interface TeamContext {
+  teammates: Position[];
+  opponents: Position[];
+  ownGoal: Position;
+  opponentGoal: Position;
+}
+
+export interface NeuralInput {
+  ballX: number;
+  ballY: number;
+  playerX: number;
+  playerY: number;
+  ballVelocityX: number;
+  ballVelocityY: number;
+  distanceToGoal: number;
+  angleToGoal: number;
+  nearestTeammateDistance: number;
+  nearestTeammateAngle: number;
+  nearestOpponentDistance: number;
+  nearestOpponentAngle: number;
+  isInShootingRange: number;
+  isInPassingRange: number;
+  isDefendingRequired: number;
+}
+
+export interface NeuralOutput {
+  moveX: number;
+  moveY: number;
+  shootBall: number;
+  passBall: number;
+  intercept: number;
+}
+
 export interface NeuralNet {
-  net: brain.NeuralNetwork<{ ballX: number, ballY: number, playerX: number, playerY: number }, { moveX: number, moveY: number }>;
+  net: brain.NeuralNetwork<NeuralInput, NeuralOutput>;
   lastOutput: { x: number; y: number };
+  lastAction?: 'move' | 'shoot' | 'pass' | 'intercept';
 }
 
 export interface Player {
@@ -37,3 +71,5 @@ export const GOAL_HEIGHT = 160;
 export const PLAYER_RADIUS = 12;
 export const BALL_RADIUS = 6;
 export const PLAYER_SPEED = 2;
+export const SHOOT_POWER = 15;
+export const PASS_POWER = 8;

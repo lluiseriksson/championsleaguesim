@@ -1,118 +1,248 @@
 
 import * as brain from 'brain.js';
-import { NeuralNet, Position } from '../types/football';
-import { PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
+import { NeuralNet, Position, NeuralInput, NeuralOutput, TeamContext, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
+
+const normalizePosition = (pos: Position): Position => ({
+  x: pos.x / PITCH_WIDTH,
+  y: pos.y / PITCH_HEIGHT
+});
+
+const calculateAngleAndDistance = (from: Position, to: Position) => {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  return {
+    angle: Math.atan2(dy, dx) / Math.PI, // Normalize to [-1, 1]
+    distance: Math.sqrt(dx * dx + dy * dy) / Math.sqrt(PITCH_WIDTH * PITCH_WIDTH + PITCH_HEIGHT * PITCH_HEIGHT)
+  };
+};
+
+const getNearestEntity = (position: Position, entities: Position[]) => {
+  let nearest = { distance: Infinity, angle: 0 };
+  
+  entities.forEach(entity => {
+    const result = calculateAngleAndDistance(position, entity);
+    if (result.distance < nearest.distance) {
+      nearest = result;
+    }
+  });
+  
+  return nearest;
+};
+
+const createNeuralInput = (
+  ball: { position: Position, velocity: Position },
+  player: Position,
+  context: TeamContext
+): NeuralInput => {
+  const normalizedBall = normalizePosition(ball.position);
+  const normalizedPlayer = normalizePosition(player);
+  const goalAngle = calculateAngleAndDistance(player, context.opponentGoal);
+  const nearestTeammate = getNearestEntity(player, context.teammates);
+  const nearestOpponent = getNearestEntity(player, context.opponents);
+  
+  const isInShootingRange = goalAngle.distance < 0.3 ? 1 : 0;
+  const isInPassingRange = nearestTeammate.distance < 0.2 ? 1 : 0;
+  const isDefendingRequired = nearestOpponent.distance < 0.15 ? 1 : 0;
+
+  return {
+    ballX: normalizedBall.x,
+    ballY: normalizedBall.y,
+    playerX: normalizedPlayer.x,
+    playerY: normalizedPlayer.y,
+    ballVelocityX: ball.velocity.x / 20,
+    ballVelocityY: ball.velocity.y / 20,
+    distanceToGoal: goalAngle.distance,
+    angleToGoal: goalAngle.angle,
+    nearestTeammateDistance: nearestTeammate.distance,
+    nearestTeammateAngle: nearestTeammate.angle,
+    nearestOpponentDistance: nearestOpponent.distance,
+    nearestOpponentAngle: nearestOpponent.angle,
+    isInShootingRange,
+    isInPassingRange,
+    isDefendingRequired
+  };
+};
 
 export const createPlayerBrain = (): NeuralNet => {
-  const net = new brain.NeuralNetwork<
-    { ballX: number, ballY: number, playerX: number, playerY: number },
-    { moveX: number, moveY: number }
-  >({
-    hiddenLayers: [16, 16], // Dos capas ocultas de 16 neuronas cada una
-    activation: 'sigmoid', // Función de activación más suave para mejor aprendizaje
+  const net = new brain.NeuralNetwork<NeuralInput, NeuralOutput>({
+    hiddenLayers: [32, 32, 16], // Tres capas ocultas más grandes
+    activation: 'leaky-relu', // Mejor para redes profundas
+    learningRate: 0.01,
   });
 
-  // Entrenamiento inicial con más variedad de situaciones
+  // Entrenamiento inicial con situaciones diversas
   const trainingData = [];
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 50; i++) {
+    const randomPosition = () => ({ 
+      x: Math.random() * PITCH_WIDTH, 
+      y: Math.random() * PITCH_HEIGHT 
+    });
+    
+    const context: TeamContext = {
+      teammates: Array(3).fill(null).map(randomPosition),
+      opponents: Array(3).fill(null).map(randomPosition),
+      ownGoal: { x: 0, y: PITCH_HEIGHT/2 },
+      opponentGoal: { x: PITCH_WIDTH, y: PITCH_HEIGHT/2 }
+    };
+
+    const ball = {
+      position: randomPosition(),
+      velocity: { x: Math.random() * 10 - 5, y: Math.random() * 10 - 5 }
+    };
+
+    const input = createNeuralInput(ball, randomPosition(), context);
+    
     trainingData.push({
-      input: {
-        ballX: Math.random(),
-        ballY: Math.random(),
-        playerX: Math.random(),
-        playerY: Math.random()
-      },
+      input,
       output: {
         moveX: Math.random() * 2 - 1,
-        moveY: Math.random() * 2 - 1
+        moveY: Math.random() * 2 - 1,
+        shootBall: Math.random(),
+        passBall: Math.random(),
+        intercept: Math.random()
       }
     });
   }
 
   net.train(trainingData, {
-    iterations: 2000,
-    errorThresh: 0.001, // Error más bajo para mejor precisión
-    log: true, // Activamos el logging para ver el progreso
-    logPeriod: 100 // Mostrar log cada 100 iteraciones
+    iterations: 5000,
+    errorThresh: 0.0001,
+    log: true,
+    logPeriod: 100
   });
 
   return {
     net,
-    lastOutput: { x: 0, y: 0 },
+    lastOutput: { x: 0, y: 0 }
   };
 };
 
 export const createUntrained = (): NeuralNet => {
-  const net = new brain.NeuralNetwork<
-    { ballX: number, ballY: number, playerX: number, playerY: number },
-    { moveX: number, moveY: number }
-  >({
-    hiddenLayers: [16, 16],
-    activation: 'sigmoid',
+  const net = new brain.NeuralNetwork<NeuralInput, NeuralOutput>({
+    hiddenLayers: [32, 32, 16],
+    activation: 'leaky-relu',
+    learningRate: 0.01,
   });
 
-  // Inicialización mínima con pesos aleatorios más diversos
-  net.train([
-    { 
-      input: { ballX: 0.5, ballY: 0.5, playerX: 0.5, playerY: 0.5 }, 
-      output: { moveX: 0.5, moveY: 0.5 } 
+  // Mínima inicialización
+  const randomPosition = () => ({ 
+    x: PITCH_WIDTH/2, 
+    y: PITCH_HEIGHT/2 
+  });
+
+  const context: TeamContext = {
+    teammates: [randomPosition()],
+    opponents: [randomPosition()],
+    ownGoal: { x: 0, y: PITCH_HEIGHT/2 },
+    opponentGoal: { x: PITCH_WIDTH, y: PITCH_HEIGHT/2 }
+  };
+
+  const input = createNeuralInput(
+    { position: randomPosition(), velocity: { x: 0, y: 0 } },
+    randomPosition(),
+    context
+  );
+
+  net.train([{
+    input,
+    output: {
+      moveX: 0,
+      moveY: 0,
+      shootBall: 0.5,
+      passBall: 0.5,
+      intercept: 0.5
     }
-  ], {
+  }], {
     iterations: 1,
-    errorThresh: 0.05
+    errorThresh: 0.1
   });
 
   return {
     net,
-    lastOutput: { x: 0, y: 0 },
+    lastOutput: { x: 0, y: 0 }
   };
 };
 
 export const updatePlayerBrain = (
-  brain: NeuralNet, 
-  isScoring: boolean, 
-  ball: { position: Position },
-  player: { position: Position }
+  brain: NeuralNet,
+  isScoring: boolean,
+  ball: { position: Position, velocity: Position },
+  player: Player,
+  context: TeamContext
 ) => {
-  const normalizedInput = {
-    ballX: ball.position.x / PITCH_WIDTH,
-    ballY: ball.position.y / PITCH_HEIGHT,
-    playerX: player.position.x / PITCH_WIDTH,
-    playerY: player.position.y / PITCH_HEIGHT
-  };
+  const input = createNeuralInput(ball, player.position, context);
 
-  // Tasa de aprendizaje más dinámica basada en el rendimiento
-  const learningRate = isScoring ? 0.2 : 0.05;
-  
-  const targetOutput = isScoring ? {
-    moveX: (ball.position.x - player.position.x) > 0 ? 1 : -1,
-    moveY: (ball.position.y - player.position.y) > 0 ? 1 : -1
-  } : {
-    moveX: (player.position.x - ball.position.x) > 0 ? -1 : 1,
-    moveY: (player.position.y - ball.position.y) > 0 ? -1 : 1
-  };
+  // Recompensas basadas en el rol y la situación
+  const rewardMultiplier = isScoring ? 2 : 1;
+  let targetOutput: NeuralOutput;
+
+  if (player.role === 'forward') {
+    targetOutput = {
+      moveX: (ball.position.x - player.position.x) > 0 ? 1 : -1,
+      moveY: (ball.position.y - player.position.y) > 0 ? 1 : -1,
+      shootBall: input.isInShootingRange,
+      passBall: input.isInPassingRange,
+      intercept: 0.2
+    };
+  } else if (player.role === 'midfielder') {
+    targetOutput = {
+      moveX: (ball.position.x - player.position.x) > 0 ? 0.8 : -0.8,
+      moveY: (ball.position.y - player.position.y) > 0 ? 0.8 : -0.8,
+      shootBall: input.isInShootingRange * 0.7,
+      passBall: input.isInPassingRange * 1.2,
+      intercept: 0.5
+    };
+  } else if (player.role === 'defender') {
+    targetOutput = {
+      moveX: (player.position.x - ball.position.x) > 0 ? -0.6 : 0.6,
+      moveY: (player.position.y - ball.position.y) > 0 ? -0.6 : 0.6,
+      shootBall: input.isInShootingRange * 0.3,
+      passBall: input.isInPassingRange * 1.5,
+      intercept: 0.8
+    };
+  } else { // goalkeeper
+    targetOutput = {
+      moveX: (player.position.x - ball.position.x) > 0 ? -0.3 : 0.3,
+      moveY: (player.position.y - ball.position.y) > 0 ? -1 : 1,
+      shootBall: 0.1,
+      passBall: input.isInPassingRange * 2,
+      intercept: 1
+    };
+  }
+
+  // Aplicar el multiplicador de recompensa
+  Object.keys(targetOutput).forEach(key => {
+    targetOutput[key] *= rewardMultiplier;
+  });
 
   brain.net.train([{
-    input: normalizedInput,
+    input,
     output: targetOutput
   }], {
-    iterations: 200, // Más iteraciones por actualización
-    errorThresh: 0.01, // Error más bajo para mejor precisión
-    learningRate,
+    iterations: 300,
+    errorThresh: 0.001,
+    learningRate: isScoring ? 0.1 : 0.03,
     log: true,
     logPeriod: 50
   });
 
-  // Obtener y mostrar los pesos de la red
+  // Mostrar estado de la red
   const weights = brain.net.weights;
-  console.log('Pesos de la red:', {
-    inputToHidden1: weights[0],
-    hidden1ToHidden2: weights[1],
-    hidden2ToOutput: weights[2]
+  console.log(`Red neuronal ${player.team} ${player.role} #${player.id}:`, {
+    input,
+    output: brain.net.run(input),
+    targetOutput,
+    weightsShape: {
+      inputToHidden1: weights[0].length,
+      hidden1ToHidden2: weights[1].length,
+      hidden2ToHidden3: weights[2].length,
+      hidden3ToOutput: weights[3].length
+    }
   });
 
   return {
     net: brain.net,
-    lastOutput: brain.lastOutput
+    lastOutput: brain.lastOutput,
+    lastAction: brain.lastAction
   };
 };
