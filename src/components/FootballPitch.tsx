@@ -33,8 +33,8 @@ interface Score {
 
 const PITCH_WIDTH = 800;
 const PITCH_HEIGHT = 600;
-const GOAL_WIDTH = 80;
-const GOAL_HEIGHT = 120;
+const GOAL_WIDTH = 120;
+const GOAL_HEIGHT = 160;
 const PLAYER_RADIUS = 12;
 const BALL_RADIUS = 6;
 const PLAYER_SPEED = 2;
@@ -190,20 +190,7 @@ const FootballPitch: React.FC = () => {
     const goalTop = goalY - GOAL_HEIGHT / 2;
     const goalBottom = goalY + GOAL_HEIGHT / 2;
 
-    if (position.x <= 0 && position.y >= goalTop && position.y <= goalBottom) {
-      setScore(prev => ({ ...prev, red: prev.red + 1 }));
-      setPlayers(currentPlayers => 
-        currentPlayers.map(player => ({
-          ...player,
-          brain: player.team === 'red' 
-            ? createPlayerBrain()
-            : createPlayerBrain(),
-        }))
-      );
-      return 'red';
-    }
-    
-    if (position.x >= PITCH_WIDTH && position.y >= goalTop && position.y <= goalBottom) {
+    if (position.x <= BALL_RADIUS && position.y >= goalTop && position.y <= goalBottom) {
       setScore(prev => ({ ...prev, blue: prev.blue + 1 }));
       setPlayers(currentPlayers => 
         currentPlayers.map(player => ({
@@ -214,6 +201,19 @@ const FootballPitch: React.FC = () => {
         }))
       );
       return 'blue';
+    }
+    
+    if (position.x >= PITCH_WIDTH - BALL_RADIUS && position.y >= goalTop && position.y <= goalBottom) {
+      setScore(prev => ({ ...prev, red: prev.red + 1 }));
+      setPlayers(currentPlayers => 
+        currentPlayers.map(player => ({
+          ...player,
+          brain: player.team === 'red' 
+            ? createPlayerBrain()
+            : createPlayerBrain(),
+        }))
+      );
+      return 'red';
     }
 
     return null;
@@ -299,8 +299,8 @@ const FootballPitch: React.FC = () => {
       <div className="absolute inset-0">
         <div className="absolute left-1/2 top-1/2 w-32 h-32 border-2 border-pitch-lines rounded-full transform -translate-x-1/2 -translate-y-1/2" />
         <div className="absolute left-1/2 top-0 w-0.5 h-full bg-pitch-lines transform -translate-x-1/2" />
-        <div className="absolute left-0 top-1/2 w-4 h-[120px] border-2 border-pitch-lines transform -translate-y-1/2 bg-white/20" />
-        <div className="absolute right-0 top-1/2 w-4 h-[120px] border-2 border-pitch-lines transform -translate-y-1/2 bg-white/20" />
+        <div className="absolute left-0 top-1/2 w-4 h-[160px] border-2 border-pitch-lines transform -translate-y-1/2 bg-white/20" />
+        <div className="absolute right-0 top-1/2 w-4 h-[160px] border-2 border-pitch-lines transform -translate-y-1/2 bg-white/20" />
         <div className="absolute left-0 top-1/2 w-36 h-72 border-2 border-pitch-lines transform -translate-y-1/2" />
         <div className="absolute right-0 top-1/2 w-36 h-72 border-2 border-pitch-lines transform -translate-y-1/2" />
       </div>
