@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
 
@@ -19,8 +18,17 @@ interface Ball {
   velocity: Position;
 }
 
+interface Score {
+  red: number;
+  blue: number;
+}
+
 const PITCH_WIDTH = 800;
 const PITCH_HEIGHT = 600;
+const GOAL_WIDTH = 80;
+const GOAL_HEIGHT = 120;
+const PLAYER_RADIUS = 12;
+const BALL_RADIUS = 6;
 
 const FootballPitch: React.FC = () => {
   const [players, setPlayers] = React.useState<Player[]>([]);
@@ -28,6 +36,7 @@ const FootballPitch: React.FC = () => {
     position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
     velocity: { x: 2, y: 2 },
   });
+  const [score, setScore] = React.useState<Score>({ red: 0, blue: 0 });
 
   // Initialize players
   React.useEffect(() => {
@@ -70,6 +79,35 @@ const FootballPitch: React.FC = () => {
     setPlayers(initialPlayers);
   }, []);
 
+  // Detect goal
+  const checkGoal = (position: Position) => {
+    const goalY = PITCH_HEIGHT / 2;
+    const goalTop = goalY - GOAL_HEIGHT / 2;
+    const goalBottom = goalY + GOAL_HEIGHT / 2;
+
+    // Left goal (Red team scores)
+    if (position.x <= 0 && position.y >= goalTop && position.y <= goalBottom) {
+      setScore(prev => ({ ...prev, red: prev.red + 1 }));
+      return 'red';
+    }
+    
+    // Right goal (Blue team scores)
+    if (position.x >= PITCH_WIDTH && position.y >= goalTop && position.y <= goalBottom) {
+      setScore(prev => ({ ...prev, blue: prev.blue + 1 }));
+      return 'blue';
+    }
+
+    return null;
+  };
+
+  // Check collision between ball and player
+  const checkCollision = (ballPos: Position, playerPos: Position) => {
+    const dx = ballPos.x - playerPos.x;
+    const dy = ballPos.y - playerPos.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    return distance < (PLAYER_RADIUS + BALL_RADIUS);
+  };
+
   // Ball movement
   React.useEffect(() => {
     const moveBall = () => {
@@ -78,6 +116,39 @@ const FootballPitch: React.FC = () => {
           x: prevBall.position.x + prevBall.velocity.x,
           y: prevBall.position.y + prevBall.velocity.y,
         };
+
+        // Check collisions with players
+        for (const player of players) {
+          if (checkCollision(newPosition, player.position)) {
+            const dx = newPosition.x - player.position.x;
+            const dy = newPosition.y - player.position.y;
+            const angle = Math.atan2(dy, dx);
+            const speed = Math.sqrt(
+              prevBall.velocity.x * prevBall.velocity.x + 
+              prevBall.velocity.y * prevBall.velocity.y
+            );
+            
+            return {
+              position: {
+                x: player.position.x + (PLAYER_RADIUS + BALL_RADIUS) * Math.cos(angle),
+                y: player.position.y + (PLAYER_RADIUS + BALL_RADIUS) * Math.sin(angle)
+              },
+              velocity: {
+                x: speed * Math.cos(angle),
+                y: speed * Math.sin(angle)
+              }
+            };
+          }
+        }
+
+        // Check for goals
+        const scoringTeam = checkGoal(newPosition);
+        if (scoringTeam) {
+          return {
+            position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
+            velocity: { x: 2 * (scoringTeam === 'red' ? -1 : 1), y: 0 }
+          };
+        }
 
         // Bounce off walls
         const newVelocity = { ...prevBall.velocity };
@@ -91,25 +162,35 @@ const FootballPitch: React.FC = () => {
         return {
           position: {
             x: Math.max(0, Math.min(PITCH_WIDTH, newPosition.x)),
-            y: Math.max(0, Math.min(PITCH_HEIGHT, newPosition.y)),
+            y: Math.max(0, Math.min(PITCH_HEIGHT, newPosition.y))
           },
-          velocity: newVelocity,
+          velocity: newVelocity
         };
       });
     };
 
     const interval = setInterval(moveBall, 16); // 60fps
     return () => clearInterval(interval);
-  }, []);
+  }, [players]);
 
   return (
     <div className="relative w-[800px] h-[600px] bg-pitch mx-auto overflow-hidden rounded-lg shadow-lg">
+      {/* Score display */}
+      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white/80 px-4 py-2 rounded-full font-bold text-xl shadow-md">
+        <span className="text-team-red">{score.red}</span>
+        <span className="mx-2">-</span>
+        <span className="text-team-blue">{score.blue}</span>
+      </div>
+
       {/* Pitch markings */}
       <div className="absolute inset-0">
         {/* Center circle */}
         <div className="absolute left-1/2 top-1/2 w-32 h-32 border-2 border-pitch-lines rounded-full transform -translate-x-1/2 -translate-y-1/2" />
         {/* Center line */}
         <div className="absolute left-1/2 top-0 w-0.5 h-full bg-pitch-lines transform -translate-x-1/2" />
+        {/* Goals */}
+        <div className="absolute left-0 top-1/2 w-4 h-[120px] border-2 border-pitch-lines transform -translate-y-1/2 bg-white/20" />
+        <div className="absolute right-0 top-1/2 w-4 h-[120px] border-2 border-pitch-lines transform -translate-y-1/2 bg-white/20" />
         {/* Penalty areas */}
         <div className="absolute left-0 top-1/2 w-36 h-72 border-2 border-pitch-lines transform -translate-y-1/2" />
         <div className="absolute right-0 top-1/2 w-36 h-72 border-2 border-pitch-lines transform -translate-y-1/2" />
@@ -119,7 +200,7 @@ const FootballPitch: React.FC = () => {
       {players.map((player) => (
         <motion.div
           key={player.id}
-          className={`absolute w-4 h-4 rounded-full ${
+          className={`absolute w-6 h-6 rounded-full ${
             player.team === 'red' ? 'bg-team-red' : 'bg-team-blue'
           }`}
           style={{
