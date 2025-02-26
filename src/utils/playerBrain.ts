@@ -25,22 +25,12 @@ export const updatePlayerBrain = (
     // Posición X absolutamente fija
     const fixedX = player.team === 'red' ? 40 : PITCH_WIDTH - 40;
     
-    // Forzar al portero a moverse hacia el centro de la portería
-    const goalCenterY = PITCH_HEIGHT / 2;
-    const distanceToCenter = Math.abs(player.position.y - goalCenterY);
-    
-    // Movimiento Y oscilante simple
-    const oscillationRange = GOAL_HEIGHT / 2;
-    const moveY = (player.position.y < goalCenterY - oscillationRange) ? 1 : 
-                 (player.position.y > goalCenterY + oscillationRange) ? -1 :
-                 (brain.lastOutput?.y || 1); // Mantener dirección previa
-
     targetOutput = {
       moveX: player.position.x < fixedX ? 1 : -1,
-      moveY: moveY,
-      shootBall: 0.1, // Reducir probabilidad de disparo
-      passBall: 1.0,  // Aumentar probabilidad de pase
-      intercept: 1.0   // Máxima prioridad a la intercepción
+      moveY: input.ballVelocityY, // Dejar que la IA decida basándose en la velocidad del balón
+      shootBall: 0.1,  // Baja probabilidad de disparo
+      passBall: 1.0,   // Alta probabilidad de pase
+      intercept: 1.0    // Alta prioridad a la intercepción
     };
   } else if (player.role === 'forward') {
     targetOutput = {
