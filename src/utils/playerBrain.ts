@@ -22,44 +22,50 @@ export const updatePlayerBrain = (
   let targetOutput;
 
   if (player.role === 'goalkeeper') {
-    // Posición X absolutamente fija - no permitimos ningún movimiento en X
+    // Posición X absolutamente fija
     const fixedX = player.team === 'red' ? 40 : PITCH_WIDTH - 40;
     
-    // Centro y límites de la portería con margen reducido
+    // Centro y límites de la portería
     const goalCenterY = PITCH_HEIGHT / 2;
     const goalTop = goalCenterY - GOAL_HEIGHT / 2;
     const goalBottom = goalCenterY + GOAL_HEIGHT / 2;
     
-    // Forzar movimiento Y más agresivo
+    // Calcular movimiento Y base
     let forceY = 0;
     
-    // Aumentar el rango de movimiento reduciendo el margen
-    const margin = 5; // Reducido de 20 a 5 para más rango de movimiento
+    // Múltiples factores para el movimiento Y
+    const ballFactor = ball.position.y > player.position.y ? 1 : -1;
+    const timeFactor = Math.sin(Date.now() / 150) * 2; // Oscilación más rápida y amplia
+    const randomFactor = (Math.random() - 0.5) * 2; // Factor aleatorio para movimiento impredecible
+    const velocityFactor = ball.velocity.y * 0.5; // Considerar la velocidad de la pelota
     
+    // Combinar todos los factores
+    forceY = ballFactor * 2 + timeFactor + randomFactor + velocityFactor;
+    
+    // Si está cerca de los límites, forzar dirección contraria con más fuerza
+    const margin = 10;
     if (player.position.y < goalTop + margin) {
-      forceY = 1; // Forzar hacia abajo
+      forceY = 4; // Fuerza máxima hacia abajo
     } else if (player.position.y > goalBottom - margin) {
-      forceY = -1; // Forzar hacia arriba
-    } else {
-      // En medio de la portería, seguir la dirección de la pelota con más intensidad
-      forceY = ball.position.y > player.position.y ? 1 : -1;
-      
-      // Agregar un componente oscilatorio para mantener el movimiento
-      const oscillation = Math.sin(Date.now() / 200) * 0.5;
-      forceY += oscillation;
+      forceY = -4; // Fuerza máxima hacia arriba
+    }
+    
+    // Asegurarnos de que siempre haya algo de movimiento
+    if (Math.abs(forceY) < 0.5) {
+      forceY = timeFactor * 2;
     }
     
     targetOutput = {
-      moveX: 0, // Forzamos a que no haya movimiento en X
-      moveY: forceY * 4, // Multiplicamos por 4 para hacer el movimiento mucho más rápido
+      moveX: 0,
+      moveY: forceY * 6, // Aumentado significativamente la velocidad
       shootBall: 0.1,
       passBall: 1.0,
       intercept: 1.0
     };
 
-    // Si el portero se ha desviado de su posición X fija, forzamos el retorno
+    // Corrección de posición X si es necesario
     if (Math.abs(player.position.x - fixedX) > 1) {
-      targetOutput.moveX = player.position.x > fixedX ? -1 : 1;
+      targetOutput.moveX = player.position.x > fixedX ? -2 : 2; // Aumentada la fuerza de corrección
     }
 
     console.log('Estado del portero:', {
@@ -69,6 +75,12 @@ export const updatePlayerBrain = (
       xDeviation: Math.abs(player.position.x - fixedX),
       goalLimits: { top: goalTop, center: goalCenterY, bottom: goalBottom },
       forceY,
+      factors: {
+        ball: ballFactor,
+        time: timeFactor,
+        random: randomFactor,
+        velocity: velocityFactor
+      },
       moveX: targetOutput.moveX,
       moveY: targetOutput.moveY,
       lastOutput: brain.lastOutput,
