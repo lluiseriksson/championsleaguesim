@@ -17,10 +17,11 @@ const GOALKEEPER_CONFIG = {
     blue: PITCH_WIDTH / 2
   },
   // Constantes de comportamiento
-  VERTICAL_FOLLOW: 0.85,    // Qué tanto sigue el balón verticalmente
+  VERTICAL_FOLLOW: 1.0,     // Seguimiento vertical inmediato
+  VERTICAL_SPEED: 6.0,      // Velocidad vertical extremadamente alta
   INTERCEPT_DISTANCE: 200,  // Distancia a la que intenta interceptar
   MAX_ADVANCE: 250,         // Distancia máxima de avance
-  ANTICIPATION: 35,         // Factor de anticipación de trayectoria
+  ANTICIPATION: 15,         // Factor de anticipación de trayectoria
   REACTION_SPEED: 4.0       // Multiplicador de velocidad base
 };
 
@@ -50,10 +51,17 @@ export const updatePlayerBrain = (
 
     // Determinar si el balón viene hacia la portería
     const ballMovingTowardsGoal = player.team === 'red' 
-      ? ball.velocity.x < -1  // Umbral mínimo de velocidad
+      ? ball.velocity.x < -1
       : ball.velocity.x > 1;
 
-    // Calcular zona de peligro dinámica basada en la velocidad del balón
+    // Predicción simple para movimiento vertical
+    const predictedY = ball.position.y + (ball.velocity.y * GOALKEEPER_CONFIG.ANTICIPATION);
+
+    // Movimiento vertical directo y agresivo
+    const deltaY = predictedY - player.position.y;
+    const moveY = Math.sign(deltaY) * GOALKEEPER_CONFIG.VERTICAL_SPEED;
+
+    // Calcular zona de peligro dinámica
     const dangerZone = player.team === 'red'
       ? GOALKEEPER_CONFIG.DANGER_ZONE.red + (ballSpeed * 20)
       : PITCH_WIDTH - GOALKEEPER_CONFIG.DANGER_ZONE.blue - (ballSpeed * 20);
@@ -62,51 +70,26 @@ export const updatePlayerBrain = (
       ? ball.position.x < dangerZone
       : ball.position.x > dangerZone;
 
-    // Predicción de posición futura del balón con anticipación variable
-    const anticipationFactor = GOALKEEPER_CONFIG.ANTICIPATION * (ballMovingTowardsGoal ? 1.5 : 1);
-    const predictedBall = {
-      x: ball.position.x + (ball.velocity.x * anticipationFactor),
-      y: ball.position.y + (ball.velocity.y * anticipationFactor)
-    };
-
-    // Calcular posición objetivo vertical con seguimiento agresivo
-    let targetY;
-    if (ballMovingTowardsGoal || isInDangerZone) {
-      // Seguimiento directo con predicción cuando el balón es amenaza
-      targetY = predictedBall.y;
-    } else {
-      // Posición de cobertura cuando el balón está lejos
-      const centralY = PITCH_HEIGHT / 2;
-      targetY = centralY + (ball.position.y - centralY) * GOALKEEPER_CONFIG.VERTICAL_FOLLOW;
-    }
-
-    // Calcular posición objetivo horizontal con avance agresivo
+    // Calcular posición horizontal
     let targetX;
     if (ballMovingTowardsGoal || isInDangerZone) {
-      // Avance agresivo hacia el balón cuando es amenaza
+      const predictedX = ball.position.x + (ball.velocity.x * GOALKEEPER_CONFIG.ANTICIPATION);
       const maxAdvance = player.team === 'red'
-        ? Math.min(GOALKEEPER_CONFIG.MAX_ADVANCE, predictedBall.x)
-        : Math.max(PITCH_WIDTH - GOALKEEPER_CONFIG.MAX_ADVANCE, predictedBall.x);
+        ? Math.min(GOALKEEPER_CONFIG.MAX_ADVANCE, predictedX)
+        : Math.max(PITCH_WIDTH - GOALKEEPER_CONFIG.MAX_ADVANCE, predictedX);
       
       targetX = player.team === 'red'
         ? Math.max(GOALKEEPER_CONFIG.BASE_X.red, maxAdvance)
         : Math.min(GOALKEEPER_CONFIG.BASE_X.blue, maxAdvance);
     } else {
-      // Posición base cuando no hay amenaza
       targetX = GOALKEEPER_CONFIG.BASE_X[player.team];
     }
 
-    // Calcular vectores de movimiento con alta reactividad
+    // Calcular movimiento horizontal
     const dx = targetX - player.position.x;
-    const dy = targetY - player.position.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    
-    // Normalizar y aplicar velocidad base alta
-    const baseSpeed = GOALKEEPER_CONFIG.REACTION_SPEED;
-    const moveX = (dx / Math.max(distance, 1)) * baseSpeed;
-    const moveY = (dy / Math.max(distance, 1)) * baseSpeed;
+    const moveX = (dx / Math.max(Math.abs(dx), 1)) * GOALKEEPER_CONFIG.REACTION_SPEED;
 
-    // Factor de urgencia basado en la cercanía del balón y su velocidad
+    // Factor de urgencia para interceptación
     const urgencyFactor = Math.min(2.0, 1 + (ballSpeed / 8) + (1 - ballDistance / 300));
 
     // Determinar si debe interceptar
@@ -115,7 +98,7 @@ export const updatePlayerBrain = (
 
     targetOutput = {
       moveX: moveX * urgencyFactor,
-      moveY: moveY * urgencyFactor,
+      moveY: moveY,  // Aplicar directamente la velocidad vertical sin factores
       shootBall: shouldIntercept ? 1 : 0,
       passBall: shouldIntercept ? 0 : (isInDangerZone ? 0.8 : 0),
       intercept: shouldIntercept ? 1 : (ballMovingTowardsGoal ? 0.7 : 0)
