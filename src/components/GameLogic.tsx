@@ -23,137 +23,152 @@ const GameLogic: React.FC<GameLogicProps> = ({
   setScore,
   updatePlayerPositions,
 }) => {
-  const getTeamContext = (player: Player) => ({
+  // Memoizar el contexto del equipo para evitar recálculos innecesarios
+  const getTeamContext = React.useCallback((player: Player) => ({
     teammates: players.filter(p => p.team === player.team && p.id !== player.id).map(p => p.position),
     opponents: players.filter(p => p.team !== player.team).map(p => p.position),
     ownGoal: player.team === 'red' ? { x: 0, y: PITCH_HEIGHT/2 } : { x: PITCH_WIDTH, y: PITCH_HEIGHT/2 },
     opponentGoal: player.team === 'red' ? { x: PITCH_WIDTH, y: PITCH_HEIGHT/2 } : { x: 0, y: PITCH_HEIGHT/2 }
-  });
+  }), [players]);
 
-  const checkGoal = (position: Position) => {
+  // Separar la lógica de goles para mejorar rendimiento
+  const checkGoal = React.useCallback((position: Position): 'red' | 'blue' | null => {
     const goalY = PITCH_HEIGHT / 2;
     const goalTop = goalY - GOAL_HEIGHT / 2;
     const goalBottom = goalY + GOAL_HEIGHT / 2;
 
     if (position.x <= BALL_RADIUS && position.y >= goalTop && position.y <= goalBottom) {
-      setScore(prev => ({ ...prev, blue: prev.blue + 1 }));
-      setPlayers(currentPlayers => 
-        currentPlayers.map(player => ({
-          ...player,
-          brain: updatePlayerBrain(
-            player.brain,
-            player.team === 'blue',
-            ball,
-            player,
-            getTeamContext(player)
-          )
-        }))
-      );
       return 'blue';
     }
     
     if (position.x >= PITCH_WIDTH - BALL_RADIUS && position.y >= goalTop && position.y <= goalBottom) {
-      setScore(prev => ({ ...prev, red: prev.red + 1 }));
-      setPlayers(currentPlayers => 
-        currentPlayers.map(player => ({
-          ...player,
-          brain: updatePlayerBrain(
-            player.brain,
-            player.team === 'red',
-            ball,
-            player,
-            getTeamContext(player)
-          )
-        }))
-      );
       return 'red';
     }
 
     return null;
-  };
+  }, []);
+
+  // Memoizar jugadores separados por rol para evitar filtrados repetitivos
+  const { goalkeepers, fieldPlayers } = React.useMemo(() => ({
+    goalkeepers: players.filter(p => p.role === 'goalkeeper'),
+    fieldPlayers: players.filter(p => p.role !== 'goalkeeper')
+  }), [players]);
 
   React.useEffect(() => {
+    let frameId: number;
+    let lastTime = performance.now();
+    const TIME_STEP = 16; // 60 FPS target
+    
     const gameLoop = () => {
-      updatePlayerPositions();
+      const currentTime = performance.now();
+      const deltaTime = currentTime - lastTime;
       
-      setBall((prevBall) => {
-        // División del movimiento en pasos más pequeños para mejor detección de colisiones
-        const STEPS = 32; // Aumentado de 16 a 32 pasos
-        let newBallState = { ...prevBall };
+      if (deltaTime >= TIME_STEP) {
+        updatePlayerPositions();
+        
+        setBall((prevBall) => {
+          const STEPS = 16; // Reducido de 32 a 16 para mejorar rendimiento
+          let newBallState = { ...prevBall };
 
-        for (let step = 1; step <= STEPS; step++) {
-          const stepMovement = {
-            x: newBallState.position.x + (newBallState.velocity.x / STEPS),
-            y: newBallState.position.y + (newBallState.velocity.y / STEPS),
-          };
+          // Calcular el movimiento completo una vez
+          const totalMovementX = newBallState.velocity.x / STEPS;
+          const totalMovementY = newBallState.velocity.y / STEPS;
 
-          // Priorizar porteros en la detección de colisiones
-          const goalkeepers = players.filter(p => p.role === 'goalkeeper');
-          const fieldPlayers = players.filter(p => p.role !== 'goalkeeper');
-          const allPlayers = [...goalkeepers, ...fieldPlayers];
+          for (let step = 1; step <= STEPS; step++) {
+            const stepMovement = {
+              x: newBallState.position.x + totalMovementX,
+              y: newBallState.position.y + totalMovementY,
+            };
 
-          for (const player of allPlayers) {
-            if (checkCollision(stepMovement, player.position)) {
-              const newVelocity = calculateNewVelocity(
-                stepMovement,
-                player.position,
-                newBallState.velocity,
-                player.role === 'goalkeeper'
-              );
+            // Verificar colisiones primero con porteros
+            let collision = false;
+            for (const player of [...goalkeepers, ...fieldPlayers]) {
+              if (checkCollision(stepMovement, player.position)) {
+                const newVelocity = calculateNewVelocity(
+                  stepMovement,
+                  player.position,
+                  newBallState.velocity,
+                  player.role === 'goalkeeper'
+                );
 
-              // Calcular nueva posición después de la colisión
-              const collisionAngle = Math.atan2(
-                stepMovement.y - player.position.y,
-                stepMovement.x - player.position.x
-              );
+                const collisionAngle = Math.atan2(
+                  stepMovement.y - player.position.y,
+                  stepMovement.x - player.position.x
+                );
 
-              newBallState = {
-                position: {
-                  x: player.position.x + (PLAYER_RADIUS + BALL_RADIUS) * Math.cos(collisionAngle),
-                  y: player.position.y + (PLAYER_RADIUS + BALL_RADIUS) * Math.sin(collisionAngle)
-                },
-                velocity: newVelocity
-              };
+                newBallState = {
+                  position: {
+                    x: player.position.x + (PLAYER_RADIUS + BALL_RADIUS) * Math.cos(collisionAngle),
+                    y: player.position.y + (PLAYER_RADIUS + BALL_RADIUS) * Math.sin(collisionAngle)
+                  },
+                  velocity: newVelocity
+                };
 
-              break;
+                collision = true;
+                break;
+              }
+            }
+
+            if (!collision) {
+              newBallState.position = stepMovement;
             }
           }
 
-          // Actualizar la posición para el siguiente sub-paso
-          newBallState.position = stepMovement;
-        }
+          // Verificar gol
+          const scoringTeam = checkGoal(newBallState.position);
+          if (scoringTeam) {
+            setScore(prev => ({
+              ...prev,
+              [scoringTeam]: prev[scoringTeam] + 1
+            }));
 
-        // Verificar goles y límites del campo
-        const scoringTeam = checkGoal(newBallState.position);
-        if (scoringTeam) {
+            setPlayers(currentPlayers => 
+              currentPlayers.map(player => ({
+                ...player,
+                brain: updatePlayerBrain(
+                  player.brain,
+                  player.team === scoringTeam,
+                  ball,
+                  player,
+                  getTeamContext(player)
+                )
+              }))
+            );
+
+            return {
+              position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
+              velocity: { x: 2 * (scoringTeam === 'red' ? -1 : 1), y: 0 }
+            };
+          }
+
+          // Rebotes en los límites del campo con cálculo optimizado
+          const hitWallX = newBallState.position.x <= BALL_RADIUS || 
+                          newBallState.position.x >= PITCH_WIDTH - BALL_RADIUS;
+          const hitWallY = newBallState.position.y <= BALL_RADIUS || 
+                          newBallState.position.y >= PITCH_HEIGHT - BALL_RADIUS;
+
+          if (hitWallX) newBallState.velocity.x *= -0.9;
+          if (hitWallY) newBallState.velocity.y *= -0.9;
+
+          // Limitar posición del balón al campo
           return {
-            position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
-            velocity: { x: 2 * (scoringTeam === 'red' ? -1 : 1), y: 0 }
+            position: {
+              x: Math.max(BALL_RADIUS, Math.min(PITCH_WIDTH - BALL_RADIUS, newBallState.position.x)),
+              y: Math.max(BALL_RADIUS, Math.min(PITCH_HEIGHT - BALL_RADIUS, newBallState.position.y))
+            },
+            velocity: newBallState.velocity
           };
-        }
+        });
 
-        // Rebote en los límites del campo
-        if (newBallState.position.x <= BALL_RADIUS || newBallState.position.x >= PITCH_WIDTH - BALL_RADIUS) {
-          newBallState.velocity.x = -newBallState.velocity.x * 0.9;
-        }
-        if (newBallState.position.y <= BALL_RADIUS || newBallState.position.y >= PITCH_HEIGHT - BALL_RADIUS) {
-          newBallState.velocity.y = -newBallState.velocity.y * 0.9;
-        }
-
-        // Asegurar que el balón no salga del campo
-        return {
-          position: {
-            x: Math.max(BALL_RADIUS, Math.min(PITCH_WIDTH - BALL_RADIUS, newBallState.position.x)),
-            y: Math.max(BALL_RADIUS, Math.min(PITCH_HEIGHT - BALL_RADIUS, newBallState.position.y))
-          },
-          velocity: newBallState.velocity
-        };
-      });
+        lastTime = currentTime;
+      }
+      
+      frameId = requestAnimationFrame(gameLoop);
     };
 
-    const interval = setInterval(gameLoop, 16);
-    return () => clearInterval(interval);
-  }, [players, updatePlayerPositions]);
+    frameId = requestAnimationFrame(gameLoop);
+    return () => cancelAnimationFrame(frameId);
+  }, [players, updatePlayerPositions, getTeamContext, checkGoal, goalkeepers, fieldPlayers]);
 
   return null;
 };
