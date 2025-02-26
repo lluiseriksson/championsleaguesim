@@ -1,29 +1,9 @@
+
 import { NeuralNet, Position, TeamContext, Player, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
 import { createNeuralInput, isNetworkValid } from './neuralHelpers';
 import { createPlayerBrain } from './neuralNetwork';
 
 export { createPlayerBrain, createUntrained } from './neuralNetwork';
-
-// Constantes optimizadas para porteros súper reactivos
-const GOALKEEPER_CONFIG = {
-  // Línea base más cerca de la portería para mejor cobertura
-  BASE_X: {
-    red: 40,
-    blue: PITCH_WIDTH - 40
-  },
-  // Zona de acción mucho más amplia
-  DANGER_ZONE: {
-    red: PITCH_WIDTH / 2,
-    blue: PITCH_WIDTH / 2
-  },
-  // Constantes de comportamiento
-  VERTICAL_FOLLOW: 1.0,     // Seguimiento vertical inmediato
-  VERTICAL_SPEED: 6.0,      // Velocidad vertical extremadamente alta
-  INTERCEPT_DISTANCE: 200,  // Distancia a la que intenta interceptar
-  MAX_ADVANCE: 250,         // Distancia máxima de avance
-  ANTICIPATION: 15,         // Factor de anticipación de trayectoria
-  REACTION_SPEED: 4.0       // Multiplicador de velocidad base
-};
 
 export const updatePlayerBrain = (
   brain: NeuralNet,
@@ -42,8 +22,11 @@ export const updatePlayerBrain = (
   let targetOutput;
 
   if (player.role === 'goalkeeper') {
-    // Cálculos básicos
-    const ballSpeed = Math.sqrt(ball.velocity.x * ball.velocity.x + ball.velocity.y * ball.velocity.y);
+    // Replicamos la lógica del defensor pero ajustada para portero
+    const baseX = player.team === 'red' ? 40 : PITCH_WIDTH - 40;
+    const maxAdvanceX = player.team === 'red' ? 150 : PITCH_WIDTH - 150;
+    
+    // Calcular la distancia al balón
     const ballDistance = Math.sqrt(
       Math.pow(ball.position.x - player.position.x, 2) +
       Math.pow(ball.position.y - player.position.y, 2)
@@ -54,54 +37,32 @@ export const updatePlayerBrain = (
       ? ball.velocity.x < -1
       : ball.velocity.x > 1;
 
-    // Predicción simple para movimiento vertical
-    const predictedY = ball.position.y + (ball.velocity.y * GOALKEEPER_CONFIG.ANTICIPATION);
-
-    // Movimiento vertical directo y agresivo
-    const deltaY = predictedY - player.position.y;
-    const moveY = Math.sign(deltaY) * GOALKEEPER_CONFIG.VERTICAL_SPEED;
-
-    // Calcular zona de peligro dinámica
-    const dangerZone = player.team === 'red'
-      ? GOALKEEPER_CONFIG.DANGER_ZONE.red + (ballSpeed * 20)
-      : PITCH_WIDTH - GOALKEEPER_CONFIG.DANGER_ZONE.blue - (ballSpeed * 20);
-
-    const isInDangerZone = player.team === 'red'
-      ? ball.position.x < dangerZone
-      : ball.position.x > dangerZone;
-
-    // Calcular posición horizontal
-    let targetX;
-    if (ballMovingTowardsGoal || isInDangerZone) {
-      const predictedX = ball.position.x + (ball.velocity.x * GOALKEEPER_CONFIG.ANTICIPATION);
-      const maxAdvance = player.team === 'red'
-        ? Math.min(GOALKEEPER_CONFIG.MAX_ADVANCE, predictedX)
-        : Math.max(PITCH_WIDTH - GOALKEEPER_CONFIG.MAX_ADVANCE, predictedX);
+    // Calcular movimiento en X
+    let moveX;
+    if (ballMovingTowardsGoal && ballDistance < 200) {
+      // Si el balón viene hacia la portería, moverse más agresivamente
+      moveX = (ball.position.x - player.position.x) > 0 ? 0.8 : -0.8;
       
-      targetX = player.team === 'red'
-        ? Math.max(GOALKEEPER_CONFIG.BASE_X.red, maxAdvance)
-        : Math.min(GOALKEEPER_CONFIG.BASE_X.blue, maxAdvance);
+      // Limitar el avance
+      if (player.team === 'red' && player.position.x > maxAdvanceX) {
+        moveX = -1;
+      } else if (player.team === 'blue' && player.position.x < maxAdvanceX) {
+        moveX = 1;
+      }
     } else {
-      targetX = GOALKEEPER_CONFIG.BASE_X[player.team];
+      // Volver a la posición base
+      moveX = player.position.x < baseX ? 0.6 : -0.6;
     }
 
-    // Calcular movimiento horizontal
-    const dx = targetX - player.position.x;
-    const moveX = (dx / Math.max(Math.abs(dx), 1)) * GOALKEEPER_CONFIG.REACTION_SPEED;
-
-    // Factor de urgencia para interceptación
-    const urgencyFactor = Math.min(2.0, 1 + (ballSpeed / 8) + (1 - ballDistance / 300));
-
-    // Determinar si debe interceptar
-    const shouldIntercept = (ballMovingTowardsGoal || isInDangerZone) && 
-                          ballDistance < GOALKEEPER_CONFIG.INTERCEPT_DISTANCE;
+    // Movimiento en Y: seguir directamente al balón
+    const moveY = (ball.position.y - player.position.y) > 0 ? 0.8 : -0.8;
 
     targetOutput = {
-      moveX: moveX * urgencyFactor,
-      moveY: moveY,  // Aplicar directamente la velocidad vertical sin factores
-      shootBall: shouldIntercept ? 1 : 0,
-      passBall: shouldIntercept ? 0 : (isInDangerZone ? 0.8 : 0),
-      intercept: shouldIntercept ? 1 : (ballMovingTowardsGoal ? 0.7 : 0)
+      moveX: moveX,
+      moveY: moveY,
+      shootBall: input.isInShootingRange * 0.8,
+      passBall: input.isInPassingRange * 1.2,
+      intercept: ballMovingTowardsGoal ? 1.0 : 0.8
     };
   } else if (player.role === 'forward') {
     targetOutput = {
