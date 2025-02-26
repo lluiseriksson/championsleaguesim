@@ -1,5 +1,4 @@
-
-import { NeuralNet, Position, TeamContext, Player, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
+import { NeuralNet, Position, TeamContext, Player, PITCH_WIDTH, PITCH_HEIGHT, GOAL_HEIGHT } from '../types/football';
 import { createNeuralInput, isNetworkValid } from './neuralHelpers';
 import { createPlayerBrain } from './neuralNetwork';
 
@@ -22,40 +21,37 @@ export const updatePlayerBrain = (
   let targetOutput;
 
   if (player.role === 'goalkeeper') {
-    // Replicamos la lógica del defensor pero ajustada para portero
+    // Posición X fija cerca de la portería
     const baseX = player.team === 'red' ? 40 : PITCH_WIDTH - 40;
-    const maxAdvanceX = player.team === 'red' ? 150 : PITCH_WIDTH - 150;
-    
-    // Calcular la distancia al balón
-    const ballDistance = Math.sqrt(
-      Math.pow(ball.position.x - player.position.x, 2) +
-      Math.pow(ball.position.y - player.position.y, 2)
-    );
+    const moveX = player.position.x < baseX ? 0.6 : -0.6;
 
-    // Determinar si el balón viene hacia la portería
+    // Calcular los límites de la portería
+    const goalCenterY = PITCH_HEIGHT / 2;
+    const goalTop = goalCenterY - GOAL_HEIGHT / 2;
+    const goalBottom = goalCenterY + GOAL_HEIGHT / 2;
+
+    // Calcular si el balón viene hacia la portería
     const ballMovingTowardsGoal = player.team === 'red' 
       ? ball.velocity.x < -1
       : ball.velocity.x > 1;
 
-    // Calcular movimiento en X
-    let moveX;
-    if (ballMovingTowardsGoal && ballDistance < 200) {
-      // Si el balón viene hacia la portería, moverse más agresivamente
-      moveX = (ball.position.x - player.position.x) > 0 ? 0.8 : -0.8;
-      
-      // Limitar el avance
-      if (player.team === 'red' && player.position.x > maxAdvanceX) {
-        moveX = -1;
-      } else if (player.team === 'blue' && player.position.x < maxAdvanceX) {
-        moveX = 1;
-      }
+    // Determinar movimiento en Y
+    let moveY;
+    
+    if (ballMovingTowardsGoal) {
+      // Si el balón viene hacia la portería, seguirlo directamente
+      moveY = (ball.position.y - player.position.y) > 0 ? 1 : -1;
     } else {
-      // Volver a la posición base
-      moveX = player.position.x < baseX ? 0.6 : -0.6;
+      // Si no, moverse entre los palos
+      if (player.position.y <= goalTop + 20) {
+        moveY = 1; // Moverse hacia abajo
+      } else if (player.position.y >= goalBottom - 20) {
+        moveY = -1; // Moverse hacia arriba
+      } else {
+        // Mantener el movimiento previo o iniciar uno
+        moveY = brain.lastOutput?.y || 1;
+      }
     }
-
-    // Movimiento en Y: seguir directamente al balón
-    const moveY = (ball.position.y - player.position.y) > 0 ? 0.8 : -0.8;
 
     targetOutput = {
       moveX: moveX,
