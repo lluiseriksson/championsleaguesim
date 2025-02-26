@@ -22,7 +22,7 @@ export const updatePlayerBrain = (
   let targetOutput;
 
   if (player.role === 'goalkeeper') {
-    // Posición X absolutamente fija
+    // Posición X absolutamente fija - no permitimos ningún movimiento en X
     const fixedX = player.team === 'red' ? 40 : PITCH_WIDTH - 40;
     
     // Centro y límites de la portería
@@ -42,18 +42,27 @@ export const updatePlayerBrain = (
     }
     
     targetOutput = {
-      moveX: player.position.x < fixedX ? 1 : -1,
-      moveY: forceY, // Movimiento forzado
+      moveX: 0, // Forzamos a que no haya movimiento en X
+      moveY: forceY * 2, // Multiplicamos por 2 para hacer el movimiento más evidente
       shootBall: 0.1,
       passBall: 1.0,
       intercept: 1.0
     };
 
+    // Si el portero se ha desviado de su posición X fija, forzamos el retorno
+    if (Math.abs(player.position.x - fixedX) > 1) {
+      targetOutput.moveX = player.position.x > fixedX ? -1 : 1;
+    }
+
     console.log('Estado del portero:', {
       team: player.team,
       position: player.position,
+      targetX: fixedX,
+      xDeviation: Math.abs(player.position.x - fixedX),
       goalLimits: { top: goalTop, center: goalCenterY, bottom: goalBottom },
       forceY,
+      moveX: targetOutput.moveX,
+      moveY: targetOutput.moveY,
       lastOutput: brain.lastOutput
     });
 
