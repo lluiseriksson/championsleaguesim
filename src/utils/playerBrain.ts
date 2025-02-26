@@ -25,25 +25,33 @@ export const updatePlayerBrain = (
     // Posición X absolutamente fija - no permitimos ningún movimiento en X
     const fixedX = player.team === 'red' ? 40 : PITCH_WIDTH - 40;
     
-    // Centro y límites de la portería
+    // Centro y límites de la portería con margen reducido
     const goalCenterY = PITCH_HEIGHT / 2;
     const goalTop = goalCenterY - GOAL_HEIGHT / 2;
     const goalBottom = goalCenterY + GOAL_HEIGHT / 2;
     
     // Forzar movimiento Y más agresivo
-    let forceY = 1;
-    if (player.position.y < goalTop + 20) {
+    let forceY = 0;
+    
+    // Aumentar el rango de movimiento reduciendo el margen
+    const margin = 5; // Reducido de 20 a 5 para más rango de movimiento
+    
+    if (player.position.y < goalTop + margin) {
       forceY = 1; // Forzar hacia abajo
-    } else if (player.position.y > goalBottom - 20) {
+    } else if (player.position.y > goalBottom - margin) {
       forceY = -1; // Forzar hacia arriba
     } else {
-      // En medio de la portería, mantener movimiento o cambiar dirección
-      forceY = brain.lastOutput?.y > 0 ? 1 : -1;
+      // En medio de la portería, seguir la dirección de la pelota con más intensidad
+      forceY = ball.position.y > player.position.y ? 1 : -1;
+      
+      // Agregar un componente oscilatorio para mantener el movimiento
+      const oscillation = Math.sin(Date.now() / 200) * 0.5;
+      forceY += oscillation;
     }
     
     targetOutput = {
       moveX: 0, // Forzamos a que no haya movimiento en X
-      moveY: forceY * 2, // Multiplicamos por 2 para hacer el movimiento más evidente
+      moveY: forceY * 4, // Multiplicamos por 4 para hacer el movimiento mucho más rápido
       shootBall: 0.1,
       passBall: 1.0,
       intercept: 1.0
@@ -63,7 +71,8 @@ export const updatePlayerBrain = (
       forceY,
       moveX: targetOutput.moveX,
       moveY: targetOutput.moveY,
-      lastOutput: brain.lastOutput
+      lastOutput: brain.lastOutput,
+      ballY: ball.position.y
     });
 
   } else if (player.role === 'forward') {
