@@ -1,3 +1,4 @@
+
 import { NeuralNet, Position, TeamContext, Player, PITCH_WIDTH, PITCH_HEIGHT, GOAL_HEIGHT } from '../types/football';
 import { createNeuralInput, isNetworkValid } from './neuralHelpers';
 import { createPlayerBrain } from './neuralNetwork';
@@ -21,44 +22,25 @@ export const updatePlayerBrain = (
   let targetOutput;
 
   if (player.role === 'goalkeeper') {
-    // Posición X fija cerca de la portería
-    const baseX = player.team === 'red' ? 40 : PITCH_WIDTH - 40;
-    const moveX = player.position.x < baseX ? 0.6 : -0.6;
-
-    // Calcular los límites de la portería
-    const goalCenterY = PITCH_HEIGHT / 2;
-    const goalTop = goalCenterY - GOAL_HEIGHT / 2;
-    const goalBottom = goalCenterY + GOAL_HEIGHT / 2;
-
-    // Calcular si el balón viene hacia la portería
-    const ballMovingTowardsGoal = player.team === 'red' 
-      ? ball.velocity.x < -1
-      : ball.velocity.x > 1;
-
-    // Determinar movimiento en Y
-    let moveY;
+    // Posición X absolutamente fija
+    const fixedX = player.team === 'red' ? 40 : PITCH_WIDTH - 40;
     
-    if (ballMovingTowardsGoal) {
-      // Si el balón viene hacia la portería, seguirlo directamente
-      moveY = (ball.position.y - player.position.y) > 0 ? 1 : -1;
-    } else {
-      // Si no, moverse entre los palos
-      if (player.position.y <= goalTop + 20) {
-        moveY = 1; // Moverse hacia abajo
-      } else if (player.position.y >= goalBottom - 20) {
-        moveY = -1; // Moverse hacia arriba
-      } else {
-        // Mantener el movimiento previo o iniciar uno
-        moveY = brain.lastOutput?.y || 1;
-      }
-    }
+    // Forzar al portero a moverse hacia el centro de la portería
+    const goalCenterY = PITCH_HEIGHT / 2;
+    const distanceToCenter = Math.abs(player.position.y - goalCenterY);
+    
+    // Movimiento Y oscilante simple
+    const oscillationRange = GOAL_HEIGHT / 2;
+    const moveY = (player.position.y < goalCenterY - oscillationRange) ? 1 : 
+                 (player.position.y > goalCenterY + oscillationRange) ? -1 :
+                 (brain.lastOutput?.y || 1); // Mantener dirección previa
 
     targetOutput = {
-      moveX: moveX,
+      moveX: player.position.x < fixedX ? 1 : -1,
       moveY: moveY,
-      shootBall: input.isInShootingRange * 0.8,
-      passBall: input.isInPassingRange * 1.2,
-      intercept: ballMovingTowardsGoal ? 1.0 : 0.8
+      shootBall: 0.1, // Reducir probabilidad de disparo
+      passBall: 1.0,  // Aumentar probabilidad de pase
+      intercept: 1.0   // Máxima prioridad a la intercepción
     };
   } else if (player.role === 'forward') {
     targetOutput = {
