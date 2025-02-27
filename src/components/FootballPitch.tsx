@@ -7,7 +7,7 @@ import PlayerSprite from './PlayerSprite';
 import GameLogic from './GameLogic';
 import { createPlayerBrain, updatePlayerBrain } from '../utils/playerBrain';
 import {
-  Player, Ball as BallType, Score, PITCH_WIDTH, PITCH_HEIGHT, GOAL_HEIGHT
+  Player, Ball as BallType, Score, PITCH_WIDTH, PITCH_HEIGHT
 } from '../types/football';
 
 const FootballPitch: React.FC = () => {
