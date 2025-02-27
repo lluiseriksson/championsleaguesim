@@ -5,7 +5,7 @@ import { createPlayerBrain } from './neuralNetwork';
 
 export { createPlayerBrain, createUntrained } from './neuralNetwork';
 
-// FUNCIÓN ESPECÍFICA PARA MOVER PORTEROS - COMPLETAMENTE DETERMINÍSTICA, SIN IA
+// FUNCIÓN AUXILIAR PARA MOVER PORTEROS
 export const moveGoalkeeper = (
   player: Player,
   ball: { position: Position, velocity: Position }
@@ -62,33 +62,72 @@ export const updatePlayerBrain = (
   const rewardMultiplier = isScoring ? 2 : 1;
   let targetOutput;
 
-  // PORTEROS - LÓGICA COMPLETAMENTE NUEVA Y DETERMINÍSTICA
+  // PORTEROS - AHORA CON RED NEURONAL QUE APRENDE DEL ALGORITMO DETERMINÍSTICO
   if (player.role === 'goalkeeper') {
-    // Usar algoritmo directo sin red neuronal para porteros
-    const movement = moveGoalkeeper(player, ball);
+    // Obtener el movimiento óptimo con el algoritmo determinístico
+    const optimalMovement = moveGoalkeeper(player, ball);
     
+    // Normalizar los valores para la red neuronal (entre 0 y 1)
+    const normalizedMoveX = (optimalMovement.x / 20) + 0.5; // Convertir de [-10, 10] a [0, 1]
+    const normalizedMoveY = (optimalMovement.y / 24) + 0.5; // Convertir de [-12, 12] a [0, 1]
+    
+    // Crear el objetivo de entrenamiento basado en el movimiento óptimo
     targetOutput = {
-      moveX: movement.x,
-      moveY: movement.y,
-      shootBall: 1.0,
+      moveX: normalizedMoveX,
+      moveY: normalizedMoveY,
+      shootBall: ball.position.x < 100 || ball.position.x > PITCH_WIDTH - 100 ? 1.0 : 0.0,
       passBall: 0.8,
       intercept: 0.8
     };
     
-    console.log(`Portero ${player.team} #${player.id} - Movimiento calculado:`, {
-      position: player.position,
-      targetMovement: movement,
-      ballData: ball
+    // Entrenar la red con el objetivo
+    brain.net.train([{
+      input, 
+      output: targetOutput
+    }], {
+      iterations: 200,
+      errorThresh: 0.001,
+      learningRate: 0.05,
+      log: true,
+      logPeriod: 50
     });
     
-    // Para porteros, solo quiero que estén en su posición y detengan la pelota
-    // No necesitamos una red neuronal compleja para esto
+    // Ejecutar la red entrenada
+    const output = brain.net.run(input);
+    
+    // Combinar el resultado de la red con el algoritmo determinístico
+    // con ponderación gradual que favorece la red a medida que mejora
+    
+    // Calculamos un factor de confianza basado en la diferencia entre la red y el óptimo
+    const xDiff = Math.abs((output.moveX * 2 - 1) * 10 - optimalMovement.x);
+    const yDiff = Math.abs((output.moveY * 2 - 1) * 12 - optimalMovement.y);
+    
+    // Si la diferencia es pequeña, confiamos más en la red neuronal
+    const confidenceFactor = Math.max(0, 0.5 - (xDiff + yDiff) / 30);
+    
+    // Combinamos los movimientos con ponderación
+    const combinedX = optimalMovement.x * (1 - confidenceFactor) + 
+                      ((output.moveX * 2 - 1) * 10) * confidenceFactor;
+                      
+    const combinedY = optimalMovement.y * (1 - confidenceFactor) + 
+                      ((output.moveY * 2 - 1) * 12) * confidenceFactor;
+    
+    console.log(`Portero ${player.team} #${player.id} - Aprendizaje IA:`, {
+      óptimo: optimalMovement,
+      redNeuronal: { x: (output.moveX * 2 - 1) * 10, y: (output.moveY * 2 - 1) * 12 },
+      confianza: confidenceFactor,
+      movimientoFinal: { x: combinedX, y: combinedY }
+    });
+    
     return {
       net: brain.net,
-      lastOutput: movement,
-      lastAction: 'move'
+      lastOutput: { 
+        x: combinedX, 
+        y: combinedY 
+      },
+      lastAction: output.shootBall > 0.7 ? 'shoot' :
+                output.passBall > 0.7 ? 'pass' : 'move'
     };
-
   } else if (player.role === 'forward') {
     targetOutput = {
       moveX: (ball.position.x - player.position.x) > 0 ? 1 : -1,
