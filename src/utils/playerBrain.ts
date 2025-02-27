@@ -6,7 +6,7 @@ import { createPlayerBrain } from './neuralNetwork';
 export { createPlayerBrain, createUntrained } from './neuralNetwork';
 
 // FUNCIÓN ESPECÍFICA PARA MOVER PORTEROS - COMPLETAMENTE DETERMINÍSTICA, SIN IA
-const moveGoalkeeper = (
+export const moveGoalkeeper = (
   player: Player,
   ball: { position: Position, velocity: Position }
 ) => {
@@ -21,7 +21,7 @@ const moveGoalkeeper = (
   // Predecir la posición futura de la pelota
   // Multiplicador de predicción más alto cuando la pelota se acerca rápidamente
   const ballApproachingGoal = (player.team === 'red' && ball.velocity.x < -5) || 
-                             (player.team === 'blue' && ball.velocity.x > 5);
+                              (player.team === 'blue' && ball.velocity.x > 5);
   
   const predictionMultiplier = ballApproachingGoal ? 15 : 5;
   const predictedBallY = ball.position.y + (ball.velocity.y * predictionMultiplier);
@@ -34,11 +34,11 @@ const moveGoalkeeper = (
   const moveY = targetY - player.position.y;
   
   // Calcular velocidades (más altas para reacciones más rápidas)
-  const xSpeed = Math.sign(moveX) * Math.min(Math.abs(moveX) * 0.5, 8);
-  let ySpeed = Math.sign(moveY) * Math.min(Math.abs(moveY) * 0.5, 8);
+  const xSpeed = Math.sign(moveX) * Math.min(Math.abs(moveX) * 0.5, 10); // Velocidad X aumentada
+  let ySpeed = Math.sign(moveY) * Math.min(Math.abs(moveY) * 0.7, 12);   // Velocidad Y aumentada
   
   // Añadir un factor de anticipación proporcional a la velocidad Y de la pelota
-  ySpeed += ball.velocity.y * 0.5;
+  ySpeed += ball.velocity.y * 0.8; // Factor de anticipación aumentado
   
   return {
     x: xSpeed,

@@ -6,6 +6,7 @@ import Ball from './Ball';
 import PlayerSprite from './PlayerSprite';
 import GameLogic from './GameLogic';
 import { createPlayerBrain } from '../utils/playerBrain';
+import { moveGoalkeeper } from '../utils/playerBrain'; // Importamos la función determinística
 import {
   Player, Ball as BallType, Score, PITCH_WIDTH, PITCH_HEIGHT
 } from '../types/football';
@@ -71,6 +72,39 @@ const FootballPitch: React.FC = () => {
   const updatePlayerPositions = React.useCallback(() => {
     setPlayers(currentPlayers => 
       currentPlayers.map(player => {
+        // LÓGICA ESPECÍFICA PARA PORTEROS
+        if (player.role === 'goalkeeper') {
+          // Usar algoritmo directo para porteros
+          const movement = moveGoalkeeper(player, ball);
+          
+          // Calcular nueva posición con el algoritmo directo
+          const newPosition = {
+            x: player.position.x + movement.x,
+            y: player.position.y + movement.y
+          };
+          
+          // Asegurar que se mantiene dentro de los límites del campo
+          newPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, newPosition.x));
+          newPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, newPosition.y));
+          
+          console.log(`Portero ${player.team} #${player.id} - Posición actualizada:`, {
+            anterior: player.position,
+            nueva: newPosition,
+            movimiento: movement
+          });
+          
+          return {
+            ...player,
+            position: newPosition,
+            brain: {
+              ...player.brain,
+              lastOutput: movement,
+              lastAction: 'move'
+            }
+          };
+        }
+        
+        // LÓGICA PARA JUGADORES NO PORTEROS (SIN CAMBIOS)
         const input = {
           ballX: ball.position.x / PITCH_WIDTH,
           ballY: ball.position.y / PITCH_HEIGHT,
@@ -91,9 +125,6 @@ const FootballPitch: React.FC = () => {
         );
 
         switch (player.role) {
-          case 'goalkeeper':
-            maxDistance = distanceToBall < 100 ? 40 : 20;
-            break;
           case 'defender':
             maxDistance = distanceToBall < 150 ? 96 : 60;
             break;
