@@ -5,6 +5,47 @@ import { createPlayerBrain } from './neuralNetwork';
 
 export { createPlayerBrain, createUntrained } from './neuralNetwork';
 
+// FUNCIÓN ESPECÍFICA PARA MOVER PORTEROS - COMPLETAMENTE DETERMINÍSTICA, SIN IA
+const moveGoalkeeper = (
+  player: Player,
+  ball: { position: Position, velocity: Position }
+) => {
+  // Posición X fija según el equipo
+  const fixedX = player.team === 'red' ? 40 : PITCH_WIDTH - 40;
+  
+  // Límites de la portería
+  const goalCenterY = PITCH_HEIGHT / 2;
+  const goalTop = goalCenterY - GOAL_HEIGHT / 2 + 20; // Margen de seguridad
+  const goalBottom = goalCenterY + GOAL_HEIGHT / 2 - 20; // Margen de seguridad
+  
+  // Predecir la posición futura de la pelota
+  // Multiplicador de predicción más alto cuando la pelota se acerca rápidamente
+  const ballApproachingGoal = (player.team === 'red' && ball.velocity.x < -5) || 
+                             (player.team === 'blue' && ball.velocity.x > 5);
+  
+  const predictionMultiplier = ballApproachingGoal ? 15 : 5;
+  const predictedBallY = ball.position.y + (ball.velocity.y * predictionMultiplier);
+  
+  // Objetivo Y limitado a los límites de la portería
+  const targetY = Math.max(goalTop, Math.min(goalBottom, predictedBallY));
+  
+  // Vector de movimiento
+  const moveX = fixedX - player.position.x;
+  const moveY = targetY - player.position.y;
+  
+  // Calcular velocidades (más altas para reacciones más rápidas)
+  const xSpeed = Math.sign(moveX) * Math.min(Math.abs(moveX) * 0.5, 8);
+  let ySpeed = Math.sign(moveY) * Math.min(Math.abs(moveY) * 0.5, 8);
+  
+  // Añadir un factor de anticipación proporcional a la velocidad Y de la pelota
+  ySpeed += ball.velocity.y * 0.5;
+  
+  return {
+    x: xSpeed,
+    y: ySpeed
+  };
+};
+
 export const updatePlayerBrain = (
   brain: NeuralNet,
   isScoring: boolean,
@@ -21,63 +62,32 @@ export const updatePlayerBrain = (
   const rewardMultiplier = isScoring ? 2 : 1;
   let targetOutput;
 
+  // PORTEROS - LÓGICA COMPLETAMENTE NUEVA Y DETERMINÍSTICA
   if (player.role === 'goalkeeper') {
-    // Posición X absolutamente fija
-    const fixedX = player.team === 'red' ? 40 : PITCH_WIDTH - 40;
-    
-    // Centro y límites de la portería
-    const goalCenterY = PITCH_HEIGHT / 2;
-    const goalTop = goalCenterY - GOAL_HEIGHT / 2;
-    const goalBottom = goalCenterY + GOAL_HEIGHT / 2;
-
-    // Calcular punto de interceptación predictivo
-    const predictedBallY = ball.position.y + (ball.velocity.y * 10);
-    const targetY = Math.max(goalTop + 10, Math.min(goalBottom - 10, predictedBallY));
-    
-    // Calcular distancia al punto objetivo
-    const distanceToTarget = targetY - player.position.y;
-    
-    // Velocidad base muy alta para movimientos rápidos
-    let moveY = Math.sign(distanceToTarget) * 15;
-    
-    // Ajuste de velocidad basado en la distancia
-    if (Math.abs(distanceToTarget) < 30) {
-      moveY = distanceToTarget * 0.8;
-    }
-    
-    // Factor de anticipación basado en la velocidad de la pelota
-    const anticipationFactor = ball.velocity.y * 3;
-    moveY += anticipationFactor;
-    
-    // Límites de velocidad seguros
-    moveY = Math.max(-20, Math.min(20, moveY));
+    // Usar algoritmo directo sin red neuronal para porteros
+    const movement = moveGoalkeeper(player, ball);
     
     targetOutput = {
-      moveX: 0,
-      moveY: moveY,
+      moveX: movement.x,
+      moveY: movement.y,
       shootBall: 1.0,
-      passBall: 1.0,
-      intercept: 1.0
+      passBall: 0.8,
+      intercept: 0.8
     };
-
-    // Corrección X agresiva
-    if (Math.abs(player.position.x - fixedX) > 1) {
-      targetOutput.moveX = player.position.x > fixedX ? -12 : 12;
-    }
-
-    console.log('Estado del portero:', {
-      team: player.team,
+    
+    console.log(`Portero ${player.team} #${player.id} - Movimiento calculado:`, {
       position: player.position,
-      predictedBallY,
-      targetY,
-      distanceToTarget,
-      moveY,
-      anticipationFactor,
-      ballData: {
-        position: ball.position,
-        velocity: ball.velocity
-      }
+      targetMovement: movement,
+      ballData: ball
     });
+    
+    // Para porteros, solo quiero que estén en su posición y detengan la pelota
+    // No necesitamos una red neuronal compleja para esto
+    return {
+      net: brain.net,
+      lastOutput: movement,
+      lastAction: 'move'
+    };
 
   } else if (player.role === 'forward') {
     targetOutput = {
