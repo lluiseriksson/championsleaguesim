@@ -5,7 +5,8 @@ import ScoreDisplay from './ScoreDisplay';
 import Ball from './Ball';
 import PlayerSprite from './PlayerSprite';
 import GameLogic from './GameLogic';
-import { createPlayerBrain, updatePlayerBrain } from '../utils/playerBrain';
+import { createPlayerBrain } from '../utils/playerBrain';
+import { moveGoalkeeper } from '../utils/playerBrain'; // Importamos la función determinística
 import {
   Player, Ball as BallType, Score, PITCH_WIDTH, PITCH_HEIGHT
 } from '../types/football';
@@ -71,25 +72,52 @@ const FootballPitch: React.FC = () => {
   const updatePlayerPositions = React.useCallback(() => {
     setPlayers(currentPlayers => 
       currentPlayers.map(player => {
-        // Obtener el contexto del equipo
-        const getTeamContext = (player: Player) => ({
-          teammates: currentPlayers.filter(p => p.team === player.team && p.id !== player.id).map(p => p.position),
-          opponents: currentPlayers.filter(p => p.team !== player.team).map(p => p.position),
-          ownGoal: player.team === 'red' ? { x: 0, y: PITCH_HEIGHT/2 } : { x: PITCH_WIDTH, y: PITCH_HEIGHT/2 },
-          opponentGoal: player.team === 'red' ? { x: PITCH_WIDTH, y: PITCH_HEIGHT/2 } : { x: 0, y: PITCH_HEIGHT/2 }
-        });
+        // LÓGICA ESPECÍFICA PARA PORTEROS
+        if (player.role === 'goalkeeper') {
+          // Usar algoritmo directo para porteros
+          const movement = moveGoalkeeper(player, ball);
+          
+          // Calcular nueva posición con el algoritmo directo
+          const newPosition = {
+            x: player.position.x + movement.x,
+            y: player.position.y + movement.y
+          };
+          
+          // Asegurar que se mantiene dentro de los límites del campo
+          newPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, newPosition.x));
+          newPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, newPosition.y));
+          
+          console.log(`Portero ${player.team} #${player.id} - Posición actualizada:`, {
+            anterior: player.position,
+            nueva: newPosition,
+            movimiento: movement
+          });
+          
+          return {
+            ...player,
+            position: newPosition,
+            brain: {
+              ...player.brain,
+              lastOutput: movement,
+              lastAction: 'move'
+            }
+          };
+        }
         
-        // AHORA TODOS LOS JUGADORES USAN RED NEURONAL
-        // Los porteros tienen un procesamiento especial en updatePlayerBrain
-        const updatedBrain = updatePlayerBrain(
-          player.brain,
-          false, // No está marcando gol ahora
-          ball,
-          player,
-          getTeamContext(player)
-        );
-        
-        // Calcular distancia máxima según el rol
+        // LÓGICA PARA JUGADORES NO PORTEROS (SIN CAMBIOS)
+        const input = {
+          ballX: ball.position.x / PITCH_WIDTH,
+          ballY: ball.position.y / PITCH_HEIGHT,
+          playerX: player.position.x / PITCH_WIDTH,
+          playerY: player.position.y / PITCH_HEIGHT,
+        };
+
+        const output = player.brain.net.run(input);
+        player.brain.lastOutput = { 
+          x: (output.moveX || 0.5) * 2 - 1, 
+          y: (output.moveY || 0.5) * 2 - 1 
+        };
+
         let maxDistance = 50;
         const distanceToBall = Math.sqrt(
           Math.pow(ball.position.x - player.position.x, 2) +
@@ -97,9 +125,6 @@ const FootballPitch: React.FC = () => {
         );
 
         switch (player.role) {
-          case 'goalkeeper':
-            maxDistance = 70; // Permitir más movimiento al portero, pero limitado
-            break;
           case 'defender':
             maxDistance = distanceToBall < 150 ? 96 : 60;
             break;
@@ -111,70 +136,35 @@ const FootballPitch: React.FC = () => {
             break;
         }
 
-        // Calcular nueva posición con el resultado de la red
         const newPosition = {
-          x: player.position.x + updatedBrain.lastOutput.x,
-          y: player.position.y + updatedBrain.lastOutput.y,
+          x: player.position.x + player.brain.lastOutput.x * 2,
+          y: player.position.y + player.brain.lastOutput.y * 2,
         };
 
-        // Limitar distancia desde la posición inicial
         const distanceFromStart = Math.sqrt(
           Math.pow(newPosition.x - player.targetPosition.x, 2) +
           Math.pow(newPosition.y - player.targetPosition.y, 2)
         );
 
-        // Si es portero, aplicar restricciones especiales de posición
-        if (player.role === 'goalkeeper') {
-          // Restringir X para mantener al portero cerca de su portería
-          const fixedX = player.team === 'red' ? 40 : PITCH_WIDTH - 40;
-          // Permitir una variación pequeña en X
-          const maxXVariation = 30;
-          
-          if (Math.abs(newPosition.x - fixedX) > maxXVariation) {
-            newPosition.x = fixedX + (Math.sign(newPosition.x - fixedX) * maxXVariation);
-          }
-          
-          // Limitar Y para mantenerse dentro del área de portería con margen
-          const goalCenterY = PITCH_HEIGHT / 2;
-          const maxYVariation = GOAL_HEIGHT / 2 + 20;
-          
-          if (Math.abs(newPosition.y - goalCenterY) > maxYVariation) {
-            newPosition.y = goalCenterY + (Math.sign(newPosition.y - goalCenterY) * maxYVariation);
-          }
-        } 
-        // Para otros jugadores, aplicar límite de distancia estándar
-        else if (distanceFromStart > maxDistance) {
+        if (distanceFromStart > maxDistance) {
           const angle = Math.atan2(
-            newPosition.y - player.targetPosition.y,
-            newPosition.x - player.targetPosition.x
+            player.targetPosition.y - newPosition.y,
+            player.targetPosition.x - newPosition.x
           );
           newPosition.x = player.targetPosition.x + Math.cos(angle) * maxDistance;
           newPosition.y = player.targetPosition.y + Math.sin(angle) * maxDistance;
         }
 
-        // Asegurar que se mantiene dentro de los límites del campo
         newPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, newPosition.x));
         newPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, newPosition.y));
-        
-        if (player.role === 'goalkeeper') {
-          console.log(`Portero ${player.team} #${player.id} (IA) - Posición final:`, {
-            anterior: player.position,
-            nueva: newPosition,
-            movimiento: {
-              x: newPosition.x - player.position.x,
-              y: newPosition.y - player.position.y
-            }
-          });
-        }
-        
+
         return {
           ...player,
           position: newPosition,
-          brain: updatedBrain
         };
       })
     );
-  }, [ball]);
+  }, [ball.position]);
 
   return (
     <div className="relative w-[800px] h-[600px] bg-pitch mx-auto overflow-hidden rounded-lg shadow-lg">
