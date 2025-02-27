@@ -1,3 +1,4 @@
+
 import { NeuralNet, Position, TeamContext, Player, PITCH_WIDTH, PITCH_HEIGHT, GOAL_HEIGHT } from '../types/football';
 import { createNeuralInput, isNetworkValid } from './neuralHelpers';
 import { createPlayerBrain } from './neuralNetwork';
@@ -28,51 +29,54 @@ export const updatePlayerBrain = (
     const goalCenterY = PITCH_HEIGHT / 2;
     const goalTop = goalCenterY - GOAL_HEIGHT / 2;
     const goalBottom = goalCenterY + GOAL_HEIGHT / 2;
+
+    // Calcular punto de interceptación predictivo
+    const predictedBallY = ball.position.y + (ball.velocity.y * 10);
+    const targetY = Math.max(goalTop + 10, Math.min(goalBottom - 10, predictedBallY));
     
-    // CAMBIO RADICAL: El portero siempre intenta estar alineado con la pelota en Y
-    const targetY = ball.position.y;
+    // Calcular distancia al punto objetivo
     const distanceToTarget = targetY - player.position.y;
     
-    // Calcular la velocidad Y basada en la distancia a la pelota
-    let moveY = Math.sign(distanceToTarget) * 12; // Velocidad base muy alta
+    // Velocidad base muy alta para movimientos rápidos
+    let moveY = Math.sign(distanceToTarget) * 15;
     
-    // Si estamos cerca del objetivo, ajustar la velocidad para no sobrepasarlo
-    if (Math.abs(distanceToTarget) < 20) {
-      moveY = distanceToTarget * 0.5;
+    // Ajuste de velocidad basado en la distancia
+    if (Math.abs(distanceToTarget) < 30) {
+      moveY = distanceToTarget * 0.8;
     }
     
-    // Evitar que el portero se salga de los límites de la portería
-    if (player.position.y <= goalTop && moveY < 0) {
-      moveY = 0;
-    }
-    if (player.position.y >= goalBottom && moveY > 0) {
-      moveY = 0;
-    }
+    // Factor de anticipación basado en la velocidad de la pelota
+    const anticipationFactor = ball.velocity.y * 3;
+    moveY += anticipationFactor;
     
-    // Añadir un pequeño movimiento anticipatorio basado en la velocidad de la pelota
-    moveY += ball.velocity.y * 2;
+    // Límites de velocidad seguros
+    moveY = Math.max(-20, Math.min(20, moveY));
     
     targetOutput = {
       moveX: 0,
       moveY: moveY,
-      shootBall: 1.0, // Siempre intentar despejar
-      passBall: 1.0,  // Siempre intentar pasar
-      intercept: 1.0   // Siempre intentar interceptar
+      shootBall: 1.0,
+      passBall: 1.0,
+      intercept: 1.0
     };
 
-    // Corrección fuerte de posición X si se desvía
+    // Corrección X agresiva
     if (Math.abs(player.position.x - fixedX) > 1) {
-      targetOutput.moveX = player.position.x > fixedX ? -8 : 8; // Fuerza muy alta para corrección X
+      targetOutput.moveX = player.position.x > fixedX ? -12 : 12;
     }
 
     console.log('Estado del portero:', {
       team: player.team,
       position: player.position,
+      predictedBallY,
       targetY,
       distanceToTarget,
       moveY,
-      ballPosition: ball.position,
-      ballVelocity: ball.velocity
+      anticipationFactor,
+      ballData: {
+        position: ball.position,
+        velocity: ball.velocity
+      }
     });
 
   } else if (player.role === 'forward') {
