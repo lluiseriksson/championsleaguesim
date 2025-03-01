@@ -58,6 +58,10 @@ export const useGoalSystem = ({
     });
 
     setPlayers(currentPlayers => {
+      // Guardar la posición del balón en el momento del gol para el entrenamiento
+      const ballPositionAtGoal = {...ball.position};
+      console.log(`Ball position at goal: ${JSON.stringify(ballPositionAtGoal)}`);
+      
       // Update player brains
       const updatedPlayers = currentPlayers.map(player => {
         // Determine if this player was the last to touch the ball
@@ -70,12 +74,18 @@ export const useGoalSystem = ({
         const wasLastTouchHarmful = lastTouchRelevant && 
           lastPlayerTouchRef.current.team !== scoringTeam;
         
+        // Guardar referencia a la pelota con la posición en el momento del gol para los porteros
+        const ballAtGoal = {
+          ...ball,
+          position: ballPositionAtGoal
+        };
+        
         return {
           ...player,
           brain: updatePlayerBrain(
             player.brain,
             player.team === scoringTeam,
-            ball,
+            ballAtGoal, // Usamos la posición del balón en el momento del gol
             player,
             getTeamContext(player),
             (isLastTouch && (wasLastTouchHelpful || wasLastTouchHarmful))
@@ -98,6 +108,14 @@ export const useGoalSystem = ({
           saveModel(lastTouchPlayer)
             .catch(err => console.error(`Error saving model of last player:`, err));
         }
+      }
+      
+      // También guardar el modelo del portero que recibió el gol
+      const concedingTeam = scoringTeam === 'red' ? 'blue' : 'red';
+      const goalkeeper = updatedPlayers.find(p => p.team === concedingTeam && p.role === 'goalkeeper');
+      if (goalkeeper) {
+        saveModel(goalkeeper)
+          .catch(err => console.error(`Error saving goalkeeper model:`, err));
       }
 
       // Reset the reference to the last player who touched the ball
