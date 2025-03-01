@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Player, Ball, Position, PITCH_WIDTH, PITCH_HEIGHT, BALL_RADIUS, PLAYER_RADIUS, GOAL_HEIGHT } from '../../types/football';
 import { checkCollision, calculateNewVelocity } from '../../utils/gamePhysics';
@@ -30,6 +29,9 @@ export const useBallMovementSystem = ({
   
   // Track if the ball is currently stopped
   const isStoppedRef = React.useRef(false);
+  
+  // Track the last position the ball was kicked from to prevent "stuck" situations
+  const lastKickPositionRef = React.useRef<Position | null>(null);
 
   const updateBallPosition = React.useCallback(() => {
     setBall(currentBall => {
@@ -39,8 +41,42 @@ export const useBallMovementSystem = ({
         currentBall.velocity.y * currentBall.velocity.y
       );
       
-      // If ball is already completely stopped, don't process any movement
+      // If ball is already completely stopped, check if it's near a goalkeeper
       if (currentSpeed === 0) {
+        // Get current time for cooldown calculations
+        const currentTime = performance.now();
+        
+        // Check if the ball is too close to any goalkeeper and needs to be "unstuck"
+        for (const goalkeeper of goalkeepers) {
+          const dx = currentBall.position.x - goalkeeper.position.x;
+          const dy = currentBall.position.y - goalkeeper.position.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          
+          // If the ball is very close to a goalkeeper (within 1.5x collision radius),
+          // give it a small kick away from the goalkeeper
+          if (distance < (PLAYER_RADIUS + BALL_RADIUS) * 1.5) {
+            // Only do this if the collision cooldown has passed
+            if (currentTime - lastCollisionTimeRef.current > 1000) {
+              console.log("Ball stuck near goalkeeper, giving it a kick");
+              lastCollisionTimeRef.current = currentTime;
+              
+              // Direction away from goalkeeper
+              const normalizedDx = dx !== 0 ? dx / Math.abs(dx) : 0;
+              const normalizedDy = dy !== 0 ? dy / Math.abs(dy) : 0;
+              
+              // Return a new ball state with a velocity away from the goalkeeper
+              return {
+                position: currentBall.position,
+                velocity: {
+                  x: normalizedDx * 4,
+                  y: normalizedDy * 2 + (Math.random() - 0.5)
+                }
+              };
+            }
+          }
+        }
+        
+        // If no unstick was needed, just return current ball state
         isStoppedRef.current = true;
         return currentBall;
       }
@@ -111,6 +147,7 @@ export const useBallMovementSystem = ({
             // Record which player touched the ball
             onBallTouch(player);
             lastCollisionTimeRef.current = currentTime;
+            lastKickPositionRef.current = { ...newPosition };
             
             // Calculate new velocity based on collision
             newVelocity = calculateNewVelocity(
@@ -134,6 +171,7 @@ export const useBallMovementSystem = ({
               // Record which player touched the ball
               onBallTouch(player);
               lastCollisionTimeRef.current = currentTime;
+              lastKickPositionRef.current = { ...newPosition };
               
               // Calculate new velocity based on collision
               newVelocity = calculateNewVelocity(
@@ -152,8 +190,8 @@ export const useBallMovementSystem = ({
                 const normalizedDx = dx / distance;
                 const normalizedDy = dy / distance;
                 
-                newVelocity.x += normalizedDx * 1.0;
-                newVelocity.y += normalizedDy * 1.0;
+                newVelocity.x += normalizedDx * 1.2;
+                newVelocity.y += normalizedDy * 1.2;
               }
               
               console.log(`Ball touched by ${player.team} ${player.role}`);
@@ -163,7 +201,7 @@ export const useBallMovementSystem = ({
         }
       }
 
-      // Apply natural deceleration, but not to the point of stopping completely
+      // Apply natural deceleration
       newVelocity.x *= 0.995;
       newVelocity.y *= 0.995;
       

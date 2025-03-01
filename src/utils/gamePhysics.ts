@@ -1,4 +1,3 @@
-
 import { Position, PLAYER_RADIUS, BALL_RADIUS } from '../types/football';
 
 const MAX_BALL_SPEED = 15;
@@ -43,7 +42,9 @@ export const checkCollision = (ballPos: Position, playerPos: Position): boolean 
   const dy = ballPos.y - playerPos.y;
   const distance = Math.sqrt(dx * dx + dy * dy);
   const minDistance = PLAYER_RADIUS + BALL_RADIUS;
-  return distance <= minDistance;
+  
+  // Add a small buffer to prevent the ball from getting stuck
+  return distance <= minDistance + 0.5;
 };
 
 export const calculateNewVelocity = (
@@ -57,54 +58,54 @@ export const calculateNewVelocity = (
   const distance = Math.sqrt(dx * dx + dy * dy);
   const angle = Math.atan2(dy, dx);
   
-  // Calcular el ángulo de incidencia
+  // Calculate incident angle
   const incidentAngle = Math.atan2(currentVelocity.y, currentVelocity.x);
   
-  // Para porteros, calcular un rebote más realista
+  // Special handling for goalkeeper
   if (isGoalkeeper) {
     const ballMovingTowardsGoal = (playerPosition.x < 400 && currentVelocity.x < 0) || 
                                  (playerPosition.x > 400 && currentVelocity.x > 0);
     
     if (ballMovingTowardsGoal) {
-      // Calcular dirección del rebote (alejándose de la portería)
-      const deflectionX = playerPosition.x < 400 ? 1 : -1;
+      // Calculate deflection direction (away from the goal)
+      const deflectionX = playerPosition.x < 400 ? 1.5 : -1.5;
       
-      // Calcular componente vertical del rebote basado en el punto de impacto
+      // Calculate vertical component based on impact point
       const verticalFactor = dy / (PLAYER_RADIUS + BALL_RADIUS);
       
-      // Mantener parte de la velocidad original
-      const speed = Math.sqrt(
-        currentVelocity.x * currentVelocity.x + 
-        currentVelocity.y * currentVelocity.y
-      );
+      // Higher base speed for goalkeeper deflections
+      const baseSpeed = 8;
       
       return limitSpeed({
-        x: deflectionX * speed * 0.9,
-        y: verticalFactor * speed * 1.3
+        x: deflectionX * baseSpeed,
+        y: verticalFactor * baseSpeed * 1.5
       });
     }
   }
 
-  // Para otros jugadores o cuando el balón no va a gol
+  // For other players or when the ball isn't going toward goal
   const normalizedDx = dx / distance;
   const normalizedDy = dy / distance;
   
-  // Calcular la velocidad de rebote usando el ángulo de incidencia
+  // Calculate reflection velocity using incident angle
   const speed = Math.sqrt(
     currentVelocity.x * currentVelocity.x + 
     currentVelocity.y * currentVelocity.y
   );
   
-  // Si la velocidad es muy baja, dar un impulso adicional
-  const adjustedSpeed = speed < 2 ? 5 : speed * 1.2;
+  // Higher base speed for slow-moving balls
+  const adjustedSpeed = speed < 3 ? 6 : speed * 1.2;
   
   const reflectionAngle = angle + (angle - incidentAngle);
   
-  // Añadir una pequeña variación aleatoria al rebote
+  // Add slight random variation to the reflection
   const randomVariation = (Math.random() - 0.5) * 0.3;
   
+  // Higher multiplier for goalkeeper collisions
+  const speedMultiplier = isGoalkeeper ? 1.5 : 1.2;
+  
   return limitSpeed({
-    x: adjustedSpeed * Math.cos(reflectionAngle + randomVariation) * (isGoalkeeper ? 1.3 : 1.2),
-    y: adjustedSpeed * Math.sin(reflectionAngle + randomVariation) * (isGoalkeeper ? 1.3 : 1.2)
+    x: adjustedSpeed * Math.cos(reflectionAngle + randomVariation) * speedMultiplier,
+    y: adjustedSpeed * Math.sin(reflectionAngle + randomVariation) * speedMultiplier
   });
 };
