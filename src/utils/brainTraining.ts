@@ -1,4 +1,3 @@
-
 import { NeuralNet, Player, TeamContext, Ball } from '../types/football';
 import { saveModel } from './neuralModelService';
 import { calculateNetworkInputs } from './neuralInputs';
@@ -8,9 +7,18 @@ import { isNetworkValid } from './neuralHelpers';
 const LEARNING_RATE = 0.03;
 const GOAL_REWARD = 1.0;
 const MISS_PENALTY = -0.5;
+const LAST_TOUCH_GOAL_REWARD = 1.5; // Recompensa adicional por ser el último en tocar antes de un gol favorable
+const LAST_TOUCH_GOAL_PENALTY = -1.2; // Penalización por ser el último en tocar antes de un gol del rival
 
 // Updates the player's brain based on game results
-export const updatePlayerBrain = (brain: NeuralNet, scored: boolean, ball: Ball, player: Player, context: TeamContext): NeuralNet => {
+export const updatePlayerBrain = (
+  brain: NeuralNet, 
+  scored: boolean, 
+  ball: Ball, 
+  player: Player, 
+  context: TeamContext,
+  isLastTouchBeforeGoal: boolean = false
+): NeuralNet => {
   // No updates for goalkeepers, as they use predefined logic
   if (player.role === "goalkeeper") {
     return brain;
@@ -31,10 +39,22 @@ export const updatePlayerBrain = (brain: NeuralNet, scored: boolean, ball: Ball,
     } else if (lastAction === 'pass' && player.team === 'red') {
       rewardFactor *= 1.2; // Reinforcement for passing that led to a goal (for red team)
     }
+    
+    // Additional reward if this player was the last to touch the ball before scoring
+    if (isLastTouchBeforeGoal) {
+      rewardFactor += LAST_TOUCH_GOAL_REWARD;
+      console.log(`${player.team} ${player.role} #${player.id} gets extra reward for last touch before goal!`);
+    }
   } else {
     // If not scored, penalize less if sensible decisions were made
     if (lastAction === 'pass' && calculateDistance(player.position, context.opponentGoal) > 300) {
       rewardFactor *= 0.5; // Lower penalty for passing when far from the goal
+    }
+    
+    // Additional penalty if this player was the last to touch before opponent scored
+    if (isLastTouchBeforeGoal) {
+      rewardFactor += LAST_TOUCH_GOAL_PENALTY;
+      console.log(`${player.team} ${player.role} #${player.id} gets penalty for last touch before opponent goal!`);
     }
   }
   
@@ -57,8 +77,6 @@ export const updatePlayerBrain = (brain: NeuralNet, scored: boolean, ball: Ball,
     
     const inputs = calculateNetworkInputs(ball, player, context);
     
-    // The Type error was here - we need to fix the comparison
-    // player.role can be one of "goalkeeper" | "defender" | "midfielder" | "forward"
     brain.net.train([{
       input: inputs,
       output: trainOutput

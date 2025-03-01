@@ -2,7 +2,7 @@
 import React from 'react';
 import { Player, Ball, Score, Position, PITCH_WIDTH, PITCH_HEIGHT, BALL_RADIUS, PLAYER_RADIUS, GOAL_HEIGHT } from '../types/football';
 import { checkCollision, calculateNewVelocity } from '../utils/gamePhysics';
-import { updatePlayerBrain } from '../utils/playerBrain';
+import { updatePlayerBrain } from '../utils/brainTraining';
 import { syncAllPlayers } from '../utils/modelLoader';
 import { saveModel } from '../utils/neuralModelService';
 
@@ -31,6 +31,9 @@ const GameLogic: React.FC<GameLogicProps> = ({
   const lastSyncTimeRef = React.useRef(Date.now());
   // Referencia a los jugadores para acceder en useEffect
   const playersRef = React.useRef(players);
+  // Referencia para rastrear el último jugador que tocó el balón
+  const lastPlayerTouchRef = React.useRef<Player | null>(null);
+
   React.useEffect(() => {
     playersRef.current = players;
   }, [players]);
@@ -155,6 +158,10 @@ const GameLogic: React.FC<GameLogicProps> = ({
                   velocity: newVelocity
                 };
 
+                // Registrar el último jugador en tocar el balón
+                lastPlayerTouchRef.current = player;
+                console.log(`Last touch: ${player.team} ${player.role} #${player.id}`);
+                
                 collision = true;
                 break;
               }
@@ -175,16 +182,29 @@ const GameLogic: React.FC<GameLogicProps> = ({
 
             setPlayers(currentPlayers => {
               // Actualizamos los cerebros de los jugadores
-              const updatedPlayers = currentPlayers.map(player => ({
-                ...player,
-                brain: updatePlayerBrain(
-                  player.brain,
-                  player.team === scoringTeam,
-                  ball,
-                  player,
-                  getTeamContext(player)
-                )
-              }));
+              const updatedPlayers = currentPlayers.map(player => {
+                // Determinar si este jugador fue el último en tocar el balón
+                const isLastTouch = lastPlayerTouchRef.current?.id === player.id;
+                
+                // Verificar si el último toque fue beneficioso o perjudicial
+                const lastTouchRelevant = lastPlayerTouchRef.current !== null;
+                const wasLastTouchHelpful = lastTouchRelevant && 
+                  lastPlayerTouchRef.current.team === scoringTeam;
+                const wasLastTouchHarmful = lastTouchRelevant && 
+                  lastPlayerTouchRef.current.team !== scoringTeam;
+                
+                return {
+                  ...player,
+                  brain: updatePlayerBrain(
+                    player.brain,
+                    player.team === scoringTeam,
+                    ball,
+                    player,
+                    getTeamContext(player),
+                    (isLastTouch && (wasLastTouchHelpful || wasLastTouchHarmful))
+                  )
+                };
+              });
 
               // Después de un gol, guardar inmediatamente los modelos del equipo que anotó
               updatedPlayers
@@ -194,6 +214,18 @@ const GameLogic: React.FC<GameLogicProps> = ({
                     .catch(err => console.error(`Error al guardar modelo después del gol:`, err));
                 });
 
+              // También guardar el modelo del último jugador que tocó el balón si fue del equipo contrario
+              if (lastPlayerTouchRef.current && lastPlayerTouchRef.current.team !== scoringTeam) {
+                const lastTouchPlayer = updatedPlayers.find(p => p.id === lastPlayerTouchRef.current?.id);
+                if (lastTouchPlayer) {
+                  saveModel(lastTouchPlayer)
+                    .catch(err => console.error(`Error al guardar modelo del último jugador:`, err));
+                }
+              }
+
+              // Resetear la referencia al último jugador que tocó el balón
+              lastPlayerTouchRef.current = null;
+              
               return updatedPlayers;
             });
 
