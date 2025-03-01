@@ -1,7 +1,9 @@
+
 import { NeuralNet, Player, TeamContext, Ball } from '../types/football';
 import { saveModel } from './neuralModelService';
 import { calculateNetworkInputs } from './neuralInputs';
 import { calculateDistance } from './neuralCore';
+import { isNetworkValid } from './neuralHelpers';
 
 const LEARNING_RATE = 0.03;
 const GOAL_REWARD = 1.0;
@@ -47,6 +49,12 @@ export const updatePlayerBrain = (brain: NeuralNet, scored: boolean, ball: Ball,
   
   // Train the network with the last inputs and the reinforced signal
   try {
+    // First verify if the network is valid
+    if (!isNetworkValid(brain.net)) {
+      console.warn(`Cannot train invalid network for ${player.team} ${player.role}`);
+      return brain;
+    }
+    
     const inputs = calculateNetworkInputs(ball, player, context);
     
     // The Type error was here - we need to fix the comparison

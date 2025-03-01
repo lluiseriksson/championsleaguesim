@@ -4,109 +4,106 @@ import { NeuralNet, Position, NeuralInput, NeuralOutput, TeamContext, PITCH_WIDT
 import { createNeuralInput, isNetworkValid } from './neuralHelpers';
 
 export const createPlayerBrain = (): NeuralNet => {
-  const net = new brain.NeuralNetwork<NeuralInput, NeuralOutput>({
-    hiddenLayers: [32, 32, 16],
-    activation: 'leaky-relu',
-    learningRate: 0.01,
-  });
-
-  const trainingData = [];
-  for (let i = 0; i < 50; i++) {
-    const randomPosition = () => ({ 
-      x: Math.random() * PITCH_WIDTH, 
-      y: Math.random() * PITCH_HEIGHT 
+  try {
+    const net = new brain.NeuralNetwork<NeuralInput, NeuralOutput>({
+      hiddenLayers: [16, 8], // Simplified layers for better stability
+      activation: 'sigmoid', // Changed to sigmoid for more stability
+      learningRate: 0.05,
     });
-    
-    const context: TeamContext = {
-      teammates: Array(3).fill(null).map(randomPosition),
-      opponents: Array(3).fill(null).map(randomPosition),
-      ownGoal: { x: 0, y: PITCH_HEIGHT/2 },
-      opponentGoal: { x: PITCH_WIDTH, y: PITCH_HEIGHT/2 }
-    };
 
-    const ball = {
-      position: randomPosition(),
-      velocity: { x: Math.random() * 10 - 5, y: Math.random() * 10 - 5 }
-    };
-
-    const input = createNeuralInput(ball, randomPosition(), context);
-    
-    trainingData.push({
-      input,
-      output: {
-        moveX: Math.random() * 2 - 1,
-        moveY: Math.random() * 2 - 1,
+    // Create simple training data
+    const trainingData = [];
+    for (let i = 0; i < 20; i++) {
+      // Create basic input with normalized values between 0-1
+      const input: NeuralInput = {
+        ballX: Math.random(),
+        ballY: Math.random(),
+        playerX: Math.random(),
+        playerY: Math.random(),
+        ballVelocityX: (Math.random() * 2 - 1) / 20,
+        ballVelocityY: (Math.random() * 2 - 1) / 20,
+        distanceToGoal: Math.random(),
+        angleToGoal: Math.random() * 2 - 1,
+        nearestTeammateDistance: Math.random(),
+        nearestTeammateAngle: Math.random() * 2 - 1,
+        nearestOpponentDistance: Math.random(),
+        nearestOpponentAngle: Math.random() * 2 - 1,
+        isInShootingRange: Math.random() > 0.5 ? 1 : 0,
+        isInPassingRange: Math.random() > 0.5 ? 1 : 0,
+        isDefendingRequired: Math.random() > 0.5 ? 1 : 0
+      };
+      
+      // Simple random output values
+      const output: NeuralOutput = {
+        moveX: Math.random(),
+        moveY: Math.random(),
         shootBall: Math.random(),
         passBall: Math.random(),
         intercept: Math.random()
-      }
-    });
-  }
+      };
 
-  net.train(trainingData, {
-    iterations: 5000,
-    errorThresh: 0.0001,
-    log: true,
-    logPeriod: 100
+      trainingData.push({ input, output });
+    }
+
+    // Train with fewer iterations for stability
+    net.train(trainingData, {
+      iterations: 1000,
+      errorThresh: 0.01,
+      log: false
+    });
+
+    // Verify the network is valid
+    if (!isNetworkValid(net)) {
+      console.warn("Network not valid after initial training, creating a simple fallback");
+      return createFallbackBrain();
+    }
+
+    return {
+      net,
+      lastOutput: { x: 0, y: 0 },
+      lastAction: 'none'
+    };
+  } catch (error) {
+    console.error("Error creating neural network:", error);
+    return createFallbackBrain();
+  }
+};
+
+// Create a very simple fallback brain when normal creation fails
+const createFallbackBrain = (): NeuralNet => {
+  const net = new brain.NeuralNetwork<NeuralInput, NeuralOutput>({
+    hiddenLayers: [4],
+    activation: 'sigmoid',
+    learningRate: 0.1,
   });
 
-  if (!isNetworkValid(net)) {
-    console.warn("Red neuronal inválida después del entrenamiento inicial, reinicializando...");
-    return createPlayerBrain();
-  }
+  // Create a minimal training set
+  const input: NeuralInput = {
+    ballX: 0.5, ballY: 0.5,
+    playerX: 0.5, playerY: 0.5,
+    ballVelocityX: 0, ballVelocityY: 0,
+    distanceToGoal: 0.5, angleToGoal: 0,
+    nearestTeammateDistance: 0.5, nearestTeammateAngle: 0,
+    nearestOpponentDistance: 0.5, nearestOpponentAngle: 0,
+    isInShootingRange: 0, isInPassingRange: 0, isDefendingRequired: 0
+  };
+  
+  const output: NeuralOutput = {
+    moveX: 0.5, moveY: 0.5, shootBall: 0.2, passBall: 0.2, intercept: 0.2
+  };
+
+  net.train([{ input, output }], {
+    iterations: 100,
+    errorThresh: 0.1
+  });
 
   return {
     net,
-    lastOutput: { x: 0, y: 0 }
+    lastOutput: { x: 0, y: 0 },
+    lastAction: 'none'
   };
 };
 
 export const createUntrained = (): NeuralNet => {
-  const net = new brain.NeuralNetwork<NeuralInput, NeuralOutput>({
-    hiddenLayers: [32, 32, 16],
-    activation: 'leaky-relu',
-    learningRate: 0.01,
-  });
-
-  const centerPosition = { 
-    x: PITCH_WIDTH/2, 
-    y: PITCH_HEIGHT/2 
-  };
-
-  const context: TeamContext = {
-    teammates: [centerPosition],
-    opponents: [centerPosition],
-    ownGoal: { x: 0, y: PITCH_HEIGHT/2 },
-    opponentGoal: { x: PITCH_WIDTH, y: PITCH_HEIGHT/2 }
-  };
-
-  const input = createNeuralInput(
-    { position: centerPosition, velocity: { x: 0, y: 0 } },
-    centerPosition,
-    context
-  );
-
-  net.train([{
-    input,
-    output: {
-      moveX: 0,
-      moveY: 0,
-      shootBall: 0.5,
-      passBall: 0.5,
-      intercept: 0.5
-    }
-  }], {
-    iterations: 100,
-    errorThresh: 0.01
-  });
-
-  if (!isNetworkValid(net)) {
-    console.warn("Red neuronal no entrenada inválida, reinicializando...");
-    return createUntrained();
-  }
-
-  return {
-    net,
-    lastOutput: { x: 0, y: 0 }
-  };
+  return createFallbackBrain();
 };
