@@ -2,8 +2,13 @@
 import { NeuralNet, Position, TeamContext, Player, PITCH_WIDTH, PITCH_HEIGHT, GOAL_HEIGHT } from '../types/football';
 import { createNeuralInput, isNetworkValid } from './neuralHelpers';
 import { createPlayerBrain } from './neuralNetwork';
+import { saveModel, saveTrainingSession } from './neuralModelService';
 
 export { createPlayerBrain, createUntrained } from './neuralNetwork';
+
+// Contador para controlar la frecuencia de guardado
+let updateCounter = 0;
+const SAVE_FREQUENCY = 50; // Guardar cada 50 actualizaciones
 
 // FUNCIÓN ESPECÍFICA PARA MOVER PORTEROS - COMPLETAMENTE DETERMINÍSTICA, SIN IA
 export const moveGoalkeeper = (
@@ -119,6 +124,19 @@ export const updatePlayerBrain = (
     targetOutput[key] *= rewardMultiplier;
   });
 
+  // Registrar datos de entrenamiento periódicamente
+  updateCounter++;
+  if (updateCounter % SAVE_FREQUENCY === 0 && player.role !== 'goalkeeper') {
+    // Guardamos datos de entrenamiento para análisis posterior
+    saveTrainingSession(player, {
+      input,
+      output: targetOutput,
+      isScoring,
+      timestamp: new Date().toISOString()
+    }).catch(console.error);
+  }
+
+  // Entrenar la red neuronal
   brain.net.train([{
     input,
     output: targetOutput
@@ -146,6 +164,15 @@ export const updatePlayerBrain = (
     });
   } catch (error) {
     console.warn(`Error al acceder a los pesos de la red ${player.team} ${player.role} #${player.id}:`, error);
+  }
+
+  // Guardar modelo entrenado periódicamente
+  if (isScoring && player.role !== 'goalkeeper') {
+    // Siempre guardar el modelo cuando hay un gol
+    saveModel(player).catch(console.error);
+  } else if (updateCounter % (SAVE_FREQUENCY * 10) === 0 && player.role !== 'goalkeeper') {
+    // Guardar periódicamente incluso sin goles
+    saveModel(player).catch(console.error);
   }
 
   if (!isNetworkValid(brain.net)) {

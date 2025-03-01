@@ -3,6 +3,8 @@ import React from 'react';
 import { Player, Ball, Score, Position, PITCH_WIDTH, PITCH_HEIGHT, BALL_RADIUS, PLAYER_RADIUS, GOAL_HEIGHT } from '../types/football';
 import { checkCollision, calculateNewVelocity } from '../utils/gamePhysics';
 import { updatePlayerBrain } from '../utils/playerBrain';
+import { syncAllPlayers } from '../utils/modelLoader';
+import { saveModel } from '../utils/neuralModelService';
 
 interface GameLogicProps {
   players: Player[];
@@ -23,6 +25,16 @@ const GameLogic: React.FC<GameLogicProps> = ({
   setScore,
   updatePlayerPositions,
 }) => {
+  // Contador para controlar la sincronización periódica
+  const syncCounterRef = React.useRef(0);
+  // Tiempo de la última sincronización
+  const lastSyncTimeRef = React.useRef(Date.now());
+  // Referencia a los jugadores para acceder en useEffect
+  const playersRef = React.useRef(players);
+  React.useEffect(() => {
+    playersRef.current = players;
+  }, [players]);
+
   // Memoizar el contexto del equipo para evitar recálculos innecesarios
   const getTeamContext = React.useCallback((player: Player) => ({
     teammates: players.filter(p => p.team === player.team && p.id !== player.id).map(p => p.position),
@@ -54,6 +66,36 @@ const GameLogic: React.FC<GameLogicProps> = ({
     fieldPlayers: players.filter(p => p.role !== 'goalkeeper')
   }), [players]);
 
+  // Función para sincronizar los modelos con el servidor
+  const syncModels = React.useCallback(async () => {
+    const now = Date.now();
+    // Sincronizar solo si han pasado al menos 30 segundos desde la última vez
+    if (now - lastSyncTimeRef.current < 30000) return;
+    
+    try {
+      console.log("Sincronizando modelos con el servidor...");
+      
+      // Guardar los modelos actuales para cada jugador
+      await Promise.all(playersRef.current
+        .filter(p => p.role !== 'goalkeeper')
+        .map(player => saveModel(player)
+          .catch(err => console.error(`Error al guardar modelo para ${player.team} ${player.role} #${player.id}:`, err))
+        )
+      );
+      
+      // Obtener los últimos modelos del servidor
+      const updatedPlayers = await syncAllPlayers(playersRef.current);
+      
+      // Actualizar los jugadores con los nuevos modelos
+      setPlayers(updatedPlayers);
+      
+      lastSyncTimeRef.current = now;
+      console.log("Sincronización completada");
+    } catch (error) {
+      console.error("Error durante la sincronización de modelos:", error);
+    }
+  }, [setPlayers]);
+
   React.useEffect(() => {
     let frameId: number;
     let lastTime = performance.now();
@@ -65,6 +107,15 @@ const GameLogic: React.FC<GameLogicProps> = ({
       
       if (deltaTime >= TIME_STEP) {
         updatePlayerPositions();
+
+        // Incrementar contador de sincronización
+        syncCounterRef.current += 1;
+        
+        // Sincronizar modelos cada ~600 frames (10 segundos a 60fps)
+        if (syncCounterRef.current >= 600) {
+          syncCounterRef.current = 0;
+          syncModels();
+        }
         
         setBall((prevBall) => {
           const STEPS = 16; // Reducido de 32 a 16 para mejorar rendimiento
@@ -135,6 +186,14 @@ const GameLogic: React.FC<GameLogicProps> = ({
               }))
             );
 
+            // Después de un gol, guardar inmediatamente los modelos del equipo que anotó
+            currentPlayers
+              .filter(p => p.team === scoringTeam && p.role !== 'goalkeeper')
+              .forEach(player => {
+                saveModel(player)
+                  .catch(err => console.error(`Error al guardar modelo después del gol:`, err));
+              });
+
             return {
               position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
               velocity: { x: 2 * (scoringTeam === 'red' ? -1 : 1), y: 0 }
@@ -167,8 +226,22 @@ const GameLogic: React.FC<GameLogicProps> = ({
     };
 
     frameId = requestAnimationFrame(gameLoop);
-    return () => cancelAnimationFrame(frameId);
-  }, [players, updatePlayerPositions, getTeamContext, checkGoal, goalkeepers, fieldPlayers]);
+    
+    // Sincronizar modelos al iniciar
+    syncModels();
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      
+      // Al desmontar el componente, guardar los modelos actuales
+      playersRef.current
+        .filter(p => p.role !== 'goalkeeper')
+        .forEach(player => {
+          saveModel(player)
+            .catch(err => console.error(`Error al guardar modelo al salir:`, err));
+        });
+    };
+  }, [players, updatePlayerPositions, getTeamContext, checkGoal, goalkeepers, fieldPlayers, syncModels]);
 
   return null;
 };
