@@ -9,7 +9,69 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      neural_models: {
+        Row: {
+          created_at: string | null
+          id: number
+          performance_score: number | null
+          role: string
+          team: string
+          training_sessions: number | null
+          updated_at: string | null
+          version: number
+          weights: Json
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          performance_score?: number | null
+          role: string
+          team: string
+          training_sessions?: number | null
+          updated_at?: string | null
+          version: number
+          weights: Json
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          performance_score?: number | null
+          role?: string
+          team?: string
+          training_sessions?: number | null
+          updated_at?: string | null
+          version?: number
+          weights?: Json
+        }
+        Relationships: []
+      }
+      training_sessions: {
+        Row: {
+          created_at: string | null
+          id: number
+          processed: boolean | null
+          role: string
+          session_data: Json
+          team: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          processed?: boolean | null
+          role: string
+          session_data: Json
+          team: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          processed?: boolean | null
+          role?: string
+          session_data?: Json
+          team?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

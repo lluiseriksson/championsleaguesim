@@ -1,193 +1,163 @@
 
-import { NeuralNet, Position, TeamContext, Player, PITCH_WIDTH, PITCH_HEIGHT, GOAL_HEIGHT } from '../types/football';
-import { createNeuralInput, isNetworkValid } from './neuralHelpers';
-import { createPlayerBrain } from './neuralNetwork';
-import { saveModel, saveTrainingSession } from './neuralModelService';
+import { NeuralNet, Player, TeamContext, Ball, Position } from '../types/football';
+import { saveModel } from './neuralModelService';
+import { calculateDistance, normalizeValue } from './neuralHelpers';
 
-export { createPlayerBrain, createUntrained } from './neuralNetwork';
+const LEARNING_RATE = 0.03;
+const GOAL_REWARD = 1.0;
+const MISS_PENALTY = -0.5;
 
-// Contador para controlar la frecuencia de guardado
-let updateCounter = 0;
-const SAVE_FREQUENCY = 50; // Guardar cada 50 actualizaciones
-
-// FUNCIÓN ESPECÍFICA PARA MOVER PORTEROS - COMPLETAMENTE DETERMINÍSTICA, SIN IA
-export const moveGoalkeeper = (
-  player: Player,
-  ball: { position: Position, velocity: Position }
-) => {
-  // Posición X fija según el equipo
-  const fixedX = player.team === 'red' ? 40 : PITCH_WIDTH - 40;
+// Calcula las entradas para la red neuronal
+export const calculateNetworkInputs = (ball: Ball, player: Player, context: TeamContext) => {
+  // Normalizar valores para la red neuronal (entre 0 y 1)
+  const normalizedBallX = normalizeValue(ball.position.x, 0, 800);
+  const normalizedBallY = normalizeValue(ball.position.y, 0, 600);
+  const normalizedPlayerX = normalizeValue(player.position.x, 0, 800);
+  const normalizedPlayerY = normalizeValue(player.position.y, 0, 600);
   
-  // Límites de la portería
-  const goalCenterY = PITCH_HEIGHT / 2;
-  const goalTop = goalCenterY - GOAL_HEIGHT / 2 + 20; // Margen de seguridad
-  const goalBottom = goalCenterY + GOAL_HEIGHT / 2 - 20; // Margen de seguridad
+  // Calcular distancias y ángulos
+  const distanceToGoal = calculateDistance(player.position, context.opponentGoal);
+  const normalizedDistanceToGoal = normalizeValue(distanceToGoal, 0, 1000);
   
-  // Predecir la posición futura de la pelota
-  // Multiplicador de predicción más alto cuando la pelota se acerca rápidamente
-  const ballApproachingGoal = (player.team === 'red' && ball.velocity.x < -5) || 
-                              (player.team === 'blue' && ball.velocity.x > 5);
+  const angleToGoal = Math.atan2(
+    context.opponentGoal.y - player.position.y,
+    context.opponentGoal.x - player.position.x
+  );
+  const normalizedAngleToGoal = normalizeValue(angleToGoal, -Math.PI, Math.PI);
   
-  const predictionMultiplier = ballApproachingGoal ? 15 : 5;
-  const predictedBallY = ball.position.y + (ball.velocity.y * predictionMultiplier);
+  // Encontrar compañero más cercano
+  let nearestTeammateDistance = 1000;
+  let nearestTeammateAngle = 0;
   
-  // Objetivo Y limitado a los límites de la portería
-  const targetY = Math.max(goalTop, Math.min(goalBottom, predictedBallY));
+  if (context.teammates.length > 0) {
+    for (const teammate of context.teammates) {
+      const distance = calculateDistance(player.position, teammate);
+      if (distance < nearestTeammateDistance) {
+        nearestTeammateDistance = distance;
+        nearestTeammateAngle = Math.atan2(
+          teammate.y - player.position.y, 
+          teammate.x - player.position.x
+        );
+      }
+    }
+  }
   
-  // Vector de movimiento
-  const moveX = fixedX - player.position.x;
-  const moveY = targetY - player.position.y;
+  const normalizedTeammateDistance = normalizeValue(nearestTeammateDistance, 0, 1000);
+  const normalizedTeammateAngle = normalizeValue(nearestTeammateAngle, -Math.PI, Math.PI);
   
-  // Calcular velocidades (más altas para reacciones más rápidas)
-  const xSpeed = Math.sign(moveX) * Math.min(Math.abs(moveX) * 0.5, 10); // Velocidad X aumentada
-  let ySpeed = Math.sign(moveY) * Math.min(Math.abs(moveY) * 0.7, 12);   // Velocidad Y aumentada
+  // Encontrar oponente más cercano
+  let nearestOpponentDistance = 1000;
+  let nearestOpponentAngle = 0;
   
-  // Añadir un factor de anticipación proporcional a la velocidad Y de la pelota
-  ySpeed += ball.velocity.y * 0.8; // Factor de anticipación aumentado
+  if (context.opponents.length > 0) {
+    for (const opponent of context.opponents) {
+      const distance = calculateDistance(player.position, opponent);
+      if (distance < nearestOpponentDistance) {
+        nearestOpponentDistance = distance;
+        nearestOpponentAngle = Math.atan2(
+          opponent.y - player.position.y, 
+          opponent.x - player.position.x
+        );
+      }
+    }
+  }
+  
+  const normalizedOpponentDistance = normalizeValue(nearestOpponentDistance, 0, 1000);
+  const normalizedOpponentAngle = normalizeValue(nearestOpponentAngle, -Math.PI, Math.PI);
+  
+  // Flags para situaciones especiales
+  const distanceToBall = calculateDistance(player.position, ball.position);
+  const isInShootingRange = distanceToBall < 100 && distanceToGoal < 300 ? 1 : 0;
+  const isInPassingRange = distanceToBall < 80 && nearestTeammateDistance < 200 ? 1 : 0;
+  
+  // Comprobación si debe defender (oponente cerca de nuestra portería con balón)
+  const ballToOwnGoalDistance = calculateDistance(ball.position, context.ownGoal);
+  const isDefendingRequired = ballToOwnGoalDistance < 300 ? 1 : 0;
   
   return {
-    x: xSpeed,
-    y: ySpeed
+    ballX: normalizedBallX,
+    ballY: normalizedBallY,
+    playerX: normalizedPlayerX,
+    playerY: normalizedPlayerY,
+    ballVelocityX: normalizeValue(ball.velocity.x, -20, 20),
+    ballVelocityY: normalizeValue(ball.velocity.y, -20, 20),
+    distanceToGoal: normalizedDistanceToGoal,
+    angleToGoal: normalizedAngleToGoal,
+    nearestTeammateDistance: normalizedTeammateDistance,
+    nearestTeammateAngle: normalizedTeammateAngle,
+    nearestOpponentDistance: normalizedOpponentDistance,
+    nearestOpponentAngle: normalizedOpponentAngle,
+    isInShootingRange,
+    isInPassingRange,
+    isDefendingRequired
   };
 };
 
-export const updatePlayerBrain = (
-  brain: NeuralNet,
-  isScoring: boolean,
-  ball: { position: Position, velocity: Position },
-  player: Player,
-  context: TeamContext
-): NeuralNet => {
-  if (!isNetworkValid(brain.net)) {
-    console.warn(`Red neuronal ${player.team} ${player.role} #${player.id} apagada, reinicializando...`);
-    return createPlayerBrain();
-  }
-
-  const input = createNeuralInput(ball, player.position, context);
-  const rewardMultiplier = isScoring ? 2 : 1;
-  let targetOutput;
-
-  // PORTEROS - LÓGICA COMPLETAMENTE NUEVA Y DETERMINÍSTICA
+// Actualiza el cerebro del jugador en función del resultado
+export const updatePlayerBrain = (brain: NeuralNet, scored: boolean, ball: Ball, player: Player, context: TeamContext): NeuralNet => {
+  // No actualizar cerebros de porteros, ya que usan lógica predefinida
   if (player.role === 'goalkeeper') {
-    // Usar algoritmo directo sin red neuronal para porteros
-    const movement = moveGoalkeeper(player, ball);
-    
-    targetOutput = {
-      moveX: movement.x,
-      moveY: movement.y,
-      shootBall: 1.0,
-      passBall: 0.8,
-      intercept: 0.8
-    };
-    
-    console.log(`Portero ${player.team} #${player.id} - Movimiento calculado:`, {
-      position: player.position,
-      targetMovement: movement,
-      ballData: ball
-    });
-    
-    // Para porteros, solo quiero que estén en su posición y detengan la pelota
-    // No necesitamos una red neuronal compleja para esto
-    return {
-      net: brain.net,
-      lastOutput: movement,
-      lastAction: 'move'
-    };
-
-  } else if (player.role === 'forward') {
-    targetOutput = {
-      moveX: (ball.position.x - player.position.x) > 0 ? 1 : -1,
-      moveY: (ball.position.y - player.position.y) > 0 ? 1 : -1,
-      shootBall: input.isInShootingRange,
-      passBall: input.isInPassingRange,
-      intercept: 0.2
-    };
-  } else if (player.role === 'midfielder') {
-    targetOutput = {
-      moveX: (ball.position.x - player.position.x) > 0 ? 0.8 : -0.8,
-      moveY: (ball.position.y - player.position.y) > 0 ? 0.8 : -0.8,
-      shootBall: input.isInShootingRange * 0.7,
-      passBall: input.isInPassingRange * 1.2,
-      intercept: 0.5
-    };
-  } else if (player.role === 'defender') {
-    targetOutput = {
-      moveX: (player.position.x - ball.position.x) > 0 ? -0.6 : 0.6,
-      moveY: (player.position.y - ball.position.y) > 0 ? -0.6 : 0.6,
-      shootBall: input.isInShootingRange * 0.3,
-      passBall: input.isInPassingRange * 1.5,
-      intercept: 0.8
-    };
+    return brain;
   }
-
-  Object.keys(targetOutput).forEach(key => {
-    targetOutput[key] *= rewardMultiplier;
-  });
-
-  // Registrar datos de entrenamiento periódicamente
-  updateCounter++;
-  if (updateCounter % SAVE_FREQUENCY === 0 && player.role !== 'goalkeeper') {
-    // Guardamos datos de entrenamiento para análisis posterior
-    saveTrainingSession(player, {
-      input,
-      output: targetOutput,
-      isScoring,
-      timestamp: new Date().toISOString()
-    }).catch(console.error);
-  }
-
-  // Entrenar la red neuronal
-  brain.net.train([{
-    input,
-    output: targetOutput
-  }], {
-    iterations: 300,
-    errorThresh: 0.001,
-    learningRate: isScoring ? 0.1 : 0.03,
-    log: true,
-    logPeriod: 50
-  });
-
-  const currentOutput = brain.net.run(input);
   
-  try {
-    console.log(`Red neuronal ${player.team} ${player.role} #${player.id}:`, {
-      input,
-      output: currentOutput,
-      targetOutput,
-      weightsShape: brain.net.weights ? {
-        inputToHidden1: brain.net.weights[0]?.length,
-        hidden1ToHidden2: brain.net.weights[1]?.length,
-        hidden2ToHidden3: brain.net.weights[2]?.length,
-        hidden3ToOutput: brain.net.weights[3]?.length
-      } : 'Red no entrenada'
-    });
-  } catch (error) {
-    console.warn(`Error al acceder a los pesos de la red ${player.team} ${player.role} #${player.id}:`, error);
+  // Datos de la última acción para el refuerzo
+  const lastOutput = brain.lastOutput;
+  const lastAction = brain.lastAction;
+  
+  // Factor de recompensa base
+  let rewardFactor = scored ? GOAL_REWARD : MISS_PENALTY;
+  
+  // Ajustar recompensa según la acción tomada y el resultado
+  if (scored) {
+    // Si marcó, reforzar positivamente la acción que llevó al gol
+    if (lastAction === 'shoot') {
+      rewardFactor *= 1.5; // Refuerzo extra por disparar y marcar
+    } else if (lastAction === 'pass' && player.team === 'red') {
+      rewardFactor *= 1.2; // Refuerzo por pase que llevó a gol (para equipo rojo)
+    }
+  } else {
+    // Si no marcó, penalizar menos si tomó decisiones sensatas
+    if (lastAction === 'pass' && calculateDistance(player.position, context.opponentGoal) > 300) {
+      rewardFactor *= 0.5; // Menor penalización por pasar cuando está lejos de la portería
+    }
   }
-
-  // Guardar modelo entrenado periódicamente
-  if (isScoring && player.role !== 'goalkeeper') {
-    // Siempre guardar el modelo cuando hay un gol
-    saveModel(player).catch(console.error);
-  } else if (updateCounter % (SAVE_FREQUENCY * 10) === 0 && player.role !== 'goalkeeper') {
-    // Guardar periódicamente incluso sin goles
-    saveModel(player).catch(console.error);
-  }
-
-  if (!isNetworkValid(brain.net)) {
-    console.warn(`Red neuronal ${player.team} ${player.role} #${player.id} se volvió inválida después del entrenamiento, reinicializando...`);
-    return createPlayerBrain();
-  }
-
-  return {
-    net: brain.net,
-    lastOutput: { 
-      x: currentOutput.moveX || 0,
-      y: currentOutput.moveY || 0
-    },
-    lastAction: currentOutput.shootBall > 0.7 ? 'shoot' :
-                currentOutput.passBall > 0.7 ? 'pass' :
-                currentOutput.intercept > 0.7 ? 'intercept' : 'move'
+  
+  // Modificamos el último output como señal de entrenamiento
+  const trainOutput = {
+    moveX: lastOutput.x,
+    moveY: lastOutput.y,
+    shootBall: lastAction === 'shoot' ? (scored ? 1 : 0) : 0,
+    passBall: lastAction === 'pass' ? (scored ? 1 : 0) : 0,
+    intercept: lastAction === 'intercept' ? (scored ? 1 : 0) : 0
   };
+  
+  // Entrenamos la red con los últimos inputs y la señal reforzada
+  try {
+    const inputs = calculateNetworkInputs(ball, player, context);
+    
+    // Si es portero, no entrenar
+    if (player.role !== 'goalkeeper') {
+      brain.net.train([{
+        input: inputs,
+        output: trainOutput
+      }], {
+        iterations: 1,
+        errorThresh: 0.01,
+        learningRate: LEARNING_RATE
+      });
+    }
+    
+    // Cada 50 goles, guardar el modelo en el servidor para entrenamiento colaborativo
+    if (scored && Math.random() < 0.2) {
+      if (player.role !== 'goalkeeper') {
+        saveModel(player).catch(error => 
+          console.error(`Error al guardar modelo después de gol para ${player.team} ${player.role}:`, error)
+        );
+      }
+    }
+  } catch (error) {
+    console.error('Error al entrenar la red neuronal:', error);
+  }
+  
+  return brain;
 };

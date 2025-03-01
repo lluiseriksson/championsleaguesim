@@ -28,31 +28,38 @@ export const saveModel = async (player: Player, version: number = 1): Promise<bo
     const weights = player.brain.net.toJSON();
     
     // Buscamos si ya existe un modelo con este equipo, rol y versión
-    const { data: existingModel } = await supabase
+    const { data: existingModel, error: findError } = await supabase
       .from('neural_models')
       .select('id, training_sessions')
-      .match({ team: player.team, role: player.role, version })
-      .single();
+      .eq('team', player.team)
+      .eq('role', player.role)
+      .eq('version', version)
+      .maybeSingle();
+
+    if (findError) {
+      console.error('Error al buscar modelo:', findError);
+      return false;
+    }
 
     if (existingModel) {
       // Actualizamos el modelo existente
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from('neural_models')
         .update({ 
           weights, 
           training_sessions: (existingModel.training_sessions || 1) + 1 
         })
-        .match({ id: existingModel.id });
+        .eq('id', existingModel.id);
 
-      if (error) {
-        console.error('Error al actualizar modelo:', error);
+      if (updateError) {
+        console.error('Error al actualizar modelo:', updateError);
         return false;
       }
       
       console.log(`Modelo ${player.team} ${player.role} actualizado correctamente`);
     } else {
       // Creamos un nuevo modelo
-      const { error } = await supabase
+      const { error: insertError } = await supabase
         .from('neural_models')
         .insert({
           team: player.team,
@@ -61,8 +68,8 @@ export const saveModel = async (player: Player, version: number = 1): Promise<bo
           weights
         });
 
-      if (error) {
-        console.error('Error al guardar modelo:', error);
+      if (insertError) {
+        console.error('Error al guardar modelo:', insertError);
         return false;
       }
       
@@ -82,8 +89,10 @@ export const loadModel = async (team: string, role: string, version: number = 1)
     const { data, error } = await supabase
       .from('neural_models')
       .select('weights')
-      .match({ team, role, version })
-      .single();
+      .eq('team', team)
+      .eq('role', role)
+      .eq('version', version)
+      .maybeSingle();
 
     if (error || !data) {
       console.warn(`No se encontró modelo para ${team} ${role} versión ${version}`);
@@ -139,10 +148,11 @@ export const getBestModel = async (team: string, role: string): Promise<NeuralNe
     const { data, error } = await supabase
       .from('neural_models')
       .select('*')
-      .match({ team, role })
+      .eq('team', team)
+      .eq('role', role)
       .order('performance_score', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (error || !data) {
       console.warn(`No se encontró modelo para ${team} ${role}`);
@@ -175,7 +185,8 @@ export const combineModels = async (team: string, role: string): Promise<NeuralN
     const { data, error } = await supabase
       .from('neural_models')
       .select('weights, performance_score')
-      .match({ team, role })
+      .eq('team', team)
+      .eq('role', role)
       .order('updated_at', { ascending: false })
       .limit(3);
 

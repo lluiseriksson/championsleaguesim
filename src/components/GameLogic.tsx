@@ -173,8 +173,9 @@ const GameLogic: React.FC<GameLogicProps> = ({
               [scoringTeam]: prev[scoringTeam] + 1
             }));
 
-            setPlayers(currentPlayers => 
-              currentPlayers.map(player => ({
+            setPlayers(currentPlayers => {
+              // Actualizamos los cerebros de los jugadores
+              const updatedPlayers = currentPlayers.map(player => ({
                 ...player,
                 brain: updatePlayerBrain(
                   player.brain,
@@ -183,16 +184,18 @@ const GameLogic: React.FC<GameLogicProps> = ({
                   player,
                   getTeamContext(player)
                 )
-              }))
-            );
+              }));
 
-            // Después de un gol, guardar inmediatamente los modelos del equipo que anotó
-            currentPlayers
-              .filter(p => p.team === scoringTeam && p.role !== 'goalkeeper')
-              .forEach(player => {
-                saveModel(player)
-                  .catch(err => console.error(`Error al guardar modelo después del gol:`, err));
-              });
+              // Después de un gol, guardar inmediatamente los modelos del equipo que anotó
+              updatedPlayers
+                .filter(p => p.team === scoringTeam && p.role !== 'goalkeeper')
+                .forEach(player => {
+                  saveModel(player)
+                    .catch(err => console.error(`Error al guardar modelo después del gol:`, err));
+                });
+
+              return updatedPlayers;
+            });
 
             return {
               position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
