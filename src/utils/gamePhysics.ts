@@ -1,7 +1,7 @@
 import { Position, PLAYER_RADIUS, BALL_RADIUS } from '../types/football';
 
 const MAX_BALL_SPEED = 15;
-const MIN_BALL_SPEED = 0.8; // Increased minimum ball speed
+const MIN_BALL_SPEED = 1.5; // Increased from 0.8 to 1.5 for faster minimum speed
 
 const limitSpeed = (velocity: Position): Position => {
   const speed = Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
@@ -17,19 +17,19 @@ const limitSpeed = (velocity: Position): Position => {
   
   // Apply minimum speed if the ball is moving slowly
   if (speed < MIN_BALL_SPEED) {
-    // If almost stopped, add a more noticeable random impulse
-    if (speed < 0.3) {
-      const randomAngle = Math.random() * Math.PI * 2;
+    // Only apply minimum speed if the ball is actually moving
+    if (speed > 0.1) {
+      const factor = MIN_BALL_SPEED / speed;
       return {
-        x: MIN_BALL_SPEED * Math.cos(randomAngle),
-        y: MIN_BALL_SPEED * Math.sin(randomAngle)
+        x: velocity.x * factor,
+        y: velocity.y * factor
       };
     }
-    // Otherwise scale up to minimum speed
-    const factor = MIN_BALL_SPEED / speed;
+    // If ball has extremely low speed, don't add random movement
+    // Just keep it at its current position with zero velocity
     return {
-      x: velocity.x * factor,
-      y: velocity.y * factor
+      x: 0,
+      y: 0
     };
   }
   
