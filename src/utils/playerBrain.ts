@@ -188,11 +188,9 @@ export const updatePlayerBrain = (brain: NeuralNet, scored: boolean, ball: Ball,
     
     // Cada 50 goles, guardar el modelo en el servidor para entrenamiento colaborativo
     if (scored && Math.random() < 0.2) {
-      if (player.role !== "goalkeeper") {
-        saveModel(player).catch(error => 
-          console.error(`Error al guardar modelo después de gol para ${player.team} ${player.role}:`, error)
-        );
-      }
+      saveModel(player).catch(error => 
+        console.error(`Error al guardar modelo después de gol para ${player.team} ${player.role}:`, error)
+      );
     }
   } catch (error) {
     console.error('Error al entrenar la red neuronal:', error);
