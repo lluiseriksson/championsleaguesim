@@ -70,9 +70,9 @@ const GameLogic: React.FC<GameLogicProps> = ({
           }
         }));
         
-        return true;
+        return scoringTeam; // Fix: Return the scoring team instead of boolean
       }
-      return false;
+      return null; // Fix: Return null instead of boolean false
     },
     onBallTouch: (player) => {
       lastPlayerTouchRef.current = player;
