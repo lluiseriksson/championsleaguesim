@@ -1,8 +1,7 @@
-
 import { Position, PLAYER_RADIUS, BALL_RADIUS } from '../types/football';
 
 const MAX_BALL_SPEED = 15;
-const MIN_BALL_SPEED = 0.5; // Minimum ball speed to prevent it from stopping completely
+const MIN_BALL_SPEED = 0.8; // Increased minimum ball speed
 
 const limitSpeed = (velocity: Position): Position => {
   const speed = Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
@@ -16,21 +15,21 @@ const limitSpeed = (velocity: Position): Position => {
     };
   }
   
-  // Apply minimum speed if the ball is moving very slowly but not completely stopped
-  if (speed > 0 && speed < MIN_BALL_SPEED) {
+  // Apply minimum speed if the ball is moving slowly
+  if (speed < MIN_BALL_SPEED) {
+    // If almost stopped, add a more noticeable random impulse
+    if (speed < 0.3) {
+      const randomAngle = Math.random() * Math.PI * 2;
+      return {
+        x: MIN_BALL_SPEED * Math.cos(randomAngle),
+        y: MIN_BALL_SPEED * Math.sin(randomAngle)
+      };
+    }
+    // Otherwise scale up to minimum speed
     const factor = MIN_BALL_SPEED / speed;
     return {
       x: velocity.x * factor,
       y: velocity.y * factor
-    };
-  }
-  
-  // If the ball has completely stopped, give it a small random direction
-  if (speed === 0) {
-    const randomAngle = Math.random() * Math.PI * 2;
-    return {
-      x: MIN_BALL_SPEED * Math.cos(randomAngle),
-      y: MIN_BALL_SPEED * Math.sin(randomAngle)
     };
   }
   
@@ -78,8 +77,8 @@ export const calculateNewVelocity = (
       );
       
       return limitSpeed({
-        x: deflectionX * speed * 0.8,
-        y: verticalFactor * speed * 1.2
+        x: deflectionX * speed * 0.9,
+        y: verticalFactor * speed * 1.3
       });
     }
   }
@@ -95,15 +94,15 @@ export const calculateNewVelocity = (
   );
   
   // Si la velocidad es muy baja, dar un impulso adicional
-  const adjustedSpeed = speed < 2 ? 4 : speed;
+  const adjustedSpeed = speed < 2 ? 5 : speed * 1.2;
   
   const reflectionAngle = angle + (angle - incidentAngle);
   
   // Añadir una pequeña variación aleatoria al rebote
-  const randomVariation = (Math.random() - 0.5) * 0.2;
+  const randomVariation = (Math.random() - 0.5) * 0.3;
   
   return limitSpeed({
-    x: adjustedSpeed * Math.cos(reflectionAngle + randomVariation) * (isGoalkeeper ? 1.2 : 1.1),
-    y: adjustedSpeed * Math.sin(reflectionAngle + randomVariation) * (isGoalkeeper ? 1.2 : 1.1)
+    x: adjustedSpeed * Math.cos(reflectionAngle + randomVariation) * (isGoalkeeper ? 1.3 : 1.2),
+    y: adjustedSpeed * Math.sin(reflectionAngle + randomVariation) * (isGoalkeeper ? 1.3 : 1.2)
   });
 };

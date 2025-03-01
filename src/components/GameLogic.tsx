@@ -66,6 +66,9 @@ const GameLogic: React.FC<GameLogicProps> = ({
     setPlayers
   });
 
+  // Track if game is running
+  const isRunningRef = React.useRef(true);
+
   React.useEffect(() => {
     console.log("Game loop started");
     let frameId: number;
@@ -100,9 +103,22 @@ const GameLogic: React.FC<GameLogicProps> = ({
     
     console.log("Game loop initialized");
 
+    // Debug timer to log ball state every 5 seconds
+    const debugInterval = setInterval(() => {
+      if (isRunningRef.current) {
+        console.log("Ball state:", {
+          position: ball.position,
+          velocity: ball.velocity,
+          speed: Math.sqrt(ball.velocity.x * ball.velocity.x + ball.velocity.y * ball.velocity.y)
+        });
+      }
+    }, 5000);
+
     return () => {
       console.log("Game loop cleanup");
       cancelAnimationFrame(frameId);
+      clearInterval(debugInterval);
+      isRunningRef.current = false;
       
       // When unmounting, save current models
       players
@@ -112,7 +128,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
             .catch(err => console.error(`Error saving model on exit:`, err));
         });
     };
-  }, [players, updatePlayerPositions, updateBallPosition, incrementSyncCounter, syncModels]);
+  }, [players, updatePlayerPositions, updateBallPosition, incrementSyncCounter, syncModels, ball]);
 
   return null;
 };

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Player, Ball, Position, PITCH_WIDTH, PITCH_HEIGHT, BALL_RADIUS, PLAYER_RADIUS, GOAL_HEIGHT } from '../../types/football';
 import { checkCollision, calculateNewVelocity } from '../../utils/gamePhysics';
@@ -25,6 +24,9 @@ export const useBallMovementSystem = ({
     fieldPlayers: players.filter(p => p.role !== 'goalkeeper')
   }), [players]);
 
+  // Track last collision time to prevent multiple collisions in a short time
+  const lastCollisionTimeRef = React.useRef(0);
+
   const updateBallPosition = React.useCallback(() => {
     setBall(currentBall => {
       // Calculate new position based on current velocity
@@ -41,8 +43,8 @@ export const useBallMovementSystem = ({
         return {
           position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
           velocity: { 
-            x: goalScored === 'red' ? 3 : -3, 
-            y: (Math.random() - 0.5) * 4
+            x: goalScored === 'red' ? 4 : -4, 
+            y: (Math.random() - 0.5) * 5
           }
         };
       }
@@ -53,8 +55,8 @@ export const useBallMovementSystem = ({
         newVelocity.y = -newVelocity.y * 0.9; // Add damping
         
         // Ensure the ball doesn't get stuck on the boundary
-        if (Math.abs(newVelocity.y) < 0.5) {
-          newVelocity.y = newVelocity.y > 0 ? 0.5 : -0.5;
+        if (Math.abs(newVelocity.y) < 0.8) {
+          newVelocity.y = newVelocity.y > 0 ? 0.8 : -0.8;
         }
       }
 
@@ -69,8 +71,8 @@ export const useBallMovementSystem = ({
           newVelocity.x = -newVelocity.x * 0.9; // Add damping
           
           // Ensure the ball doesn't get stuck on the boundary
-          if (Math.abs(newVelocity.x) < 0.5) {
-            newVelocity.x = newVelocity.x > 0 ? 0.5 : -0.5;
+          if (Math.abs(newVelocity.x) < 0.8) {
+            newVelocity.x = newVelocity.x > 0 ? 0.8 : -0.8;
           }
         }
       }
@@ -79,30 +81,60 @@ export const useBallMovementSystem = ({
       newPosition.x = Math.max(BALL_RADIUS, Math.min(PITCH_WIDTH - BALL_RADIUS, newPosition.x));
       newPosition.y = Math.max(BALL_RADIUS, Math.min(PITCH_HEIGHT - BALL_RADIUS, newPosition.y));
 
-      // Check collisions with players
-      for (const player of [...goalkeepers, ...fieldPlayers]) {
-        const collision = checkCollision(
-          newPosition, 
-          player.position
-        );
+      // Get current time to prevent multiple collisions
+      const currentTime = performance.now();
+      const collisionCooldown = 150; // ms
+
+      // Check collisions with players if cooldown has passed
+      if (currentTime - lastCollisionTimeRef.current > collisionCooldown) {
+        // First check collisions with goalkeepers (they should have priority)
+        for (const player of goalkeepers) {
+          const collision = checkCollision(newPosition, player.position);
+          
+          if (collision) {
+            // Record which player touched the ball
+            onBallTouch(player);
+            lastCollisionTimeRef.current = currentTime;
+            
+            // Calculate new velocity based on collision
+            newVelocity = calculateNewVelocity(
+              newPosition,
+              player.position,
+              currentBall.velocity,
+              true // is goalkeeper
+            );
+            
+            console.log("Goalkeeper collision detected");
+            break; // Only handle one collision per frame
+          }
+        }
         
-        if (collision) {
-          // Record which player touched the ball
-          onBallTouch(player);
-          
-          // Calculate new velocity based on collision
-          newVelocity = calculateNewVelocity(
-            newPosition,
-            player.position,
-            currentBall.velocity,
-            player.role === 'goalkeeper'
-          );
-          
-          // Add some randomness to make gameplay more dynamic
-          newVelocity.x += (Math.random() - 0.5) * 0.3;
-          newVelocity.y += (Math.random() - 0.5) * 0.3;
-          
-          break; // Only handle one collision per frame
+        // Then check field players if no goalkeeper collision
+        if (currentTime - lastCollisionTimeRef.current > collisionCooldown) {
+          for (const player of fieldPlayers) {
+            const collision = checkCollision(newPosition, player.position);
+            
+            if (collision) {
+              // Record which player touched the ball
+              onBallTouch(player);
+              lastCollisionTimeRef.current = currentTime;
+              
+              // Calculate new velocity based on collision
+              newVelocity = calculateNewVelocity(
+                newPosition,
+                player.position,
+                currentBall.velocity,
+                false
+              );
+              
+              // Add some randomness to make gameplay more dynamic
+              newVelocity.x += (Math.random() - 0.5) * 0.4;
+              newVelocity.y += (Math.random() - 0.5) * 0.4;
+              
+              console.log(`Ball touched by ${player.team} ${player.role}`);
+              break; // Only handle one collision per frame
+            }
+          }
         }
       }
 
@@ -110,13 +142,13 @@ export const useBallMovementSystem = ({
       newVelocity.x *= 0.995;
       newVelocity.y *= 0.995;
       
-      // If the ball has almost stopped, give it a small push in a random direction
+      // If the ball is moving too slowly, give it a push
       const currentSpeed = Math.sqrt(newVelocity.x * newVelocity.x + newVelocity.y * newVelocity.y);
-      if (currentSpeed < 0.2) {
+      if (currentSpeed < 0.8) {
         const randomAngle = Math.random() * Math.PI * 2;
-        newVelocity.x = 0.5 * Math.cos(randomAngle);
-        newVelocity.y = 0.5 * Math.sin(randomAngle);
-        console.log("Ball was nearly stopped - applied small random impulse");
+        newVelocity.x = 1.0 * Math.cos(randomAngle);
+        newVelocity.y = 1.0 * Math.sin(randomAngle);
+        console.log("Ball was moving too slow - applied random impulse");
       }
 
       return {
