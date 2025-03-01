@@ -49,17 +49,16 @@ export const updatePlayerBrain = (brain: NeuralNet, scored: boolean, ball: Ball,
   try {
     const inputs = calculateNetworkInputs(ball, player, context);
     
-    // Only train non-goalkeeper players
-    if (player.role !== "goalkeeper") {
-      brain.net.train([{
-        input: inputs,
-        output: trainOutput
-      }], {
-        iterations: 1,
-        errorThresh: 0.01,
-        learningRate: LEARNING_RATE
-      });
-    }
+    // The Type error was here - we need to fix the comparison
+    // player.role can be one of "goalkeeper" | "defender" | "midfielder" | "forward"
+    brain.net.train([{
+      input: inputs,
+      output: trainOutput
+    }], {
+      iterations: 1,
+      errorThresh: 0.01,
+      learningRate: LEARNING_RATE
+    });
     
     // Every 50 goals, save the model to the server for collaborative training
     if (scored && Math.random() < 0.2) {
