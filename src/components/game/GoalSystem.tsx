@@ -42,10 +42,16 @@ export const useGoalSystem = ({
 
   // Process goal scoring
   const processGoal = React.useCallback((scoringTeam: 'red' | 'blue') => {
-    setScore(prev => ({
-      ...prev,
-      [scoringTeam]: prev[scoringTeam] + 1
-    }));
+    console.log(`GOAL! Team ${scoringTeam} scored!`); // Add logging to verify goal processing
+    
+    setScore(prev => {
+      const newScore = {
+        ...prev,
+        [scoringTeam]: prev[scoringTeam] + 1
+      };
+      console.log(`New score: Red ${newScore.red} - Blue ${newScore.blue}`);
+      return newScore;
+    });
 
     setPlayers(currentPlayers => {
       // Update player brains

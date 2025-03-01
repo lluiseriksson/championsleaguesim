@@ -26,86 +26,98 @@ export const useBallMovementSystem = ({
   }), [players]);
 
   const updateBallPosition = React.useCallback(() => {
-    setBall((prevBall) => {
-      const STEPS = 16; // Reduced from 32 to 16 for better performance
-      let newBallState = { ...prevBall };
+    setBall(currentBall => {
+      // Calculate new position based on current velocity
+      const newPosition = {
+        x: currentBall.position.x + currentBall.velocity.x,
+        y: currentBall.position.y + currentBall.velocity.y
+      };
 
-      // Calculate complete movement once
-      const totalMovementX = newBallState.velocity.x / STEPS;
-      const totalMovementY = newBallState.velocity.y / STEPS;
-
-      for (let step = 1; step <= STEPS; step++) {
-        const stepMovement = {
-          x: newBallState.position.x + totalMovementX,
-          y: newBallState.position.y + totalMovementY,
-        };
-
-        // Check collisions first with goalkeepers
-        let collision = false;
-        for (const player of [...goalkeepers, ...fieldPlayers]) {
-          if (checkCollision(stepMovement, player.position)) {
-            const newVelocity = calculateNewVelocity(
-              stepMovement,
-              player.position,
-              newBallState.velocity,
-              player.role === 'goalkeeper'
-            );
-
-            const collisionAngle = Math.atan2(
-              stepMovement.y - player.position.y,
-              stepMovement.x - player.position.x
-            );
-
-            newBallState = {
-              position: {
-                x: player.position.x + (PLAYER_RADIUS + BALL_RADIUS) * Math.cos(collisionAngle),
-                y: player.position.y + (PLAYER_RADIUS + BALL_RADIUS) * Math.sin(collisionAngle)
-              },
-              velocity: newVelocity
-            };
-
-            // Register the last player to touch the ball
-            onBallTouch(player);
-            console.log(`Last touch: ${player.team} ${player.role} #${player.id}`);
-            
-            collision = true;
-            break;
-          }
-        }
-
-        if (!collision) {
-          newBallState.position = stepMovement;
-        }
-      }
-
-      // Check if goal was scored
-      const scoringTeam = checkGoal(newBallState.position);
-      if (scoringTeam) {
+      // First check if a goal was scored
+      const goalScored = checkGoal(newPosition);
+      if (goalScored) {
+        console.log(`Goal detected for team ${goalScored}`);
+        // Reset ball position to center
         return {
           position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
-          velocity: { x: 2 * (scoringTeam === 'red' ? -1 : 1), y: 0 }
+          velocity: { 
+            x: goalScored === 'red' ? 2 : -2, 
+            y: (Math.random() - 0.5) * 3
+          }
         };
       }
 
-      // Wall rebounds with optimized calculation
-      const hitWallX = newBallState.position.x <= BALL_RADIUS || 
-                        newBallState.position.x >= PITCH_WIDTH - BALL_RADIUS;
-      const hitWallY = newBallState.position.y <= BALL_RADIUS || 
-                        newBallState.position.y >= PITCH_HEIGHT - BALL_RADIUS;
+      // Check for boundary collisions (top and bottom)
+      let newVelocity = { ...currentBall.velocity };
+      if (newPosition.y <= BALL_RADIUS || newPosition.y >= PITCH_HEIGHT - BALL_RADIUS) {
+        newVelocity.y = -newVelocity.y * 0.9; // Add damping
+      }
 
-      if (hitWallX) newBallState.velocity.x *= -0.9;
-      if (hitWallY) newBallState.velocity.y *= -0.9;
+      // Check for boundary collisions (left and right)
+      if (newPosition.x <= BALL_RADIUS || newPosition.x >= PITCH_WIDTH - BALL_RADIUS) {
+        // Only reverse if not in goal area
+        const goalY = PITCH_HEIGHT / 2;
+        const goalTop = goalY - GOAL_HEIGHT / 2;
+        const goalBottom = goalY + GOAL_HEIGHT / 2;
+        
+        if (newPosition.y < goalTop || newPosition.y > goalBottom) {
+          newVelocity.x = -newVelocity.x * 0.9; // Add damping
+        }
+      }
 
-      // Limit ball position to field
+      // Ensure ball stays within the pitch boundaries
+      newPosition.x = Math.max(BALL_RADIUS, Math.min(PITCH_WIDTH - BALL_RADIUS, newPosition.x));
+      newPosition.y = Math.max(BALL_RADIUS, Math.min(PITCH_HEIGHT - BALL_RADIUS, newPosition.y));
+
+      // Check collisions with players
+      for (const player of [...goalkeepers, ...fieldPlayers]) {
+        const collision = checkCollision(
+          newPosition, 
+          BALL_RADIUS,
+          player.position, 
+          PLAYER_RADIUS
+        );
+        
+        if (collision) {
+          // Record which player touched the ball
+          onBallTouch(player);
+          
+          // Calculate new velocity based on collision
+          newVelocity = calculateNewVelocity(
+            newPosition,
+            player.position,
+            currentBall.velocity,
+            { x: 0, y: 0 } // Players don't have velocity in this model
+          );
+          
+          // Add some randomness to make gameplay more dynamic
+          newVelocity.x += (Math.random() - 0.5) * 0.3;
+          newVelocity.y += (Math.random() - 0.5) * 0.3;
+          
+          // Apply friction to slow ball down over time
+          newVelocity.x *= 0.99;
+          newVelocity.y *= 0.99;
+          
+          break; // Only handle one collision per frame
+        }
+      }
+
+      // Apply natural deceleration
+      newVelocity.x *= 0.995;
+      newVelocity.y *= 0.995;
+      
+      // Minimum velocity threshold to prevent the ball from moving indefinitely
+      const minVelocity = 0.01;
+      if (Math.abs(newVelocity.x) < minVelocity && Math.abs(newVelocity.y) < minVelocity) {
+        newVelocity = { x: 0, y: 0 };
+      }
+
       return {
-        position: {
-          x: Math.max(BALL_RADIUS, Math.min(PITCH_WIDTH - BALL_RADIUS, newBallState.position.x)),
-          y: Math.max(BALL_RADIUS, Math.min(PITCH_HEIGHT - BALL_RADIUS, newBallState.position.y))
-        },
-        velocity: newBallState.velocity
+        position: newPosition,
+        velocity: newVelocity
       };
     });
-  }, [setBall, goalkeepers, fieldPlayers, checkGoal, onBallTouch]);
+  }, [setBall, players, checkGoal, goalkeepers, fieldPlayers, onBallTouch]);
 
   return { updateBallPosition };
 };
