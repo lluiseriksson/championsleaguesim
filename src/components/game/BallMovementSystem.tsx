@@ -37,12 +37,12 @@ export const useBallMovementSystem = ({
       const goalScored = checkGoal(newPosition);
       if (goalScored) {
         console.log(`Goal detected for team ${goalScored}`);
-        // Reset ball position to center
+        // Reset ball position to center with a significant initial velocity
         return {
           position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
           velocity: { 
-            x: goalScored === 'red' ? 2 : -2, 
-            y: (Math.random() - 0.5) * 3
+            x: goalScored === 'red' ? 3 : -3, 
+            y: (Math.random() - 0.5) * 4
           }
         };
       }
@@ -51,6 +51,11 @@ export const useBallMovementSystem = ({
       let newVelocity = { ...currentBall.velocity };
       if (newPosition.y <= BALL_RADIUS || newPosition.y >= PITCH_HEIGHT - BALL_RADIUS) {
         newVelocity.y = -newVelocity.y * 0.9; // Add damping
+        
+        // Ensure the ball doesn't get stuck on the boundary
+        if (Math.abs(newVelocity.y) < 0.5) {
+          newVelocity.y = newVelocity.y > 0 ? 0.5 : -0.5;
+        }
       }
 
       // Check for boundary collisions (left and right)
@@ -62,6 +67,11 @@ export const useBallMovementSystem = ({
         
         if (newPosition.y < goalTop || newPosition.y > goalBottom) {
           newVelocity.x = -newVelocity.x * 0.9; // Add damping
+          
+          // Ensure the ball doesn't get stuck on the boundary
+          if (Math.abs(newVelocity.x) < 0.5) {
+            newVelocity.x = newVelocity.x > 0 ? 0.5 : -0.5;
+          }
         }
       }
 
@@ -92,22 +102,21 @@ export const useBallMovementSystem = ({
           newVelocity.x += (Math.random() - 0.5) * 0.3;
           newVelocity.y += (Math.random() - 0.5) * 0.3;
           
-          // Apply friction to slow ball down over time
-          newVelocity.x *= 0.99;
-          newVelocity.y *= 0.99;
-          
           break; // Only handle one collision per frame
         }
       }
 
-      // Apply natural deceleration
+      // Apply natural deceleration, but not to the point of stopping
       newVelocity.x *= 0.995;
       newVelocity.y *= 0.995;
       
-      // Minimum velocity threshold to prevent the ball from moving indefinitely
-      const minVelocity = 0.01;
-      if (Math.abs(newVelocity.x) < minVelocity && Math.abs(newVelocity.y) < minVelocity) {
-        newVelocity = { x: 0, y: 0 };
+      // If the ball has almost stopped, give it a small push in a random direction
+      const currentSpeed = Math.sqrt(newVelocity.x * newVelocity.x + newVelocity.y * newVelocity.y);
+      if (currentSpeed < 0.2) {
+        const randomAngle = Math.random() * Math.PI * 2;
+        newVelocity.x = 0.5 * Math.cos(randomAngle);
+        newVelocity.y = 0.5 * Math.sin(randomAngle);
+        console.log("Ball was nearly stopped - applied small random impulse");
       }
 
       return {

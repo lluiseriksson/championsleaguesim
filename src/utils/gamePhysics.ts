@@ -2,9 +2,12 @@
 import { Position, PLAYER_RADIUS, BALL_RADIUS } from '../types/football';
 
 const MAX_BALL_SPEED = 15;
+const MIN_BALL_SPEED = 0.5; // Minimum ball speed to prevent it from stopping completely
 
 const limitSpeed = (velocity: Position): Position => {
   const speed = Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+  
+  // Apply maximum speed limit
   if (speed > MAX_BALL_SPEED) {
     const factor = MAX_BALL_SPEED / speed;
     return {
@@ -12,6 +15,25 @@ const limitSpeed = (velocity: Position): Position => {
       y: velocity.y * factor
     };
   }
+  
+  // Apply minimum speed if the ball is moving very slowly but not completely stopped
+  if (speed > 0 && speed < MIN_BALL_SPEED) {
+    const factor = MIN_BALL_SPEED / speed;
+    return {
+      x: velocity.x * factor,
+      y: velocity.y * factor
+    };
+  }
+  
+  // If the ball has completely stopped, give it a small random direction
+  if (speed === 0) {
+    const randomAngle = Math.random() * Math.PI * 2;
+    return {
+      x: MIN_BALL_SPEED * Math.cos(randomAngle),
+      y: MIN_BALL_SPEED * Math.sin(randomAngle)
+    };
+  }
+  
   return velocity;
 };
 
