@@ -1,11 +1,50 @@
-
-import { NeuralNet, Player, TeamContext, Ball, Position } from '../types/football';
+import { NeuralNet, Player, TeamContext, Ball, Position, NeuralInput, NeuralOutput } from '../types/football';
 import { saveModel } from './neuralModelService';
-import { calculateDistance, normalizeValue } from './neuralHelpers';
+import { calculateAngleAndDistance, normalizePosition } from './neuralHelpers';
+import * as brain from 'brain.js';
 
 const LEARNING_RATE = 0.03;
 const GOAL_REWARD = 1.0;
 const MISS_PENALTY = -0.5;
+
+// Helper functions that were previously imported
+const calculateDistance = (pos1: Position, pos2: Position): number => {
+  const dx = pos2.x - pos1.x;
+  const dy = pos2.y - pos1.y;
+  return Math.sqrt(dx * dx + dy * dy);
+};
+
+const normalizeValue = (value: number, min: number, max: number): number => {
+  return (value - min) / (max - min);
+};
+
+// Add the missing createPlayerBrain function
+export const createPlayerBrain = (): NeuralNet => {
+  return {
+    net: new brain.NeuralNetwork<NeuralInput, NeuralOutput>({
+      hiddenLayers: [16, 8],
+      activation: 'sigmoid'
+    }),
+    lastOutput: { x: 0, y: 0 }
+  };
+};
+
+// Add the moveGoalkeeper function
+export const moveGoalkeeper = (player: Player, ball: Ball): { x: number, y: number } => {
+  // Simple goalkeeper algorithm - focus on vertical movement to block the ball
+  const moveX = 0; // Keep x position fixed near the goal line
+  
+  // Calculate vertical movement to track the ball
+  let moveY = 0;
+  const ballYDifference = ball.position.y - player.position.y;
+  
+  // Move toward the ball's vertical position, but slower than regular players
+  if (Math.abs(ballYDifference) > 10) {
+    moveY = Math.sign(ballYDifference) * 1.5;
+  }
+  
+  return { x: moveX, y: moveY };
+};
 
 // Calcula las entradas para la red neuronal
 export const calculateNetworkInputs = (ball: Ball, player: Player, context: TeamContext) => {
@@ -96,7 +135,7 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
 // Actualiza el cerebro del jugador en función del resultado
 export const updatePlayerBrain = (brain: NeuralNet, scored: boolean, ball: Ball, player: Player, context: TeamContext): NeuralNet => {
   // No actualizar cerebros de porteros, ya que usan lógica predefinida
-  if (player.role === 'goalkeeper') {
+  if (player.role === "goalkeeper") {
     return brain;
   }
   
@@ -136,7 +175,7 @@ export const updatePlayerBrain = (brain: NeuralNet, scored: boolean, ball: Ball,
     const inputs = calculateNetworkInputs(ball, player, context);
     
     // Si es portero, no entrenar
-    if (player.role !== 'goalkeeper') {
+    if (player.role !== "goalkeeper") {
       brain.net.train([{
         input: inputs,
         output: trainOutput
@@ -149,7 +188,7 @@ export const updatePlayerBrain = (brain: NeuralNet, scored: boolean, ball: Ball,
     
     // Cada 50 goles, guardar el modelo en el servidor para entrenamiento colaborativo
     if (scored && Math.random() < 0.2) {
-      if (player.role !== 'goalkeeper') {
+      if (player.role !== "goalkeeper") {
         saveModel(player).catch(error => 
           console.error(`Error al guardar modelo después de gol para ${player.team} ${player.role}:`, error)
         );

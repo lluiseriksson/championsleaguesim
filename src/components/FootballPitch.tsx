@@ -1,12 +1,10 @@
-
 import React from 'react';
 import PitchLayout from './PitchLayout';
 import ScoreDisplay from './ScoreDisplay';
 import Ball from './Ball';
 import PlayerSprite from './PlayerSprite';
 import GameLogic from './GameLogic';
-import { createPlayerBrain } from '../utils/playerBrain';
-import { moveGoalkeeper } from '../utils/playerBrain'; // Importamos la función determinística
+import { createPlayerBrain, moveGoalkeeper } from '../utils/playerBrain';
 import {
   Player, Ball as BallType, Score, PITCH_WIDTH, PITCH_HEIGHT
 } from '../types/football';
