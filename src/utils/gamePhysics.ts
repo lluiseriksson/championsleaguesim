@@ -15,7 +15,7 @@ const limitSpeed = (velocity: Position): Position => {
   return velocity;
 };
 
-export const checkCollision = (ballPos: Position, playerPos: Position) => {
+export const checkCollision = (ballPos: Position, playerPos: Position): boolean => {
   const dx = ballPos.x - playerPos.x;
   const dy = ballPos.y - playerPos.y;
   const distance = Math.sqrt(dx * dx + dy * dy);
@@ -28,7 +28,7 @@ export const calculateNewVelocity = (
   playerPosition: Position,
   currentVelocity: Position,
   isGoalkeeper: boolean = false
-) => {
+): Position => {
   const dx = ballPosition.x - playerPosition.x;
   const dy = ballPosition.y - playerPosition.y;
   const distance = Math.sqrt(dx * dx + dy * dy);
@@ -72,13 +72,16 @@ export const calculateNewVelocity = (
     currentVelocity.y * currentVelocity.y
   );
   
+  // Si la velocidad es muy baja, dar un impulso adicional
+  const adjustedSpeed = speed < 2 ? 4 : speed;
+  
   const reflectionAngle = angle + (angle - incidentAngle);
   
   // Añadir una pequeña variación aleatoria al rebote
   const randomVariation = (Math.random() - 0.5) * 0.2;
   
   return limitSpeed({
-    x: speed * Math.cos(reflectionAngle + randomVariation) * (isGoalkeeper ? 1.2 : 1.1),
-    y: speed * Math.sin(reflectionAngle + randomVariation) * (isGoalkeeper ? 1.2 : 1.1)
+    x: adjustedSpeed * Math.cos(reflectionAngle + randomVariation) * (isGoalkeeper ? 1.2 : 1.1),
+    y: adjustedSpeed * Math.sin(reflectionAngle + randomVariation) * (isGoalkeeper ? 1.2 : 1.1)
   });
 };

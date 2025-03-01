@@ -1,3 +1,4 @@
+
 import React from 'react';
 import PitchLayout from './PitchLayout';
 import ScoreDisplay from './ScoreDisplay';
@@ -8,72 +9,111 @@ import { createPlayerBrain, moveGoalkeeper } from '../utils/playerBrain';
 import {
   Player, Ball as BallType, Score, PITCH_WIDTH, PITCH_HEIGHT
 } from '../types/football';
+import { initializePlayerBrain } from '../utils/modelLoader';
 
 const FootballPitch: React.FC = () => {
   const [players, setPlayers] = React.useState<Player[]>([]);
   const [ball, setBall] = React.useState<BallType>({
     position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
-    velocity: { x: 2, y: 2 },
+    velocity: { x: Math.random() > 0.5 ? 3 : -3, y: (Math.random() - 0.5) * 3 }, // Velocidad inicial aleatoria
   });
   const [score, setScore] = React.useState<Score>({ red: 0, blue: 0 });
   const [gameReady, setGameReady] = React.useState(false);
 
   React.useEffect(() => {
-    try {
-      const initialPlayers: Player[] = [];
-      
-      [
-        { x: 50, y: PITCH_HEIGHT/2, role: 'goalkeeper' },
-        { x: 150, y: PITCH_HEIGHT/4, role: 'defender' },
-        { x: 150, y: PITCH_HEIGHT/2, role: 'defender' },
-        { x: 150, y: (PITCH_HEIGHT*3)/4, role: 'defender' },
-        { x: 300, y: PITCH_HEIGHT/3, role: 'midfielder' },
-        { x: 300, y: PITCH_HEIGHT/2, role: 'midfielder' },
-        { x: 300, y: (PITCH_HEIGHT*2)/3, role: 'midfielder' },
-        { x: 500, y: PITCH_HEIGHT/4, role: 'forward' },
-        { x: 500, y: PITCH_HEIGHT/2, role: 'forward' },
-        { x: 500, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
-      ].forEach((pos, index) => {
-        const brain = createPlayerBrain();
-        initialPlayers.push({
-          id: index + 1,
-          position: { x: pos.x, y: pos.y },
-          role: pos.role as Player['role'],
-          team: 'red',
-          brain: brain,
-          targetPosition: { x: pos.x, y: pos.y }
-        });
-      });
+    const loadPlayers = async () => {
+      try {
+        const initialPlayers: Player[] = [];
+        
+        // Initialize red team players
+        const redTeamPositions = [
+          { x: 50, y: PITCH_HEIGHT/2, role: 'goalkeeper' },
+          { x: 150, y: PITCH_HEIGHT/4, role: 'defender' },
+          { x: 150, y: PITCH_HEIGHT/2, role: 'defender' },
+          { x: 150, y: (PITCH_HEIGHT*3)/4, role: 'defender' },
+          { x: 300, y: PITCH_HEIGHT/3, role: 'midfielder' },
+          { x: 300, y: PITCH_HEIGHT/2, role: 'midfielder' },
+          { x: 300, y: (PITCH_HEIGHT*2)/3, role: 'midfielder' },
+          { x: 500, y: PITCH_HEIGHT/4, role: 'forward' },
+          { x: 500, y: PITCH_HEIGHT/2, role: 'forward' },
+          { x: 500, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
+        ];
+        
+        for (let i = 0; i < redTeamPositions.length; i++) {
+          const pos = redTeamPositions[i];
+          const role = pos.role as Player['role'];
+          
+          let brain;
+          if (role === 'goalkeeper') {
+            brain = createPlayerBrain();
+          } else {
+            try {
+              brain = await initializePlayerBrain('red', role);
+            } catch (error) {
+              console.error(`Error loading brain for red ${role}:`, error);
+              brain = createPlayerBrain();
+            }
+          }
+          
+          initialPlayers.push({
+            id: i + 1,
+            position: { x: pos.x, y: pos.y },
+            role: role,
+            team: 'red',
+            brain: brain,
+            targetPosition: { x: pos.x, y: pos.y }
+          });
+        }
 
-      [
-        { x: PITCH_WIDTH - 50, y: PITCH_HEIGHT/2, role: 'goalkeeper' },
-        { x: PITCH_WIDTH - 150, y: PITCH_HEIGHT/4, role: 'defender' },
-        { x: PITCH_WIDTH - 150, y: PITCH_HEIGHT/2, role: 'defender' },
-        { x: PITCH_WIDTH - 150, y: (PITCH_HEIGHT*3)/4, role: 'defender' },
-        { x: PITCH_WIDTH - 300, y: PITCH_HEIGHT/3, role: 'midfielder' },
-        { x: PITCH_WIDTH - 300, y: PITCH_HEIGHT/2, role: 'midfielder' },
-        { x: PITCH_WIDTH - 300, y: (PITCH_HEIGHT*2)/3, role: 'midfielder' },
-        { x: PITCH_WIDTH - 500, y: PITCH_HEIGHT/4, role: 'forward' },
-        { x: PITCH_WIDTH - 500, y: PITCH_HEIGHT/2, role: 'forward' },
-        { x: PITCH_WIDTH - 500, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
-      ].forEach((pos, index) => {
-        const brain = createPlayerBrain();
-        initialPlayers.push({
-          id: index + 11,
-          position: { x: pos.x, y: pos.y },
-          role: pos.role as Player['role'],
-          team: 'blue',
-          brain: brain,
-          targetPosition: { x: pos.x, y: pos.y }
-        });
-      });
+        // Initialize blue team players
+        const blueTeamPositions = [
+          { x: PITCH_WIDTH - 50, y: PITCH_HEIGHT/2, role: 'goalkeeper' },
+          { x: PITCH_WIDTH - 150, y: PITCH_HEIGHT/4, role: 'defender' },
+          { x: PITCH_WIDTH - 150, y: PITCH_HEIGHT/2, role: 'defender' },
+          { x: PITCH_WIDTH - 150, y: (PITCH_HEIGHT*3)/4, role: 'defender' },
+          { x: PITCH_WIDTH - 300, y: PITCH_HEIGHT/3, role: 'midfielder' },
+          { x: PITCH_WIDTH - 300, y: PITCH_HEIGHT/2, role: 'midfielder' },
+          { x: PITCH_WIDTH - 300, y: (PITCH_HEIGHT*2)/3, role: 'midfielder' },
+          { x: PITCH_WIDTH - 500, y: PITCH_HEIGHT/4, role: 'forward' },
+          { x: PITCH_WIDTH - 500, y: PITCH_HEIGHT/2, role: 'forward' },
+          { x: PITCH_WIDTH - 500, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
+        ];
+        
+        for (let i = 0; i < blueTeamPositions.length; i++) {
+          const pos = blueTeamPositions[i];
+          const role = pos.role as Player['role'];
+          
+          let brain;
+          if (role === 'goalkeeper') {
+            brain = createPlayerBrain();
+          } else {
+            try {
+              brain = await initializePlayerBrain('blue', role);
+            } catch (error) {
+              console.error(`Error loading brain for blue ${role}:`, error);
+              brain = createPlayerBrain();
+            }
+          }
+          
+          initialPlayers.push({
+            id: i + 11,
+            position: { x: pos.x, y: pos.y },
+            role: role,
+            team: 'blue',
+            brain: brain,
+            targetPosition: { x: pos.x, y: pos.y }
+          });
+        }
 
-      setPlayers(initialPlayers);
-      setGameReady(true);
-      console.log("Game initialized successfully with", initialPlayers.length, "players");
-    } catch (error) {
-      console.error("Error initializing game:", error);
-    }
+        setPlayers(initialPlayers);
+        console.log("Game initialized successfully with", initialPlayers.length, "players");
+        setGameReady(true);
+      } catch (error) {
+        console.error("Error initializing game:", error);
+      }
+    };
+    
+    loadPlayers();
   }, []);
 
   const updatePlayerPositions = React.useCallback(() => {
@@ -245,15 +285,17 @@ const FootballPitch: React.FC = () => {
 
       <Ball ball={ball} />
 
-      <GameLogic
-        players={players}
-        setPlayers={setPlayers}
-        ball={ball}
-        setBall={setBall}
-        score={score}
-        setScore={setScore}
-        updatePlayerPositions={updatePlayerPositions}
-      />
+      {gameReady && (
+        <GameLogic
+          players={players}
+          setPlayers={setPlayers}
+          ball={ball}
+          setBall={setBall}
+          score={score}
+          setScore={setScore}
+          updatePlayerPositions={updatePlayerPositions}
+        />
+      )}
     </div>
   );
 };

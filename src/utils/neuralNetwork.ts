@@ -6,9 +6,9 @@ import { createNeuralInput, isNetworkValid } from './neuralHelpers';
 export const createPlayerBrain = (): NeuralNet => {
   try {
     const net = new brain.NeuralNetwork<NeuralInput, NeuralOutput>({
-      hiddenLayers: [16, 8], // Simplified layers for better stability
+      hiddenLayers: [12, 6], // Simplified layers for better stability
       activation: 'sigmoid', // Changed to sigmoid for more stability
-      learningRate: 0.05,
+      learningRate: 0.1,
     });
 
     // Create simple training data
@@ -35,11 +35,11 @@ export const createPlayerBrain = (): NeuralNet => {
       
       // Simple random output values
       const output: NeuralOutput = {
-        moveX: Math.random(),
-        moveY: Math.random(),
-        shootBall: Math.random(),
-        passBall: Math.random(),
-        intercept: Math.random()
+        moveX: 0.5 + (Math.random() - 0.5) * 0.4, // Centered around 0.5 with some variation
+        moveY: 0.5 + (Math.random() - 0.5) * 0.4,
+        shootBall: Math.random() > 0.8 ? 0.8 : 0.2, // Occasionally shoot
+        passBall: Math.random() > 0.8 ? 0.8 : 0.2, // Occasionally pass
+        intercept: Math.random() > 0.8 ? 0.8 : 0.2 // Occasionally intercept
       };
 
       trainingData.push({ input, output });
@@ -47,8 +47,8 @@ export const createPlayerBrain = (): NeuralNet => {
 
     // Train with fewer iterations for stability
     net.train(trainingData, {
-      iterations: 1000,
-      errorThresh: 0.01,
+      iterations: 500,
+      errorThresh: 0.05,
       log: false
     });
 
@@ -58,6 +58,7 @@ export const createPlayerBrain = (): NeuralNet => {
       return createFallbackBrain();
     }
 
+    console.log("Created new neural network successfully");
     return {
       net,
       lastOutput: { x: 0, y: 0 },
@@ -71,6 +72,7 @@ export const createPlayerBrain = (): NeuralNet => {
 
 // Create a very simple fallback brain when normal creation fails
 const createFallbackBrain = (): NeuralNet => {
+  console.log("Creating fallback brain");
   const net = new brain.NeuralNetwork<NeuralInput, NeuralOutput>({
     hiddenLayers: [4],
     activation: 'sigmoid',

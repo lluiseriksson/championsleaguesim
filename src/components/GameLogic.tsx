@@ -27,6 +27,8 @@ const GameLogic: React.FC<GameLogicProps> = ({
 }) => {
   // Reference to track the last player who touched the ball
   const lastPlayerTouchRef = React.useRef<Player | null>(null);
+  
+  console.log("GameLogic rendered with players:", players.length);
 
   // Memoize team context to avoid unnecessary recalculations
   const getTeamContext = React.useCallback((player: Player) => ({
@@ -54,6 +56,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
     checkGoal,
     onBallTouch: (player) => {
       lastPlayerTouchRef.current = player;
+      console.log(`Ball touched by ${player.team} ${player.role} #${player.id}`);
     }
   });
 
@@ -64,6 +67,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
   });
 
   React.useEffect(() => {
+    console.log("Game loop started");
     let frameId: number;
     let lastTime = performance.now();
     const TIME_STEP = 16; // 60 FPS target
@@ -88,12 +92,16 @@ const GameLogic: React.FC<GameLogicProps> = ({
       frameId = requestAnimationFrame(gameLoop);
     };
 
+    // Start the game loop immediately
     frameId = requestAnimationFrame(gameLoop);
     
     // Sync models on startup
     syncModels();
+    
+    console.log("Game loop initialized");
 
     return () => {
+      console.log("Game loop cleanup");
       cancelAnimationFrame(frameId);
       
       // When unmounting, save current models
