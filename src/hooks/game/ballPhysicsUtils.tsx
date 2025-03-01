@@ -67,7 +67,7 @@ export function handleBallPhysics(
         newVelocity = calculateNewVelocity(
           newPosition,
           goalkeeper.position,
-          currentVelocity,
+          currentBall.velocity,
           true // is goalkeeper
         );
         
