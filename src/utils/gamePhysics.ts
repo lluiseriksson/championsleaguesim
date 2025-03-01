@@ -1,4 +1,4 @@
-import { Position, PLAYER_RADIUS, BALL_RADIUS } from '../types/football';
+import { Position, PLAYER_RADIUS, BALL_RADIUS, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
 
 const MAX_BALL_SPEED = 15;
 const MIN_BALL_SPEED = 3.5; // Significantly increased minimum speed
@@ -52,20 +52,28 @@ export const calculateNewVelocity = (
   // Calculate incident angle
   const incidentAngle = Math.atan2(currentVelocity.y, currentVelocity.x);
   
-  // Special handling for goalkeeper
+  // Special handling for goalkeeper - ENHANCED
   if (isGoalkeeper) {
-    const ballMovingTowardsGoal = (playerPosition.x < 400 && currentVelocity.x < 0) || 
-                                 (playerPosition.x > 400 && currentVelocity.x > 0);
+    // Determine which goal the goalkeeper is defending
+    const isLeftGoalkeeper = playerPosition.x < PITCH_WIDTH / 2;
+    const centerY = PITCH_HEIGHT / 2;
+    
+    // Is the ball moving toward the goal?
+    const ballMovingTowardsGoal = (isLeftGoalkeeper && currentVelocity.x < 0) || 
+                                 (!isLeftGoalkeeper && currentVelocity.x > 0);
     
     if (ballMovingTowardsGoal) {
-      // Calculate deflection direction (away from the goal)
-      const deflectionX = playerPosition.x < 400 ? 2.5 : -2.5; // Increased power
+      // Calculate horizontal deflection direction (away from the goal)
+      const deflectionX = isLeftGoalkeeper ? 3.5 : -3.5; // Increased power for better clearance
       
-      // Calculate vertical component based on impact point
-      const verticalFactor = dy / (PLAYER_RADIUS + BALL_RADIUS);
+      // Calculate vertical deflection to push ball away from goal center for better clearances
+      const verticalOffset = ballPosition.y - centerY;
+      const verticalFactor = Math.sign(verticalOffset) * (1.0 + Math.min(Math.abs(verticalOffset) / 100, 1.0));
       
-      // Higher base speed for goalkeeper deflections
-      const baseSpeed = 10; // Increased from 8
+      // Higher base speed for goalkeeper saves
+      const baseSpeed = 12; // Increased from 10
+      
+      console.log(`Goalkeeper SAVE by ${isLeftGoalkeeper ? 'red' : 'blue'} team!`);
       
       return limitSpeed({
         x: deflectionX * baseSpeed,
@@ -92,8 +100,8 @@ export const calculateNewVelocity = (
   // Add slight random variation to the reflection
   const randomVariation = (Math.random() - 0.5) * 0.3;
   
-  // Higher multiplier for goalkeeper collisions
-  const speedMultiplier = isGoalkeeper ? 1.8 : 1.5; // Increased both multipliers
+  // Higher multiplier for goalkeeper collisions for stronger clearances
+  const speedMultiplier = isGoalkeeper ? 2.0 : 1.5; // Increased goalkeeper multiplier
   
   return limitSpeed({
     x: adjustedSpeed * Math.cos(reflectionAngle + randomVariation) * speedMultiplier,
