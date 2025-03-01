@@ -39,8 +39,11 @@ export const useBallMovementSystem = ({
         currentBall.velocity.y * currentBall.velocity.y
       );
       
-      // If ball speed is extremely low, consider it stopped
-      isStoppedRef.current = currentSpeed < 0.1;
+      // If ball is already completely stopped, don't process any movement
+      if (currentSpeed === 0) {
+        isStoppedRef.current = true;
+        return currentBall;
+      }
       
       // Calculate new position based on current velocity
       const newPosition = {
@@ -164,13 +167,13 @@ export const useBallMovementSystem = ({
       newVelocity.x *= 0.995;
       newVelocity.y *= 0.995;
       
-      // If the ball is moving very slowly, gradually bring it to a complete stop
-      // instead of applying random movement
+      // If the ball is moving very slowly, stop it completely
       const newSpeed = Math.sqrt(newVelocity.x * newVelocity.x + newVelocity.y * newVelocity.y);
       if (newSpeed < 0.3) {
-        newVelocity.x = 0;
-        newVelocity.y = 0;
-        isStoppedRef.current = true;
+        return {
+          position: newPosition,
+          velocity: { x: 0, y: 0 } // Completely stop the ball
+        };
       }
 
       return {
