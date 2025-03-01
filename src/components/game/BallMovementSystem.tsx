@@ -73,9 +73,7 @@ export const useBallMovementSystem = ({
       for (const player of [...goalkeepers, ...fieldPlayers]) {
         const collision = checkCollision(
           newPosition, 
-          BALL_RADIUS,
-          player.position, 
-          PLAYER_RADIUS
+          player.position
         );
         
         if (collision) {
@@ -87,7 +85,7 @@ export const useBallMovementSystem = ({
             newPosition,
             player.position,
             currentBall.velocity,
-            { x: 0, y: 0 } // Players don't have velocity in this model
+            player.role === 'goalkeeper'
           );
           
           // Add some randomness to make gameplay more dynamic
