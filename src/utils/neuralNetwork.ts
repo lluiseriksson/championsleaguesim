@@ -61,7 +61,7 @@ export const createPlayerBrain = (): NeuralNet => {
     return {
       net,
       lastOutput: { x: 0, y: 0 },
-      lastAction: 'none'
+      lastAction: 'move' // Changed from 'none' to 'move' to match the type definition
     };
   } catch (error) {
     console.error("Error creating neural network:", error);
@@ -100,7 +100,7 @@ const createFallbackBrain = (): NeuralNet => {
   return {
     net,
     lastOutput: { x: 0, y: 0 },
-    lastAction: 'none'
+    lastAction: 'move' // Changed from 'none' to 'move' to match the type definition
   };
 };
 
