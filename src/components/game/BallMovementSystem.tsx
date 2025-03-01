@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Player, Ball, Position, PITCH_WIDTH, PITCH_HEIGHT, BALL_RADIUS, PLAYER_RADIUS, GOAL_HEIGHT } from '../../types/football';
 import { checkCollision, calculateNewVelocity } from '../../utils/gamePhysics';
@@ -10,13 +11,14 @@ interface BallMovementSystemProps {
   onBallTouch: (player: Player) => void;
 }
 
-export const BallMovementSystem: React.FC<BallMovementSystemProps> = ({ 
+// Return a hook with ball movement functions instead of a React component
+export const useBallMovementSystem = ({ 
   ball, 
   setBall, 
   players, 
   checkGoal, 
   onBallTouch 
-}) => {
+}: BallMovementSystemProps) => {
   // Memoize player categorization
   const { goalkeepers, fieldPlayers } = React.useMemo(() => ({
     goalkeepers: players.filter(p => p.role === 'goalkeeper'),

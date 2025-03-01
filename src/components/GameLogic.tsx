@@ -2,9 +2,9 @@
 import React from 'react';
 import { Player, Ball, Score, Position } from '../types/football';
 import { saveModel } from '../utils/neuralModelService';
-import { BallMovementSystem } from './game/BallMovementSystem';
-import { ModelSyncSystem } from './game/ModelSyncSystem';
-import { GoalSystem } from './game/GoalSystem';
+import { useBallMovementSystem } from './game/BallMovementSystem';
+import { useModelSyncSystem } from './game/ModelSyncSystem';
+import { useGoalSystem } from './game/GoalSystem';
 
 interface GameLogicProps {
   players: Player[];
@@ -37,7 +37,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
   }), [players]);
 
   // Goal system
-  const { checkGoal, processGoal } = GoalSystem({ 
+  const { checkGoal, processGoal } = useGoalSystem({ 
     setScore, 
     players, 
     setPlayers, 
@@ -47,7 +47,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
   });
 
   // Ball movement system
-  const { updateBallPosition } = BallMovementSystem({
+  const { updateBallPosition } = useBallMovementSystem({
     ball,
     setBall,
     players,
@@ -58,7 +58,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
   });
 
   // Model synchronization system
-  const { syncModels, incrementSyncCounter } = ModelSyncSystem({
+  const { syncModels, incrementSyncCounter } = useModelSyncSystem({
     players,
     setPlayers
   });

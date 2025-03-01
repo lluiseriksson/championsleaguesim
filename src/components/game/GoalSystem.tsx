@@ -14,14 +14,15 @@ interface GoalSystemProps {
   lastPlayerTouchRef: React.MutableRefObject<Player | null>;
 }
 
-export const GoalSystem: React.FC<GoalSystemProps> = ({ 
+// Return a hook with goal-related functions instead of a React component
+export const useGoalSystem = ({ 
   setScore, 
   players, 
   setPlayers, 
   getTeamContext, 
   ball,
   lastPlayerTouchRef
-}) => {
+}: GoalSystemProps) => {
   // Check if a goal was scored
   const checkGoal = React.useCallback((position: Position): 'red' | 'blue' | null => {
     const goalY = PITCH_HEIGHT / 2;

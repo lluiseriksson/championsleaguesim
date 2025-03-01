@@ -9,7 +9,8 @@ interface ModelSyncSystemProps {
   setPlayers: React.Dispatch<React.SetStateAction<Player[]>>;
 }
 
-export const ModelSyncSystem: React.FC<ModelSyncSystemProps> = ({ players, setPlayers }) => {
+// Return a hook with sync functions instead of a React component
+export const useModelSyncSystem = ({ players, setPlayers }: ModelSyncSystemProps) => {
   // Counter to control periodic synchronization
   const syncCounterRef = React.useRef(0);
   // Last sync time
