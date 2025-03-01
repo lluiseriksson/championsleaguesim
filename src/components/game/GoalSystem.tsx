@@ -58,9 +58,17 @@ export const useGoalSystem = ({
     });
 
     setPlayers(currentPlayers => {
-      // Guardar la posición del balón en el momento del gol para el entrenamiento
+      // Save ball position at the time of the goal for training
       const ballPositionAtGoal = {...ball.position};
       console.log(`Ball position at goal: ${JSON.stringify(ballPositionAtGoal)}`);
+      
+      // Determine if this was an own goal
+      const isOwnGoal = lastPlayerTouchRef.current !== null && 
+                        lastPlayerTouchRef.current.team !== scoringTeam;
+      
+      if (isOwnGoal) {
+        console.log(`OWN GOAL detected! Last touch by ${lastPlayerTouchRef.current?.team} ${lastPlayerTouchRef.current?.role} #${lastPlayerTouchRef.current?.id}`);
+      }
       
       // Update player brains
       const updatedPlayers = currentPlayers.map(player => {
@@ -80,15 +88,17 @@ export const useGoalSystem = ({
           position: ballPositionAtGoal
         };
         
+        // Update brain with own goal information
         return {
           ...player,
           brain: updatePlayerBrain(
             player.brain,
             player.team === scoringTeam,
-            ballAtGoal, // Usamos la posición del balón en el momento del gol
+            ballAtGoal, // Use ball position at the time of the goal
             player,
             getTeamContext(player),
-            (isLastTouch && (wasLastTouchHelpful || wasLastTouchHarmful))
+            (isLastTouch && (wasLastTouchHelpful || wasLastTouchHarmful)),
+            isOwnGoal && player.team !== scoringTeam // Pass own goal flag to learning function
           )
         };
       });
@@ -101,12 +111,23 @@ export const useGoalSystem = ({
             .catch(err => console.error(`Error saving model after goal:`, err));
         });
 
-      // Also save the model of the last player who touched the ball if from the opposing team
+      // Special handling for own goals - ALWAYS save the model of the player who caused it
       if (lastPlayerTouchRef.current && lastPlayerTouchRef.current.team !== scoringTeam) {
         const lastTouchPlayer = updatedPlayers.find(p => p.id === lastPlayerTouchRef.current?.id);
         if (lastTouchPlayer) {
+          // For own goals, always save with high priority
           saveModel(lastTouchPlayer)
-            .catch(err => console.error(`Error saving model of last player:`, err));
+            .catch(err => console.error(`Error saving model of last player (own goal):`, err));
+            
+          // Also save models of all players on the same team to discourage own goals team-wide
+          updatedPlayers
+            .filter(p => p.team === lastTouchPlayer.team && p.id !== lastTouchPlayer.id)
+            .forEach(teammate => {
+              if (Math.random() < 0.5) { // 50% chance to save teammates' models too
+                saveModel(teammate)
+                  .catch(err => console.error(`Error saving teammate model after own goal:`, err));
+              }
+            });
         }
       }
       
