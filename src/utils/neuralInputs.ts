@@ -20,7 +20,7 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
   );
   const normalizedAngleToGoal = normalizeValue(angleToGoal, -Math.PI, Math.PI);
   
-  // NEW: Calculate distance and angle to OWN goal to help avoid own goals
+  // Calculate distance and angle to OWN goal to help avoid own goals
   const distanceToOwnGoal = calculateDistance(player.position, context.ownGoal);
   const normalizedDistanceToOwnGoal = normalizeValue(distanceToOwnGoal, 0, 1000);
   
@@ -29,6 +29,15 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
     context.ownGoal.x - player.position.x
   );
   const normalizedAngleToOwnGoal = normalizeValue(angleToOwnGoal, -Math.PI, Math.PI);
+  
+  // ENHANCED: More precise detection of dangerous own goal situations
+  // Check if player is between ball and own goal (extremely dangerous for own goals)
+  const isBetweenBallAndOwnGoal = ((player.team === 'red' && 
+                                   player.position.x < ball.position.x && 
+                                   player.position.x > context.ownGoal.x) || 
+                                  (player.team === 'blue' && 
+                                   player.position.x > ball.position.x && 
+                                   player.position.x < context.ownGoal.x)) ? 1 : 0;
   
   // Check if player is facing own goal (dangerous for own goals)
   const isFacingOwnGoal = ((player.team === 'red' && normalizedPlayerX < normalizedBallX) ||
@@ -79,8 +88,9 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
   const isInShootingRange = distanceToBall < 100 && distanceToGoal < 300 ? 1 : 0;
   const isInPassingRange = distanceToBall < 80 && nearestTeammateDistance < 200 ? 1 : 0;
   
-  // NEW: Flag for dangerous shooting position (likely to cause an own goal)
-  const isDangerousPosition = distanceToBall < 100 && distanceToOwnGoal < 200 ? 1 : 0;
+  // ENHANCED: Better detection of dangerous shooting positions
+  const isDangerousPosition = (distanceToBall < 100 && distanceToOwnGoal < 200) || 
+                             (isBetweenBallAndOwnGoal && distanceToBall < 120) ? 1 : 0;
   
   // Check if defense is required (opponent near our goal with the ball)
   const ballToOwnGoalDistance = calculateDistance(ball.position, context.ownGoal);
@@ -106,6 +116,8 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
     distanceToOwnGoal: normalizedDistanceToOwnGoal,
     angleToOwnGoal: normalizedAngleToOwnGoal,
     isFacingOwnGoal,
-    isDangerousPosition
+    isDangerousPosition,
+    // New input
+    isBetweenBallAndOwnGoal
   };
 };

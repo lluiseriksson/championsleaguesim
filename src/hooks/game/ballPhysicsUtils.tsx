@@ -48,19 +48,48 @@ export function handleBallPhysics(
   const currentTime = performance.now();
   const collisionCooldown = 150; // ms
 
-  // Check player collisions and update velocity
-  newVelocity = handlePlayerCollisions(
-    newPosition,
-    newVelocity,
-    currentBall.velocity,
-    goalkeepers,
-    fieldPlayers,
-    onBallTouch,
-    currentTime,
-    lastCollisionTimeRef,
-    lastKickPositionRef,
-    collisionCooldown
-  );
+  // ENHANCED: Prioritize goalkeeper collisions with higher priority window
+  // Use a shorter cooldown for goalkeeper collisions to improve their reactions
+  const goalkeeperCollisionCooldown = 100; // shorter cooldown for goalkeepers
+
+  // Check goalkeeper collisions first with higher priority
+  if (currentTime - lastCollisionTimeRef.current > goalkeeperCollisionCooldown) {
+    for (const goalkeeper of goalkeepers) {
+      const collision = checkCollision(newPosition, goalkeeper.position);
+      
+      if (collision) {
+        // Record which player touched the ball
+        onBallTouch(goalkeeper);
+        lastCollisionTimeRef.current = currentTime;
+        lastKickPositionRef.current = { ...newPosition };
+        
+        // Calculate new velocity based on collision
+        newVelocity = calculateNewVelocity(
+          newPosition,
+          goalkeeper.position,
+          currentVelocity,
+          true // is goalkeeper
+        );
+        
+        console.log("Goalkeeper collision detected");
+        break; // Only handle one collision per frame
+      }
+    }
+  }
+
+  // Then check field player collisions if no goalkeeper collision occurred
+  if (currentTime - lastCollisionTimeRef.current > collisionCooldown) {
+    newVelocity = handleFieldPlayerCollisions(
+      newPosition,
+      newVelocity,
+      currentBall.velocity,
+      fieldPlayers,
+      onBallTouch,
+      currentTime,
+      lastCollisionTimeRef,
+      lastKickPositionRef
+    );
+  }
 
   // Apply very mild deceleration - we want ball to keep moving
   newVelocity.x *= 0.998; // Reduced from 0.995
@@ -70,7 +99,7 @@ export function handleBallPhysics(
   const newSpeed = Math.sqrt(newVelocity.x * newVelocity.x + newVelocity.y * newVelocity.y);
   if (newSpeed < 3.5) {
     // Maintain direction but increase speed to minimum
-    const factor = 3.5 / newSpeed;
+    const factor = 3.5 / Math.max(0.01, newSpeed); // Prevent division by zero
     newVelocity.x *= factor;
     newVelocity.y *= factor;
   }
@@ -81,80 +110,62 @@ export function handleBallPhysics(
   };
 }
 
-// Handle collisions between the ball and players
-function handlePlayerCollisions(
+// Handle collisions between the ball and field players
+function handleFieldPlayerCollisions(
   newPosition: Position,
   newVelocity: Position,
   currentVelocity: Position,
-  goalkeepers: Player[],
   fieldPlayers: Player[],
   onBallTouch: (player: Player) => void,
   currentTime: number,
   lastCollisionTimeRef: React.MutableRefObject<number>,
-  lastKickPositionRef: React.MutableRefObject<Position | null>,
-  collisionCooldown: number
+  lastKickPositionRef: React.MutableRefObject<Position | null>
 ): Position {
-  // Check collisions with players if cooldown has passed
-  if (currentTime - lastCollisionTimeRef.current > collisionCooldown) {
-    // First check collisions with goalkeepers (they should have priority)
-    for (const player of goalkeepers) {
-      const collision = checkCollision(newPosition, player.position);
-      
-      if (collision) {
-        // Record which player touched the ball
-        onBallTouch(player);
-        lastCollisionTimeRef.current = currentTime;
-        lastKickPositionRef.current = { ...newPosition };
-        
-        // Calculate new velocity based on collision
-        newVelocity = calculateNewVelocity(
-          newPosition,
-          player.position,
-          currentVelocity,
-          true // is goalkeeper
-        );
-        
-        console.log("Goalkeeper collision detected");
-        break; // Only handle one collision per frame
-      }
-    }
+  for (const player of fieldPlayers) {
+    const collision = checkCollision(newPosition, player.position);
     
-    // Then check field players if no goalkeeper collision
-    if (currentTime - lastCollisionTimeRef.current > collisionCooldown) {
-      for (const player of fieldPlayers) {
-        const collision = checkCollision(newPosition, player.position);
+    if (collision) {
+      // Record which player touched the ball
+      onBallTouch(player);
+      lastCollisionTimeRef.current = currentTime;
+      lastKickPositionRef.current = { ...newPosition };
+      
+      // Calculate new velocity based on collision
+      newVelocity = calculateNewVelocity(
+        newPosition,
+        player.position,
+        currentVelocity,
+        false
+      );
+      
+      // Add some force to ensure it moves away from player
+      const dx = newPosition.x - player.position.x;
+      const dy = newPosition.y - player.position.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance > 0) {
+        const normalizedDx = dx / distance;
+        const normalizedDy = dy / distance;
         
-        if (collision) {
-          // Record which player touched the ball
-          onBallTouch(player);
-          lastCollisionTimeRef.current = currentTime;
-          lastKickPositionRef.current = { ...newPosition };
-          
-          // Calculate new velocity based on collision
-          newVelocity = calculateNewVelocity(
-            newPosition,
-            player.position,
-            currentVelocity,
-            false
-          );
-          
-          // Add some force to ensure it moves away from player
-          const dx = newPosition.x - player.position.x;
-          const dy = newPosition.y - player.position.y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-          
-          if (distance > 0) {
-            const normalizedDx = dx / distance;
-            const normalizedDy = dy / distance;
-            
-            newVelocity.x += normalizedDx * 1.5; // Increased from 1.2
-            newVelocity.y += normalizedDy * 1.5; // Increased from 1.2
-          }
-          
-          console.log(`Ball touched by ${player.team} ${player.role}`);
-          break; // Only handle one collision per frame
+        // ENHANCED: Check if this might be an own goal situation
+        const ownGoalRisk = (player.team === 'red' && normalizedDx < 0) || 
+                           (player.team === 'blue' && normalizedDx > 0);
+                           
+        if (ownGoalRisk) {
+          // If high risk of own goal, deflect ball more sideways to avoid shooting toward own goal
+          const sidewaysDeflection = normalizedDy * 2.5;
+          newVelocity.x += normalizedDx * 0.5; // Reduced forward component
+          newVelocity.y += sidewaysDeflection; // Increased sideways component
+          console.log(`Potential own goal situation detected - deflecting ball sideways`);
+        } else {
+          // Normal deflection physics
+          newVelocity.x += normalizedDx * 1.5; 
+          newVelocity.y += normalizedDy * 1.5;
         }
       }
+      
+      console.log(`Ball touched by ${player.team} ${player.role}`);
+      break; // Only handle one collision per frame
     }
   }
   

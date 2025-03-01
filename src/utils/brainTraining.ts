@@ -12,7 +12,8 @@ const LAST_TOUCH_GOAL_PENALTY = -3.0;
 const GOALKEEPER_MAX_PENALTY = -1.5;
 const GOALKEEPER_MIN_PENALTY = -0.3;
 const GOALKEEPER_DISTANCE_THRESHOLD = 50;
-const OWN_GOAL_TEAM_PENALTY = -1.0;
+const OWN_GOAL_TEAM_PENALTY = -2.0;
+const OWN_GOAL_PLAYER_PENALTY = -5.0;
 
 export const updatePlayerBrain = (
   brain: NeuralNet, 
@@ -26,8 +27,8 @@ export const updatePlayerBrain = (
   let rewardFactor = scored ? GOAL_REWARD : MISS_PENALTY;
 
   if (isOwnGoal) {
-    rewardFactor = LAST_TOUCH_GOAL_PENALTY * 1.5;
-    console.log(`SEVERE PENALTY: ${player.team} ${player.role} #${player.id} caused an own goal!`);
+    rewardFactor = OWN_GOAL_PLAYER_PENALTY;
+    console.log(`SEVERE PENALTY: ${player.team} ${player.role} #${player.id} caused an own goal! Penalty: ${rewardFactor}`);
   }
 
   if (player.role === "goalkeeper") {
@@ -59,12 +60,12 @@ export const updatePlayerBrain = (
             intercept: 1
           }
         }], {
-          iterations: isOwnGoal ? 3 : 1,
+          iterations: isOwnGoal ? 5 : 2,
           errorThresh: 0.01,
-          learningRate: LEARNING_RATE * (2 - distanceRatio)
+          learningRate: LEARNING_RATE * (2 - distanceRatio) * (isOwnGoal ? 1.5 : 1)
         });
         
-        if (Math.random() < 0.5) {
+        if (Math.random() < 0.7) {
           saveModel(player).catch(error => 
             console.error(`Error saving goalkeeper model after goal:`, error)
           );
@@ -100,8 +101,8 @@ export const updatePlayerBrain = (
     
     if (isLastTouchBeforeGoal) {
       if (isOwnGoal) {
-        rewardFactor = LAST_TOUCH_GOAL_PENALTY * 2;
-        console.log(`${player.team} ${player.role} #${player.id} gets SEVERE penalty for own goal!`);
+        rewardFactor = OWN_GOAL_PLAYER_PENALTY;
+        console.log(`${player.team} ${player.role} #${player.id} gets SEVERE penalty for own goal: ${rewardFactor}`);
       } else {
         rewardFactor += LAST_TOUCH_GOAL_PENALTY;
         console.log(`${player.team} ${player.role} #${player.id} gets penalty for last touch before opponent goal!`);
@@ -110,7 +111,7 @@ export const updatePlayerBrain = (
     
     if (isOwnGoal) {
       rewardFactor += OWN_GOAL_TEAM_PENALTY;
-      console.log(`${player.team} ${player.role} #${player.id} gets team penalty for own goal situation`);
+      console.log(`${player.team} ${player.role} #${player.id} gets team penalty for own goal situation: ${OWN_GOAL_TEAM_PENALTY}`);
     }
   }
 
@@ -126,6 +127,7 @@ export const updatePlayerBrain = (
     trainOutput.shootBall = 0;
     const ownGoalDirection = player.team === 'red' ? -1 : 1;
     trainOutput.moveX = player.team === 'red' ? 1 : 0;
+    trainOutput.passBall = 1;
   }
 
   try {
@@ -140,12 +142,12 @@ export const updatePlayerBrain = (
       input: inputs,
       output: trainOutput
     }], {
-      iterations: isOwnGoal ? 5 : 1,
+      iterations: isOwnGoal ? 8 : 2,
       errorThresh: 0.01,
-      learningRate: isOwnGoal ? LEARNING_RATE * 2 : LEARNING_RATE
+      learningRate: isOwnGoal ? LEARNING_RATE * 3 : LEARNING_RATE
     });
     
-    const saveThreshold = isOwnGoal ? 0.8 : 0.3;
+    const saveThreshold = isOwnGoal ? 0.95 : 0.5;
     if (Math.random() < saveThreshold) {
       saveModel(player).catch(error => 
         console.error(`Error saving model after goal for ${player.team} ${player.role}:`, error)

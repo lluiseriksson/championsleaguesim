@@ -11,9 +11,11 @@ export const createPlayerBrain = (): NeuralNet => {
       learningRate: 0.1,
     });
 
-    // Create simple training data
+    // Create better initial training data with explicit own goal avoidance
     const trainingData = [];
-    for (let i = 0; i < 20; i++) {
+    
+    // Basic random scenarios
+    for (let i = 0; i < 15; i++) {
       // Create basic input with normalized values between 0-1
       const input: NeuralInput = {
         ballX: Math.random(),
@@ -30,24 +32,67 @@ export const createPlayerBrain = (): NeuralNet => {
         nearestOpponentAngle: Math.random() * 2 - 1,
         isInShootingRange: Math.random() > 0.5 ? 1 : 0,
         isInPassingRange: Math.random() > 0.5 ? 1 : 0,
-        isDefendingRequired: Math.random() > 0.5 ? 1 : 0
+        isDefendingRequired: Math.random() > 0.5 ? 1 : 0,
+        distanceToOwnGoal: Math.random(),
+        angleToOwnGoal: Math.random() * 2 - 1,
+        isFacingOwnGoal: Math.random() > 0.8 ? 1 : 0,
+        isDangerousPosition: Math.random() > 0.8 ? 1 : 0,
+        isBetweenBallAndOwnGoal: Math.random() > 0.8 ? 1 : 0
       };
       
       // Simple random output values
       const output: NeuralOutput = {
-        moveX: 0.5 + (Math.random() - 0.5) * 0.4, // Centered around 0.5 with some variation
+        moveX: 0.5 + (Math.random() - 0.5) * 0.4,
         moveY: 0.5 + (Math.random() - 0.5) * 0.4,
-        shootBall: Math.random() > 0.8 ? 0.8 : 0.2, // Occasionally shoot
-        passBall: Math.random() > 0.8 ? 0.8 : 0.2, // Occasionally pass
-        intercept: Math.random() > 0.8 ? 0.8 : 0.2 // Occasionally intercept
+        shootBall: Math.random() > 0.8 ? 0.8 : 0.2,
+        passBall: Math.random() > 0.8 ? 0.8 : 0.2,
+        intercept: Math.random() > 0.8 ? 0.8 : 0.2
+      };
+
+      trainingData.push({ input, output });
+    }
+    
+    // Now add EXPLICIT training examples to avoid own goals
+    for (let i = 0; i < 10; i++) {
+      // Create dangerous own goal scenarios
+      const input: NeuralInput = {
+        ballX: Math.random(),
+        ballY: Math.random(),
+        playerX: Math.random(),
+        playerY: Math.random(),
+        ballVelocityX: (Math.random() * 2 - 1) / 20,
+        ballVelocityY: (Math.random() * 2 - 1) / 20,
+        distanceToGoal: 0.7 + Math.random() * 0.3, // Far from opponent goal
+        angleToGoal: Math.random() * 2 - 1,
+        nearestTeammateDistance: Math.random() * 0.5, // Teammate nearby
+        nearestTeammateAngle: Math.random() * 2 - 1,
+        nearestOpponentDistance: 0.3 + Math.random() * 0.7, // Opponents far
+        nearestOpponentAngle: Math.random() * 2 - 1,
+        isInShootingRange: 0, // Not in shooting range
+        isInPassingRange: 1, // In passing range
+        isDefendingRequired: 1, // Defending required
+        distanceToOwnGoal: Math.random() * 0.3, // Close to own goal
+        angleToOwnGoal: Math.random() * 2 - 1,
+        isFacingOwnGoal: 1, // Facing own goal
+        isDangerousPosition: 1, // In dangerous position
+        isBetweenBallAndOwnGoal: 1 // Between ball and own goal
+      };
+      
+      // Teach to NEVER shoot in these scenarios, prefer passing and moving away
+      const output: NeuralOutput = {
+        moveX: Math.random() > 0.5 ? 0.8 : 0.2, // Move away from own goal
+        moveY: 0.5 + (Math.random() - 0.5) * 0.4,
+        shootBall: 0, // Never shoot
+        passBall: 0.8 + Math.random() * 0.2, // Prefer passing
+        intercept: Math.random() * 0.3 // Sometimes intercept
       };
 
       trainingData.push({ input, output });
     }
 
-    // Train with fewer iterations for stability
+    // Train with these scenarios
     net.train(trainingData, {
-      iterations: 500,
+      iterations: 800, // Increased from 500
       errorThresh: 0.05,
       log: false
     });
@@ -58,11 +103,11 @@ export const createPlayerBrain = (): NeuralNet => {
       return createFallbackBrain();
     }
 
-    console.log("Created new neural network successfully");
+    console.log("Created new neural network successfully with own goal avoidance training");
     return {
       net,
       lastOutput: { x: 0, y: 0 },
-      lastAction: 'move' // Changed from 'none' to 'move' to match the type definition
+      lastAction: 'move'
     };
   } catch (error) {
     console.error("Error creating neural network:", error);
@@ -87,7 +132,10 @@ const createFallbackBrain = (): NeuralNet => {
     distanceToGoal: 0.5, angleToGoal: 0,
     nearestTeammateDistance: 0.5, nearestTeammateAngle: 0,
     nearestOpponentDistance: 0.5, nearestOpponentAngle: 0,
-    isInShootingRange: 0, isInPassingRange: 0, isDefendingRequired: 0
+    isInShootingRange: 0, isInPassingRange: 0, isDefendingRequired: 0,
+    distanceToOwnGoal: 0.5, angleToOwnGoal: 0,
+    isFacingOwnGoal: 0, isDangerousPosition: 0,
+    isBetweenBallAndOwnGoal: 0  // Add this missing field
   };
   
   const output: NeuralOutput = {
@@ -102,7 +150,7 @@ const createFallbackBrain = (): NeuralNet => {
   return {
     net,
     lastOutput: { x: 0, y: 0 },
-    lastAction: 'move' // Changed from 'none' to 'move' to match the type definition
+    lastAction: 'move'
   };
 };
 
