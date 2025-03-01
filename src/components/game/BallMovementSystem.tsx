@@ -27,58 +27,64 @@ export const useBallMovementSystem = ({
   // Track last collision time to prevent multiple collisions in a short time
   const lastCollisionTimeRef = React.useRef(0);
   
-  // Track if the ball is currently stopped
-  const isStoppedRef = React.useRef(false);
-  
   // Track the last position the ball was kicked from to prevent "stuck" situations
   const lastKickPositionRef = React.useRef<Position | null>(null);
+  
+  // Track time without movement to add a random kick if needed
+  const noMovementTimeRef = React.useRef(0);
+  const lastPositionRef = React.useRef<Position | null>(null);
 
   const updateBallPosition = React.useCallback(() => {
     setBall(currentBall => {
-      // Check if the ball is currently stopped
+      // Check current ball speed
       const currentSpeed = Math.sqrt(
         currentBall.velocity.x * currentBall.velocity.x + 
         currentBall.velocity.y * currentBall.velocity.y
       );
       
-      // If ball is already completely stopped, check if it's near a goalkeeper
-      if (currentSpeed === 0) {
-        // Get current time for cooldown calculations
-        const currentTime = performance.now();
+      // Detect if ball is stuck in same position
+      if (lastPositionRef.current) {
+        const dx = currentBall.position.x - lastPositionRef.current.x;
+        const dy = currentBall.position.y - lastPositionRef.current.y;
+        const positionDelta = Math.sqrt(dx * dx + dy * dy);
         
-        // Check if the ball is too close to any goalkeeper and needs to be "unstuck"
-        for (const goalkeeper of goalkeepers) {
-          const dx = currentBall.position.x - goalkeeper.position.x;
-          const dy = currentBall.position.y - goalkeeper.position.y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
+        if (positionDelta < 0.1) {
+          noMovementTimeRef.current += 1;
           
-          // If the ball is very close to a goalkeeper (within 1.5x collision radius),
-          // give it a small kick away from the goalkeeper
-          if (distance < (PLAYER_RADIUS + BALL_RADIUS) * 1.5) {
-            // Only do this if the collision cooldown has passed
-            if (currentTime - lastCollisionTimeRef.current > 1000) {
-              console.log("Ball stuck near goalkeeper, giving it a kick");
-              lastCollisionTimeRef.current = currentTime;
-              
-              // Direction away from goalkeeper
-              const normalizedDx = dx !== 0 ? dx / Math.abs(dx) : 0;
-              const normalizedDy = dy !== 0 ? dy / Math.abs(dy) : 0;
-              
-              // Return a new ball state with a velocity away from the goalkeeper
-              return {
-                position: currentBall.position,
-                velocity: {
-                  x: normalizedDx * 4,
-                  y: normalizedDy * 2 + (Math.random() - 0.5)
-                }
-              };
-            }
+          // If ball hasn't moved for a while, give it a random kick
+          if (noMovementTimeRef.current > 20) {
+            console.log("Ball stuck in place, giving it a random kick");
+            noMovementTimeRef.current = 0;
+            
+            // Random direction but not completely random
+            return {
+              position: currentBall.position,
+              velocity: {
+                x: (Math.random() * 6) - 3,
+                y: (Math.random() * 6) - 3
+              }
+            };
           }
+        } else {
+          // Reset counter if the ball is moving
+          noMovementTimeRef.current = 0;
         }
-        
-        // If no unstick was needed, just return current ball state
-        isStoppedRef.current = true;
-        return currentBall;
+      }
+      
+      // Update last position reference
+      lastPositionRef.current = { ...currentBall.position };
+      
+      // If ball has zero velocity (should only happen at game start/reset),
+      // give it a small push in a random direction
+      if (currentSpeed === 0) {
+        console.log("Ball has zero velocity, giving it an initial push");
+        return {
+          position: currentBall.position,
+          velocity: {
+            x: (Math.random() * 6) - 3,
+            y: (Math.random() * 6) - 3
+          }
+        };
       }
       
       // Calculate new position based on current velocity
@@ -95,7 +101,7 @@ export const useBallMovementSystem = ({
         return {
           position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
           velocity: { 
-            x: goalScored === 'red' ? 4 : -4, 
+            x: goalScored === 'red' ? 5 : -5, 
             y: (Math.random() - 0.5) * 5
           }
         };
@@ -106,9 +112,9 @@ export const useBallMovementSystem = ({
       if (newPosition.y <= BALL_RADIUS || newPosition.y >= PITCH_HEIGHT - BALL_RADIUS) {
         newVelocity.y = -newVelocity.y * 0.9; // Add damping
         
-        // Ensure the ball doesn't get stuck on the boundary
-        if (Math.abs(newVelocity.y) < 1.5) {
-          newVelocity.y = newVelocity.y > 0 ? 1.5 : -1.5;
+        // Ensure the ball bounces with sufficient speed
+        if (Math.abs(newVelocity.y) < 3.5) {
+          newVelocity.y = newVelocity.y > 0 ? 3.5 : -3.5;
         }
       }
 
@@ -122,9 +128,9 @@ export const useBallMovementSystem = ({
         if (newPosition.y < goalTop || newPosition.y > goalBottom) {
           newVelocity.x = -newVelocity.x * 0.9; // Add damping
           
-          // Ensure the ball doesn't get stuck on the boundary
-          if (Math.abs(newVelocity.x) < 1.5) {
-            newVelocity.x = newVelocity.x > 0 ? 1.5 : -1.5;
+          // Ensure the ball bounces with sufficient speed
+          if (Math.abs(newVelocity.x) < 3.5) {
+            newVelocity.x = newVelocity.x > 0 ? 3.5 : -3.5;
           }
         }
       }
@@ -190,8 +196,8 @@ export const useBallMovementSystem = ({
                 const normalizedDx = dx / distance;
                 const normalizedDy = dy / distance;
                 
-                newVelocity.x += normalizedDx * 1.2;
-                newVelocity.y += normalizedDy * 1.2;
+                newVelocity.x += normalizedDx * 1.5; // Increased from 1.2
+                newVelocity.y += normalizedDy * 1.5; // Increased from 1.2
               }
               
               console.log(`Ball touched by ${player.team} ${player.role}`);
@@ -201,17 +207,17 @@ export const useBallMovementSystem = ({
         }
       }
 
-      // Apply natural deceleration
-      newVelocity.x *= 0.995;
-      newVelocity.y *= 0.995;
+      // Apply very mild deceleration - we want ball to keep moving
+      newVelocity.x *= 0.998; // Reduced from 0.995
+      newVelocity.y *= 0.998; // Reduced from 0.995
       
-      // If the ball is moving very slowly, stop it completely
+      // Never let the ball stop completely
       const newSpeed = Math.sqrt(newVelocity.x * newVelocity.x + newVelocity.y * newVelocity.y);
-      if (newSpeed < 0.3) {
-        return {
-          position: newPosition,
-          velocity: { x: 0, y: 0 } // Completely stop the ball
-        };
+      if (newSpeed < 3.5) {
+        // Maintain direction but increase speed to minimum
+        const factor = 3.5 / newSpeed;
+        newVelocity.x *= factor;
+        newVelocity.y *= factor;
       }
 
       return {

@@ -1,7 +1,7 @@
 import { Position, PLAYER_RADIUS, BALL_RADIUS } from '../types/football';
 
 const MAX_BALL_SPEED = 15;
-const MIN_BALL_SPEED = 1.5; // Increased from 0.8 to 1.5 for faster minimum speed
+const MIN_BALL_SPEED = 3.5; // Significantly increased minimum speed
 
 const limitSpeed = (velocity: Position): Position => {
   const speed = Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
@@ -15,22 +15,13 @@ const limitSpeed = (velocity: Position): Position => {
     };
   }
   
-  // Apply minimum speed if the ball is moving slowly
-  if (speed < MIN_BALL_SPEED && speed > 0.1) {
-    // Only apply minimum speed if the ball is actually moving
-    // but not so slow that it should stop
+  // ALWAYS apply minimum speed unless the ball should be completely stopped
+  // (which should only happen at game reset/initialization)
+  if (speed < MIN_BALL_SPEED && speed > 0) {
     const factor = MIN_BALL_SPEED / speed;
     return {
       x: velocity.x * factor,
       y: velocity.y * factor
-    };
-  }
-  
-  // If ball speed is extremely low, it should completely stop
-  if (speed <= 0.1) {
-    return {
-      x: 0,
-      y: 0
     };
   }
   
@@ -68,13 +59,13 @@ export const calculateNewVelocity = (
     
     if (ballMovingTowardsGoal) {
       // Calculate deflection direction (away from the goal)
-      const deflectionX = playerPosition.x < 400 ? 1.5 : -1.5;
+      const deflectionX = playerPosition.x < 400 ? 2.5 : -2.5; // Increased power
       
       // Calculate vertical component based on impact point
       const verticalFactor = dy / (PLAYER_RADIUS + BALL_RADIUS);
       
       // Higher base speed for goalkeeper deflections
-      const baseSpeed = 8;
+      const baseSpeed = 10; // Increased from 8
       
       return limitSpeed({
         x: deflectionX * baseSpeed,
@@ -93,8 +84,8 @@ export const calculateNewVelocity = (
     currentVelocity.y * currentVelocity.y
   );
   
-  // Higher base speed for slow-moving balls
-  const adjustedSpeed = speed < 3 ? 6 : speed * 1.2;
+  // Higher base speed for all balls - never let it get too slow
+  const adjustedSpeed = Math.max(7, speed * 1.3);  // Ensure speed is at least 7
   
   const reflectionAngle = angle + (angle - incidentAngle);
   
@@ -102,7 +93,7 @@ export const calculateNewVelocity = (
   const randomVariation = (Math.random() - 0.5) * 0.3;
   
   // Higher multiplier for goalkeeper collisions
-  const speedMultiplier = isGoalkeeper ? 1.5 : 1.2;
+  const speedMultiplier = isGoalkeeper ? 1.8 : 1.5; // Increased both multipliers
   
   return limitSpeed({
     x: adjustedSpeed * Math.cos(reflectionAngle + randomVariation) * speedMultiplier,
