@@ -6,5 +6,12 @@ export { createPlayerBrain, normalizeValue, calculateDistance } from './neuralCo
 export { moveGoalkeeper } from './goalkeeperLogic';
 export { calculateNetworkInputs } from './neuralInputs';
 export { updatePlayerBrain } from './brainTraining';
+export { 
+  normalizePosition, 
+  calculateAngleAndDistance, 
+  getNearestEntity, 
+  createNeuralInput, 
+  isNetworkValid 
+} from './neuralHelpers';
 
 // Any additional shared logic can be placed here

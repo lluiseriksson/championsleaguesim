@@ -49,7 +49,7 @@ export const updatePlayerBrain = (brain: NeuralNet, scored: boolean, ball: Ball,
   try {
     const inputs = calculateNetworkInputs(ball, player, context);
     
-    // If goalkeeper, don't train
+    // Only train non-goalkeeper players
     if (player.role !== "goalkeeper") {
       brain.net.train([{
         input: inputs,
