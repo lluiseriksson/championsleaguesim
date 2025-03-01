@@ -13,10 +13,10 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ score }) => {
   }, [score]);
 
   return (
-    <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white/80 px-4 py-2 rounded-full font-bold text-xl shadow-md">
-      <span className="text-team-red">{score.red}</span>
+    <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white/80 px-4 py-2 rounded-full font-bold text-xl shadow-md z-20">
+      <span className="text-red-600">{score.red}</span>
       <span className="mx-2">-</span>
-      <span className="text-team-blue">{score.blue}</span>
+      <span className="text-blue-600">{score.blue}</span>
     </div>
   );
 };

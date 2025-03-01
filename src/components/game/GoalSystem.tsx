@@ -29,11 +29,14 @@ export const useGoalSystem = ({
     const goalTop = goalY - GOAL_HEIGHT / 2;
     const goalBottom = goalY + GOAL_HEIGHT / 2;
 
+    // Add more detailed logging for goal detection
     if (position.x <= BALL_RADIUS && position.y >= goalTop && position.y <= goalBottom) {
+      console.log("GOAL DETECTED: Blue team scored!", { position, goalTop, goalBottom });
       return 'blue';
     }
     
     if (position.x >= PITCH_WIDTH - BALL_RADIUS && position.y >= goalTop && position.y <= goalBottom) {
+      console.log("GOAL DETECTED: Red team scored!", { position, goalTop, goalBottom });
       return 'red';
     }
 
@@ -42,8 +45,9 @@ export const useGoalSystem = ({
 
   // Process goal scoring
   const processGoal = React.useCallback((scoringTeam: 'red' | 'blue') => {
-    console.log(`GOAL! Team ${scoringTeam} scored!`); // Add logging to verify goal processing
+    console.log(`GOAL! Team ${scoringTeam} scored!`); 
     
+    // Update score immediately
     setScore(prev => {
       const newScore = {
         ...prev,

@@ -53,7 +53,27 @@ const GameLogic: React.FC<GameLogicProps> = ({
     ball,
     setBall,
     players,
-    checkGoal,
+    checkGoal: (position) => {
+      const scoringTeam = checkGoal(position);
+      if (scoringTeam) {
+        // If a goal is scored, process it immediately
+        console.log(`Goal scored by team ${scoringTeam}`);
+        processGoal(scoringTeam);
+        
+        // Reset ball position to center after goal
+        setBall(prev => ({
+          ...prev,
+          position: { x: 800/2, y: 500/2 },
+          velocity: { 
+            x: Math.random() * 2 - 1, 
+            y: Math.random() * 2 - 1 
+          }
+        }));
+        
+        return true;
+      }
+      return false;
+    },
     onBallTouch: (player) => {
       lastPlayerTouchRef.current = player;
       console.log(`Ball touched by ${player.team} ${player.role} #${player.id}`);
@@ -111,6 +131,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
           velocity: ball.velocity,
           speed: Math.sqrt(ball.velocity.x * ball.velocity.x + ball.velocity.y * ball.velocity.y)
         });
+        console.log("Current score:", score);
       }
     }, 5000);
 
@@ -128,7 +149,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
             .catch(err => console.error(`Error saving model on exit:`, err));
         });
     };
-  }, [players, updatePlayerPositions, updateBallPosition, incrementSyncCounter, syncModels, ball]);
+  }, [players, updatePlayerPositions, updateBallPosition, incrementSyncCounter, syncModels, ball, score]);
 
   return null;
 };
