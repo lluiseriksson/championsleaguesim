@@ -38,7 +38,7 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
   return (
     <motion.div
       key={player.id}
-      className={`absolute w-[7.26rem] h-[7.26rem] rounded-full ${getPlayerColor(player)} ${getRoleIndicator(player.role)} 
+      className={`absolute w-[7.99rem] h-[7.99rem] rounded-full ${getPlayerColor(player)} ${getRoleIndicator(player.role)} 
                  flex items-center justify-center shadow-md`}
       animate={{
         x: player.position.x,
