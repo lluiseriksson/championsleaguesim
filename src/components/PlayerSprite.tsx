@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Player } from '../types/football';
@@ -7,64 +8,38 @@ interface PlayerSpriteProps {
 }
 
 const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
-  // Function to determine the player's background color based on role and team
+  // Función para determinar el color del jugador basado en su equipo
   const getPlayerColor = (player: Player) => {
-    const baseColor = player.team === 'red' ? 'bg-team-red' : 'bg-team-blue';
+    // Colores base para cada equipo
+    const teamColors = {
+      red: 'bg-gradient-to-br from-red-500 to-red-700',
+      blue: 'bg-gradient-to-br from-blue-500 to-blue-700'
+    };
     
-    // For goalkeepers, use a darker variant with a different shape
-    if (player.role === 'goalkeeper') {
-      return `${baseColor} opacity-90 border-2 border-white`;
-    }
-    
-    // For field players, vary the appearance based on role
-    switch (player.role) {
-      case 'defender':
-        return `${baseColor} opacity-80`;
-      case 'midfielder':
-        return `${baseColor} opacity-90`;
-      case 'forward':
-        return `${baseColor} opacity-100`;
-      default:
-        return baseColor;
-    }
+    return teamColors[player.team];
   };
 
-  // Determine the size of the player based on role
-  const getPlayerSize = (role: Player['role']) => {
+  // Función para obtener una sutil indicación del rol (usando border en lugar de forma)
+  const getRoleIndicator = (role: Player['role']) => {
     switch (role) {
       case 'goalkeeper':
-        return 'w-7 h-7';
+        return 'border-2 border-white';
       case 'defender':
-        return 'w-6 h-6';
+        return 'border border-white/50';
       case 'midfielder':
-        return 'w-6 h-6';
+        return '';
       case 'forward':
-        return 'w-6 h-6';
+        return '';
       default:
-        return 'w-6 h-6';
-    }
-  };
-
-  // Determine the shape of the player based on role
-  const getPlayerShape = (role: Player['role']) => {
-    switch (role) {
-      case 'goalkeeper':
-        return 'rounded-lg';
-      case 'defender':
-        return 'rounded-full';
-      case 'midfielder':
-        return 'rounded-full';
-      case 'forward':
-        return 'rounded-full';
-      default:
-        return 'rounded-full';
+        return '';
     }
   };
 
   return (
     <motion.div
       key={player.id}
-      className={`absolute ${getPlayerSize(player.role)} ${getPlayerShape(player.role)} ${getPlayerColor(player)} flex items-center justify-center shadow-md`}
+      className={`absolute w-6 h-6 rounded-full ${getPlayerColor(player)} ${getRoleIndicator(player.role)} 
+                 flex items-center justify-center shadow-md`}
       animate={{
         x: player.position.x,
         y: player.position.y,
@@ -77,13 +52,13 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
       }}
       initial={false}
     >
-      {/* Add small indicators for midfielder and forward roles */}
-      {player.role === 'midfielder' && (
-        <div className="w-2 h-2 bg-white rounded-full opacity-70"></div>
-      )}
-      {player.role === 'forward' && (
-        <div className="w-1 h-3 bg-white rounded-sm opacity-70"></div>
-      )}
+      {/* Pequeña letra para indicar el rol */}
+      <span className="text-[8px] text-white font-bold">
+        {player.role === 'goalkeeper' ? 'G' : 
+         player.role === 'defender' ? 'D' : 
+         player.role === 'midfielder' ? 'M' : 
+         player.role === 'forward' ? 'F' : ''}
+      </span>
     </motion.div>
   );
 };

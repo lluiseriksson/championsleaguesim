@@ -47,27 +47,18 @@ const GameBoard: React.FC<GameBoardProps> = ({
         updatePlayerPositions={updatePlayerPositions}
       />
       
-      {/* Player role legend */}
-      <div className="absolute bottom-2 right-2 bg-black/40 p-2 rounded text-xs text-white flex gap-2">
-        <div className="flex items-center">
-          <div className="w-3 h-3 rounded-lg bg-white border border-white mr-1"></div>
-          <span>GK</span>
+      {/* Leyenda de roles actualizada */}
+      <div className="absolute bottom-2 right-2 bg-black/60 p-2 rounded text-xs text-white">
+        <div className="flex items-center mb-1">
+          <div className="w-3 h-3 rounded-full bg-gradient-to-br from-red-500 to-red-700 mr-2"></div>
+          <span>Equipo Rojo</span>
         </div>
-        <div className="flex items-center">
-          <div className="w-3 h-3 rounded-full opacity-80 bg-white mr-1"></div>
-          <span>DEF</span>
+        <div className="flex items-center mb-1">
+          <div className="w-3 h-3 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 mr-2"></div>
+          <span>Equipo Azul</span>
         </div>
-        <div className="flex items-center">
-          <div className="w-3 h-3 rounded-full bg-white mr-1 flex items-center justify-center">
-            <div className="w-1 h-1 bg-black rounded-full"></div>
-          </div>
-          <span>MID</span>
-        </div>
-        <div className="flex items-center">
-          <div className="w-3 h-3 rounded-full bg-white mr-1 flex items-center justify-center">
-            <div className="w-0.5 h-1.5 bg-black rounded-sm"></div>
-          </div>
-          <span>FWD</span>
+        <div className="text-center mt-1 text-xs text-gray-300">
+          G: Portero | D: Defensa | M: Mediocampista | F: Delantero
         </div>
       </div>
     </div>
