@@ -1,3 +1,4 @@
+
 import { supabase } from '../integrations/supabase/client';
 import { NeuralNet, Player } from '../types/football';
 import { isNetworkValid } from './neuralHelpers';
@@ -41,11 +42,15 @@ export const saveModel = async (player: Player, version: number = 1): Promise<bo
       return false;
     }
 
-    // Calcular un puntaje de rendimiento basado en datos históricos del jugador
-    // (Este es un cálculo simple - podría mejorarse con más métricas)
-    let performanceScore = player.stats?.goalsScored || 0;
-    if (player.role === 'goalkeeper') {
-      performanceScore = player.stats?.goalsSaved || 0;
+    // Calcular un puntaje de rendimiento basado en el rol del jugador
+    // Como 'stats' no existe en Player, usamos valores predeterminados basados en el rol
+    let performanceScore = 0;
+    if (player.role === 'forward') {
+      performanceScore = 1; // Base score for forwards
+    } else if (player.role === 'goalkeeper') {
+      performanceScore = 1; // Base score for goalkeepers
+    } else {
+      performanceScore = 0.5; // For other positions
     }
 
     if (existingModel) {
