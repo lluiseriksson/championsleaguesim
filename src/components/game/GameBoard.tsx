@@ -46,6 +46,30 @@ const GameBoard: React.FC<GameBoardProps> = ({
         setScore={setScore}
         updatePlayerPositions={updatePlayerPositions}
       />
+      
+      {/* Player role legend */}
+      <div className="absolute bottom-2 right-2 bg-black/40 p-2 rounded text-xs text-white flex gap-2">
+        <div className="flex items-center">
+          <div className="w-3 h-3 rounded-lg bg-white border border-white mr-1"></div>
+          <span>GK</span>
+        </div>
+        <div className="flex items-center">
+          <div className="w-3 h-3 rounded-full opacity-80 bg-white mr-1"></div>
+          <span>DEF</span>
+        </div>
+        <div className="flex items-center">
+          <div className="w-3 h-3 rounded-full bg-white mr-1 flex items-center justify-center">
+            <div className="w-1 h-1 bg-black rounded-full"></div>
+          </div>
+          <span>MID</span>
+        </div>
+        <div className="flex items-center">
+          <div className="w-3 h-3 rounded-full bg-white mr-1 flex items-center justify-center">
+            <div className="w-0.5 h-1.5 bg-black rounded-sm"></div>
+          </div>
+          <span>FWD</span>
+        </div>
+      </div>
     </div>
   );
 };
