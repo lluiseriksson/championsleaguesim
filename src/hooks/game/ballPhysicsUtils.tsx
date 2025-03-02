@@ -152,14 +152,24 @@ function handleFieldPlayerCollisions(
                            (player.team === 'blue' && normalizedDx > 0);
                            
         if (ownGoalRisk) {
-          // If high risk of own goal, deflect ball more sideways to avoid shooting toward own goal
-          const sidewaysDeflection = normalizedDy * 2.5;
-          newVelocity.x += normalizedDx * 0.5; // Reduced forward component
-          newVelocity.y += sidewaysDeflection; // Increased sideways component
-          console.log(`Potential own goal situation detected - deflecting ball sideways`);
+          // IMPROVED: More aggressive prevention of own goals
+          // If high risk of own goal, deflect ball more strongly to avoid shooting toward own goal
+          if (player.team === 'red') {
+            newVelocity.x = Math.abs(newVelocity.x) * 1.2; // Always positive X (rightward) for red team
+          } else {
+            newVelocity.x = -Math.abs(newVelocity.x) * 1.2; // Always negative X (leftward) for blue team
+          }
+          
+          // Add stronger sideways deflection
+          const sidewaysDeflection = normalizedDy * 3.0;
+          newVelocity.y = sidewaysDeflection;
+          console.log(`Strong own goal prevention for ${player.team} player - forcing ball away from own goal`);
         } else {
-          // Normal deflection physics
-          newVelocity.x += normalizedDx * 1.5; 
+          // Normal deflection physics with slight directional bias towards opponent goal
+          const directionBias = player.team === 'red' ? 0.2 : -0.2; // Positive for red, negative for blue
+          const adjustedDx = normalizedDx + directionBias;
+          
+          newVelocity.x += adjustedDx * 1.5; 
           newVelocity.y += normalizedDy * 1.5;
         }
       }

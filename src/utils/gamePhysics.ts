@@ -64,14 +64,14 @@ export const calculateNewVelocity = (
     
     if (ballMovingTowardsGoal) {
       // Calculate horizontal deflection direction (away from the goal)
-      const deflectionX = isLeftGoalkeeper ? 3.5 : -3.5; // Increased power for better clearance
+      const deflectionX = isLeftGoalkeeper ? 4.5 : -4.5; // Increased power for stronger clearance
       
       // Calculate vertical deflection to push ball away from goal center for better clearances
       const verticalOffset = ballPosition.y - centerY;
       const verticalFactor = Math.sign(verticalOffset) * (1.0 + Math.min(Math.abs(verticalOffset) / 100, 1.0));
       
       // Higher base speed for goalkeeper saves
-      const baseSpeed = 12; // Increased from 10
+      const baseSpeed = 14; // Increased from 12
       
       console.log(`Goalkeeper SAVE by ${isLeftGoalkeeper ? 'red' : 'blue'} team!`);
       
@@ -80,13 +80,27 @@ export const calculateNewVelocity = (
         y: verticalFactor * baseSpeed * 1.5
       });
     }
+    
+    // When not directly saving, still direct the ball towards the correct side of the field
+    // to prevent own goals by the goalkeeper
+    const teamDirection = isLeftGoalkeeper ? 1 : -1; // 1 for red (left goalkeeper), -1 for blue (right goalkeeper)
+    
+    return limitSpeed({
+      x: Math.abs(currentVelocity.x) * teamDirection * 1.5,
+      y: currentVelocity.y
+    });
   }
 
+  // ENHANCED directional shooting for field players
+  // Add team-specific logic to make the ball tend to go in the right direction
+  const team = playerPosition.x < PITCH_WIDTH / 2 ? 'red' : 'blue';
+  const directionalBias = team === 'red' ? 0.2 : -0.2; // Positive for red team, negative for blue team
+  
   // For other players or when the ball isn't going toward goal
   const normalizedDx = dx / distance;
   const normalizedDy = dy / distance;
   
-  // Calculate reflection velocity using incident angle
+  // Calculate reflection velocity using incident angle with directional bias
   const speed = Math.sqrt(
     currentVelocity.x * currentVelocity.x + 
     currentVelocity.y * currentVelocity.y
@@ -95,16 +109,30 @@ export const calculateNewVelocity = (
   // Higher base speed for all balls - never let it get too slow
   const adjustedSpeed = Math.max(7, speed * 1.3);  // Ensure speed is at least 7
   
-  const reflectionAngle = angle + (angle - incidentAngle);
+  // Add directional bias to reflection angle
+  const reflectionAngle = angle + (angle - incidentAngle) + directionalBias;
   
-  // Add slight random variation to the reflection
-  const randomVariation = (Math.random() - 0.5) * 0.3;
+  // Add slight random variation to the reflection (reduced for more predictable behavior)
+  const randomVariation = (Math.random() - 0.5) * 0.2; // Reduced from 0.3
   
   // Higher multiplier for goalkeeper collisions for stronger clearances
-  const speedMultiplier = isGoalkeeper ? 2.0 : 1.5; // Increased goalkeeper multiplier
+  const speedMultiplier = isGoalkeeper ? 2.0 : 1.5;
   
-  return limitSpeed({
+  // Calculate new velocity with all factors combined
+  let newVelocity = {
     x: adjustedSpeed * Math.cos(reflectionAngle + randomVariation) * speedMultiplier,
     y: adjustedSpeed * Math.sin(reflectionAngle + randomVariation) * speedMultiplier
-  });
+  };
+  
+  // Add one final directional bias check for very dangerous own-goal situations
+  const movingTowardsOwnGoal = (team === 'red' && newVelocity.x < 0) || 
+                              (team === 'blue' && newVelocity.x > 0);
+                             
+  if (movingTowardsOwnGoal && Math.abs(newVelocity.x) > 3) {
+    // Flip the x direction if headed strongly towards own goal
+    newVelocity.x = -newVelocity.x;
+    console.log(`Emergency direction correction applied for ${team} team!`);
+  }
+  
+  return limitSpeed(newVelocity);
 };

@@ -10,7 +10,7 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
   const normalizedPlayerX = normalizeValue(player.position.x, 0, 800);
   const normalizedPlayerY = normalizeValue(player.position.y, 0, 600);
   
-  // Calculate distances and angles to OPPONENT goal
+  // Calculate distances and angles to OPPONENT goal - crucial for shooting direction
   const distanceToGoal = calculateDistance(player.position, context.opponentGoal);
   const normalizedDistanceToGoal = normalizeValue(distanceToGoal, 0, 1000);
   
@@ -40,8 +40,13 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
                                    player.position.x < context.ownGoal.x)) ? 1 : 0;
   
   // Check if player is facing own goal (dangerous for own goals)
-  const isFacingOwnGoal = ((player.team === 'red' && normalizedPlayerX < normalizedBallX) ||
-                           (player.team === 'blue' && normalizedPlayerX > normalizedBallX)) ? 1 : 0;
+  // IMPROVED: More accurate check based on ball and player positions
+  const isFacingOwnGoal = ((player.team === 'red' && 
+                          ((ball.position.x < player.position.x) || 
+                           (Math.abs(angleToOwnGoal) < Math.PI/4))) || 
+                          (player.team === 'blue' && 
+                          ((ball.position.x > player.position.x) || 
+                           (Math.abs(angleToOwnGoal) < Math.PI/4)))) ? 1 : 0;
   
   // Find nearest teammate
   let nearestTeammateDistance = 1000;
@@ -83,9 +88,22 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
   const normalizedOpponentDistance = normalizeValue(nearestOpponentDistance, 0, 1000);
   const normalizedOpponentAngle = normalizeValue(nearestOpponentAngle, -Math.PI, Math.PI);
   
-  // Enhanced flags for special situations to help reduce own goals
+  // ENHANCED: Better flags for special situations and direction
   const distanceToBall = calculateDistance(player.position, ball.position);
-  const isInShootingRange = distanceToBall < 100 && distanceToGoal < 300 ? 1 : 0;
+  
+  // Improve shooting range detection with directional component
+  let isInShootingRange = 0;
+  if (distanceToBall < 100 && distanceToGoal < 300) {
+    // Add directional awareness: only consider in shooting range if player is on correct side
+    if ((player.team === 'red' && player.position.x > 400) || 
+        (player.team === 'blue' && player.position.x < 400)) {
+      isInShootingRange = 1;
+    } else {
+      // Far from correct shooting position, reduce shooting probability
+      isInShootingRange = 0.2;
+    }
+  }
+  
   const isInPassingRange = distanceToBall < 80 && nearestTeammateDistance < 200 ? 1 : 0;
   
   // ENHANCED: Better detection of dangerous shooting positions
@@ -117,7 +135,6 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
     angleToOwnGoal: normalizedAngleToOwnGoal,
     isFacingOwnGoal,
     isDangerousPosition,
-    // New input
     isBetweenBallAndOwnGoal
   };
 };

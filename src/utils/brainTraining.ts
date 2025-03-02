@@ -1,4 +1,3 @@
-
 import { NeuralNet, Player, TeamContext, Ball } from '../types/football';
 import { saveModel } from './neuralModelService';
 import { calculateNetworkInputs } from './neuralInputs';
@@ -15,6 +14,7 @@ const GOALKEEPER_MIN_PENALTY = -0.3;
 const GOALKEEPER_DISTANCE_THRESHOLD = 50;
 const OWN_GOAL_TEAM_PENALTY = -2.0;
 const OWN_GOAL_PLAYER_PENALTY = -5.0;
+const WRONG_DIRECTION_SHOT_PENALTY = -4.0;
 
 export const updatePlayerBrain = (
   brain: NeuralNet, 
@@ -84,7 +84,21 @@ export const updatePlayerBrain = (
   const lastOutput = brain.lastOutput;
   const lastAction = brain.lastAction;
 
-  if (scored) {
+  let wrongDirection = false;
+  if (lastAction === 'shoot') {
+    if (player.team === 'red' && lastOutput.x < 0) {
+      wrongDirection = true;
+      console.log(`WRONG DIRECTION: ${player.team} ${player.role} #${player.id} shot towards their own goal!`);
+      rewardFactor = WRONG_DIRECTION_SHOT_PENALTY;
+    }
+    else if (player.team === 'blue' && lastOutput.x > 0) {
+      wrongDirection = true;
+      console.log(`WRONG DIRECTION: ${player.team} ${player.role} #${player.id} shot towards their own goal!`);
+      rewardFactor = WRONG_DIRECTION_SHOT_PENALTY;
+    }
+  }
+
+  if (scored && !wrongDirection) {
     if (lastAction === 'shoot') {
       rewardFactor *= 1.8;
     } else if (lastAction === 'pass' && player.team === 'red') {
@@ -124,9 +138,13 @@ export const updatePlayerBrain = (
     intercept: lastAction === 'intercept' ? (scored && !isOwnGoal ? 1 : 0) : 0
   };
 
-  if (isOwnGoal && lastAction === 'shoot') {
+  if (wrongDirection && lastAction === 'shoot') {
     trainOutput.shootBall = 0;
-    const ownGoalDirection = player.team === 'red' ? -1 : 1;
+    trainOutput.moveX = player.team === 'red' ? 1 : -1;
+    trainOutput.passBall = 1;
+  }
+  else if (isOwnGoal && lastAction === 'shoot') {
+    trainOutput.shootBall = 0;
     trainOutput.moveX = player.team === 'red' ? 1 : 0;
     trainOutput.passBall = 1;
   }
@@ -143,12 +161,12 @@ export const updatePlayerBrain = (
       input: inputs,
       output: trainOutput
     }], {
-      iterations: isOwnGoal ? 8 : 2,
+      iterations: wrongDirection ? 10 : (isOwnGoal ? 8 : 2),
       errorThresh: 0.01,
-      learningRate: isOwnGoal ? LEARNING_RATE * 3 : LEARNING_RATE
+      learningRate: wrongDirection ? LEARNING_RATE * 5 : (isOwnGoal ? LEARNING_RATE * 3 : LEARNING_RATE)
     });
     
-    const saveThreshold = isOwnGoal ? 0.95 : 0.5;
+    const saveThreshold = wrongDirection || isOwnGoal ? 0.95 : 0.5;
     if (Math.random() < saveThreshold) {
       saveModel(player).catch(error => 
         console.error(`Error saving model after goal for ${player.team} ${player.role}:`, error)
