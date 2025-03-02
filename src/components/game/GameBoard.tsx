@@ -46,21 +46,6 @@ const GameBoard: React.FC<GameBoardProps> = ({
         setScore={setScore}
         updatePlayerPositions={updatePlayerPositions}
       />
-      
-      {/* Leyenda de roles actualizada */}
-      <div className="absolute bottom-2 right-2 bg-black/60 p-2 rounded text-xs text-white">
-        <div className="flex items-center mb-1">
-          <div className="w-3 h-3 rounded-full bg-gradient-to-br from-red-500 to-red-700 mr-2"></div>
-          <span>Equipo Rojo</span>
-        </div>
-        <div className="flex items-center mb-1">
-          <div className="w-3 h-3 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 mr-2"></div>
-          <span>Equipo Azul</span>
-        </div>
-        <div className="text-center mt-1 text-xs text-gray-300">
-          G: Portero | D: Defensa | M: Mediocampista | F: Delantero
-        </div>
-      </div>
     </div>
   );
 };
