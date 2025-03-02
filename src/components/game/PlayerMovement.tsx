@@ -10,12 +10,13 @@ interface PlayerMovementProps {
   gameReady: boolean;
 }
 
-const PlayerMovement: React.FC<PlayerMovementProps> = ({ 
+// Changed from React.FC to a custom hook
+const usePlayerMovement = ({ 
   players, 
   setPlayers, 
   ball, 
   gameReady 
-}) => {
+}: PlayerMovementProps) => {
   const updatePlayerPositions = React.useCallback(() => {
     if (!gameReady) return;
     
@@ -169,4 +170,4 @@ const PlayerMovement: React.FC<PlayerMovementProps> = ({
   return { updatePlayerPositions };
 };
 
-export default PlayerMovement;
+export default usePlayerMovement;
