@@ -1,4 +1,3 @@
-
 import { Position, NeuralInput, NeuralOutput, TeamContext, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
 import * as brain from 'brain.js';
 
@@ -74,7 +73,12 @@ export const createNeuralInput = (
     nearestOpponentAngle: nearestOpponent.angle,
     isInShootingRange,
     isInPassingRange,
-    isDefendingRequired
+    isDefendingRequired,
+    distanceToOwnGoal: 0.5, // Default values that will be overridden when used properly
+    angleToOwnGoal: 0,
+    isFacingOwnGoal: 0,
+    isDangerousPosition: 0,
+    isBetweenBallAndOwnGoal: 0
   };
 };
 
@@ -102,7 +106,12 @@ export const isNetworkValid = (net: brain.NeuralNetwork<NeuralInput, NeuralOutpu
       nearestOpponentAngle: 0,
       isInShootingRange: 0,
       isInPassingRange: 0,
-      isDefendingRequired: 0
+      isDefendingRequired: 0,
+      distanceToOwnGoal: 0.5,
+      angleToOwnGoal: 0,
+      isFacingOwnGoal: 0,
+      isDangerousPosition: 0,
+      isBetweenBallAndOwnGoal: 0
     };
 
     // Run the network with test input and check if output is valid

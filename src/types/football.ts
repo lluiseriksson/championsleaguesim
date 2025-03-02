@@ -1,4 +1,3 @@
-
 import * as brain from 'brain.js';
 
 export interface Position {
@@ -31,6 +30,12 @@ export interface NeuralInput {
   isInShootingRange: number;
   isInPassingRange: number;
   isDefendingRequired: number;
+  // Añadimos campos para mejor prevención de autogoles
+  distanceToOwnGoal: number;
+  angleToOwnGoal: number;
+  isFacingOwnGoal: number;
+  isDangerousPosition: number;
+  isBetweenBallAndOwnGoal: number;
 }
 
 // Cambiamos NeuralOutput para que cumpla con INeuralNetworkData
