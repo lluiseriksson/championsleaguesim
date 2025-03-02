@@ -5,6 +5,7 @@ import { saveModel } from '../utils/neuralModelService';
 import { useBallMovementSystem } from './game/BallMovementSystem';
 import { useModelSyncSystem } from './game/ModelSyncSystem';
 import { useGoalSystem } from './game/GoalSystem';
+import { toast } from 'sonner';
 
 interface GameLogicProps {
   players: Player[];
@@ -27,6 +28,10 @@ const GameLogic: React.FC<GameLogicProps> = ({
 }) => {
   // Reference to track the last player who touched the ball
   const lastPlayerTouchRef = React.useRef<Player | null>(null);
+  
+  // Track total goals for learning progress
+  const totalGoalsRef = React.useRef(0);
+  const lastScoreRef = React.useRef({ red: 0, blue: 0 });
   
   console.log("GameLogic rendered with players:", players.length);
 
@@ -60,6 +65,15 @@ const GameLogic: React.FC<GameLogicProps> = ({
         console.log(`Goal scored by team ${scoringTeam}`);
         processGoal(scoringTeam);
         
+        // Increment total goals counter to track learning progress
+        totalGoalsRef.current += 1;
+        
+        if (totalGoalsRef.current % 100 === 0) {
+          toast(`¡${totalGoalsRef.current} goles jugados!`, {
+            description: "Las redes neuronales continúan aprendiendo...",
+          });
+        }
+        
         // Reset ball position to center after goal
         setBall(prev => ({
           ...prev,
@@ -70,9 +84,9 @@ const GameLogic: React.FC<GameLogicProps> = ({
           }
         }));
         
-        return scoringTeam; // Fix: Return the scoring team instead of boolean
+        return scoringTeam;
       }
-      return null; // Fix: Return null instead of boolean false
+      return null;
     },
     onBallTouch: (player) => {
       lastPlayerTouchRef.current = player;
@@ -81,13 +95,26 @@ const GameLogic: React.FC<GameLogicProps> = ({
   });
 
   // Model synchronization system
-  const { syncModels, incrementSyncCounter } = useModelSyncSystem({
+  const { syncModels, incrementSyncCounter, checkLearningProgress } = useModelSyncSystem({
     players,
     setPlayers
   });
 
   // Track if game is running
   const isRunningRef = React.useRef(true);
+
+  // Check for score changes to track goals
+  React.useEffect(() => {
+    const newTotalGoals = score.red + score.blue;
+    const prevTotalGoals = lastScoreRef.current.red + lastScoreRef.current.blue;
+    
+    if (newTotalGoals > prevTotalGoals) {
+      // Update total goals reference with actual score data
+      totalGoalsRef.current = newTotalGoals;
+    }
+    
+    lastScoreRef.current = { ...score };
+  }, [score]);
 
   React.useEffect(() => {
     console.log("Game loop started");
@@ -121,6 +148,11 @@ const GameLogic: React.FC<GameLogicProps> = ({
     // Sync models on startup
     syncModels();
     
+    // Check learning progress on mount
+    setTimeout(() => {
+      checkLearningProgress();
+    }, 5000); // Check after 5 seconds to allow initial loading
+    
     console.log("Game loop initialized");
 
     // Debug timer to log ball state every 5 seconds
@@ -135,10 +167,18 @@ const GameLogic: React.FC<GameLogicProps> = ({
       }
     }, 5000);
 
+    // Setup periodic learning progress check
+    const learningCheckInterval = setInterval(() => {
+      if (isRunningRef.current) {
+        checkLearningProgress();
+      }
+    }, 120000); // Check every 2 minutes
+
     return () => {
       console.log("Game loop cleanup");
       cancelAnimationFrame(frameId);
       clearInterval(debugInterval);
+      clearInterval(learningCheckInterval);
       isRunningRef.current = false;
       
       // When unmounting, save current models
@@ -149,7 +189,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
             .catch(err => console.error(`Error saving model on exit:`, err));
         });
     };
-  }, [players, updatePlayerPositions, updateBallPosition, incrementSyncCounter, syncModels, ball, score]);
+  }, [players, updatePlayerPositions, updateBallPosition, incrementSyncCounter, syncModels, checkLearningProgress, ball, score]);
 
   return null;
 };

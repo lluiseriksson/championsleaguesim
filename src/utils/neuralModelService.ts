@@ -1,4 +1,3 @@
-
 import { supabase } from '../integrations/supabase/client';
 import { NeuralNet, Player } from '../types/football';
 import { isNetworkValid } from './neuralHelpers';
@@ -13,6 +12,7 @@ interface NeuralModelData {
   weights: any;
   training_sessions?: number;
   performance_score?: number;
+  last_updated?: string;
 }
 
 // Función para guardar un modelo en Supabase
@@ -30,7 +30,7 @@ export const saveModel = async (player: Player, version: number = 1): Promise<bo
     // Buscamos si ya existe un modelo con este equipo, rol y versión
     const { data: existingModel, error: findError } = await supabase
       .from('neural_models')
-      .select('id, training_sessions')
+      .select('id, training_sessions, performance_score')
       .eq('team', player.team)
       .eq('role', player.role)
       .eq('version', version)
@@ -41,13 +41,27 @@ export const saveModel = async (player: Player, version: number = 1): Promise<bo
       return false;
     }
 
+    // Calcular un puntaje de rendimiento basado en datos históricos del jugador
+    // (Este es un cálculo simple - podría mejorarse con más métricas)
+    let performanceScore = player.stats?.goalsScored || 0;
+    if (player.role === 'goalkeeper') {
+      performanceScore = player.stats?.goalsSaved || 0;
+    }
+
     if (existingModel) {
-      // Actualizamos el modelo existente
+      // Actualizamos el modelo existente, preservando o mejorando la puntuación de rendimiento
+      const newPerformanceScore = Math.max(
+        performanceScore, 
+        existingModel.performance_score || 0
+      );
+      
       const { error: updateError } = await supabase
         .from('neural_models')
         .update({ 
           weights, 
-          training_sessions: (existingModel.training_sessions || 1) + 1 
+          training_sessions: (existingModel.training_sessions || 1) + 1,
+          performance_score: newPerformanceScore,
+          last_updated: new Date().toISOString()
         })
         .eq('id', existingModel.id);
 
@@ -56,7 +70,7 @@ export const saveModel = async (player: Player, version: number = 1): Promise<bo
         return false;
       }
       
-      console.log(`Modelo ${player.team} ${player.role} actualizado correctamente`);
+      console.log(`Modelo ${player.team} ${player.role} actualizado correctamente (Sesiones: ${(existingModel.training_sessions || 0) + 1})`);
     } else {
       // Creamos un nuevo modelo
       const { error: insertError } = await supabase
@@ -65,7 +79,10 @@ export const saveModel = async (player: Player, version: number = 1): Promise<bo
           team: player.team,
           role: player.role,
           version,
-          weights
+          weights,
+          training_sessions: 1,
+          performance_score: performanceScore,
+          last_updated: new Date().toISOString()
         });
 
       if (insertError) {
@@ -73,7 +90,7 @@ export const saveModel = async (player: Player, version: number = 1): Promise<bo
         return false;
       }
       
-      console.log(`Modelo ${player.team} ${player.role} guardado correctamente`);
+      console.log(`Modelo ${player.team} ${player.role} guardado correctamente (nuevo modelo)`);
     }
 
     return true;
@@ -221,5 +238,65 @@ export const combineModels = async (team: string, role: string): Promise<NeuralN
   } catch (error) {
     console.error('Error al combinar modelos:', error);
     return null;
+  }
+};
+
+// Nueva función para obtener estadísticas de los modelos
+export const getModelStats = async (): Promise<any[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('neural_models')
+      .select('team, role, version, training_sessions, performance_score, last_updated')
+      .order('performance_score', { ascending: false });
+
+    if (error || !data) {
+      console.error('Error al obtener estadísticas de modelos:', error);
+      return [];
+    }
+
+    return data.map(model => ({
+      ...model,
+      training_sessions: model.training_sessions || 0,
+      performance_score: model.performance_score || 0
+    }));
+  } catch (error) {
+    console.error('Error al obtener estadísticas de modelos:', error);
+    return [];
+  }
+};
+
+// Nueva función para comparar el rendimiento entre redes
+export const compareModelPerformance = async (teamA: string, teamB: string): Promise<{
+  teamA: number,
+  teamB: number,
+  difference: number
+}> => {
+  try {
+    // Obtener todos los modelos de ambos equipos
+    const { data, error } = await supabase
+      .from('neural_models')
+      .select('team, role, performance_score')
+      .in('team', [teamA, teamB]);
+
+    if (error || !data) {
+      console.error('Error al comparar rendimiento de modelos:', error);
+      return { teamA: 0, teamB: 0, difference: 0 };
+    }
+
+    // Calcular puntuación total por equipo
+    const teamAModels = data.filter(model => model.team === teamA);
+    const teamBModels = data.filter(model => model.team === teamB);
+    
+    const teamAScore = teamAModels.reduce((sum, model) => sum + (model.performance_score || 0), 0);
+    const teamBScore = teamBModels.reduce((sum, model) => sum + (model.performance_score || 0), 0);
+    
+    return { 
+      teamA: teamAScore, 
+      teamB: teamBScore, 
+      difference: teamAScore - teamBScore 
+    };
+  } catch (error) {
+    console.error('Error al comparar rendimiento de modelos:', error);
+    return { teamA: 0, teamB: 0, difference: 0 };
   }
 };
