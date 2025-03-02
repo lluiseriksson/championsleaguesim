@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Player, Ball, PITCH_WIDTH, PITCH_HEIGHT } from '../../types/football';
 import { moveGoalkeeper } from '../../utils/playerBrain';
@@ -56,11 +55,11 @@ const usePlayerMovement = ({
               y: player.position.y + moveY
             };
             
-            let maxDistance = 50;
+            let maxDistance = 55; // 50 * 1.1 = 55
             switch (player.role) {
-              case 'defender': maxDistance = 70; break;
-              case 'midfielder': maxDistance = 100; break;
-              case 'forward': maxDistance = 120; break;
+              case 'defender': maxDistance = 77; break; // 70 * 1.1 = 77
+              case 'midfielder': maxDistance = 110; break; // 100 * 1.1 = 110
+              case 'forward': maxDistance = 132; break; // 120 * 1.1 = 132
             }
             
             const distanceFromStart = Math.sqrt(
@@ -115,7 +114,7 @@ const usePlayerMovement = ({
           
           player.brain.lastOutput = { x: moveX, y: moveY };
 
-          let maxDistance = 50;
+          let maxDistance = 55; // 50 * 1.1 = 55
           const distanceToBall = Math.sqrt(
             Math.pow(ball.position.x - player.position.x, 2) +
             Math.pow(ball.position.y - player.position.y, 2)
@@ -123,13 +122,13 @@ const usePlayerMovement = ({
 
           switch (player.role) {
             case 'defender':
-              maxDistance = distanceToBall < 150 ? 96 : 60;
+              maxDistance = distanceToBall < 150 ? 105.6 : 66; // 96 * 1.1 = 105.6, 60 * 1.1 = 66
               break;
             case 'midfielder':
-              maxDistance = distanceToBall < 200 ? 120 : 80;
+              maxDistance = distanceToBall < 200 ? 132 : 88; // 120 * 1.1 = 132, 80 * 1.1 = 88
               break;
             case 'forward':
-              maxDistance = distanceToBall < 250 ? 200 : 120;
+              maxDistance = distanceToBall < 250 ? 220 : 132; // 200 * 1.1 = 220, 120 * 1.1 = 132
               break;
           }
 
