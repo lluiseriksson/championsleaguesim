@@ -1,3 +1,4 @@
+
 import * as brain from 'brain.js';
 
 export interface Position {
@@ -63,9 +64,16 @@ export interface Player {
   targetPosition: Position;
 }
 
+// Added bounceDetection property to Ball interface
 export interface Ball {
   position: Position;
   velocity: Position;
+  bounceDetection?: {
+    consecutiveBounces: number;
+    lastBounceTime: number;
+    lastBounceSide: string;
+    sideEffect: boolean;
+  };
 }
 
 export interface Score {
