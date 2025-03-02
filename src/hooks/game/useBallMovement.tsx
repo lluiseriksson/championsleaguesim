@@ -58,6 +58,7 @@ export const useBallMovement = ({
             
             // Random direction but not completely random
             return {
+              ...currentBall,
               position: currentBall.position,
               velocity: {
                 x: (Math.random() * 6) - 3,
@@ -79,6 +80,7 @@ export const useBallMovement = ({
       if (currentSpeed === 0) {
         console.log("Ball has zero velocity, giving it an initial push");
         return {
+          ...currentBall,
           position: currentBall.position,
           velocity: {
             x: (Math.random() * 6) - 3,
@@ -99,10 +101,17 @@ export const useBallMovement = ({
         console.log(`Goal detected for team ${goalScored}`);
         // Reset ball position to center with a significant initial velocity
         return {
+          ...currentBall,
           position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
           velocity: { 
             x: goalScored === 'red' ? 5 : -5, 
             y: (Math.random() - 0.5) * 5
+          },
+          bounceDetection: {
+            consecutiveBounces: 0,
+            lastBounceTime: 0,
+            lastBounceSide: '',
+            sideEffect: false
           }
         };
       }

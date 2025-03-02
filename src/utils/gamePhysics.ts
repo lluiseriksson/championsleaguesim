@@ -38,6 +38,18 @@ export const checkCollision = (ballPos: Position, playerPos: Position): boolean 
   return distance <= minDistance + 0.5;
 };
 
+export const addRandomEffect = (velocity: Position): Position => {
+  // Add a small random component to the X velocity
+  const randomX = (Math.random() - 0.5) * 2;
+  // Add a larger random component to the Y velocity to push ball inward
+  const randomY = (Math.random() * 2) - 1;
+  
+  return {
+    x: velocity.x + randomX,
+    y: velocity.y + randomY * 2 // Greater effect on Y to push ball away from boundaries
+  };
+};
+
 export const calculateNewVelocity = (
   ballPosition: Position,
   playerPosition: Position,

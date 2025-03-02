@@ -1,6 +1,6 @@
 import React from 'react';
 import { Player, Ball, Position, PITCH_WIDTH, PITCH_HEIGHT, BALL_RADIUS, GOAL_HEIGHT } from '../../types/football';
-import { checkCollision, calculateNewVelocity } from '../../utils/gamePhysics';
+import { checkCollision, calculateNewVelocity, addRandomEffect } from '../../utils/gamePhysics';
 
 // Handle collisions and physics for the ball
 export function handleBallPhysics(
@@ -14,6 +14,19 @@ export function handleBallPhysics(
 ): Ball {
   // Check for boundary collisions (top and bottom)
   let newVelocity = { ...currentBall.velocity };
+  
+  // Track consecutive bounces on same side
+  const bounceDetectionRef = currentBall.bounceDetection || {
+    consecutiveBounces: 0,
+    lastBounceTime: 0,
+    lastBounceSide: '',
+    sideEffect: false
+  };
+  
+  const currentTime = performance.now();
+  const bounceCooldown = 1000; // 1 second between bounce counts
+  
+  // Check for boundary collisions (top and bottom)
   if (newPosition.y <= BALL_RADIUS || newPosition.y >= PITCH_HEIGHT - BALL_RADIUS) {
     newVelocity.y = -newVelocity.y * 0.9; // Add damping
     
@@ -21,6 +34,34 @@ export function handleBallPhysics(
     if (Math.abs(newVelocity.y) < 3.5) {
       newVelocity.y = newVelocity.y > 0 ? 3.5 : -3.5;
     }
+    
+    // Track consecutive top/bottom bounces
+    const currentSide = newPosition.y <= BALL_RADIUS ? 'top' : 'bottom';
+    
+    if (bounceDetectionRef.lastBounceSide === currentSide && 
+        currentTime - bounceDetectionRef.lastBounceTime < bounceCooldown) {
+      bounceDetectionRef.consecutiveBounces++;
+      
+      // If ball is bouncing repeatedly on same side, add random effect
+      if (bounceDetectionRef.consecutiveBounces >= 2) {
+        console.log(`Ball stuck on ${currentSide} border, adding random effect`);
+        newVelocity = addRandomEffect(newVelocity);
+        bounceDetectionRef.sideEffect = true;
+        
+        // Push ball more toward center of field
+        const centerY = PITCH_HEIGHT / 2;
+        const pushDirection = currentSide === 'top' ? 1 : -1;
+        newVelocity.y += pushDirection * 2;
+        
+        // Reset counter after applying effect
+        bounceDetectionRef.consecutiveBounces = 0;
+      }
+    } else {
+      bounceDetectionRef.consecutiveBounces = 1;
+    }
+    
+    bounceDetectionRef.lastBounceSide = currentSide;
+    bounceDetectionRef.lastBounceTime = currentTime;
   }
 
   // Check for boundary collisions (left and right)
@@ -37,6 +78,34 @@ export function handleBallPhysics(
       if (Math.abs(newVelocity.x) < 3.5) {
         newVelocity.x = newVelocity.x > 0 ? 3.5 : -3.5;
       }
+      
+      // Track consecutive left/right bounces
+      const currentSide = newPosition.x <= BALL_RADIUS ? 'left' : 'right';
+      
+      if (bounceDetectionRef.lastBounceSide === currentSide && 
+          currentTime - bounceDetectionRef.lastBounceTime < bounceCooldown) {
+        bounceDetectionRef.consecutiveBounces++;
+        
+        // If ball is bouncing repeatedly on same side, add random effect
+        if (bounceDetectionRef.consecutiveBounces >= 2) {
+          console.log(`Ball stuck on ${currentSide} border, adding random effect`);
+          newVelocity = addRandomEffect(newVelocity);
+          bounceDetectionRef.sideEffect = true;
+          
+          // Push ball more toward center of field
+          const centerX = PITCH_WIDTH / 2;
+          const pushDirection = currentSide === 'left' ? 1 : -1;
+          newVelocity.x += pushDirection * 2;
+          
+          // Reset counter after applying effect
+          bounceDetectionRef.consecutiveBounces = 0;
+        }
+      } else {
+        bounceDetectionRef.consecutiveBounces = 1;
+      }
+      
+      bounceDetectionRef.lastBounceSide = currentSide;
+      bounceDetectionRef.lastBounceTime = currentTime;
     }
   }
 
@@ -45,7 +114,6 @@ export function handleBallPhysics(
   newPosition.y = Math.max(BALL_RADIUS, Math.min(PITCH_HEIGHT - BALL_RADIUS, newPosition.y));
 
   // Get current time to prevent multiple collisions
-  const currentTime = performance.now();
   const collisionCooldown = 150; // ms
 
   // ENHANCED: Prioritize goalkeeper collisions with higher priority window
@@ -106,7 +174,8 @@ export function handleBallPhysics(
 
   return {
     position: newPosition,
-    velocity: newVelocity
+    velocity: newVelocity,
+    bounceDetection: bounceDetectionRef
   };
 }
 
