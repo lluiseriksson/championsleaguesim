@@ -20,7 +20,7 @@ const FootballPitch: React.FC = () => {
   const [score, setScore] = React.useState<Score>({ red: 0, blue: 0 });
   const [gameReady, setGameReady] = React.useState(false);
 
-  // Usar nuestro hook de PlayerMovement
+  // Use our PlayerMovement hook
   const { updatePlayerPositions } = usePlayerMovement({ 
     players, 
     setPlayers, 

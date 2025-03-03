@@ -10,7 +10,7 @@ interface PlayerMovementProps {
   gameReady: boolean;
 }
 
-// Cambiado de React.FC a un hook personalizado
+// Changed from React.FC to a custom hook
 const usePlayerMovement = ({ 
   players, 
   setPlayers, 
@@ -23,7 +23,6 @@ const usePlayerMovement = ({
     setPlayers(currentPlayers => 
       currentPlayers.map(player => {
         try {
-          // Los porteros se mueven libremente
           if (player.role === 'goalkeeper') {
             const movement = moveGoalkeeper(player, ball);
             const newPosition = {
@@ -52,12 +51,12 @@ const usePlayerMovement = ({
             const moveX = dist > 0 ? (dx / dist) * moveSpeed : 0;
             const moveY = dist > 0 ? (dy / dist) * moveSpeed : 0;
             
-            let newPosition = {
+            const newPosition = {
               x: player.position.x + moveX,
               y: player.position.y + moveY
             };
             
-            // Aumentado en un 50% respecto a los valores base
+            // Increased by 50% from base values
             let maxDistance = 75; // 50 * 1.5 = 75
             switch (player.role) {
               case 'defender': maxDistance = 105; break; // 70 * 1.5 = 105
@@ -93,7 +92,6 @@ const usePlayerMovement = ({
             };
           }
           
-          // Uso de red neuronal para el movimiento
           const input = {
             ballX: ball.position.x / PITCH_WIDTH,
             ballY: ball.position.y / PITCH_HEIGHT,
@@ -118,7 +116,7 @@ const usePlayerMovement = ({
           
           player.brain.lastOutput = { x: moveX, y: moveY };
 
-          // Aumentado todas las distancias en un 50% respecto a valores base
+          // Increased all distances by 50% from base values
           let maxDistance = 75; // 50 * 1.5 = 75
           const distanceToBall = Math.sqrt(
             Math.pow(ball.position.x - player.position.x, 2) +
@@ -137,7 +135,7 @@ const usePlayerMovement = ({
               break;
           }
 
-          let newPosition = {
+          const newPosition = {
             x: player.position.x + moveX * 2,
             y: player.position.y + moveY * 2,
           };
@@ -155,7 +153,7 @@ const usePlayerMovement = ({
             newPosition.x = player.targetPosition.x + Math.cos(angle) * maxDistance;
             newPosition.y = player.targetPosition.y + Math.sin(angle) * maxDistance;
           }
-          
+
           newPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, newPosition.x));
           newPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, newPosition.y));
 
