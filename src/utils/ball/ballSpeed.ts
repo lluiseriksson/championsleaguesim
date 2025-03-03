@@ -1,8 +1,8 @@
 
 import { Position } from '../../types/football';
 
-const MAX_BALL_SPEED = 16; // Slightly increased for better billiard physics
-const MIN_BALL_SPEED = 5.0; // Increased to ensure ball keeps moving like a billiard ball
+const MAX_BALL_SPEED = 18; // Increased for better billiard physics
+const MIN_BALL_SPEED = 6.0; // Increased to ensure ball keeps moving like a billiard ball
 
 export const limitSpeed = (velocity: Position): Position => {
   const speed = Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
@@ -31,8 +31,8 @@ export const limitSpeed = (velocity: Position): Position => {
 
 export const addRandomEffect = (velocity: Position): Position => {
   // Billiard-like randomness - more controlled but still unpredictable
-  const randomX = (Math.random() - 0.5) * 5; // Increased from 4 to 5
-  const randomY = (Math.random() - 0.5) * 5; // Increased from 4 to 5
+  const randomX = (Math.random() - 0.5) * 3; // Reduced randomness for more predictable bounces
+  const randomY = (Math.random() - 0.5) * 3; // Reduced randomness for more predictable bounces
   
   return {
     x: velocity.x + randomX,

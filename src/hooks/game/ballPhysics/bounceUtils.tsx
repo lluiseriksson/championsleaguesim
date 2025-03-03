@@ -20,12 +20,16 @@ export function handleBoundaryBounce(
   
   // Handle top and bottom boundary collisions
   if (newPosition.y <= BALL_RADIUS || newPosition.y >= PITCH_HEIGHT - BALL_RADIUS) {
-    newVelocity.y = -newVelocity.y * 0.9; // Add damping
+    // BILLIARD-STYLE BOUNCE: highly elastic with very little energy loss
+    newVelocity.y = -newVelocity.y * 0.98; // Almost perfect elasticity for billiard physics
     
     // Ensure the ball bounces with sufficient speed
-    if (Math.abs(newVelocity.y) < 3.5) {
-      newVelocity.y = newVelocity.y > 0 ? 3.5 : -3.5;
+    if (Math.abs(newVelocity.y) < 5) {
+      newVelocity.y = newVelocity.y > 0 ? 5 : -5;
     }
+    
+    // Add slight angle variation to prevent predictable bounces
+    newVelocity.x *= 1.02; // Slightly increase horizontal component
     
     // Track consecutive top/bottom bounces
     const currentSide = newPosition.y <= BALL_RADIUS ? 'top' : 'bottom';
@@ -43,7 +47,10 @@ export function handleBoundaryBounce(
         // Push ball more toward center of field
         const centerY = PITCH_HEIGHT / 2;
         const pushDirection = currentSide === 'top' ? 1 : -1;
-        newVelocity.y += pushDirection * 2;
+        newVelocity.y += pushDirection * 3;
+        
+        // Add more horizontal component to escape edge
+        newVelocity.x *= 1.2;
         
         // Reset counter after applying effect
         bounceDetectionRef.consecutiveBounces = 0;
@@ -56,7 +63,7 @@ export function handleBoundaryBounce(
     bounceDetectionRef.lastBounceTime = currentTime;
   }
 
-  // Handle left and right boundary collisions - BILLIARD STYLE PHYSICS
+  // Handle left and right boundary collisions - ENHANCED BILLIARD STYLE PHYSICS
   if (newPosition.x <= BALL_RADIUS || newPosition.x >= PITCH_WIDTH - BALL_RADIUS) {
     // Only reverse if not in goal area
     const goalY = PITCH_HEIGHT / 2;
@@ -64,22 +71,22 @@ export function handleBoundaryBounce(
     const goalBottom = goalY + GOAL_HEIGHT / 2;
     
     if (newPosition.y < goalTop || newPosition.y > goalBottom) {
-      // Perfect billiard-style bounce - very elastic with minimal energy loss
-      newVelocity.x = -newVelocity.x * 0.95; // Less damping for more elastic bounce
+      // PERFECT BILLIARD PHYSICS: highly elastic bounce with minimal energy loss
+      newVelocity.x = -newVelocity.x * 0.98; // Very little energy loss
       
-      // Ensure minimum speed after bounce like in billiards
-      if (Math.abs(newVelocity.x) < 6) {
-        newVelocity.x = newVelocity.x > 0 ? 6 : -6;
+      // Ensure minimum speed after bounce
+      if (Math.abs(newVelocity.x) < 7) {
+        newVelocity.x = newVelocity.x > 0 ? 7 : -7;
       }
       
-      // Apply slight angle variation based on current y velocity
-      // This creates more natural billiard-style bounces that preserve momentum
-      if (Math.abs(newVelocity.y) > 0.5) {
-        // Slightly enhance the y component to make bounces more angled
-        newVelocity.y *= 1.05;
+      // Add slight angle variation to make bounces more realistic
+      if (Math.abs(newVelocity.y) < 2) {
+        // Add a small random y component if almost flat to prevent straight bounces
+        // In billiards, balls rarely bounce perfectly straight
+        newVelocity.y += (Math.random() - 0.5) * 2.5;
       } else {
-        // Add a small random y component if almost flat to prevent perfectly horizontal bounces
-        newVelocity.y += (Math.random() - 0.5) * 1.5;
+        // Enhance existing y component slightly
+        newVelocity.y *= 1.05;
       }
       
       // Track consecutive left/right bounces
@@ -91,18 +98,18 @@ export function handleBoundaryBounce(
         
         // Even with billiard physics, prevent getting stuck
         if (bounceDetectionRef.consecutiveBounces >= 2) {
-          console.log(`Ball stuck on ${currentSide} border, applying billiard bounce effect`);
+          console.log(`Ball stuck on ${currentSide} border, applying enhanced billiard bounce`);
           bounceDetectionRef.sideEffect = true;
           
-          // Add a more pronounced angle to the bounce
+          // Add a more pronounced angle to the bounce - like in billiards
           const centerX = PITCH_WIDTH / 2;
           const pushDirection = currentSide === 'left' ? 1 : -1;
           
-          // In billiards, a ball never bounces straight - add angle
-          newVelocity.x = pushDirection * (Math.abs(newVelocity.x) * 1.1);
+          // More aggressive correction with stronger horizontal component
+          newVelocity.x = pushDirection * Math.abs(newVelocity.x) * 1.3;
           
-          // More significant y component for angled bounce
-          const yVariation = (Math.random() - 0.5) * 7;
+          // Add significant y component for angled bounce
+          const yVariation = (Math.random() - 0.5) * 8;
           newVelocity.y += yVariation;
           
           // Reset counter after applying effect
@@ -128,6 +135,6 @@ export function handleBoundaryBounce(
   };
 }
 
-// Missing constant, adding it here to avoid errors
+// Constants
 const BALL_RADIUS = 6;
 const GOAL_HEIGHT = 160;
