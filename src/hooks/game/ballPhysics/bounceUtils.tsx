@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Position, PITCH_HEIGHT, PITCH_WIDTH } from '../../../types/football';
-import { addRandomEffect } from '../../../utils/gamePhysics';
+import { addRandomEffect } from '../../../utils/ball/ballSpeed';
 
 interface BounceDetection {
   consecutiveBounces: number;
@@ -16,43 +16,52 @@ export function handleBoundaryBounce(
   bounceDetectionRef: BounceDetection
 ): { position: Position, velocity: Position, bounceDetection: BounceDetection } {
   const currentTime = performance.now();
-  const bounceCooldown = 1000; // 1 second between bounce counts
+  const bounceCooldown = 1000; // 1 segundo entre contar rebotes consecutivos
   
-  // Handle top and bottom boundary collisions
+  // Variables para el rebote de billar
+  const ELASTICITY = 0.98; // Para rebotes muy elásticos como billar (casi 1)
+  const MIN_BOUNCE_SPEED = 7; // Velocidad mínima después de rebotes
+  const CORNER_BOOST = 1.2; // Rebote más fuerte en esquinas
+  
+  // Handle top and bottom boundary collisions con física de billar
   if (newPosition.y <= BALL_RADIUS || newPosition.y >= PITCH_HEIGHT - BALL_RADIUS) {
-    // BILLIARD-STYLE BOUNCE: highly elastic with very little energy loss
-    newVelocity.y = -newVelocity.y * 0.98; // Almost perfect elasticity for billiard physics
+    // BILLIARD-STYLE BOUNCE: highly elastic, almost perfect conservation of energy
+    newVelocity.y = -newVelocity.y * ELASTICITY; // Muy poca pérdida de energía
     
-    // Ensure the ball bounces with sufficient speed
-    if (Math.abs(newVelocity.y) < 5) {
-      newVelocity.y = newVelocity.y > 0 ? 5 : -5;
+    // Asegurar que la bola rebota con velocidad suficiente (nunca pierde fuerza, como billar)
+    if (Math.abs(newVelocity.y) < MIN_BOUNCE_SPEED) {
+      newVelocity.y = newVelocity.y > 0 ? MIN_BOUNCE_SPEED : -MIN_BOUNCE_SPEED;
     }
     
-    // Add slight angle variation to prevent predictable bounces
-    newVelocity.x *= 1.02; // Slightly increase horizontal component
+    // Incrementar levemente componente X para prevenir rebotes verticales infinitos
+    newVelocity.x *= 1.02;
     
-    // Track consecutive top/bottom bounces
+    // Registrar el lado del rebote
     const currentSide = newPosition.y <= BALL_RADIUS ? 'top' : 'bottom';
     
+    // Detectar rebotes consecutivos en el mismo lado
     if (bounceDetectionRef.lastBounceSide === currentSide && 
         currentTime - bounceDetectionRef.lastBounceTime < bounceCooldown) {
       bounceDetectionRef.consecutiveBounces++;
       
-      // If ball is bouncing repeatedly on same side, add random effect
+      // Si la bola está rebotando repetidamente en el mismo lado, añadir efecto aleatorio
       if (bounceDetectionRef.consecutiveBounces >= 2) {
-        console.log(`Ball stuck on ${currentSide} border, adding random effect`);
-        newVelocity = addRandomEffect(newVelocity);
-        bounceDetectionRef.sideEffect = true;
+        console.log(`¡Bola atrapada en borde ${currentSide}! Aplicando efecto de billar`);
         
-        // Push ball more toward center of field
+        // Agregar un ángulo más pronunciado para escapar - como en billar
         const centerY = PITCH_HEIGHT / 2;
         const pushDirection = currentSide === 'top' ? 1 : -1;
-        newVelocity.y += pushDirection * 3;
         
-        // Add more horizontal component to escape edge
-        newVelocity.x *= 1.2;
+        // Componente Y más fuerte para escapar del borde
+        newVelocity.y = pushDirection * Math.abs(newVelocity.y) * 1.3;
         
-        // Reset counter after applying effect
+        // Aumentar componente X para agregar más ángulo al rebote
+        newVelocity.x *= 1.5;
+        
+        // Marcar que se aplicó un efecto especial visual
+        bounceDetectionRef.sideEffect = true;
+        
+        // Reiniciar contador después de aplicar efecto
         bounceDetectionRef.consecutiveBounces = 0;
       }
     } else {
@@ -63,56 +72,68 @@ export function handleBoundaryBounce(
     bounceDetectionRef.lastBounceTime = currentTime;
   }
 
-  // Handle left and right boundary collisions - ENHANCED BILLIARD STYLE PHYSICS
+  // Handle left and right boundary collisions - FÍSICA DE BILLAR PERFECTA
   if (newPosition.x <= BALL_RADIUS || newPosition.x >= PITCH_WIDTH - BALL_RADIUS) {
-    // Only reverse if not in goal area
+    // Verificar si está en la zona de gol
     const goalY = PITCH_HEIGHT / 2;
     const goalTop = goalY - GOAL_HEIGHT / 2;
     const goalBottom = goalY + GOAL_HEIGHT / 2;
     
     if (newPosition.y < goalTop || newPosition.y > goalBottom) {
-      // PERFECT BILLIARD PHYSICS: highly elastic bounce with minimal energy loss
-      newVelocity.x = -newVelocity.x * 0.98; // Very little energy loss
+      // REBOTE DE BILLAR: perfectamente elástico, casi sin pérdida de energía
+      newVelocity.x = -newVelocity.x * ELASTICITY; 
       
-      // Ensure minimum speed after bounce
-      if (Math.abs(newVelocity.x) < 7) {
-        newVelocity.x = newVelocity.x > 0 ? 7 : -7;
+      // Asegurar velocidad mínima después del rebote
+      if (Math.abs(newVelocity.x) < MIN_BOUNCE_SPEED) {
+        newVelocity.x = newVelocity.x > 0 ? MIN_BOUNCE_SPEED : -MIN_BOUNCE_SPEED;
       }
       
-      // Add slight angle variation to make bounces more realistic
+      // Agregar ángulo para evitar rebotes perfectamente horizontales
       if (Math.abs(newVelocity.y) < 2) {
-        // Add a small random y component if almost flat to prevent straight bounces
-        // In billiards, balls rarely bounce perfectly straight
-        newVelocity.y += (Math.random() - 0.5) * 2.5;
+        // Agregar componente Y para que nunca rebote perfectamente horizontal
+        // En billar, las bolas rara vez rebotan en línea recta perfecta
+        newVelocity.y += (Math.random() - 0.5) * 3;
       } else {
-        // Enhance existing y component slightly
+        // Potenciar componente Y existente levemente
         newVelocity.y *= 1.05;
       }
       
-      // Track consecutive left/right bounces
+      // Verificar si es un rebote en esquina para dar efecto especial
+      const isNearTopCorner = newPosition.y < BALL_RADIUS * 3;
+      const isNearBottomCorner = newPosition.y > PITCH_HEIGHT - BALL_RADIUS * 3;
+      
+      if (isNearTopCorner || isNearBottomCorner) {
+        console.log("¡Rebote en esquina! Aplicando efecto de billar especial");
+        // En billar, los rebotes de esquina tienen efectos interesantes
+        newVelocity.x *= CORNER_BOOST;
+        newVelocity.y *= CORNER_BOOST;
+        bounceDetectionRef.sideEffect = true;
+      }
+      
+      // Seguimiento de rebotes consecutivos en el mismo lado
       const currentSide = newPosition.x <= BALL_RADIUS ? 'left' : 'right';
       
       if (bounceDetectionRef.lastBounceSide === currentSide && 
           currentTime - bounceDetectionRef.lastBounceTime < bounceCooldown) {
         bounceDetectionRef.consecutiveBounces++;
         
-        // Even with billiard physics, prevent getting stuck
+        // Incluso con física de billar, evitar que se quede atascada
         if (bounceDetectionRef.consecutiveBounces >= 2) {
-          console.log(`Ball stuck on ${currentSide} border, applying enhanced billiard bounce`);
+          console.log(`Bola atascada en borde ${currentSide}, aplicando rebote de billar mejorado`);
           bounceDetectionRef.sideEffect = true;
           
-          // Add a more pronounced angle to the bounce - like in billiards
+          // Agregar un ángulo más pronunciado - como en billar cuando golpea con efecto
           const centerX = PITCH_WIDTH / 2;
           const pushDirection = currentSide === 'left' ? 1 : -1;
           
-          // More aggressive correction with stronger horizontal component
-          newVelocity.x = pushDirection * Math.abs(newVelocity.x) * 1.3;
+          // Corrección más agresiva con componente horizontal más fuerte
+          newVelocity.x = pushDirection * Math.abs(newVelocity.x) * 1.5;
           
-          // Add significant y component for angled bounce
-          const yVariation = (Math.random() - 0.5) * 8;
+          // Agregar componente Y significativo para rebote en ángulo
+          const yVariation = (Math.random() - 0.5) * 10;
           newVelocity.y += yVariation;
           
-          // Reset counter after applying effect
+          // Reiniciar contador después de aplicar efecto
           bounceDetectionRef.consecutiveBounces = 0;
         }
       } else {
@@ -124,7 +145,7 @@ export function handleBoundaryBounce(
     }
   }
 
-  // Ensure ball stays within the pitch boundaries
+  // Asegurar que la bola permanezca dentro de los límites del campo
   newPosition.x = Math.max(BALL_RADIUS, Math.min(PITCH_WIDTH - BALL_RADIUS, newPosition.x));
   newPosition.y = Math.max(BALL_RADIUS, Math.min(PITCH_HEIGHT - BALL_RADIUS, newPosition.y));
 
@@ -135,6 +156,6 @@ export function handleBoundaryBounce(
   };
 }
 
-// Constants
+// Constantes
 const BALL_RADIUS = 6;
 const GOAL_HEIGHT = 160;

@@ -1,3 +1,4 @@
+
 import { Position, Player, PITCH_WIDTH, PITCH_HEIGHT } from '../../types/football';
 import { limitSpeed } from '../ball/ballSpeed';
 
@@ -12,89 +13,89 @@ export const calculateNewVelocity = (
   const distance = Math.sqrt(dx * dx + dy * dy);
   const angle = Math.atan2(dy, dx);
   
-  // Calculate incident angle
+  // Calcular ángulo incidente
   const incidentAngle = Math.atan2(currentVelocity.y, currentVelocity.x);
   
-  // Special handling for goalkeeper - ENHANCED
+  // Manejo especial para el portero - MEJORADO
   if (isGoalkeeper) {
-    // Determine which goal the goalkeeper is defending
+    // Determinar qué portería está defendiendo
     const isLeftGoalkeeper = playerPosition.x < PITCH_WIDTH / 2;
     const centerY = PITCH_HEIGHT / 2;
     
-    // Is the ball moving toward the goal?
+    // ¿El balón se mueve hacia la portería?
     const ballMovingTowardsGoal = (isLeftGoalkeeper && currentVelocity.x < 0) || 
                                  (!isLeftGoalkeeper && currentVelocity.x > 0);
     
     if (ballMovingTowardsGoal) {
-      // Calculate horizontal deflection direction (away from the goal)
-      const deflectionX = isLeftGoalkeeper ? 4.5 : -4.5; // Increased power for stronger clearance
+      // Calcular dirección de deflexión horizontal (lejos de la portería)
+      const deflectionX = isLeftGoalkeeper ? 6.0 : -6.0; // Mayor potencia para despeje más fuerte
       
-      // Calculate vertical deflection to push ball away from goal center for better clearances
+      // Calcular deflexión vertical para empujar la bola lejos del centro de la portería
       const verticalOffset = ballPosition.y - centerY;
-      const verticalFactor = Math.sign(verticalOffset) * (1.0 + Math.min(Math.abs(verticalOffset) / 100, 1.0));
+      const verticalFactor = Math.sign(verticalOffset) * (1.0 + Math.min(Math.abs(verticalOffset) / 100, 1.5));
       
-      // Higher base speed for goalkeeper saves
-      const baseSpeed = 14; // Increased from 12
+      // Mayor velocidad base para las paradas del portero
+      const baseSpeed = 18; // Aumentado desde 14
       
-      console.log(`Goalkeeper SAVE by ${isLeftGoalkeeper ? 'red' : 'blue'} team!`);
+      console.log(`¡PARADA del portero de equipo ${isLeftGoalkeeper ? 'rojo' : 'azul'}!`);
       
       return limitSpeed({
-        x: deflectionX * baseSpeed,
-        y: verticalFactor * baseSpeed * 1.5
+        x: deflectionX * baseSpeed * 0.8,
+        y: verticalFactor * baseSpeed * 1.2
       });
     }
     
-    // When not directly saving, still direct the ball towards the correct side of the field
-    // to prevent own goals by the goalkeeper
-    const teamDirection = isLeftGoalkeeper ? 1 : -1; // 1 for red (left goalkeeper), -1 for blue (right goalkeeper)
+    // Cuando no está directamente parando, aún dirigir el balón hacia el lado correcto del campo
+    // para prevenir autogoles del portero
+    const teamDirection = isLeftGoalkeeper ? 1 : -1; // 1 para rojo (portero izquierdo), -1 para azul (portero derecho)
     
     return limitSpeed({
-      x: Math.abs(currentVelocity.x) * teamDirection * 1.5,
-      y: currentVelocity.y
+      x: Math.abs(currentVelocity.x) * teamDirection * 2.0,
+      y: currentVelocity.y * 1.5
     });
   }
 
-  // ENHANCED directional shooting for field players
-  // Add team-specific logic to make the ball tend to go in the right direction
+  // MEJORADO disparo direccional para jugadores de campo
+  // Agregar lógica específica por equipo para hacer que la bola tienda a ir en la dirección correcta
   const team = playerPosition.x < PITCH_WIDTH / 2 ? 'red' : 'blue';
-  const directionalBias = team === 'red' ? 0.2 : -0.2; // Positive for red team, negative for blue team
+  const directionalBias = team === 'red' ? 0.3 : -0.3; // Positivo para equipo rojo, negativo para equipo azul
   
-  // For other players or when the ball isn't going toward goal
+  // Para otros jugadores o cuando la bola no va hacia la portería
   const normalizedDx = dx / distance;
   const normalizedDy = dy / distance;
   
-  // Calculate reflection velocity using incident angle with directional bias
+  // Calcular velocidad de reflexión usando ángulo incidente con sesgo direccional
   const speed = Math.sqrt(
     currentVelocity.x * currentVelocity.x + 
     currentVelocity.y * currentVelocity.y
   );
   
-  // Higher base speed for all balls - never let it get too slow
-  const adjustedSpeed = Math.max(7, speed * 1.3);  // Ensure speed is at least 7
+  // Mayor velocidad base para todos los balones - nunca dejar que sea demasiado lento
+  const adjustedSpeed = Math.max(8, speed * 1.5);  // Asegurar velocidad mínima de 8
   
-  // Add directional bias to reflection angle
-  const reflectionAngle = angle + (angle - incidentAngle) + directionalBias;
+  // Agregar sesgo direccional al ángulo de reflexión
+  const reflectionAngle = angle + (angle - incidentAngle) * 0.8 + directionalBias;
   
-  // Add slight random variation to the reflection (reduced for more predictable behavior)
-  const randomVariation = (Math.random() - 0.5) * 0.2; // Reduced from 0.3
+  // Agregar variación aleatoria leve a la reflexión (reducida para comportamiento más predecible)
+  const randomVariation = (Math.random() - 0.5) * 0.15; // Reducido desde 0.2
   
-  // Higher multiplier for goalkeeper collisions for stronger clearances
-  const speedMultiplier = isGoalkeeper ? 2.0 : 1.5;
+  // Mayor multiplicador para colisiones con el portero para despejes más fuertes
+  const speedMultiplier = isGoalkeeper ? 2.2 : 1.7;
   
-  // Calculate new velocity with all factors combined
+  // Calcular nueva velocidad con todos los factores combinados
   let newVelocity = {
     x: adjustedSpeed * Math.cos(reflectionAngle + randomVariation) * speedMultiplier,
     y: adjustedSpeed * Math.sin(reflectionAngle + randomVariation) * speedMultiplier
   };
   
-  // Add one final directional bias check for very dangerous own-goal situations
+  // Agregar una verificación final de sesgo direccional para situaciones muy peligrosas de autogol
   const movingTowardsOwnGoal = (team === 'red' && newVelocity.x < 0) || 
                               (team === 'blue' && newVelocity.x > 0);
                              
-  if (movingTowardsOwnGoal && Math.abs(newVelocity.x) > 3) {
-    // Flip the x direction if headed strongly towards own goal
-    newVelocity.x = -newVelocity.x;
-    console.log(`Emergency direction correction applied for ${team} team!`);
+  if (movingTowardsOwnGoal && Math.abs(newVelocity.x) > 4) {
+    // Invertir la dirección X si se dirige fuertemente hacia su propia portería
+    newVelocity.x = -newVelocity.x * 1.2;
+    console.log(`¡Corrección de emergencia de dirección aplicada para equipo ${team}!`);
   }
   
   return limitSpeed(newVelocity);
