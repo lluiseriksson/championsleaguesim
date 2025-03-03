@@ -1,4 +1,3 @@
-
 import * as brain from 'brain.js';
 
 export interface Position {
@@ -75,6 +74,11 @@ export interface Ball {
     lastBounceSide: string;
     sideEffect: boolean;
   };
+}
+
+export interface Score {
+  red: number;
+  blue: number;
 }
 
 export const PITCH_WIDTH = 800;
