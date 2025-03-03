@@ -11,14 +11,19 @@ const Ball: React.FC<BallProps> = ({ ball }) => {
   // Detect side effect for visual feedback
   const hasSideEffect = ball.bounceDetection?.sideEffect || false;
   
+  // Add a pulsing effect to make ball possession changes more visible
+  const pulseEffect = hasSideEffect ? 
+    { scale: [1, 1.3, 1], opacity: [1, 0.8, 1] } : 
+    { scale: 1, opacity: 1 };
+  
   return (
     <motion.div
-      className={`absolute w-3 h-3 ${hasSideEffect ? 'bg-white' : 'bg-white'} rounded-full shadow-md ${hasSideEffect ? 'shadow-white/50' : ''}`}
+      className={`absolute w-3 h-3 bg-white rounded-full shadow-md ${hasSideEffect ? 'shadow-blue-500/50' : ''}`}
       animate={{
         x: ball.position.x,
         y: ball.position.y,
         rotate: ball.velocity.x * 20,
-        scale: hasSideEffect ? [1, 1.2, 1] : 1,
+        ...pulseEffect
       }}
       transition={{
         type: "tween",
