@@ -1,7 +1,7 @@
+
 import React from 'react';
 import { Player, Ball, PITCH_WIDTH, PITCH_HEIGHT } from '../../types/football';
 import { moveGoalkeeper } from '../../utils/playerBrain';
-import { isOffside, getLastTeamTouchingBall } from '../../utils/offsideRules';
 
 interface PlayerMovementProps {
   players: Player[];
@@ -10,31 +10,20 @@ interface PlayerMovementProps {
   gameReady: boolean;
 }
 
-// Changed from React.FC to a custom hook
+// Cambiado de React.FC a un hook personalizado
 const usePlayerMovement = ({ 
   players, 
   setPlayers, 
   ball, 
   gameReady 
 }: PlayerMovementProps) => {
-  // Track which team last touched the ball
-  const lastTeamTouchRef = React.useRef<'red' | 'blue' | null>(null);
-
-  // Update last team touching the ball
-  React.useEffect(() => {
-    const playerTouchingBall = getLastTeamTouchingBall(players, ball);
-    if (playerTouchingBall) {
-      lastTeamTouchRef.current = playerTouchingBall.team;
-    }
-  }, [ball.position, players]);
-
   const updatePlayerPositions = React.useCallback(() => {
     if (!gameReady) return;
     
     setPlayers(currentPlayers => 
       currentPlayers.map(player => {
         try {
-          // Goalkeepers move freely
+          // Los porteros se mueven libremente
           if (player.role === 'goalkeeper') {
             const movement = moveGoalkeeper(player, ball);
             const newPosition = {
@@ -54,12 +43,6 @@ const usePlayerMovement = ({
             };
           }
           
-          // Check for offside only for forwards
-          let positionRestricted = false;
-          if (player.role === 'forward') {
-            positionRestricted = isOffside(player, currentPlayers, lastTeamTouchRef.current);
-          }
-          
           if (!player.brain || !player.brain.net || typeof player.brain.net.run !== 'function') {
             console.warn(`Invalid brain for ${player.team} ${player.role} #${player.id}, using fallback movement`);
             const dx = ball.position.x - player.position.x;
@@ -74,7 +57,7 @@ const usePlayerMovement = ({
               y: player.position.y + moveY
             };
             
-            // Increased by 50% from base values
+            // Aumentado en un 50% respecto a los valores base
             let maxDistance = 75; // 50 * 1.5 = 75
             switch (player.role) {
               case 'defender': maxDistance = 105; break; // 70 * 1.5 = 105
@@ -96,20 +79,6 @@ const usePlayerMovement = ({
               newPosition.y = player.targetPosition.y - Math.sin(angle) * maxDistance;
             }
             
-            // Apply offside restriction for forwards
-            if (positionRestricted && player.role === 'forward') {
-              const defenders = currentPlayers.filter(p => p.team !== player.team && p.role === 'defender');
-              const lastDefender = getLastDefenderPosition(defenders, player.team);
-              
-              if (lastDefender) {
-                if ((player.team === 'red' && newPosition.x > lastDefender.x) || 
-                    (player.team === 'blue' && newPosition.x < lastDefender.x)) {
-                  // Keep the forward in line with the last defender
-                  newPosition.x = lastDefender.x;
-                }
-              }
-            }
-            
             newPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, newPosition.x));
             newPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, newPosition.y));
             
@@ -124,7 +93,7 @@ const usePlayerMovement = ({
             };
           }
           
-          // Using neural network for movement
+          // Uso de red neuronal para el movimiento
           const input = {
             ballX: ball.position.x / PITCH_WIDTH,
             ballY: ball.position.y / PITCH_HEIGHT,
@@ -149,7 +118,7 @@ const usePlayerMovement = ({
           
           player.brain.lastOutput = { x: moveX, y: moveY };
 
-          // Increased all distances by 50% from base values
+          // Aumentado todas las distancias en un 50% respecto a valores base
           let maxDistance = 75; // 50 * 1.5 = 75
           const distanceToBall = Math.sqrt(
             Math.pow(ball.position.x - player.position.x, 2) +
@@ -187,20 +156,6 @@ const usePlayerMovement = ({
             newPosition.y = player.targetPosition.y + Math.sin(angle) * maxDistance;
           }
           
-          // Apply offside restriction for forwards
-          if (positionRestricted && player.role === 'forward') {
-            const defenders = currentPlayers.filter(p => p.team !== player.team && p.role === 'defender');
-            const lastDefender = getLastDefenderPosition(defenders, player.team);
-            
-            if (lastDefender) {
-              if ((player.team === 'red' && newPosition.x > lastDefender.x) || 
-                  (player.team === 'blue' && newPosition.x < lastDefender.x)) {
-                // Keep the forward in line with the last defender
-                newPosition.x = lastDefender.x;
-              }
-            }
-          }
-
           newPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, newPosition.x));
           newPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, newPosition.y));
 
@@ -214,26 +169,9 @@ const usePlayerMovement = ({
         }
       })
     );
-  }, [ball, gameReady, setPlayers, lastTeamTouchRef]);
+  }, [ball, gameReady, setPlayers]);
 
   return { updatePlayerPositions };
-};
-
-// Helper function to get the last defender position
-const getLastDefenderPosition = (defenders: Player[], opposingTeam: 'red' | 'blue') => {
-  if (defenders.length === 0) return null;
-  
-  if (opposingTeam === 'red') {
-    // Blue team is attacking, find the defender closest to blue's goal (left side)
-    return defenders.reduce((prev, current) => 
-      prev.position.x < current.position.x ? prev : current
-    ).position;
-  } else {
-    // Red team is attacking, find the defender closest to red's goal (right side)
-    return defenders.reduce((prev, current) => 
-      prev.position.x > current.position.x ? prev : current
-    ).position;
-  }
 };
 
 export default usePlayerMovement;
