@@ -3,15 +3,16 @@ import { Position } from '../../../types/football';
 export function applyBallDeceleration(velocity: Position): Position {
   let newVelocity = { ...velocity };
   
-  // Apply very mild deceleration - we want ball to keep moving
-  newVelocity.x *= 0.998; // Reduced from 0.995
-  newVelocity.y *= 0.998; // Reduced from 0.995
+  // Apply VERY mild deceleration like in classic behavior
+  // This was a key to maintaining ball movement in the original game
+  newVelocity.x *= 0.999; // Nearly no deceleration - classic behavior
+  newVelocity.y *= 0.999; // Nearly no deceleration - classic behavior
   
-  // Never let the ball stop completely
+  // Classic behavior: stronger minimum speed to keep ball moving
   const newSpeed = Math.sqrt(newVelocity.x * newVelocity.x + newVelocity.y * newVelocity.y);
-  if (newSpeed < 3.5) {
+  if (newSpeed < 4.0) {
     // Maintain direction but increase speed to minimum
-    const factor = 3.5 / Math.max(0.01, newSpeed); // Prevent division by zero
+    const factor = 4.0 / Math.max(0.01, newSpeed); // Prevent division by zero
     newVelocity.x *= factor;
     newVelocity.y *= factor;
   }

@@ -56,7 +56,7 @@ export function handleBoundaryBounce(
     bounceDetectionRef.lastBounceTime = currentTime;
   }
 
-  // Handle left and right boundary collisions - IMPROVED
+  // Handle left and right boundary collisions with CLASSIC BEHAVIOR
   if (newPosition.x <= BALL_RADIUS || newPosition.x >= PITCH_WIDTH - BALL_RADIUS) {
     // Only reverse if not in goal area
     const goalY = PITCH_HEIGHT / 2;
@@ -64,12 +64,12 @@ export function handleBoundaryBounce(
     const goalBottom = goalY + GOAL_HEIGHT / 2;
     
     if (newPosition.y < goalTop || newPosition.y > goalBottom) {
-      // Stronger bounce coefficient for sides (increased from 0.9 to 0.95)
-      newVelocity.x = -newVelocity.x * 0.95;
+      // More elastic bounce - reduced damping coefficient for more lively rebounds
+      newVelocity.x = -newVelocity.x * 0.98;
       
-      // Ensure the ball bounces with sufficient speed
-      if (Math.abs(newVelocity.x) < 4.0) { // Increased from 3.5 to 4.0
-        newVelocity.x = newVelocity.x > 0 ? 4.0 : -4.0;
+      // Restore classic minimum bounce speed
+      if (Math.abs(newVelocity.x) < 4.5) {
+        newVelocity.x = newVelocity.x > 0 ? 4.5 : -4.5;
       }
       
       // Track consecutive left/right bounces
@@ -79,20 +79,21 @@ export function handleBoundaryBounce(
           currentTime - bounceDetectionRef.lastBounceTime < bounceCooldown) {
         bounceDetectionRef.consecutiveBounces++;
         
-        // If ball is bouncing repeatedly on same side, add random effect
-        // Lowered threshold from 2 to 1 for quicker intervention
+        // CLASSIC BEHAVIOR: More aggressive anti-sticking measures
         if (bounceDetectionRef.consecutiveBounces >= 1) {
-          console.log(`Ball stuck on ${currentSide} border, adding random effect`);
-          newVelocity = addRandomEffect(newVelocity);
+          console.log(`Ball stuck on ${currentSide} border, applying classic bounce effect`);
           bounceDetectionRef.sideEffect = true;
           
-          // Push ball more toward center of field (stronger effect)
+          // Push ball more toward center of field with stronger, more varied effect
           const centerX = PITCH_WIDTH / 2;
           const pushDirection = currentSide === 'left' ? 1 : -1;
-          newVelocity.x += pushDirection * 3; // Increased from 2 to 3
           
-          // Add slight vertical component to avoid straight horizontal bounces
-          newVelocity.y += (Math.random() - 0.5) * 2;
+          // Stronger horizontal push (classic behavior)
+          newVelocity.x = pushDirection * (5 + Math.random() * 2);
+          
+          // Add significant vertical component to avoid straight horizontal bounces
+          // Classic behavior had more randomness on vertical bounce
+          newVelocity.y += (Math.random() - 0.5) * 5;
           
           // Reset counter after applying effect
           bounceDetectionRef.consecutiveBounces = 0;
