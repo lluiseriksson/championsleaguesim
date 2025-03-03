@@ -4,6 +4,7 @@ import GameBoard from './game/GameBoard';
 import LoadingState from './game/LoadingState';
 import usePlayerMovement from './game/PlayerMovement';
 import { Player, Ball as BallType, Score, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
+import { toast } from 'sonner';
 
 const FootballPitch: React.FC = () => {
   const [players, setPlayers] = React.useState<Player[]>([]);
@@ -27,6 +28,16 @@ const FootballPitch: React.FC = () => {
     ball, 
     gameReady 
   });
+  
+  // Toast notification for offside rule
+  React.useEffect(() => {
+    if (gameReady) {
+      toast("Offside rule activated", {
+        description: "Forwards can't advance beyond defenders until their team touches the ball",
+        duration: 5000
+      });
+    }
+  }, [gameReady]);
 
   if (!gameReady) {
     return <LoadingState setPlayers={setPlayers} setGameReady={setGameReady} />;

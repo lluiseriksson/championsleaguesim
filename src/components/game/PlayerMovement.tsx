@@ -1,7 +1,7 @@
-
 import React from 'react';
 import { Player, Ball, PITCH_WIDTH, PITCH_HEIGHT } from '../../types/football';
 import { moveGoalkeeper } from '../../utils/playerBrain';
+import { isOffside, getLastTeamTouchingBall } from '../../utils/offsideRules';
 
 interface PlayerMovementProps {
   players: Player[];
@@ -17,12 +17,24 @@ const usePlayerMovement = ({
   ball, 
   gameReady 
 }: PlayerMovementProps) => {
+  // Track which team last touched the ball
+  const lastTeamTouchRef = React.useRef<'red' | 'blue' | null>(null);
+
+  // Update last team touching the ball
+  React.useEffect(() => {
+    const playerTouchingBall = getLastTeamTouchingBall(players, ball);
+    if (playerTouchingBall) {
+      lastTeamTouchRef.current = playerTouchingBall.team;
+    }
+  }, [ball.position, players]);
+
   const updatePlayerPositions = React.useCallback(() => {
     if (!gameReady) return;
     
     setPlayers(currentPlayers => 
       currentPlayers.map(player => {
         try {
+          // Goalkeepers move freely
           if (player.role === 'goalkeeper') {
             const movement = moveGoalkeeper(player, ball);
             const newPosition = {
@@ -42,6 +54,12 @@ const usePlayerMovement = ({
             };
           }
           
+          // Check for offside only for forwards
+          let positionRestricted = false;
+          if (player.role === 'forward') {
+            positionRestricted = isOffside(player, currentPlayers, lastTeamTouchRef.current);
+          }
+          
           if (!player.brain || !player.brain.net || typeof player.brain.net.run !== 'function') {
             console.warn(`Invalid brain for ${player.team} ${player.role} #${player.id}, using fallback movement`);
             const dx = ball.position.x - player.position.x;
@@ -51,7 +69,7 @@ const usePlayerMovement = ({
             const moveX = dist > 0 ? (dx / dist) * moveSpeed : 0;
             const moveY = dist > 0 ? (dy / dist) * moveSpeed : 0;
             
-            const newPosition = {
+            let newPosition = {
               x: player.position.x + moveX,
               y: player.position.y + moveY
             };
@@ -78,6 +96,20 @@ const usePlayerMovement = ({
               newPosition.y = player.targetPosition.y - Math.sin(angle) * maxDistance;
             }
             
+            // Apply offside restriction for forwards
+            if (positionRestricted && player.role === 'forward') {
+              const defenders = currentPlayers.filter(p => p.team !== player.team && p.role === 'defender');
+              const lastDefender = getLastDefenderPosition(defenders, player.team);
+              
+              if (lastDefender) {
+                if ((player.team === 'red' && newPosition.x > lastDefender.x) || 
+                    (player.team === 'blue' && newPosition.x < lastDefender.x)) {
+                  // Keep the forward in line with the last defender
+                  newPosition.x = lastDefender.x;
+                }
+              }
+            }
+            
             newPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, newPosition.x));
             newPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, newPosition.y));
             
@@ -92,6 +124,7 @@ const usePlayerMovement = ({
             };
           }
           
+          // Using neural network for movement
           const input = {
             ballX: ball.position.x / PITCH_WIDTH,
             ballY: ball.position.y / PITCH_HEIGHT,
@@ -135,7 +168,7 @@ const usePlayerMovement = ({
               break;
           }
 
-          const newPosition = {
+          let newPosition = {
             x: player.position.x + moveX * 2,
             y: player.position.y + moveY * 2,
           };
@@ -153,6 +186,20 @@ const usePlayerMovement = ({
             newPosition.x = player.targetPosition.x + Math.cos(angle) * maxDistance;
             newPosition.y = player.targetPosition.y + Math.sin(angle) * maxDistance;
           }
+          
+          // Apply offside restriction for forwards
+          if (positionRestricted && player.role === 'forward') {
+            const defenders = currentPlayers.filter(p => p.team !== player.team && p.role === 'defender');
+            const lastDefender = getLastDefenderPosition(defenders, player.team);
+            
+            if (lastDefender) {
+              if ((player.team === 'red' && newPosition.x > lastDefender.x) || 
+                  (player.team === 'blue' && newPosition.x < lastDefender.x)) {
+                // Keep the forward in line with the last defender
+                newPosition.x = lastDefender.x;
+              }
+            }
+          }
 
           newPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, newPosition.x));
           newPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, newPosition.y));
@@ -167,9 +214,26 @@ const usePlayerMovement = ({
         }
       })
     );
-  }, [ball, gameReady, setPlayers]);
+  }, [ball, gameReady, setPlayers, lastTeamTouchRef]);
 
   return { updatePlayerPositions };
+};
+
+// Helper function to get the last defender position
+const getLastDefenderPosition = (defenders: Player[], opposingTeam: 'red' | 'blue') => {
+  if (defenders.length === 0) return null;
+  
+  if (opposingTeam === 'red') {
+    // Blue team is attacking, find the defender closest to blue's goal (left side)
+    return defenders.reduce((prev, current) => 
+      prev.position.x < current.position.x ? prev : current
+    ).position;
+  } else {
+    // Red team is attacking, find the defender closest to red's goal (right side)
+    return defenders.reduce((prev, current) => 
+      prev.position.x > current.position.x ? prev : current
+    ).position;
+  }
 };
 
 export default usePlayerMovement;
