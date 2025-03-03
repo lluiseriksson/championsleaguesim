@@ -1,4 +1,5 @@
-import { Player, Ball, PITCH_WIDTH, PITCH_HEIGHT, GOAL_HEIGHT } from '../types/football';
+
+import { Player, Ball, PITCH_WIDTH, PITCH_HEIGHT, GOAL_HEIGHT } from '../../types/football';
 import { calculateDistance } from '../positionHelpers';
 
 // Specialized movement logic for goalkeepers
