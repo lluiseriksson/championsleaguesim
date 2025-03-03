@@ -53,7 +53,6 @@ export interface NeuralNet {
   net: brain.NeuralNetwork<NeuralInput, NeuralOutput>;
   lastOutput: { x: number; y: number };
   lastAction?: 'move' | 'shoot' | 'pass' | 'intercept';
-  targetPlayer?: Player; // Add the targetPlayer property
 }
 
 export interface Player {
