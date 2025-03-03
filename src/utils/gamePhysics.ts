@@ -1,7 +1,7 @@
 import { Position, PLAYER_RADIUS, BALL_RADIUS, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
 
-const MAX_BALL_SPEED = 15;
-const MIN_BALL_SPEED = 3.5; // Significantly increased minimum speed
+const MAX_BALL_SPEED = 12; // Reduced from 15 for more realistic play
+const MIN_BALL_SPEED = 1.5; // Reduced from 3.5 to allow more natural slowing
 
 const limitSpeed = (velocity: Position): Position => {
   const speed = Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
@@ -15,14 +15,18 @@ const limitSpeed = (velocity: Position): Position => {
     };
   }
   
-  // ALWAYS apply minimum speed unless the ball should be completely stopped
-  // (which should only happen at game reset/initialization)
-  if (speed < MIN_BALL_SPEED && speed > 0) {
+  // Apply minimum speed only if the ball is moving at all
+  if (speed < MIN_BALL_SPEED && speed > 0.1) {
     const factor = MIN_BALL_SPEED / speed;
     return {
       x: velocity.x * factor,
       y: velocity.y * factor
     };
+  }
+  
+  // Allow ball to stop completely if speed is very low
+  if (speed <= 0.1) {
+    return { x: 0, y: 0 };
   }
   
   return velocity;
@@ -64,7 +68,7 @@ export const calculateNewVelocity = (
   // Calculate incident angle
   const incidentAngle = Math.atan2(currentVelocity.y, currentVelocity.x);
   
-  // Special handling for goalkeeper - ENHANCED
+  // Special handling for goalkeeper
   if (isGoalkeeper) {
     // Determine which goal the goalkeeper is defending
     const isLeftGoalkeeper = playerPosition.x < PITCH_WIDTH / 2;
@@ -72,33 +76,32 @@ export const calculateNewVelocity = (
     
     // Is the ball moving toward the goal?
     const ballMovingTowardsGoal = (isLeftGoalkeeper && currentVelocity.x < 0) || 
-                                 (!isLeftGoalkeeper && currentVelocity.x > 0);
+                               (!isLeftGoalkeeper && currentVelocity.x > 0);
     
     if (ballMovingTowardsGoal) {
       // Calculate horizontal deflection direction (away from the goal)
-      const deflectionX = isLeftGoalkeeper ? 4.5 : -4.5; // Increased power for stronger clearance
+      const deflectionX = isLeftGoalkeeper ? 3.5 : -3.5; // Reduced from 4.5 for more realistic power
       
-      // Calculate vertical deflection to push ball away from goal center for better clearances
+      // Calculate vertical deflection to push ball away from goal center
       const verticalOffset = ballPosition.y - centerY;
-      const verticalFactor = Math.sign(verticalOffset) * (1.0 + Math.min(Math.abs(verticalOffset) / 100, 1.0));
+      const verticalFactor = Math.sign(verticalOffset) * (1.0 + Math.min(Math.abs(verticalOffset) / 120, 0.8));
       
-      // Higher base speed for goalkeeper saves
-      const baseSpeed = 14; // Increased from 12
+      // More realistic base speed for goalkeeper saves
+      const baseSpeed = 10; // Reduced from 14
       
       console.log(`Goalkeeper SAVE by ${isLeftGoalkeeper ? 'red' : 'blue'} team!`);
       
       return limitSpeed({
         x: deflectionX * baseSpeed,
-        y: verticalFactor * baseSpeed * 1.5
+        y: verticalFactor * baseSpeed * 0.8 // Reduced from 1.5
       });
     }
     
     // When not directly saving, still direct the ball towards the correct side of the field
-    // to prevent own goals by the goalkeeper
-    const teamDirection = isLeftGoalkeeper ? 1 : -1; // 1 for red (left goalkeeper), -1 for blue (right goalkeeper)
+    const teamDirection = isLeftGoalkeeper ? 1 : -1; 
     
     return limitSpeed({
-      x: Math.abs(currentVelocity.x) * teamDirection * 1.5,
+      x: Math.abs(currentVelocity.x) * teamDirection * 1.3, // Reduced from 1.5
       y: currentVelocity.y
     });
   }
@@ -106,7 +109,7 @@ export const calculateNewVelocity = (
   // ENHANCED directional shooting for field players
   // Add team-specific logic to make the ball tend to go in the right direction
   const team = playerPosition.x < PITCH_WIDTH / 2 ? 'red' : 'blue';
-  const directionalBias = team === 'red' ? 0.2 : -0.2; // Positive for red team, negative for blue team
+  const directionalBias = team === 'red' ? 0.15 : -0.15; // Reduced from 0.2 for more natural play
   
   // For other players or when the ball isn't going toward goal
   const normalizedDx = dx / distance;
@@ -118,17 +121,17 @@ export const calculateNewVelocity = (
     currentVelocity.y * currentVelocity.y
   );
   
-  // Higher base speed for all balls - never let it get too slow
-  const adjustedSpeed = Math.max(7, speed * 1.3);  // Ensure speed is at least 7
+  // More realistic base speed for all balls
+  const adjustedSpeed = Math.max(5, speed * 1.1);  // Reduced from 7 and 1.3
   
   // Add directional bias to reflection angle
   const reflectionAngle = angle + (angle - incidentAngle) + directionalBias;
   
-  // Add slight random variation to the reflection (reduced for more predictable behavior)
-  const randomVariation = (Math.random() - 0.5) * 0.2; // Reduced from 0.3
+  // Add slight random variation to the reflection
+  const randomVariation = (Math.random() - 0.5) * 0.15; // Reduced from 0.2
   
-  // Higher multiplier for goalkeeper collisions for stronger clearances
-  const speedMultiplier = isGoalkeeper ? 2.0 : 1.5;
+  // More realistic multiplier for soccer ball physics
+  const speedMultiplier = isGoalkeeper ? 1.5 : 1.2; // Reduced from 2.0 and 1.5
   
   // Calculate new velocity with all factors combined
   let newVelocity = {
@@ -138,11 +141,11 @@ export const calculateNewVelocity = (
   
   // Add one final directional bias check for very dangerous own-goal situations
   const movingTowardsOwnGoal = (team === 'red' && newVelocity.x < 0) || 
-                              (team === 'blue' && newVelocity.x > 0);
-                             
-  if (movingTowardsOwnGoal && Math.abs(newVelocity.x) > 3) {
+                            (team === 'blue' && newVelocity.x > 0);
+                           
+  if (movingTowardsOwnGoal && Math.abs(newVelocity.x) > 2.5) { // Reduced from 3
     // Flip the x direction if headed strongly towards own goal
-    newVelocity.x = -newVelocity.x;
+    newVelocity.x = -newVelocity.x * 0.8; // Added 0.8 factor to reduce reflection power
     console.log(`Emergency direction correction applied for ${team} team!`);
   }
   
