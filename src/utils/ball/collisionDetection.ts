@@ -1,6 +1,7 @@
 
-import { Position } from '../../types/football';
-import { GOAL_POST_BOUNCE } from './ballConstants';
+import { Position, Ball } from '../../types/football';
+import { BOUNCE_FACTOR, GOAL_POST_BOUNCE } from './ballConstants';
+import { handleBounceTracking } from './bounceDetection';
 
 // Simplified goal post collision check
 export const checkGoalPostCollision = (position: Position, ballRadius: number): false | 'horizontal' | 'vertical' => {

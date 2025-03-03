@@ -1,3 +1,4 @@
+
 import * as brain from 'brain.js';
 
 export interface Position {

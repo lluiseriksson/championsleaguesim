@@ -1,122 +1,113 @@
 
-import { Player, Position } from '../../types/football';
+import { Player, Ball, Position } from '../../types/football';
 import { calculateDistance } from '../positionHelpers';
 
-// Find the best teammate to pass to
+// Function to find the best teammate to pass to
 export const findBestPassTarget = (
   player: Player,
   ball: Ball,
-  allPlayers: Player[]
+  players: Player[]
 ): Player | undefined => {
-  // Get teammates
-  const teammates = allPlayers.filter(p => 
-    p.team === player.team && 
-    p.id !== player.id && 
-    p.role !== 'goalkeeper'
-  );
+  // Filter to get only teammates
+  const teammates = players.filter(p => p.team === player.team && p.id !== player.id);
   
   if (teammates.length === 0) return undefined;
   
-  // Calculate score for each teammate based on strategic considerations
-  const rankedTeammates = teammates.map(teammate => {
-    const distanceToTeammate = calculateDistance(player.position, teammate.position);
+  // Define weights for scoring
+  const DISTANCE_WEIGHT = 0.4;  // Lower is better
+  const FORWARD_POSITION_WEIGHT = 0.3;  // Higher is better
+  const OPPONENT_PROXIMITY_WEIGHT = 0.3;  // Lower is better
+  
+  // Get opponents to check passing lanes
+  const opponents = players.filter(p => p.team !== player.team);
+  
+  // Scoring function for each potential target
+  const getPassScore = (target: Player): number => {
+    // Distance score - we want closer players to have higher scores
+    const distance = calculateDistance(player.position, target.position);
+    const normalizedDistance = Math.min(1, distance / 400); // Normalize to 0-1 range
+    const distanceScore = 1 - normalizedDistance;
     
-    // Don't pass if teammate is too close or too far
-    if (distanceToTeammate < 50 || distanceToTeammate > 300) {
-      return { player: teammate, score: -1 };
-    }
+    // Forward position score - prefer players further in attacking direction
+    const isForward = (player.team === 'red' && target.position.x > player.position.x) ||
+                      (player.team === 'blue' && target.position.x < player.position.x);
+    const forwardPositionScore = isForward ? 0.8 : 0.2;
     
-    let score = 100 - (distanceToTeammate * 0.2); // Base score - prefer closer players
+    // Check if passing lane is clear
+    let clearLaneScore = 1.0;
     
-    // Check if teammate is in a better attacking position
-    const isAttackingDirection = 
-      (player.team === 'red' && teammate.position.x > player.position.x) || 
-      (player.team === 'blue' && teammate.position.x < player.position.x);
-    
-    if (isAttackingDirection) {
-      score += 30; // Significant bonus for teammates ahead in attacking direction
-    }
-    
-    // Check if the pass lane is clear of opponents
-    const opponents = allPlayers.filter(p => p.team !== player.team);
-    let clearLane = true;
-    
-    opponents.forEach(opponent => {
-      // Calculate if opponent is between passer and receiver
-      const isInLane = isPlayerInPassLane(
+    for (const opponent of opponents) {
+      // Calculate if opponent is in the passing lane
+      const inPassingLane = isInPassingLane(
         player.position, 
-        teammate.position, 
-        opponent.position,
-        30 // Lane width threshold
+        target.position, 
+        opponent.position
       );
       
-      if (isInLane) {
-        clearLane = false;
+      if (inPassingLane) {
+        clearLaneScore *= 0.5; // Reduce score if opponent in lane
       }
-    });
-    
-    if (clearLane) {
-      score += 40; // Big bonus for clear passing lanes
-    } else {
-      score -= 30; // Penalty for blocked passing lanes
     }
     
-    // Prefer players in more advanced positions (role-based)
-    if (teammate.role === 'forward') score += 25;
-    else if (teammate.role === 'midfielder') score += 15;
+    // Calculate final score
+    const finalScore = 
+      (distanceScore * DISTANCE_WEIGHT) +
+      (forwardPositionScore * FORWARD_POSITION_WEIGHT) +
+      (clearLaneScore * OPPONENT_PROXIMITY_WEIGHT);
     
-    // Check if teammate has space around them
-    let spaceAround = true;
-    opponents.forEach(opponent => {
-      if (calculateDistance(teammate.position, opponent.position) < 50) {
-        spaceAround = false;
-      }
-    });
-    
-    if (spaceAround) {
-      score += 20; // Bonus for teammates with space
-    }
-    
-    return { player: teammate, score };
-  });
+    return finalScore;
+  };
   
-  // Sort by score and filter out negative scores
-  const validTargets = rankedTeammates
-    .filter(t => t.score > 0)
-    .sort((a, b) => b.score - a.score);
+  // Calculate scores for all teammates
+  const scoredTeammates = teammates.map(teammate => ({
+    player: teammate,
+    score: getPassScore(teammate)
+  }));
   
-  // Return the best teammate if any valid targets exist
-  return validTargets.length > 0 ? validTargets[0].player : undefined;
+  // Sort by score (highest first)
+  scoredTeammates.sort((a, b) => b.score - a.score);
+  
+  // Return the best target, or undefined if no good targets
+  return scoredTeammates.length > 0 ? scoredTeammates[0].player : undefined;
 };
 
-// Check if a player is in the passing lane
-export const isPlayerInPassLane = (
-  origin: { x: number, y: number },
-  target: { x: number, y: number },
-  position: { x: number, y: number },
-  thresholdDistance: number
+// Helper function to check if a point is in the passing lane
+const isInPassingLane = (
+  from: Position,
+  to: Position,
+  point: Position,
+  tolerance: number = 30 // Adjust tolerance as needed
 ): boolean => {
-  // Calculate the passage line using parametric form
-  const dx = target.x - origin.x;
-  const dy = target.y - origin.y;
+  // Vector from start to end
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
   const length = Math.sqrt(dx * dx + dy * dy);
   
-  // Check if player is beyond start or end points
-  const dotProduct = ((position.x - origin.x) * dx + (position.y - origin.y) * dy) / (length * length);
+  // Normalized direction vector
+  const dirX = dx / length;
+  const dirY = dy / length;
   
-  if (dotProduct < 0 || dotProduct > 1) {
+  // Vector from start to point
+  const pointDx = point.x - from.x;
+  const pointDy = point.y - from.y;
+  
+  // Project point onto line
+  const projectionLength = pointDx * dirX + pointDy * dirY;
+  
+  // Check if the projection is within the line segment
+  if (projectionLength < 0 || projectionLength > length) {
     return false;
   }
   
-  // Calculate closest point on line to the position
-  const closestX = origin.x + dotProduct * dx;
-  const closestY = origin.y + dotProduct * dy;
+  // Calculate the distance from the point to the line
+  const projectedX = from.x + dirX * projectionLength;
+  const projectedY = from.y + dirY * projectionLength;
   
-  // Calculate distance from position to the line
-  const distance = calculateDistance(
-    { x: closestX, y: closestY },
-    position
+  const distanceToLine = Math.sqrt(
+    Math.pow(point.x - projectedX, 2) + 
+    Math.pow(point.y - projectedY, 2)
   );
   
-  return distance < thresholdDistance;
+  // Return true if the point is close enough to the line
+  return distanceToLine < tolerance;
 };
