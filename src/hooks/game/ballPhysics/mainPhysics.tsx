@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Player, Ball, Position } from '../../../types/football';
 import { handleBoundaryBounce } from './bounceUtils';
@@ -25,7 +26,7 @@ export function handleBallPhysics(
     sideEffect: false
   };
   
-  // Handle boundary collisions
+  // Handle boundary collisions - billiards style bouncing
   const boundaryResult = handleBoundaryBounce(newPosition, newVelocity, bounceDetectionRef);
   newPosition = boundaryResult.position;
   newVelocity = boundaryResult.velocity;
@@ -61,7 +62,7 @@ export function handleBallPhysics(
     );
   }
 
-  // Apply deceleration
+  // Apply billiard-style deceleration - very minimal to maintain momentum
   newVelocity = applyBallDeceleration(newVelocity);
 
   return {
