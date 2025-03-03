@@ -18,34 +18,32 @@ export const isOffside = (
     return false;
   }
   
-  // Get all defenders of the opposing team
-  const defenders = allPlayers.filter(p => 
-    p.team !== player.team && 
-    (p.role === 'defender' || p.role === 'goalkeeper')
-  );
+  // Get all players of the opposing team (excluding goalkeeper)
+  const opposingPlayers = allPlayers.filter(p => p.team !== player.team);
   
-  // Find the second last defender (including goalkeeper)
-  if (defenders.length < 2) return false;
+  // We need at least 2 opposing players to check offside
+  if (opposingPlayers.length < 2) return false;
   
-  // Sort defenders by their position along the x-axis (depending on which side they defend)
-  let sortedDefenders;
+  // Sort opposing players by their position along the x-axis (depending on which side they defend)
+  let sortedOpposingPlayers;
   if (player.team === 'red') {
-    // Red attacks right, so sort defenders from right to left
-    sortedDefenders = [...defenders].sort((a, b) => b.position.x - a.position.x);
+    // Red attacks right, so sort opposing players from right to left
+    sortedOpposingPlayers = [...opposingPlayers].sort((a, b) => b.position.x - a.position.x);
   } else {
-    // Blue attacks left, so sort defenders from left to right
-    sortedDefenders = [...defenders].sort((a, b) => a.position.x - b.position.x);
+    // Blue attacks left, so sort opposing players from left to right
+    sortedOpposingPlayers = [...opposingPlayers].sort((a, b) => a.position.x - b.position.x);
   }
   
-  const secondLastDefender = sortedDefenders[1];
+  // The second-last opposing player determines the offside line
+  const secondLastOpposingPlayer = sortedOpposingPlayers[1];
   
-  // Check if player is ahead of the second last defender
+  // Check if player is ahead of the second last opposing player
   if (player.team === 'red') {
     // Red attacks right
-    return player.position.x > secondLastDefender.position.x;
+    return player.position.x > secondLastOpposingPlayer.position.x;
   } else {
     // Blue attacks left
-    return player.position.x < secondLastDefender.position.x;
+    return player.position.x < secondLastOpposingPlayer.position.x;
   }
 };
 
