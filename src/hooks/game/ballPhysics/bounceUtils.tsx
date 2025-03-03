@@ -56,7 +56,7 @@ export function handleBoundaryBounce(
     bounceDetectionRef.lastBounceTime = currentTime;
   }
 
-  // Handle left and right boundary collisions
+  // Handle left and right boundary collisions - IMPROVED
   if (newPosition.x <= BALL_RADIUS || newPosition.x >= PITCH_WIDTH - BALL_RADIUS) {
     // Only reverse if not in goal area
     const goalY = PITCH_HEIGHT / 2;
@@ -64,11 +64,12 @@ export function handleBoundaryBounce(
     const goalBottom = goalY + GOAL_HEIGHT / 2;
     
     if (newPosition.y < goalTop || newPosition.y > goalBottom) {
-      newVelocity.x = -newVelocity.x * 0.9; // Add damping
+      // Stronger bounce coefficient for sides (increased from 0.9 to 0.95)
+      newVelocity.x = -newVelocity.x * 0.95;
       
       // Ensure the ball bounces with sufficient speed
-      if (Math.abs(newVelocity.x) < 3.5) {
-        newVelocity.x = newVelocity.x > 0 ? 3.5 : -3.5;
+      if (Math.abs(newVelocity.x) < 4.0) { // Increased from 3.5 to 4.0
+        newVelocity.x = newVelocity.x > 0 ? 4.0 : -4.0;
       }
       
       // Track consecutive left/right bounces
@@ -79,15 +80,19 @@ export function handleBoundaryBounce(
         bounceDetectionRef.consecutiveBounces++;
         
         // If ball is bouncing repeatedly on same side, add random effect
-        if (bounceDetectionRef.consecutiveBounces >= 2) {
+        // Lowered threshold from 2 to 1 for quicker intervention
+        if (bounceDetectionRef.consecutiveBounces >= 1) {
           console.log(`Ball stuck on ${currentSide} border, adding random effect`);
           newVelocity = addRandomEffect(newVelocity);
           bounceDetectionRef.sideEffect = true;
           
-          // Push ball more toward center of field
+          // Push ball more toward center of field (stronger effect)
           const centerX = PITCH_WIDTH / 2;
           const pushDirection = currentSide === 'left' ? 1 : -1;
-          newVelocity.x += pushDirection * 2;
+          newVelocity.x += pushDirection * 3; // Increased from 2 to 3
+          
+          // Add slight vertical component to avoid straight horizontal bounces
+          newVelocity.y += (Math.random() - 0.5) * 2;
           
           // Reset counter after applying effect
           bounceDetectionRef.consecutiveBounces = 0;
