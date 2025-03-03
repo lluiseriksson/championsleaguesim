@@ -4,7 +4,7 @@ import { handleGoalkeeperCollisions, handleFieldPlayerCollisions } from './colli
 import { applyBallDeceleration } from './velocityUtils';
 import { Ball, Position, Player } from '../../../types/football';
 
-// Handle collisions and physics for the ball
+// Main physics processor - Coordinates all physics calculations
 export function handleBallPhysics(
   currentBall: Ball,
   newPosition: Position,

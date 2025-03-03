@@ -1,9 +1,9 @@
 
 import React from 'react';
-import { Player, Ball, Position, PITCH_WIDTH, PITCH_HEIGHT, BALL_RADIUS, GOAL_HEIGHT } from '../../types/football';
-import { handleBallPhysics as processPhysics } from './ballPhysics/mainPhysics';
+import { Player, Ball, Position } from '../../types/football';
+import { handleBallPhysics as processPhysics } from './ballPhysics/physicsEngine';
 
-// Handle collisions and physics for the ball
+// Handle collisions and physics for the ball - Entry point
 export function handleBallPhysics(
   currentBall: Ball,
   newPosition: Position,
