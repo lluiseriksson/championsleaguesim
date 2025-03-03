@@ -35,13 +35,85 @@ export const useBallMovement = ({
   const noMovementTimeRef = React.useRef(0);
   const lastPositionRef = React.useRef<Position | null>(null);
   
-  // Nuevo: Referencia para el último equipo que tocó el balón
+  // Track last team to touch the ball
   const lastTouchTeamRef = React.useRef<'red' | 'blue' | null>(null);
   
-  // Nuevo: Referencia para controlar si hay un fuera de juego en curso
+  // Track offside state
   const offsideDetectedRef = React.useRef(false);
+  const freeKickInProgressRef = React.useRef(false);
+  const freeKickTeamRef = React.useRef<'red' | 'blue' | null>(null);
+  const freeKickPositionRef = React.useRef<Position | null>(null);
+  const freeKickTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  // Handle free kick execution
+  const executeOffisideFreeKick = React.useCallback((offendingTeam: 'red' | 'blue', position: Position) => {
+    // The team that gets the free kick is the opposite team
+    const freeKickTeam = offendingTeam === 'red' ? 'blue' : 'red';
+    freeKickTeamRef.current = freeKickTeam;
+    freeKickPositionRef.current = {...position};
+    freeKickInProgressRef.current = true;
+    offsideDetectedRef.current = true;
+    
+    // Show offside notification
+    toast(`¡FUERA DE JUEGO!`, {
+      description: `Falta para el equipo ${freeKickTeam === 'red' ? 'rojo' : 'azul'}`,
+      position: "top-center",
+    });
+    
+    // Position the ball for the free kick
+    setBall(currentBall => ({
+      ...currentBall,
+      position: {...position},
+      velocity: { x: 0, y: 0 } // Stop the ball for the free kick
+    }));
+    
+    // Set a timeout to auto-execute the free kick after a delay if no player kicks it
+    if (freeKickTimeoutRef.current) {
+      clearTimeout(freeKickTimeoutRef.current);
+    }
+    
+    freeKickTimeoutRef.current = setTimeout(() => {
+      if (freeKickInProgressRef.current) {
+        console.log("Auto-executing free kick after timeout");
+        
+        // Determine kick direction based on free kick team
+        const kickDirection = freeKickTeam === 'red' ? 1 : -1;
+        
+        setBall(currentBall => ({
+          ...currentBall,
+          velocity: {
+            x: kickDirection * 8, // Strong kick in team's attacking direction
+            y: (Math.random() - 0.5) * 3 // Slight random vertical component
+          }
+        }));
+        
+        // End free kick state
+        freeKickInProgressRef.current = false;
+        
+        // Reset offside after additional delay
+        setTimeout(() => {
+          offsideDetectedRef.current = false;
+        }, 500);
+      }
+    }, 3000); // Auto-execute after 3 seconds
+    
+    return freeKickTeam;
+  }, [setBall]);
 
   const updateBallPosition = React.useCallback(() => {
+    // If a free kick is in progress, only allow the correct team to move the ball
+    if (freeKickInProgressRef.current) {
+      setBall(currentBall => {
+        // Keep the ball stationary during free kick setup
+        return {
+          ...currentBall,
+          position: freeKickPositionRef.current || currentBall.position,
+          velocity: { x: 0, y: 0 }
+        };
+      });
+      return;
+    }
+    
     setBall(currentBall => {
       // Check current ball speed
       const currentSpeed = Math.sqrt(
@@ -106,6 +178,14 @@ export const useBallMovement = ({
       const goalScored = checkGoal(newPosition);
       if (goalScored) {
         console.log(`Goal detected for team ${goalScored}`);
+        // Reset offside state when a goal is scored
+        offsideDetectedRef.current = false;
+        if (freeKickTimeoutRef.current) {
+          clearTimeout(freeKickTimeoutRef.current);
+          freeKickTimeoutRef.current = null;
+        }
+        freeKickInProgressRef.current = false;
+        
         // Reset ball position to center with a significant initial velocity
         return {
           ...currentBall,
@@ -123,72 +203,75 @@ export const useBallMovement = ({
         };
       }
 
-      // Handle ball physics, but with a custom onBallTouch handler to track last touch team
+      // Handle ball physics, with tracking of team touches and offside detection
       return handleBallPhysics(
         currentBall,
         newPosition,
         goalkeepers,
         fieldPlayers,
         (player) => {
-          // Si ya se detectó un fuera de juego, ignorar nuevos toques hasta reiniciar
-          if (offsideDetectedRef.current) return;
+          // If offside is currently active, only allow the correct team to touch the ball
+          if (freeKickInProgressRef.current) {
+            // If the touching player belongs to the team that gets the free kick, execute it
+            if (player.team === freeKickTeamRef.current) {
+              console.log(`Free kick being taken by ${player.team} player #${player.id}`);
+              freeKickInProgressRef.current = false;
+              
+              // Clear any pending auto-execution
+              if (freeKickTimeoutRef.current) {
+                clearTimeout(freeKickTimeoutRef.current);
+                freeKickTimeoutRef.current = null;
+              }
+              
+              // Reset offside after a short delay
+              setTimeout(() => {
+                offsideDetectedRef.current = false;
+              }, 500);
+            } else {
+              // If wrong team touches the ball during free kick, prevent it (by returning same ball)
+              console.log(`Wrong team touched the ball during free kick! Player: ${player.team} #${player.id}`);
+              return currentBall;
+            }
+          }
           
-          // Guardar el equipo que tocó el balón por última vez
+          // Skip offside checks during active offside situation
+          if (offsideDetectedRef.current) {
+            // Just register the touch and continue
+            onBallTouch(player);
+            return;
+          }
+          
+          // Save the team that touched the ball
           lastTouchTeamRef.current = player.team;
           
-          // Después de un toque, comprobar si hay jugadores en fuera de juego que reciban el balón
+          // After a touch, check if there are players in offside position who might receive the ball
           for (const potentialReceiver of players) {
-            // Solo comprobar jugadores del mismo equipo que el pasador
+            // Only check players on the same team as the passer
             if (potentialReceiver.id !== player.id && potentialReceiver.team === player.team) {
-              // Calcular distancia al balón
+              // Calculate distance to ball
               const dx = potentialReceiver.position.x - currentBall.position.x;
               const dy = potentialReceiver.position.y - currentBall.position.y;
               const distToBall = Math.sqrt(dx*dx + dy*dy);
               
-              // Si está cerca del balón (posible receptor) y está en fuera de juego
+              // If player is close to the ball (potential receiver) and in offside position
               if (distToBall < 40 && checkOffside(potentialReceiver, players, currentBall.position, player.team)) {
-                console.log(`¡Fuera de juego detectado! Jugador ${potentialReceiver.id} del equipo ${potentialReceiver.team}`);
+                console.log(`Offside detected! Player ${potentialReceiver.id} of team ${potentialReceiver.team}`);
                 
-                // Marcar que se ha detectado un fuera de juego
-                offsideDetectedRef.current = true;
-                
-                // Mostrar notificación de fuera de juego
-                toast(`¡FUERA DE JUEGO!`, {
-                  description: `Equipo ${potentialReceiver.team === 'red' ? 'rojo' : 'azul'}`,
-                  position: "top-center",
-                });
-                
-                // Cambiar la dirección del balón (tiro libre indirecto)
-                const newDirection = potentialReceiver.team === 'red' ? -1 : 1;
-                
-                // Devolver el balón con una velocidad controlada
-                return {
-                  ...currentBall,
-                  position: currentBall.position,
-                  velocity: { 
-                    x: newDirection * 5, 
-                    y: (Math.random() - 0.5) * 2
-                  }
-                };
+                // Execute offside free kick
+                executeOffisideFreeKick(player.team, currentBall.position);
+                return; // Ball position will be set by executeOffisideFreeKick
               }
             }
           }
           
-          // Si no hay fuera de juego, llamar al manipulador de toques normal
+          // If no offside, register the normal touch
           onBallTouch(player);
         },
         lastCollisionTimeRef,
         lastKickPositionRef
       );
     });
-    
-    // Resetear el estado de fuera de juego después de un tiempo
-    if (offsideDetectedRef.current) {
-      setTimeout(() => {
-        offsideDetectedRef.current = false;
-      }, 1500);
-    }
-  }, [setBall, checkGoal, goalkeepers, fieldPlayers, onBallTouch, players]);
+  }, [setBall, checkGoal, goalkeepers, fieldPlayers, onBallTouch, players, executeOffisideFreeKick]);
 
   return { updateBallPosition };
 };
