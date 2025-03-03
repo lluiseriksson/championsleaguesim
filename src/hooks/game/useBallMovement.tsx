@@ -1,7 +1,8 @@
-
 import React from 'react';
 import { Player, Ball, Position, PITCH_WIDTH, PITCH_HEIGHT, BALL_RADIUS } from '../../types/football';
 import { handleBallPhysics } from './ballPhysicsUtils';
+import { checkOffside } from '../../utils/gamePhysics';
+import { toast } from 'sonner';
 
 interface BallMovementProps {
   ball: Ball;
@@ -33,6 +34,12 @@ export const useBallMovement = ({
   // Track time without movement to add a random kick if needed
   const noMovementTimeRef = React.useRef(0);
   const lastPositionRef = React.useRef<Position | null>(null);
+  
+  // Nuevo: Referencia para el último equipo que tocó el balón
+  const lastTouchTeamRef = React.useRef<'red' | 'blue' | null>(null);
+  
+  // Nuevo: Referencia para controlar si hay un fuera de juego en curso
+  const offsideDetectedRef = React.useRef(false);
 
   const updateBallPosition = React.useCallback(() => {
     setBall(currentBall => {
@@ -116,18 +123,72 @@ export const useBallMovement = ({
         };
       }
 
-      // Handle ball collisions and movement
+      // Handle ball physics, but with a custom onBallTouch handler to track last touch team
       return handleBallPhysics(
         currentBall,
         newPosition,
         goalkeepers,
         fieldPlayers,
-        onBallTouch,
+        (player) => {
+          // Si ya se detectó un fuera de juego, ignorar nuevos toques hasta reiniciar
+          if (offsideDetectedRef.current) return;
+          
+          // Guardar el equipo que tocó el balón por última vez
+          lastTouchTeamRef.current = player.team;
+          
+          // Después de un toque, comprobar si hay jugadores en fuera de juego que reciban el balón
+          for (const potentialReceiver of players) {
+            // Solo comprobar jugadores del mismo equipo que el pasador
+            if (potentialReceiver.id !== player.id && potentialReceiver.team === player.team) {
+              // Calcular distancia al balón
+              const dx = potentialReceiver.position.x - currentBall.position.x;
+              const dy = potentialReceiver.position.y - currentBall.position.y;
+              const distToBall = Math.sqrt(dx*dx + dy*dy);
+              
+              // Si está cerca del balón (posible receptor) y está en fuera de juego
+              if (distToBall < 40 && checkOffside(potentialReceiver, players, currentBall.position, player.team)) {
+                console.log(`¡Fuera de juego detectado! Jugador ${potentialReceiver.id} del equipo ${potentialReceiver.team}`);
+                
+                // Marcar que se ha detectado un fuera de juego
+                offsideDetectedRef.current = true;
+                
+                // Mostrar notificación de fuera de juego
+                toast(`¡FUERA DE JUEGO!`, {
+                  description: `Equipo ${potentialReceiver.team === 'red' ? 'rojo' : 'azul'}`,
+                  position: "top-center",
+                });
+                
+                // Cambiar la dirección del balón (tiro libre indirecto)
+                const newDirection = potentialReceiver.team === 'red' ? -1 : 1;
+                
+                // Devolver el balón con una velocidad controlada
+                return {
+                  ...currentBall,
+                  position: currentBall.position,
+                  velocity: { 
+                    x: newDirection * 5, 
+                    y: (Math.random() - 0.5) * 2
+                  }
+                };
+              }
+            }
+          }
+          
+          // Si no hay fuera de juego, llamar al manipulador de toques normal
+          onBallTouch(player);
+        },
         lastCollisionTimeRef,
         lastKickPositionRef
       );
     });
-  }, [setBall, checkGoal, goalkeepers, fieldPlayers, onBallTouch]);
+    
+    // Resetear el estado de fuera de juego después de un tiempo
+    if (offsideDetectedRef.current) {
+      setTimeout(() => {
+        offsideDetectedRef.current = false;
+      }, 1500);
+    }
+  }, [setBall, checkGoal, goalkeepers, fieldPlayers, onBallTouch, players]);
 
   return { updateBallPosition };
 };

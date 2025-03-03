@@ -13,7 +13,7 @@ const Ball: React.FC<BallProps> = ({ ball }) => {
   
   return (
     <motion.div
-      className={`absolute w-3 h-3 bg-white rounded-full shadow-md ${hasSideEffect ? 'shadow-blue-500/50' : ''}`}
+      className={`absolute w-3 h-3 bg-white rounded-full shadow-md ${hasSideEffect ? 'shadow-yellow-500/50' : ''}`}
       animate={{
         x: ball.position.x,
         y: ball.position.y,
