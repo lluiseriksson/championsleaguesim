@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Player, Ball, PITCH_WIDTH, PITCH_HEIGHT } from '../../types/football';
 import { moveGoalkeeper } from '../../utils/playerBrain';
@@ -67,19 +68,29 @@ const usePlayerMovement = ({
           if (!player.brain || !player.brain.net || typeof player.brain.net.run !== 'function') {
             console.warn(`Invalid brain for ${player.team} ${player.role} #${player.id}, using fallback movement`);
             movement = getFallbackMovement(player, ball, currentPlayers, positionRestricted);
+            
+            return {
+              ...player,
+              position: movement.position,
+              brain: {
+                ...player.brain,
+                lastOutput: movement.output,
+                lastAction: 'move'
+              }
+            };
           } else {
             movement = getNeuralMovement(player, ball, currentPlayers, positionRestricted);
+            
+            return {
+              ...player,
+              position: movement.position,
+              brain: {
+                ...player.brain,
+                lastOutput: movement.output,
+                lastAction: movement.action || 'move'
+              }
+            };
           }
-          
-          return {
-            ...player,
-            position: movement.position,
-            brain: {
-              ...player.brain,
-              lastOutput: movement.output,
-              lastAction: 'move'
-            }
-          };
         } catch (error) {
           console.error(`Error updating player ${player.team} ${player.role} #${player.id}:`, error);
           return player;

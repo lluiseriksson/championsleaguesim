@@ -1,4 +1,10 @@
-import { Player, Ball, PITCH_WIDTH, PITCH_HEIGHT, GOAL_HEIGHT } from '../types/football';
+import { Player, Ball, PITCH_WIDTH, PITCH_HEIGHT, GOAL_HEIGHT, NeuralNet } from '../types/football';
+import { createUntrained } from './neuralNetwork';
+
+// Create a player brain for neural network-based movement
+export const createPlayerBrain = (): NeuralNet => {
+  return createUntrained();
+};
 
 // Specialized movement logic for goalkeepers
 export const moveGoalkeeper = (player: Player, ball: Ball): { x: number, y: number } => {
