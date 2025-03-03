@@ -56,7 +56,7 @@ export function handleBoundaryBounce(
     bounceDetectionRef.lastBounceTime = currentTime;
   }
 
-  // Handle left and right boundary collisions with CLASSIC BEHAVIOR
+  // Handle left and right boundary collisions - BILLIARD STYLE PHYSICS
   if (newPosition.x <= BALL_RADIUS || newPosition.x >= PITCH_WIDTH - BALL_RADIUS) {
     // Only reverse if not in goal area
     const goalY = PITCH_HEIGHT / 2;
@@ -64,12 +64,22 @@ export function handleBoundaryBounce(
     const goalBottom = goalY + GOAL_HEIGHT / 2;
     
     if (newPosition.y < goalTop || newPosition.y > goalBottom) {
-      // More elastic bounce - reduced damping coefficient for more lively rebounds
-      newVelocity.x = -newVelocity.x * 0.98;
+      // Perfect billiard-style bounce - very elastic with minimal energy loss
+      newVelocity.x = -newVelocity.x * 0.95; // Less damping for more elastic bounce
       
-      // Restore classic minimum bounce speed
-      if (Math.abs(newVelocity.x) < 4.5) {
-        newVelocity.x = newVelocity.x > 0 ? 4.5 : -4.5;
+      // Ensure minimum speed after bounce like in billiards
+      if (Math.abs(newVelocity.x) < 6) {
+        newVelocity.x = newVelocity.x > 0 ? 6 : -6;
+      }
+      
+      // Apply slight angle variation based on current y velocity
+      // This creates more natural billiard-style bounces that preserve momentum
+      if (Math.abs(newVelocity.y) > 0.5) {
+        // Slightly enhance the y component to make bounces more angled
+        newVelocity.y *= 1.05;
+      } else {
+        // Add a small random y component if almost flat to prevent perfectly horizontal bounces
+        newVelocity.y += (Math.random() - 0.5) * 1.5;
       }
       
       // Track consecutive left/right bounces
@@ -79,21 +89,21 @@ export function handleBoundaryBounce(
           currentTime - bounceDetectionRef.lastBounceTime < bounceCooldown) {
         bounceDetectionRef.consecutiveBounces++;
         
-        // CLASSIC BEHAVIOR: More aggressive anti-sticking measures
-        if (bounceDetectionRef.consecutiveBounces >= 1) {
-          console.log(`Ball stuck on ${currentSide} border, applying classic bounce effect`);
+        // Even with billiard physics, prevent getting stuck
+        if (bounceDetectionRef.consecutiveBounces >= 2) {
+          console.log(`Ball stuck on ${currentSide} border, applying billiard bounce effect`);
           bounceDetectionRef.sideEffect = true;
           
-          // Push ball more toward center of field with stronger, more varied effect
+          // Add a more pronounced angle to the bounce
           const centerX = PITCH_WIDTH / 2;
           const pushDirection = currentSide === 'left' ? 1 : -1;
           
-          // Stronger horizontal push (classic behavior)
-          newVelocity.x = pushDirection * (5 + Math.random() * 2);
+          // In billiards, a ball never bounces straight - add angle
+          newVelocity.x = pushDirection * (Math.abs(newVelocity.x) * 1.1);
           
-          // Add significant vertical component to avoid straight horizontal bounces
-          // Classic behavior had more randomness on vertical bounce
-          newVelocity.y += (Math.random() - 0.5) * 5;
+          // More significant y component for angled bounce
+          const yVariation = (Math.random() - 0.5) * 7;
+          newVelocity.y += yVariation;
           
           // Reset counter after applying effect
           bounceDetectionRef.consecutiveBounces = 0;

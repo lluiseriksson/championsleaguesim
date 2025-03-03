@@ -3,16 +3,16 @@ import { Position } from '../../../types/football';
 export function applyBallDeceleration(velocity: Position): Position {
   let newVelocity = { ...velocity };
   
-  // Apply VERY mild deceleration like in classic behavior
-  // This was a key to maintaining ball movement in the original game
-  newVelocity.x *= 0.999; // Nearly no deceleration - classic behavior
-  newVelocity.y *= 0.999; // Nearly no deceleration - classic behavior
+  // Apply VERY mild deceleration like in billiards
+  // Billiard balls have very little friction/air resistance
+  newVelocity.x *= 0.9975; // Almost no deceleration - billiard physics
+  newVelocity.y *= 0.9975; // Almost no deceleration - billiard physics
   
-  // Classic behavior: stronger minimum speed to keep ball moving
+  // Billiard-style behavior: stronger minimum speed to keep ball moving
   const newSpeed = Math.sqrt(newVelocity.x * newVelocity.x + newVelocity.y * newVelocity.y);
-  if (newSpeed < 4.0) {
+  if (newSpeed < 5.0) {
     // Maintain direction but increase speed to minimum
-    const factor = 4.0 / Math.max(0.01, newSpeed); // Prevent division by zero
+    const factor = 5.0 / Math.max(0.01, newSpeed); // Prevent division by zero
     newVelocity.x *= factor;
     newVelocity.y *= factor;
   }

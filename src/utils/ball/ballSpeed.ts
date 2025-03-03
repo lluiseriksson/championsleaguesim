@@ -1,8 +1,8 @@
 
 import { Position } from '../../types/football';
 
-const MAX_BALL_SPEED = 15;
-const MIN_BALL_SPEED = 4.5; // Increased to classic value - ball needs to keep moving!
+const MAX_BALL_SPEED = 16; // Slightly increased for better billiard physics
+const MIN_BALL_SPEED = 5.0; // Increased to ensure ball keeps moving like a billiard ball
 
 export const limitSpeed = (velocity: Position): Position => {
   const speed = Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
@@ -17,7 +17,7 @@ export const limitSpeed = (velocity: Position): Position => {
   }
   
   // ALWAYS apply minimum speed unless the ball should be completely stopped
-  // Classic behavior maintained higher minimum speed
+  // Billiard balls maintain momentum - higher minimum speed
   if (speed < MIN_BALL_SPEED && speed > 0) {
     const factor = MIN_BALL_SPEED / speed;
     return {
@@ -30,9 +30,9 @@ export const limitSpeed = (velocity: Position): Position => {
 };
 
 export const addRandomEffect = (velocity: Position): Position => {
-  // Classic behavior: stronger random effects
-  const randomX = (Math.random() - 0.5) * 4; // Doubled from 2 to 4
-  const randomY = (Math.random() - 0.5) * 4; // Changed from asymmetric to symmetric, doubled force
+  // Billiard-like randomness - more controlled but still unpredictable
+  const randomX = (Math.random() - 0.5) * 5; // Increased from 4 to 5
+  const randomY = (Math.random() - 0.5) * 5; // Increased from 4 to 5
   
   return {
     x: velocity.x + randomX,
