@@ -1,6 +1,10 @@
 import React from 'react';
 import { Player, Ball, Position, PITCH_WIDTH, PITCH_HEIGHT, BALL_RADIUS, GOAL_HEIGHT } from '../../types/football';
-import { checkCollision, calculateNewVelocity, addRandomEffect } from '../../utils/gamePhysics';
+import { 
+  checkCollision, 
+  calculateNewVelocity, 
+  addRandomEffect 
+} from '../../utils/gamePhysics';
 
 // Handle collisions and physics for the ball
 export function handleBallPhysics(
