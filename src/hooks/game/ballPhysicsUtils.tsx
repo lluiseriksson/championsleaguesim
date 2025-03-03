@@ -1,3 +1,4 @@
+
 import { Ball, Player, Position } from '../../types/football';
 import { calculateDistance } from '../../utils/positionHelpers';
 
@@ -132,8 +133,9 @@ export const handleBallPhysics = (
               break;
               
             case 'pass':
+              // Check if the player has a target player to pass to
               if (player.brain.targetPlayer) {
-                // Smart passing to specific teammate
+                // Get the target player
                 const target = player.brain.targetPlayer;
                 
                 // Calculate direction vector
