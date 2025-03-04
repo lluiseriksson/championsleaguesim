@@ -15,15 +15,19 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
       try {
         const initialPlayers: Player[] = [];
         
-        // Initialize red team players
+        // Initialize red team players with 3-4-3 formation
         const redTeamPositions = [
           { x: 50, y: PITCH_HEIGHT/2, role: 'goalkeeper' },
+          // 3 defenders
           { x: 150, y: PITCH_HEIGHT/4, role: 'defender' },
           { x: 150, y: PITCH_HEIGHT/2, role: 'defender' },
           { x: 150, y: (PITCH_HEIGHT*3)/4, role: 'defender' },
-          { x: 300, y: PITCH_HEIGHT/3, role: 'midfielder' },
-          { x: 300, y: PITCH_HEIGHT/2, role: 'midfielder' },
-          { x: 300, y: (PITCH_HEIGHT*2)/3, role: 'midfielder' },
+          // 4 midfielders
+          { x: 300, y: PITCH_HEIGHT/5, role: 'midfielder' },
+          { x: 300, y: (PITCH_HEIGHT*2)/5, role: 'midfielder' },
+          { x: 300, y: (PITCH_HEIGHT*3)/5, role: 'midfielder' },
+          { x: 300, y: (PITCH_HEIGHT*4)/5, role: 'midfielder' },
+          // 3 forwards
           { x: 500, y: PITCH_HEIGHT/4, role: 'forward' },
           { x: 500, y: PITCH_HEIGHT/2, role: 'forward' },
           { x: 500, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
@@ -55,15 +59,19 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
           });
         }
 
-        // Initialize blue team players
+        // Initialize blue team players with 3-4-3 formation
         const blueTeamPositions = [
           { x: PITCH_WIDTH - 50, y: PITCH_HEIGHT/2, role: 'goalkeeper' },
+          // 3 defenders
           { x: PITCH_WIDTH - 150, y: PITCH_HEIGHT/4, role: 'defender' },
           { x: PITCH_WIDTH - 150, y: PITCH_HEIGHT/2, role: 'defender' },
           { x: PITCH_WIDTH - 150, y: (PITCH_HEIGHT*3)/4, role: 'defender' },
-          { x: PITCH_WIDTH - 300, y: PITCH_HEIGHT/3, role: 'midfielder' },
-          { x: PITCH_WIDTH - 300, y: PITCH_HEIGHT/2, role: 'midfielder' },
-          { x: PITCH_WIDTH - 300, y: (PITCH_HEIGHT*2)/3, role: 'midfielder' },
+          // 4 midfielders
+          { x: PITCH_WIDTH - 300, y: PITCH_HEIGHT/5, role: 'midfielder' },
+          { x: PITCH_WIDTH - 300, y: (PITCH_HEIGHT*2)/5, role: 'midfielder' },
+          { x: PITCH_WIDTH - 300, y: (PITCH_HEIGHT*3)/5, role: 'midfielder' },
+          { x: PITCH_WIDTH - 300, y: (PITCH_HEIGHT*4)/5, role: 'midfielder' },
+          // 3 forwards
           { x: PITCH_WIDTH - 500, y: PITCH_HEIGHT/4, role: 'forward' },
           { x: PITCH_WIDTH - 500, y: PITCH_HEIGHT/2, role: 'forward' },
           { x: PITCH_WIDTH - 500, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
