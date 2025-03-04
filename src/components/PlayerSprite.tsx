@@ -38,7 +38,7 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
   return (
     <motion.div
       key={player.id}
-      className={`absolute w-8 h-8 rounded-full ${getPlayerColor(player)} ${getRoleIndicator(player.role)} 
+      className={`absolute w-6 h-6 rounded-full ${getPlayerColor(player)} ${getRoleIndicator(player.role)} 
                  flex items-center justify-center shadow-md`}
       animate={{
         x: player.position.x,
@@ -53,7 +53,7 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
       initial={false}
     >
       {/* Pequeña letra para indicar el rol */}
-      <span className="text-xs text-white font-bold">
+      <span className="text-[8px] text-white font-bold">
         {player.role === 'goalkeeper' ? 'G' : 
          player.role === 'defender' ? 'D' : 
          player.role === 'midfielder' ? 'M' : 

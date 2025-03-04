@@ -56,12 +56,11 @@ const usePlayerMovement = ({
               y: player.position.y + moveY
             };
             
-            // Increased by 50% from base values
-            let maxDistance = 75; // 50 * 1.5 = 75
+            let maxDistance = 50;
             switch (player.role) {
-              case 'defender': maxDistance = 105; break; // 70 * 1.5 = 105
-              case 'midfielder': maxDistance = 150; break; // 100 * 1.5 = 150
-              case 'forward': maxDistance = 180; break; // 120 * 1.5 = 180
+              case 'defender': maxDistance = 70; break;
+              case 'midfielder': maxDistance = 100; break;
+              case 'forward': maxDistance = 120; break;
             }
             
             const distanceFromStart = Math.sqrt(
@@ -116,8 +115,7 @@ const usePlayerMovement = ({
           
           player.brain.lastOutput = { x: moveX, y: moveY };
 
-          // Increased all distances by 50% from base values
-          let maxDistance = 75; // 50 * 1.5 = 75
+          let maxDistance = 50;
           const distanceToBall = Math.sqrt(
             Math.pow(ball.position.x - player.position.x, 2) +
             Math.pow(ball.position.y - player.position.y, 2)
@@ -125,13 +123,13 @@ const usePlayerMovement = ({
 
           switch (player.role) {
             case 'defender':
-              maxDistance = distanceToBall < 150 ? 144 : 90; // 96 * 1.5 = 144, 60 * 1.5 = 90
+              maxDistance = distanceToBall < 150 ? 96 : 60;
               break;
             case 'midfielder':
-              maxDistance = distanceToBall < 200 ? 180 : 120; // 120 * 1.5 = 180, 80 * 1.5 = 120
+              maxDistance = distanceToBall < 200 ? 120 : 80;
               break;
             case 'forward':
-              maxDistance = distanceToBall < 250 ? 300 : 180; // 200 * 1.5 = 300, 120 * 1.5 = 180
+              maxDistance = distanceToBall < 250 ? 200 : 120;
               break;
           }
 
