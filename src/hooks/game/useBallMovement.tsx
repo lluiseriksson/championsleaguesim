@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Player, Ball, Position, PITCH_WIDTH, PITCH_HEIGHT, BALL_RADIUS } from '../../types/football';
-import { handleBallPhysics } from './ballPhysicsUtils';
+import { handleBallPhysics } from './useBallPhysics';
 
 interface BallMovementProps {
   ball: Ball;
