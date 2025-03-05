@@ -76,10 +76,7 @@ export const useMatchTimer = ({
     // In golden goal mode: always keep the timer running
     if (elapsedTime < initialTime || goldenGoal) {
       timerRef.current = setInterval(() => {
-        setElapsedTime((prevTime) => {
-          const newTime = prevTime + 1;
-          return newTime;
-        });
+        setElapsedTime((prevTime) => prevTime + 1);
       }, 1000);
     }
 
@@ -104,5 +101,5 @@ const getDisplayMinutes = (elapsed: number, total: number, goldenGoal: boolean) 
   // Scale the elapsed time to a 90-minute match
   const scaledMinutes = Math.floor((elapsed / total) * 90);
   // In golden goal mode, we need to show 90+ minutes
-  return goldenGoal ? Math.max(90, scaledMinutes) : scaledMinutes;
+  return goldenGoal && elapsed >= total ? Math.max(90, scaledMinutes) : scaledMinutes;
 };
