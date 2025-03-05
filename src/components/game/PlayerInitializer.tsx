@@ -15,6 +15,7 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
   React.useEffect(() => {
     const loadPlayers = async () => {
       try {
+        console.log("Starting player initialization...");
         const initialPlayers: Player[] = [];
         
         // Get random team names from the available teams
@@ -58,6 +59,7 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
           { x: 500, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
         ];
         
+        // Create home team players
         for (let i = 0; i < redTeamPositions.length; i++) {
           const pos = redTeamPositions[i];
           const role = pos.role as Player['role'];
@@ -105,6 +107,7 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
           { x: PITCH_WIDTH - 500, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
         ];
         
+        // Create away team players
         for (let i = 0; i < blueTeamPositions.length; i++) {
           const pos = blueTeamPositions[i];
           const role = pos.role as Player['role'];
@@ -122,7 +125,7 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
           }
           
           initialPlayers.push({
-            id: i + 11,
+            id: i + 12, // Cambié de 11 a 12 para asegurar IDs únicos
             position: { x: pos.x, y: pos.y },
             role: role,
             team: 'blue',
@@ -134,6 +137,14 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
           });
         }
 
+        console.log("Initialized players:", initialPlayers.length);
+        
+        // Verificar los jugadores inicializados
+        if (initialPlayers.length === 0) {
+          console.error("No se inicializaron jugadores");
+          return;
+        }
+        
         setPlayers(initialPlayers);
         console.log("Game initialized successfully with", initialPlayers.length, "players");
         setGameReady(true);

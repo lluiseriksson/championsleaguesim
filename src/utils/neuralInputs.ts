@@ -5,7 +5,7 @@ import { calculateDistance, normalizeValue } from './neuralCore';
 // Calculate inputs for the neural network
 export const calculateNetworkInputs = (ball: Ball, player: Player, context: TeamContext): NeuralInput => {
   // Apply strength multiplier (default to 1 if not defined)
-  const strengthMultiplier = player.strengthMultiplier || 1;
+  const strengthMultiplier = player.strengthMultiplier !== undefined ? player.strengthMultiplier : 1;
   
   // Normalize values for the neural network (between 0 and 1)
   const normalizedBallX = normalizeValue(ball.position.x, 0, 800);
