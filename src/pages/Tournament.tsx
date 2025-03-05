@@ -1,34 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { teamKitColors, TeamKit } from '../types/teamKits';
+import { TournamentTeam, Match } from '../types/tournament';
 import TournamentBracket from '../components/TournamentBracket';
 import TournamentMatch from '../components/game/TournamentMatch';
 import { Button } from '../components/ui/button';
 import { Trophy, ArrowLeftCircle, RefreshCw, Play, Pause } from 'lucide-react';
 import { toast } from 'sonner';
 import { Score } from '../types/football';
-
-interface TournamentTeam {
-  id: number;
-  name: string;
-  seed: number;
-  eloRating: number;
-  kitColors: TeamKit;
-}
-
-interface Match {
-  id: number;
-  round: number;
-  position: number;
-  teamA?: TournamentTeam;
-  teamB?: TournamentTeam;
-  winner?: TournamentTeam;
-  played: boolean;
-  score?: {
-    teamA: number;
-    teamB: number;
-  };
-}
 
 const Tournament: React.FC = () => {
   const [teams, setTeams] = useState<TournamentTeam[]>([]);

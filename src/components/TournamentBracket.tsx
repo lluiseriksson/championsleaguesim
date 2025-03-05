@@ -1,32 +1,6 @@
-
 import React from 'react';
 import { getTeamKitColor, KitType } from '../types/teamKits';
-
-interface TournamentTeam {
-  id: number;
-  name: string;
-  seed: number;
-  eloRating: number;
-  kitColors: {
-    home: string;
-    away: string;
-    third: string;
-  };
-}
-
-interface Match {
-  id: number;
-  round: number;
-  position: number;
-  teamA?: TournamentTeam;
-  teamB?: TournamentTeam;
-  winner?: TournamentTeam;
-  played: boolean;
-  score?: {
-    teamA: number;
-    teamB: number;
-  };
-}
+import { Match, TournamentTeam } from '../types/tournament';
 
 interface TournamentBracketProps {
   matches: Match[];
