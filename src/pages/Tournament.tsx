@@ -4,7 +4,7 @@ import { teamKitColors } from '../types/teamKits';
 import TournamentBracket from '../components/TournamentBracket';
 import TournamentMatch from '../components/game/TournamentMatch';
 import { Button } from '../components/ui/button';
-import { Trophy, ArrowLeftCircle, RefreshCw } from 'lucide-react';
+import { Trophy, ArrowLeftCircle, RefreshCw, Play, Pause } from 'lucide-react';
 import { toast } from 'sonner';
 import { Score } from '../types/football';
 
@@ -41,6 +41,8 @@ const Tournament: React.FC = () => {
   const [currentRound, setCurrentRound] = useState(1);
   const [activeMatch, setActiveMatch] = useState<Match | null>(null);
   const [playingMatch, setPlayingMatch] = useState(false);
+  const [autoSimulation, setAutoSimulation] = useState(false);
+  const [simulationSpeed, setSimulationSpeed] = useState('normal');
 
   useEffect(() => {
     if (!initialized) {
@@ -48,6 +50,71 @@ const Tournament: React.FC = () => {
       setInitialized(true);
     }
   }, [initialized]);
+
+  useEffect(() => {
+    if (!autoSimulation || playingMatch || currentRound > 7) return;
+    
+    let timeoutId: NodeJS.Timeout;
+    
+    const findNextUnplayedMatch = () => {
+      return matches.find(m => 
+        m.round === currentRound && 
+        !m.played && 
+        m.teamA && 
+        m.teamB
+      );
+    };
+    
+    const simulateNextMatch = () => {
+      const nextMatch = findNextUnplayedMatch();
+      
+      if (nextMatch) {
+        if (Math.random() > 0.8) {
+          playMatch(nextMatch);
+        } else {
+          simulateSingleMatch(nextMatch);
+          
+          const delay = 
+            simulationSpeed === 'slow' ? 2000 : 
+            simulationSpeed === 'fast' ? 300 : 
+            800;
+          
+          timeoutId = setTimeout(simulateNextMatch, delay);
+        }
+      } else {
+        const roundMatches = matches.filter(m => m.round === currentRound);
+        const allRoundMatchesPlayed = roundMatches.every(m => m.played);
+        
+        if (allRoundMatchesPlayed && currentRound < 7) {
+          toast.success(`Round ${currentRound} completed!`, {
+            description: `Advancing to ${
+              currentRound === 1 ? "Round of 64" : 
+              currentRound === 2 ? "Round of 32" : 
+              currentRound === 3 ? "Round of 16" : 
+              currentRound === 4 ? "Quarter-finals" : 
+              currentRound === 5 ? "Semi-finals" : "Final"
+            }`
+          });
+          
+          setCurrentRound(prevRound => prevRound + 1);
+          timeoutId = setTimeout(simulateNextMatch, 1500);
+        } else if (currentRound === 7 && allRoundMatchesPlayed) {
+          const winner = matches.find(m => m.round === 7)?.winner;
+          toast.success(`Tournament Complete!`, {
+            description: `Champion: ${winner?.name || "Unknown"}`,
+          });
+          
+          setAutoSimulation(false);
+        }
+      }
+    };
+    
+    timeoutId = setTimeout(simulateNextMatch, 800);
+    
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [autoSimulation, playingMatch, currentRound, matches, simulationSpeed]);
 
   const initializeTournament = () => {
     const tournamentTeams: TournamentTeam[] = Object.entries(teamKitColors).map(([name, colors], index) => ({
@@ -103,6 +170,7 @@ const Tournament: React.FC = () => {
     setActiveMatch(null);
     setPlayingMatch(false);
     setInitialized(false);
+    setAutoSimulation(false);
     
     toast("Tournament reset", {
       description: "New random matchups have been created"
@@ -114,6 +182,49 @@ const Tournament: React.FC = () => {
     
     setActiveMatch(match);
     setPlayingMatch(true);
+  };
+
+  const simulateSingleMatch = (match: Match) => {
+    if (!match.teamA || !match.teamB) return;
+    
+    const updatedMatches = [...matches];
+    const currentMatch = updatedMatches.find(m => m.id === match.id);
+    
+    if (!currentMatch || !currentMatch.teamA || !currentMatch.teamB) return;
+    
+    const teamAStrength = currentMatch.teamA.eloRating + Math.random() * 100;
+    const teamBStrength = currentMatch.teamB.eloRating + Math.random() * 100;
+    
+    const winner = teamAStrength > teamBStrength ? currentMatch.teamA : currentMatch.teamB;
+    currentMatch.winner = winner;
+    currentMatch.played = true;
+    
+    const strengthDiff = Math.abs(teamAStrength - teamBStrength);
+    const goalDiff = Math.min(Math.floor(strengthDiff / 30), 5);
+    const winnerGoals = 1 + Math.floor(Math.random() * 3) + Math.floor(goalDiff / 2);
+    const loserGoals = Math.max(0, winnerGoals - goalDiff);
+    
+    currentMatch.score = {
+      teamA: teamAStrength > teamBStrength ? winnerGoals : loserGoals,
+      teamB: teamBStrength > teamAStrength ? winnerGoals : loserGoals
+    };
+    
+    if (currentMatch.round < 7) {
+      const nextRoundPosition = Math.ceil(currentMatch.position / 2);
+      const nextMatch = updatedMatches.find(
+        m => m.round === currentMatch.round + 1 && m.position === nextRoundPosition
+      );
+      
+      if (nextMatch) {
+        if (!nextMatch.teamA) {
+          nextMatch.teamA = winner;
+        } else {
+          nextMatch.teamB = winner;
+        }
+      }
+    }
+    
+    setMatches(updatedMatches);
   };
 
   const handleMatchComplete = (winnerName: string, finalScore: Score) => {
@@ -160,6 +271,11 @@ const Tournament: React.FC = () => {
     if (allRoundMatchesPlayed) {
       setCurrentRound(prevRound => prevRound + 1);
     }
+    
+    if (autoSimulation) {
+      setTimeout(() => {
+      }, 1000);
+    }
   };
 
   const playRoundWithSimulation = () => {
@@ -204,6 +320,20 @@ const Tournament: React.FC = () => {
     
     setMatches(updatedMatches);
     setCurrentRound(prevRound => prevRound + 1);
+  };
+
+  const toggleAutoSimulation = () => {
+    setAutoSimulation(prev => !prev);
+    
+    if (!autoSimulation) {
+      toast.success("Auto Simulation Enabled", {
+        description: "Tournament will progress automatically"
+      });
+    } else {
+      toast.info("Auto Simulation Disabled", {
+        description: "Tournament progress paused"
+      });
+    }
   };
 
   const getTournamentStatus = () => {
@@ -267,24 +397,47 @@ const Tournament: React.FC = () => {
               Reset Tournament
             </Button>
             <Button 
-              onClick={playRoundWithSimulation} 
-              className="bg-gray-600 hover:bg-gray-700"
+              onClick={toggleAutoSimulation}
+              variant={autoSimulation ? "destructive" : "success"}
+              className={`flex items-center gap-2 ${!autoSimulation ? "bg-green-600 hover:bg-green-700" : ""}`}
             >
-              Simular {currentRound === 7 ? "Final" : "Ronda " + currentRound}
+              {autoSimulation ? (
+                <>
+                  <Pause className="h-4 w-4" />
+                  Pause Auto Simulation
+                </>
+              ) : (
+                <>
+                  <Play className="h-4 w-4" />
+                  Start Auto Simulation
+                </>
+              )}
             </Button>
-            <Button 
-              onClick={() => {
-                const matchToPlay = matches.find(
-                  m => m.round === currentRound && !m.played && m.teamA && m.teamB
-                );
-                if (matchToPlay) {
-                  playMatch(matchToPlay);
-                }
-              }} 
-              className="bg-green-600 hover:bg-green-700"
-            >
-              Jugar Partido
-            </Button>
+            {!autoSimulation && (
+              <>
+                <Button 
+                  onClick={playRoundWithSimulation} 
+                  className="bg-gray-600 hover:bg-gray-700"
+                  disabled={autoSimulation}
+                >
+                  Simular {currentRound === 7 ? "Final" : "Ronda " + currentRound}
+                </Button>
+                <Button 
+                  onClick={() => {
+                    const matchToPlay = matches.find(
+                      m => m.round === currentRound && !m.played && m.teamA && m.teamB
+                    );
+                    if (matchToPlay) {
+                      playMatch(matchToPlay);
+                    }
+                  }} 
+                  className="bg-green-600 hover:bg-green-700"
+                  disabled={autoSimulation}
+                >
+                  Jugar Partido
+                </Button>
+              </>
+            )}
           </div>
         ) : (
           <div className="flex items-center gap-4">
@@ -312,7 +465,7 @@ const Tournament: React.FC = () => {
         <TournamentBracket 
           matches={matches} 
           onMatchClick={(match) => {
-            if (match.teamA && match.teamB && !match.played) {
+            if (!autoSimulation && match.teamA && match.teamB && !match.played) {
               playMatch(match);
             }
           }}
