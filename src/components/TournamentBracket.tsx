@@ -86,34 +86,24 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
                   className={`team-entry p-2 rounded flex justify-between items-center mb-1 ${isWinner(match, match.teamA) ? 'bg-green-50' : ''}`}
                   style={getTeamColorStyle(match.teamA)}
                 >
-                  <span className="font-medium truncate max-w-[65%]">
+                  <span className="font-medium truncate max-w-[80%]">
                     {match.teamA?.name || "TBD"}
                   </span>
-                  <div className="flex items-center gap-2 justify-end">
-                    {match.played && match.score && (
-                      <span className="text-sm font-bold text-left">{match.score.teamA}</span>
-                    )}
-                    <span className="text-xs text-gray-500">
-                      {match.teamA?.eloRating && `${match.teamA.eloRating}`}
-                    </span>
-                  </div>
+                  {match.played && match.score && (
+                    <span className="text-sm font-bold text-right">{match.score.teamA}</span>
+                  )}
                 </div>
                 
                 <div 
                   className={`team-entry p-2 rounded flex justify-between items-center ${isWinner(match, match.teamB) ? 'bg-green-50' : ''}`}
                   style={getTeamColorStyle(match.teamB)}
                 >
-                  <span className="font-medium truncate max-w-[65%]">
+                  <span className="font-medium truncate max-w-[80%]">
                     {match.teamB?.name || "TBD"}
                   </span>
-                  <div className="flex items-center gap-2 justify-end">
-                    {match.played && match.score && (
-                      <span className="text-sm font-bold text-left">{match.score.teamB}</span>
-                    )}
-                    <span className="text-xs text-gray-500">
-                      {match.teamB?.eloRating && `${match.teamB.eloRating}`}
-                    </span>
-                  </div>
+                  {match.played && match.score && (
+                    <span className="text-sm font-bold text-right">{match.score.teamB}</span>
+                  )}
                 </div>
                 
                 {match.played && match.winner && (
