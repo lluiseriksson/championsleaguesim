@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { teamKitColors, TeamKit } from '../types/teamKits';
@@ -295,91 +294,6 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
     return matches.find(m => m.round === 7)?.winner;
   };
 
-  if (playingMatch && activeMatch && activeMatch.teamA && activeMatch.teamB && !embeddedMode) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-6 flex items-center justify-between">
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              setActiveMatch(null);
-              setPlayingMatch(false);
-            }}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeftCircle className="h-4 w-4" />
-            Volver al Torneo
-          </Button>
-          <h2 className="text-xl font-semibold">
-            {activeMatch.teamA.name} vs {activeMatch.teamB.name}
-          </h2>
-        </div>
-        
-        <TournamentMatch 
-          homeTeam={activeMatch.teamA.name}
-          awayTeam={activeMatch.teamB.name}
-          onMatchComplete={handleMatchComplete}
-          matchDuration={180}
-        />
-      </div>
-    );
-  }
-
-  if (embeddedMode) {
-    return (
-      <div className="tournament-embedded">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold">{getTournamentStatus()}</h2>
-          <div className="flex gap-2">
-            <Button 
-              onClick={resetTournament}
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-1"
-            >
-              <RefreshCw className="h-3 w-3" />
-              Reset
-            </Button>
-            <Button 
-              onClick={toggleAutoSimulation}
-              variant={autoSimulation ? "destructive" : "default"}
-              size="sm"
-              className={`flex items-center gap-1 ${!autoSimulation ? "bg-green-600 hover:bg-green-700" : ""}`}
-            >
-              {autoSimulation ? (
-                <>
-                  <Pause className="h-3 w-3" />
-                  Pause
-                </>
-              ) : (
-                <>
-                  <Play className="h-3 w-3" />
-                  Simulate
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-        
-        <div className="overflow-x-auto">
-          <TournamentBracket 
-            matches={matches} 
-            onMatchClick={(match) => {
-              if (!autoSimulation && match.teamA && match.teamB && !match.played) {
-                if (embeddedMode) {
-                  simulateSingleMatch(match);
-                } else {
-                  playMatch(match);
-                }
-              }
-            }}
-            showFullBracket={true}
-          />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6 text-center">Football Tournament</h1>
@@ -433,15 +347,47 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
       </div>
       
       <div className="mb-6">
-        <Link to="/" className="text-blue-600 hover:underline">← Back to Match Simulation</Link>
+        <Link to="/" className="text-blue-600 hover:underline">← Back to Home</Link>
       </div>
+      
+      {playingMatch && activeMatch && activeMatch.teamA && activeMatch.teamB && !embeddedMode ? (
+        <div className="mb-10 p-4 bg-gray-50 rounded-lg shadow-md">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-xl font-semibold">
+              {activeMatch.teamA.name} vs {activeMatch.teamB.name}
+            </h3>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setActiveMatch(null);
+                setPlayingMatch(false);
+              }}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeftCircle className="h-4 w-4" />
+              Back to Tournament
+            </Button>
+          </div>
+          
+          <TournamentMatch 
+            homeTeam={activeMatch.teamA.name}
+            awayTeam={activeMatch.teamB.name}
+            onMatchComplete={handleMatchComplete}
+            matchDuration={180}
+          />
+        </div>
+      ) : null}
       
       <div className="overflow-x-auto">
         <TournamentBracket 
           matches={matches} 
           onMatchClick={(match) => {
             if (!autoSimulation && match.teamA && match.teamB && !match.played) {
-              playMatch(match);
+              if (embeddedMode) {
+                simulateSingleMatch(match);
+              } else {
+                playMatch(match);
+              }
             }
           }}
           showFullBracket={true}
