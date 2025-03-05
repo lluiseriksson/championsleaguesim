@@ -22,9 +22,9 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ score, homeTeam = 'Home', a
       >
         {homeTeam}
       </span>
-      <span className="text-red-600">{score.red}</span>
+      <span className="text-black">{score.red}</span>
       <span className="mx-2">-</span>
-      <span className="text-blue-600">{score.blue}</span>
+      <span className="text-black">{score.blue}</span>
       <span 
         className="ml-2 text-sm font-medium px-2 py-1 rounded"
         style={{ backgroundColor: `${awayTeamColor}40`, color: isDarkColor(awayTeamColor) ? 'white' : 'black' }}
