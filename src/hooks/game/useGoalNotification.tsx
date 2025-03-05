@@ -20,11 +20,21 @@ export const useGoalNotification = ({
   const handleGoalScored = React.useCallback((scoringTeam: 'red' | 'blue') => {
     console.log(`Goal scored by team ${scoringTeam}`);
     
+    // Increment the total goals counter
+    totalGoalsRef.current += 1;
+    
     // Show goal notification less frequently in tournament mode
     if (!tournamentMode || totalGoalsRef.current % 250 === 0) {
       toast(`${totalGoalsRef.current} goals played!`, {
         description: "Neural networks continue learning...",
       });
+    } else {
+      // Show basic goal notification for regular mode
+      if (!tournamentMode) {
+        toast(`Goal by team ${scoringTeam.toUpperCase()}!`, {
+          description: `Total: ${totalGoalsRef.current} goals`,
+        });
+      }
     }
     
     // Reset ball position to center after goal
