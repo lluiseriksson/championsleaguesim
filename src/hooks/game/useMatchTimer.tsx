@@ -34,7 +34,7 @@ export const useMatchTimer = ({
     
     return {
       formattedTime,
-      isGoldenGoal: goldenGoal
+      isGoldenGoal: goldenGoal && elapsedTime >= initialTime
     };
   }, [elapsedTime, initialTime, goldenGoal]);
   
