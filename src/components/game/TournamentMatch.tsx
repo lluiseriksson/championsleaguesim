@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
 import MatchTimer from './MatchTimer';
@@ -39,6 +39,31 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   useEffect(() => {
     console.log('TournamentMatch: matchDuration =', matchDuration);
   }, [matchDuration]);
+  
+  const handleTimeEnd = useMemo(() => {
+    return () => {
+      console.log("Tiempo terminado. Puntuación:", score);
+      
+      if (score.red === score.blue) {
+        console.log("Comenzando gol de oro");
+        setGoldenGoal(true);
+        toast("¡TIEMPO AGOTADO! - Comienza el tiempo de gol de oro", {
+          description: "El primer equipo en marcar gana el partido"
+        });
+      } else {
+        const winner = score.red > score.blue ? homeTeam : awayTeam;
+        console.log("Partido terminado. Ganador:", winner);
+        toast(`¡Fin del partido! ${winner} gana`, {
+          description: `Resultado final: ${homeTeam} ${score.red} - ${score.blue} ${awayTeam}`,
+        });
+        
+        setTimeout(() => {
+          setMatchEnded(true);
+          onMatchComplete(winner);
+        }, 2000);
+      }
+    };
+  }, [score, homeTeam, awayTeam, onMatchComplete]);
   
   useEffect(() => {
     const totalGoals = score.red + score.blue;
@@ -147,29 +172,6 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
     ball, 
     gameReady: true 
   });
-  
-  const handleTimeEnd = () => {
-    console.log("Tiempo terminado. Puntuación:", score);
-    
-    if (score.red === score.blue) {
-      console.log("Comenzando gol de oro");
-      setGoldenGoal(true);
-      toast("¡TIEMPO AGOTADO! - Comienza el tiempo de gol de oro", {
-        description: "El primer equipo en marcar gana el partido"
-      });
-    } else {
-      const winner = score.red > score.blue ? homeTeam : awayTeam;
-      console.log("Partido terminado. Ganador:", winner);
-      toast(`¡Fin del partido! ${winner} gana`, {
-        description: `Resultado final: ${homeTeam} ${score.red} - ${score.blue} ${awayTeam}`,
-      });
-      
-      setTimeout(() => {
-        setMatchEnded(true);
-        onMatchComplete(winner);
-      }, 2000);
-    }
-  };
   
   if (matchEnded) {
     return (
