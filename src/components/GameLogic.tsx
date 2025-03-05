@@ -15,6 +15,7 @@ interface GameLogicProps {
   score: Score;
   setScore: React.Dispatch<React.SetStateAction<Score>>;
   updatePlayerPositions: () => void;
+  tournamentMode?: boolean;
 }
 
 const GameLogic: React.FC<GameLogicProps> = ({
@@ -25,6 +26,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
   score,
   setScore,
   updatePlayerPositions,
+  tournamentMode = false
 }) => {
   // Reference to track the last player who touched the ball
   const lastPlayerTouchRef = React.useRef<Player | null>(null);
@@ -33,7 +35,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
   const totalGoalsRef = React.useRef(0);
   const lastScoreRef = React.useRef({ red: 0, blue: 0 });
   
-  console.log("GameLogic rendered with players:", players.length);
+  console.log(`GameLogic rendered with players: ${players.length}, tournamentMode: ${tournamentMode}`);
 
   // Memoize team context to avoid unnecessary recalculations
   const getTeamContext = React.useCallback((player: Player) => ({
@@ -68,7 +70,8 @@ const GameLogic: React.FC<GameLogicProps> = ({
         // Increment total goals counter to track learning progress
         totalGoalsRef.current += 1;
         
-        if (totalGoalsRef.current % 100 === 0) {
+        // Show goal notification less frequently in tournament mode
+        if (!tournamentMode || totalGoalsRef.current % 250 === 0) {
           toast(`¡${totalGoalsRef.current} goles jugados!`, {
             description: "Las redes neuronales continúan aprendiendo...",
           });
@@ -94,10 +97,11 @@ const GameLogic: React.FC<GameLogicProps> = ({
     }
   });
 
-  // Model synchronization system
+  // Model synchronization system with tournament mode flag
   const { syncModels, incrementSyncCounter, checkLearningProgress } = useModelSyncSystem({
     players,
-    setPlayers
+    setPlayers,
+    tournamentMode
   });
 
   // Track if game is running
@@ -145,19 +149,23 @@ const GameLogic: React.FC<GameLogicProps> = ({
     // Start the game loop immediately
     frameId = requestAnimationFrame(gameLoop);
     
-    // Sync models on startup
-    syncModels();
+    // Sync models on startup only if not in tournament mode
+    if (!tournamentMode) {
+      syncModels();
+    }
     
-    // Check learning progress on mount
-    setTimeout(() => {
-      checkLearningProgress();
-    }, 5000); // Check after 5 seconds to allow initial loading
+    // Check learning progress on mount only if not in tournament mode
+    if (!tournamentMode) {
+      setTimeout(() => {
+        checkLearningProgress();
+      }, 5000); // Check after 5 seconds to allow initial loading
+    }
     
     console.log("Game loop initialized");
 
-    // Debug timer to log ball state every 5 seconds
+    // Debug timer to log ball state every 5 seconds (less frequent in tournament mode)
     const debugInterval = setInterval(() => {
-      if (isRunningRef.current) {
+      if (isRunningRef.current && !tournamentMode) {
         console.log("Ball state:", {
           position: ball.position,
           velocity: ball.velocity,
@@ -165,11 +173,11 @@ const GameLogic: React.FC<GameLogicProps> = ({
         });
         console.log("Current score:", score);
       }
-    }, 5000);
+    }, tournamentMode ? 15000 : 5000);
 
-    // Setup periodic learning progress check
+    // Setup periodic learning progress check (disabled in tournament mode)
     const learningCheckInterval = setInterval(() => {
-      if (isRunningRef.current) {
+      if (isRunningRef.current && !tournamentMode) {
         checkLearningProgress();
       }
     }, 120000); // Check every 2 minutes
@@ -181,15 +189,31 @@ const GameLogic: React.FC<GameLogicProps> = ({
       clearInterval(learningCheckInterval);
       isRunningRef.current = false;
       
-      // When unmounting, save current models
-      players
-        .filter(p => p.role !== 'goalkeeper')
-        .forEach(player => {
-          saveModel(player)
-            .catch(err => console.error(`Error saving model on exit:`, err));
-        });
+      // When unmounting, save current models (selectively in tournament mode)
+      if (!tournamentMode) {
+        players
+          .filter(p => p.role !== 'goalkeeper')
+          .forEach(player => {
+            saveModel(player)
+              .catch(err => console.error(`Error saving model on exit:`, err));
+          });
+      } else {
+        // In tournament mode, only save a few key players to reduce API calls
+        const keyPlayers = players.filter(p => 
+          p.role !== 'goalkeeper' && 
+          (p.role === 'forward' || Math.random() < 0.1) // Only save forwards and ~10% of others
+        );
+        
+        if (keyPlayers.length > 0) {
+          console.log(`Saving ${keyPlayers.length} key players on tournament match exit`);
+          keyPlayers.forEach(player => {
+            saveModel(player)
+              .catch(err => console.error(`Error saving model on tournament exit:`, err));
+          });
+        }
+      }
     };
-  }, [players, updatePlayerPositions, updateBallPosition, incrementSyncCounter, syncModels, checkLearningProgress, ball, score]);
+  }, [players, updatePlayerPositions, updateBallPosition, incrementSyncCounter, syncModels, checkLearningProgress, ball, score, tournamentMode]);
 
   return null;
 };

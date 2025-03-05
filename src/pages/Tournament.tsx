@@ -8,6 +8,7 @@ import { Button } from '../components/ui/button';
 import { Trophy, ArrowLeftCircle, RefreshCw, Play } from 'lucide-react';
 import { toast } from 'sonner';
 import { Score } from '../types/football';
+import { clearKitSelectionCache } from '../types/kits';
 
 interface TournamentProps {
   embeddedMode?: boolean;
@@ -139,6 +140,9 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
     setPlayingMatch(false);
     setInitialized(false);
     setAutoSimulation(false);
+    
+    clearKitSelectionCache();
+    setMatches([]);
     
     toast("Tournament reset", {
       description: "New random matchups have been created"

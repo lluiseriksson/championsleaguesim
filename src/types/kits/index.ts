@@ -17,7 +17,10 @@ export {
 } from './colorUtils';
 
 // Kit selection functions
-export { getAwayTeamKit } from './kitSelection';
+export { 
+  getAwayTeamKit,
+  clearKitSelectionCache
+} from './kitSelection';
 
 // Kit accessors
 export { 

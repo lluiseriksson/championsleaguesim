@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
@@ -5,6 +6,7 @@ import MatchTimer from './MatchTimer';
 import { Player, Ball, Score, PITCH_WIDTH, PITCH_HEIGHT } from '../../types/football';
 import { toast } from 'sonner';
 import { getAwayTeamKit } from '../../types/kits';
+import GameLogic from '../GameLogic';
 
 interface TournamentMatchProps {
   homeTeam: string;
@@ -74,7 +76,14 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       console.log("Initializing players for match:", homeTeam, "vs", awayTeam);
       initializePlayers();
     }
-  }, [homeTeam, awayTeam, players.length]);
+    
+    // Cleanup function to help with memory management
+    return () => {
+      console.log("Tournament match component unmounting, cleaning up resources");
+      // Force garbage collection by clearing references
+      setPlayers([]);
+    };
+  }, [homeTeam, awayTeam]);
   
   useEffect(() => {
     if (goldenGoal && !goldenGoalScored) {
@@ -213,6 +222,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         updatePlayerPositions={updatePlayerPositions}
         homeTeam={homeTeam}
         awayTeam={awayTeam}
+        tournamentMode={true}
         onGoalScored={(team) => {
           console.log(`Goal scored by ${team} team, golden goal mode: ${goldenGoal}`);
           setLastScorer(team);

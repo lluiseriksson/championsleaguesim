@@ -9,6 +9,7 @@ interface BallMovementProps {
   players: Player[];
   checkGoal: (position: Position) => 'red' | 'blue' | null;
   onBallTouch: (player: Player) => void;
+  tournamentMode?: boolean;
 }
 
 export const useBallMovement = ({ 
@@ -16,7 +17,8 @@ export const useBallMovement = ({
   setBall, 
   players, 
   checkGoal, 
-  onBallTouch 
+  onBallTouch,
+  tournamentMode = false
 }: BallMovementProps) => {
   // Memoize player categorization
   const { goalkeepers, fieldPlayers } = React.useMemo(() => ({
@@ -53,7 +55,10 @@ export const useBallMovement = ({
           
           // If ball hasn't moved for a while, give it a random kick
           if (noMovementTimeRef.current > 20) {
-            console.log("Ball stuck in place, giving it a random kick");
+            // Log less in tournament mode to reduce memory usage
+            if (!tournamentMode) {
+              console.log("Ball stuck in place, giving it a random kick");
+            }
             noMovementTimeRef.current = 0;
             
             // Random direction but not completely random
@@ -78,7 +83,10 @@ export const useBallMovement = ({
       // If ball has zero velocity (should only happen at game start/reset),
       // give it a small push in a random direction
       if (currentSpeed === 0) {
-        console.log("Ball has zero velocity, giving it an initial push");
+        // Log less in tournament mode to reduce memory usage
+        if (!tournamentMode) {
+          console.log("Ball has zero velocity, giving it an initial push");
+        }
         return {
           ...currentBall,
           position: currentBall.position,
@@ -98,7 +106,10 @@ export const useBallMovement = ({
       // First check if a goal was scored
       const goalScored = checkGoal(newPosition);
       if (goalScored) {
-        console.log(`Goal detected for team ${goalScored}`);
+        // Log less in tournament mode to reduce memory usage
+        if (!tournamentMode) {
+          console.log(`Goal detected for team ${goalScored}`);
+        }
         // Reset ball position to center with a significant initial velocity
         return {
           ...currentBall,
@@ -127,7 +138,7 @@ export const useBallMovement = ({
         lastKickPositionRef
       );
     });
-  }, [setBall, checkGoal, goalkeepers, fieldPlayers, onBallTouch]);
+  }, [setBall, checkGoal, goalkeepers, fieldPlayers, onBallTouch, tournamentMode]);
 
   return { updateBallPosition };
 };
