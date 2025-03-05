@@ -48,18 +48,7 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
       const nextMatch = findNextUnplayedMatch();
       
       if (nextMatch) {
-        if (Math.random() > 0.8) {
-          playMatch(nextMatch);
-        } else {
-          simulateSingleMatch(nextMatch);
-          
-          const delay = 
-            simulationSpeed === 'slow' ? 2000 : 
-            simulationSpeed === 'fast' ? 300 : 
-            800;
-          
-          timeoutId = setTimeout(simulateNextMatch, delay);
-        }
+        playMatch(nextMatch);
       } else {
         const roundMatches = matches.filter(m => m.round === currentRound);
         const allRoundMatchesPlayed = roundMatches.every(m => m.played);
@@ -253,6 +242,12 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
     
     if (autoSimulation) {
       setTimeout(() => {
+        const nextMatch = updatedMatches.find(
+          m => m.round === currentRound && !m.played && m.teamA && m.teamB
+        );
+        if (nextMatch) {
+          playMatch(nextMatch);
+        }
       }, 1000);
     }
   };
@@ -260,45 +255,15 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
   const playRoundWithSimulation = () => {
     if (currentRound > 7) return;
     
-    const updatedMatches = [...matches];
+    const currentMatch = matches.find(
+      m => m.round === currentRound && !m.played && m.teamA && m.teamB
+    );
     
-    const currentMatches = updatedMatches.filter(m => m.round === currentRound && !m.played);
-    
-    currentMatches.forEach(match => {
-      if (!match.teamA || !match.teamB) return;
-      
-      const teamAStrength = match.teamA.eloRating + Math.random() * 100;
-      const teamBStrength = match.teamB.eloRating + Math.random() * 100;
-      
-      match.winner = teamAStrength > teamBStrength ? match.teamA : match.teamB;
-      match.played = true;
-      
-      const strengthDiff = Math.abs(teamAStrength - teamBStrength);
-      const goalDiff = Math.min(Math.floor(strengthDiff / 30), 5);
-      const winnerGoals = 1 + Math.floor(Math.random() * 3) + Math.floor(goalDiff / 2);
-      const loserGoals = Math.max(0, winnerGoals - goalDiff);
-      
-      match.score = {
-        teamA: teamAStrength > teamBStrength ? winnerGoals : loserGoals,
-        teamB: teamBStrength > teamAStrength ? winnerGoals : loserGoals
-      };
-      
-      if (match.winner && currentRound < 7) {
-        const nextRoundPosition = Math.ceil(match.position / 2);
-        const nextMatch = updatedMatches.find(m => m.round === currentRound + 1 && m.position === nextRoundPosition);
-        
-        if (nextMatch) {
-          if (!nextMatch.teamA) {
-            nextMatch.teamA = match.winner;
-          } else {
-            nextMatch.teamB = match.winner;
-          }
-        }
-      }
-    });
-    
-    setMatches(updatedMatches);
-    setCurrentRound(prevRound => prevRound + 1);
+    if (currentMatch) {
+      playMatch(currentMatch);
+    } else {
+      setCurrentRound(prevRound => prevRound + 1);
+    }
   };
 
   const toggleAutoSimulation = () => {
