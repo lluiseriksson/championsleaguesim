@@ -1,89 +1,72 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 
 interface MatchTimerProps {
-  initialTime: number; // in seconds
+  initialTime?: number; // in seconds, optional as we'll start from 0
   onTimeEnd: () => void;
   goldenGoal?: boolean;
+  isGoalScored?: boolean; // New prop to stop timer when goal is scored
 }
 
 const MatchTimer: React.FC<MatchTimerProps> = ({ 
-  initialTime, 
+  initialTime = 0,
   onTimeEnd,
-  goldenGoal = false
+  goldenGoal = false,
+  isGoalScored = false
 }) => {
-  const [timeLeft, setTimeLeft] = useState(initialTime);
+  const [timeElapsed, setTimeElapsed] = useState(initialTime);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const initializedRef = useRef(false);
   
-  console.log('MatchTimer renderizado con initialTime:', initialTime, 'timeLeft:', timeLeft);
+  // 3 real minutes = 180 seconds, mapped to 90:00 game minutes
+  const REGULAR_TIME_SECONDS = 180; // 3 minutes in real seconds
+  const GAME_TOTAL_MINUTES = 90;    // 90 game minutes
 
   useEffect(() => {
-    // Only set timeLeft when the component mounts or initialTime changes
-    if (!initializedRef.current || initialTime !== timeLeft) {
-      console.log('Setting initial time to:', initialTime);
-      setTimeLeft(initialTime);
-      initializedRef.current = true;
-    }
-  }, [initialTime]);
-
-  useEffect(() => {
-    console.log('Setting up timer with timeLeft:', timeLeft, 'goldenGoal:', goldenGoal);
-    
-    // Clear any existing interval
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
-    
-    // Only start the timer if we have time left and we're not in golden goal
-    if (timeLeft > 0 && !goldenGoal) {
-      timerRef.current = setInterval(() => {
-        setTimeLeft((prevTime) => {
-          const newTime = prevTime - 1;
-          console.log('Tick, new time:', newTime);
-          
-          if (newTime <= 0) {
-            console.log('Time ended, calling onTimeEnd');
-            if (timerRef.current) {
-              clearInterval(timerRef.current);
-              timerRef.current = null;
-            }
-            onTimeEnd();
-            return 0;
+
+    // Stop timer if goal is scored during golden goal
+    if (goldenGoal && isGoalScored) {
+      return;
+    }
+
+    timerRef.current = setInterval(() => {
+      setTimeElapsed((prevTime) => {
+        const newTime = prevTime + 1;
+        
+        // Check if we've reached 90:00 (3 real minutes)
+        if (!goldenGoal && newTime >= REGULAR_TIME_SECONDS) {
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
           }
-          
-          return newTime;
-        });
-      }, 1000);
-    }
+          onTimeEnd();
+          return REGULAR_TIME_SECONDS; // Cap at 90:00
+        }
+        
+        return newTime;
+      });
+    }, 1000); // Update every real second
 
-    // Call onTimeEnd immediately if we activate golden goal and time is already 0
-    if (goldenGoal && timeLeft === 0 && !timerRef.current) {
-      console.log('Golden goal activated with no time left');
-    }
-
-    // Cleanup function
     return () => {
-      console.log('Cleaning up timer');
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
     };
-  }, [timeLeft, onTimeEnd, goldenGoal]);
+  }, [goldenGoal, isGoalScored, onTimeEnd]);
 
-  // Format time as MM:SS
-  const minutes = Math.floor(timeLeft / 60);
-  const seconds = timeLeft % 60;
-  const formattedTime = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-  
-  console.log('Displaying formatted time:', formattedTime);
+  // Convert real seconds to game time
+  const gameSeconds = Math.floor((timeElapsed / REGULAR_TIME_SECONDS) * (GAME_TOTAL_MINUTES * 60));
+  const displayMinutes = Math.floor(gameSeconds / 60);
+  const displaySeconds = gameSeconds % 60;
+  const formattedTime = `${displayMinutes}:${displaySeconds < 10 ? '0' : ''}${displaySeconds}`;
 
   return (
     <div className="match-timer font-mono text-2xl font-bold bg-black bg-opacity-80 text-white px-6 py-3 rounded-md shadow-lg absolute top-[-70px] left-1/2 transform -translate-x-1/2 z-30">
       {goldenGoal ? (
-        <span className="text-amber-400 animate-pulse">¡GOL DE ORO!</span>
+        <span className="text-amber-400 animate-pulse">¡GOL DE ORO! {formattedTime}</span>
       ) : (
         formattedTime
       )}
