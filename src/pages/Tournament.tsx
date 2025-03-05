@@ -173,8 +173,8 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
     const loserGoals = Math.max(0, winnerGoals - goalDiff);
     
     currentMatch.score = {
-      teamA: teamAStrength > teamBStrength ? winnerGoals : loserGoals,
-      teamB: teamBStrength > teamAStrength ? winnerGoals : loserGoals
+      teamA: winnerGoals,
+      teamB: loserGoals
     };
     
     if (currentMatch.round < 7) {
@@ -207,26 +207,17 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
       ? currentMatch.teamA 
       : currentMatch.teamB;
     
-    const homeIsWinner = currentMatch.teamA.name === winnerName;
+    const homeTeam = currentMatch.teamA;
+    const awayTeam = currentMatch.teamB;
     
-    let homeScore = homeIsWinner ? finalScore.red : finalScore.blue;
-    let awayScore = homeIsWinner ? finalScore.blue : finalScore.red;
-    
-    if (wasGoldenGoal && homeScore === awayScore) {
-      if (homeIsWinner) {
-        homeScore += 1;
-      } else {
-        awayScore += 1;
-      }
-    }
+    currentMatch.score = {
+      teamA: finalScore.red,
+      teamB: finalScore.blue
+    };
     
     currentMatch.winner = winner;
     currentMatch.played = true;
     currentMatch.goldenGoal = wasGoldenGoal;
-    currentMatch.score = {
-      teamA: homeScore,
-      teamB: awayScore
-    };
     
     if (currentMatch.round < 7) {
       const nextRoundPosition = Math.ceil(currentMatch.position / 2);

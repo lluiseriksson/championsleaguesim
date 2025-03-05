@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
@@ -38,7 +37,6 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   const [goldenGoal, setGoldenGoal] = useState(false);
   const [lastScorer, setLastScorer] = useState<'red' | 'blue' | null>(null);
   
-  // Track goals during golden goal period
   const [goldenGoalScored, setGoldenGoalScored] = useState(false);
   
   useEffect(() => {
@@ -69,37 +67,6 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       }
     };
   }, [score, homeTeam, awayTeam, onMatchComplete]);
-  
-  // Watch for score changes to detect goals
-  useEffect(() => {
-    // If we're in golden goal mode, any goal means game over!
-    if (goldenGoal && !goldenGoalScored) {
-      const totalGoals = score.red + score.blue;
-      const initialTotalGoals = lastScorer ? totalGoals - 1 : totalGoals;
-      
-      if (totalGoals > initialTotalGoals) {
-        // A goal was scored during golden goal time!
-        setGoldenGoalScored(true);
-        
-        // Determine which team scored
-        const scoringTeam = score.red > (lastScorer === 'red' ? score.red - 1 : score.red) ? 'red' : 'blue';
-        const winner = scoringTeam === 'red' ? homeTeam : awayTeam;
-        
-        console.log("Golden goal winner:", winner);
-        console.log("Final score (golden goal):", score);
-        setLastScorer(scoringTeam);
-        
-        toast(`¡${winner} gana con gol de oro!`, {
-          description: `Resultado final: ${homeTeam} ${score.red} - ${score.blue} ${awayTeam}`,
-        });
-        
-        setTimeout(() => {
-          setMatchEnded(true);
-          onMatchComplete(winner, score, true);
-        }, 2000);
-      }
-    }
-  }, [score, goldenGoal, homeTeam, awayTeam, onMatchComplete, lastScorer, goldenGoalScored]);
   
   useEffect(() => {
     if (players.length === 0 && homeTeam && awayTeam) {
@@ -208,7 +175,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   }
   
   return (
-    <div className="relative mt-12 pt-8"> {/* Espacio para el temporizador */}
+    <div className="relative mt-12 pt-8">
       <MatchTimer 
         initialTime={matchDuration} 
         onTimeEnd={handleTimeEnd}
