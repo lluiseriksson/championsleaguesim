@@ -19,6 +19,24 @@ const FootballPitch: React.FC = () => {
   });
   const [score, setScore] = React.useState<Score>({ red: 0, blue: 0 });
   const [gameReady, setGameReady] = React.useState(false);
+  const [homeTeam, setHomeTeam] = React.useState<string>('Home');
+  const [awayTeam, setAwayTeam] = React.useState<string>('Away');
+
+  // Update team names when players are initialized
+  React.useEffect(() => {
+    if (players.length > 0) {
+      const redTeamPlayer = players.find(p => p.team === 'red');
+      const blueTeamPlayer = players.find(p => p.team === 'blue');
+      
+      if (redTeamPlayer?.teamName) {
+        setHomeTeam(redTeamPlayer.teamName);
+      }
+      
+      if (blueTeamPlayer?.teamName) {
+        setAwayTeam(blueTeamPlayer.teamName);
+      }
+    }
+  }, [players]);
 
   // Use our PlayerMovement hook
   const { updatePlayerPositions } = usePlayerMovement({ 
@@ -41,6 +59,8 @@ const FootballPitch: React.FC = () => {
       score={score}
       setScore={setScore}
       updatePlayerPositions={updatePlayerPositions}
+      homeTeam={homeTeam}
+      awayTeam={awayTeam}
     />
   );
 };

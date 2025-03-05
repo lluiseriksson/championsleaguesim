@@ -15,6 +15,8 @@ interface GameBoardProps {
   score: Score;
   setScore: React.Dispatch<React.SetStateAction<Score>>;
   updatePlayerPositions: () => void;
+  homeTeam?: string;
+  awayTeam?: string;
 }
 
 const GameBoard: React.FC<GameBoardProps> = ({
@@ -24,11 +26,13 @@ const GameBoard: React.FC<GameBoardProps> = ({
   setBall,
   score,
   setScore,
-  updatePlayerPositions
+  updatePlayerPositions,
+  homeTeam = 'Home',
+  awayTeam = 'Away'
 }) => {
   return (
     <div className="relative w-[800px] h-[600px] bg-pitch mx-auto overflow-hidden rounded-lg shadow-lg">
-      <ScoreDisplay score={score} />
+      <ScoreDisplay score={score} homeTeam={homeTeam} awayTeam={awayTeam} />
       <PitchLayout />
 
       {players.map((player) => (

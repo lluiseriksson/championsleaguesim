@@ -55,6 +55,8 @@ export interface NeuralNet {
   lastAction?: 'move' | 'shoot' | 'pass' | 'intercept';
 }
 
+export type KitType = 'home' | 'away' | 'third';
+
 export interface Player {
   id: number;
   position: Position;
@@ -62,6 +64,8 @@ export interface Player {
   team: 'red' | 'blue';
   brain: NeuralNet;
   targetPosition: Position;
+  teamName?: string;  // Actual team name like "Barcelona", "Liverpool", etc.
+  kitType?: KitType;  // Which kit the player is wearing (home/away/third)
 }
 
 // Added bounceDetection property to Ball interface

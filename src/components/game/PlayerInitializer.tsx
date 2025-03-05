@@ -1,8 +1,9 @@
 
 import React from 'react';
-import { Player, PITCH_WIDTH, PITCH_HEIGHT } from '../../types/football';
+import { Player, PITCH_WIDTH, PITCH_HEIGHT, KitType } from '../../types/football';
 import { createPlayerBrain } from '../../utils/playerBrain';
 import { initializePlayerBrain } from '../../utils/modelLoader';
+import { teamKitColors } from '../../types/teamKits';
 
 interface PlayerInitializerProps {
   setPlayers: React.Dispatch<React.SetStateAction<Player[]>>;
@@ -15,7 +16,20 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
       try {
         const initialPlayers: Player[] = [];
         
-        // Initialize red team players with 3-4-3 formation
+        // Get random team names from the available teams
+        const teamNames = Object.keys(teamKitColors);
+        const homeTeamIndex = Math.floor(Math.random() * teamNames.length);
+        let awayTeamIndex;
+        do {
+          awayTeamIndex = Math.floor(Math.random() * teamNames.length);
+        } while (awayTeamIndex === homeTeamIndex);
+        
+        const homeTeamName = teamNames[homeTeamIndex];
+        const awayTeamName = teamNames[awayTeamIndex];
+        
+        console.log(`Match: ${homeTeamName} (home) vs ${awayTeamName} (away)`);
+        
+        // Initialize red team players (home team) with 3-4-3 formation
         const redTeamPositions = [
           { x: 50, y: PITCH_HEIGHT/2, role: 'goalkeeper' },
           // 3 defenders
@@ -55,11 +69,13 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
             role: role,
             team: 'red',
             brain: brain,
-            targetPosition: { x: pos.x, y: pos.y }
+            targetPosition: { x: pos.x, y: pos.y },
+            teamName: homeTeamName,
+            kitType: 'home' as KitType
           });
         }
 
-        // Initialize blue team players with 3-4-3 formation
+        // Initialize blue team players (away team) with 3-4-3 formation
         const blueTeamPositions = [
           { x: PITCH_WIDTH - 50, y: PITCH_HEIGHT/2, role: 'goalkeeper' },
           // 3 defenders
@@ -99,7 +115,9 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
             role: role,
             team: 'blue',
             brain: brain,
-            targetPosition: { x: pos.x, y: pos.y }
+            targetPosition: { x: pos.x, y: pos.y },
+            teamName: awayTeamName,
+            kitType: 'away' as KitType
           });
         }
 
