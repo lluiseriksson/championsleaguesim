@@ -5,9 +5,14 @@ import { Match, TournamentTeam } from '../types/tournament';
 interface TournamentBracketProps {
   matches: Match[];
   onMatchClick?: (match: Match) => void;
+  showFullBracket?: boolean;
 }
 
-const TournamentBracket: React.FC<TournamentBracketProps> = ({ matches, onMatchClick }) => {
+const TournamentBracket: React.FC<TournamentBracketProps> = ({ 
+  matches, 
+  onMatchClick,
+  showFullBracket = false
+}) => {
   // Group matches by round
   const roundMatches = Array.from({ length: 7 }, (_, i) => {
     return matches.filter(match => match.round === i + 1);
@@ -43,9 +48,16 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({ matches, onMatchC
     }
   };
 
+  // Determine how many rounds to display
+  // If showFullBracket is true, show all 7 rounds
+  // Otherwise, show only a few rounds (for embedded view)
+  const displayRounds = showFullBracket 
+    ? roundMatches 
+    : roundMatches.slice(0, 7); // Show all rounds
+
   return (
     <div className="tournament-bracket flex overflow-x-auto min-w-full" style={{ minWidth: '1600px' }}>
-      {roundMatches.map((matches, roundIndex) => (
+      {displayRounds.map((matches, roundIndex) => (
         <div key={roundIndex} className="round-column flex-1 px-2 min-w-[200px]">
           <h3 className="text-center font-semibold mb-4">
             {roundIndex === 0 ? "Round of 128" : 

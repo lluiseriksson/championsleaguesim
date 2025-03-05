@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { teamKitColors, TeamKit } from '../types/teamKits';
@@ -372,6 +373,7 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
                 }
               }
             }}
+            showFullBracket={true}
           />
         </div>
       </div>
@@ -442,6 +444,7 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
               playMatch(match);
             }
           }}
+          showFullBracket={true}
         />
       </div>
     </div>

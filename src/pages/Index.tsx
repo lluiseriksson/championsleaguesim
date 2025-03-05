@@ -15,7 +15,7 @@ const Index = () => {
           <Link to="/tournament">
             <Button variant="outline" className="bg-white text-green-700 hover:bg-green-100 flex items-center gap-2">
               <Trophy className="h-4 w-4" />
-              <span>Tournament</span>
+              <span>Full Tournament</span>
             </Button>
           </Link>
         </div>
@@ -32,7 +32,9 @@ const Index = () => {
             <h2 className="text-2xl font-bold">Football Tournament</h2>
             <Link to="/tournament" className="text-blue-600 hover:underline">View Full Tournament</Link>
           </div>
-          <Tournament embeddedMode={true} />
+          <div className="overflow-x-auto mb-6">
+            <Tournament embeddedMode={true} />
+          </div>
         </div>
       </main>
       
