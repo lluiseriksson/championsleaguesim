@@ -16,9 +16,9 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
   const [timeElapsed, setTimeElapsed] = useState(initialTime);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   
-  // 3 real minutes = 180 seconds, mapped to 90:00 game minutes
-  const REGULAR_TIME_SECONDS = 180; // 3 minutes in real seconds
-  const GAME_TOTAL_MINUTES = 90;    // 90 game minutes
+  // 3 real minutes = 180 seconds, mapped to 90 game minutes
+  const REAL_TIME_SECONDS = 180;    // 3 real minutes
+  const GAME_TIME_SECONDS = 90 * 60; // 90 minutes in seconds
 
   useEffect(() => {
     if (timerRef.current) {
@@ -35,14 +35,17 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
       setTimeElapsed((prevTime) => {
         const newTime = prevTime + 1;
         
-        // Check if we've reached 90:00 (3 real minutes)
-        if (!goldenGoal && newTime >= REGULAR_TIME_SECONDS) {
+        // Convert real seconds to game seconds
+        const gameSecondsElapsed = Math.floor((newTime / REAL_TIME_SECONDS) * GAME_TIME_SECONDS);
+        
+        // Check if we've reached 90:00 in game time
+        if (!goldenGoal && gameSecondsElapsed >= GAME_TIME_SECONDS) {
           if (timerRef.current) {
             clearInterval(timerRef.current);
             timerRef.current = null;
           }
           onTimeEnd();
-          return REGULAR_TIME_SECONDS; // Cap at 90:00
+          return REAL_TIME_SECONDS; // Cap at real time equivalent of 90:00
         }
         
         return newTime;
@@ -58,7 +61,11 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
   }, [goldenGoal, isGoalScored, onTimeEnd]);
 
   // Convert real seconds to game time
-  const gameSeconds = Math.floor((timeElapsed / REGULAR_TIME_SECONDS) * (GAME_TOTAL_MINUTES * 60));
+  const gameSeconds = Math.min(
+    Math.floor((timeElapsed / REAL_TIME_SECONDS) * GAME_TIME_SECONDS),
+    GAME_TIME_SECONDS // Cap at 90:00 during regular time
+  ) + (goldenGoal ? (timeElapsed - REAL_TIME_SECONDS) * (GAME_TIME_SECONDS / REAL_TIME_SECONDS) : 0);
+  
   const displayMinutes = Math.floor(gameSeconds / 60);
   const displaySeconds = gameSeconds % 60;
   const formattedTime = `${displayMinutes}:${displaySeconds < 10 ? '0' : ''}${displaySeconds}`;
