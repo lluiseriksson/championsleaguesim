@@ -15,11 +15,12 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
   const [timeLeft, setTimeLeft] = useState(initialTime);
   
   useEffect(() => {
-    // Start the timer immediately on component mount
-    const interval = setInterval(() => {
+    // Start the timer immediately when component mounts
+    const timer = setInterval(() => {
       setTimeLeft((prevTime) => {
-        if (prevTime <= 1) {
-          clearInterval(interval);
+        // When time reaches zero
+        if (prevTime <= 0) {
+          clearInterval(timer);
           onTimeEnd();
           return 0;
         }
@@ -27,8 +28,8 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
       });
     }, 1000);
     
-    // Cleanup on unmount
-    return () => clearInterval(interval);
+    // Cleanup interval on component unmount
+    return () => clearInterval(timer);
   }, [onTimeEnd]);
   
   // Format time as MM:SS
@@ -37,7 +38,7 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
   const formattedTime = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
   
   return (
-    <div className="match-timer font-mono text-xl font-bold bg-black bg-opacity-80 text-white px-4 py-2 rounded-md shadow-lg absolute top-2 left-1/2 transform -translate-x-1/2 z-20">
+    <div className="match-timer font-mono text-2xl font-bold bg-black bg-opacity-80 text-white px-6 py-3 rounded-md shadow-lg absolute top-[-50px] left-1/2 transform -translate-x-1/2 z-30">
       {goldenGoal && timeLeft === 0 ? (
         <span className="text-amber-400">¡GOL DE ORO!</span>
       ) : (

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
@@ -180,7 +181,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   }
   
   return (
-    <div className="relative">
+    <div className="relative mt-12 pt-8"> {/* Added padding and margin to make room for timer */}
       <MatchTimer 
         initialTime={matchDuration} 
         onTimeEnd={handleTimeEnd}
