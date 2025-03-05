@@ -6,6 +6,7 @@ import TournamentMatch from '../components/game/TournamentMatch';
 import { Button } from '../components/ui/button';
 import { Trophy, ArrowLeftCircle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import { Score } from '../types/football';
 
 // Tournament data structure
 interface TournamentTeam {
@@ -28,6 +29,10 @@ interface Match {
   teamB?: TournamentTeam;
   winner?: TournamentTeam;
   played: boolean;
+  score?: {
+    teamA: number;
+    teamB: number;
+  };
 }
 
 const Tournament: React.FC = () => {
@@ -121,7 +126,7 @@ const Tournament: React.FC = () => {
     setPlayingMatch(true);
   };
 
-  const handleMatchComplete = (winnerName: string) => {
+  const handleMatchComplete = (winnerName: string, finalScore: Score) => {
     if (!activeMatch) return;
     
     const updatedMatches = [...matches];
@@ -134,9 +139,13 @@ const Tournament: React.FC = () => {
       ? currentMatch.teamA 
       : currentMatch.teamB;
     
-    // Actualizar el partido actual
+    // Actualizar el partido actual con el ganador y el resultado
     currentMatch.winner = winner;
     currentMatch.played = true;
+    currentMatch.score = {
+      teamA: currentMatch.teamA.name === homeTeam ? finalScore.red : finalScore.blue,
+      teamB: currentMatch.teamB.name === awayTeam ? finalScore.blue : finalScore.red
+    };
     
     // Avanzar el ganador a la siguiente ronda
     if (currentMatch.round < 7) {
@@ -186,6 +195,17 @@ const Tournament: React.FC = () => {
       
       match.winner = teamAStrength > teamBStrength ? match.teamA : match.teamB;
       match.played = true;
+      
+      // Generate a somewhat realistic score based on team strength difference
+      const strengthDiff = Math.abs(teamAStrength - teamBStrength);
+      const goalDiff = Math.min(Math.floor(strengthDiff / 30), 5); // Max 5 goal difference
+      const winnerGoals = 1 + Math.floor(Math.random() * 3) + Math.floor(goalDiff / 2);
+      const loserGoals = Math.max(0, winnerGoals - goalDiff);
+      
+      match.score = {
+        teamA: teamAStrength > teamBStrength ? winnerGoals : loserGoals,
+        teamB: teamBStrength > teamAStrength ? winnerGoals : loserGoals
+      };
       
       // Advance winner to next round
       if (match.winner && currentRound < 7) {

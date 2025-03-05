@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
@@ -8,7 +9,7 @@ import { toast } from 'sonner';
 interface TournamentMatchProps {
   homeTeam: string;
   awayTeam: string;
-  onMatchComplete: (winner: string) => void;
+  onMatchComplete: (winner: string, finalScore: Score) => void;
   matchDuration?: number; // en segundos
 }
 
@@ -59,7 +60,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         
         setTimeout(() => {
           setMatchEnded(true);
-          onMatchComplete(winner);
+          onMatchComplete(winner, score);
         }, 2000);
       }
     };
@@ -80,7 +81,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       
       setTimeout(() => {
         setMatchEnded(true);
-        onMatchComplete(winner);
+        onMatchComplete(winner, score);
       }, 2000);
     }
   }, [score, goldenGoal, homeTeam, awayTeam, onMatchComplete]);

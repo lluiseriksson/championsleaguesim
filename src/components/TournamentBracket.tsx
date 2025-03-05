@@ -22,6 +22,10 @@ interface Match {
   teamB?: TournamentTeam;
   winner?: TournamentTeam;
   played: boolean;
+  score?: {
+    teamA: number;
+    teamB: number;
+  };
 }
 
 interface TournamentBracketProps {
@@ -93,9 +97,14 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({ matches, onMatchC
                   <span className="font-medium truncate max-w-[70%]">
                     {match.teamA?.name || "TBD"}
                   </span>
-                  <span className="text-xs">
-                    {match.teamA?.seed && `#${match.teamA.seed}`}
-                  </span>
+                  <div className="flex items-center gap-1">
+                    {match.played && match.score && (
+                      <span className="text-sm font-bold">{match.score.teamA}</span>
+                    )}
+                    <span className="text-xs">
+                      {match.teamA?.seed && `#${match.teamA.seed}`}
+                    </span>
+                  </div>
                 </div>
                 
                 <div 
@@ -105,9 +114,14 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({ matches, onMatchC
                   <span className="font-medium truncate max-w-[70%]">
                     {match.teamB?.name || "TBD"}
                   </span>
-                  <span className="text-xs">
-                    {match.teamB?.seed && `#${match.teamB.seed}`}
-                  </span>
+                  <div className="flex items-center gap-1">
+                    {match.played && match.score && (
+                      <span className="text-sm font-bold">{match.score.teamB}</span>
+                    )}
+                    <span className="text-xs">
+                      {match.teamB?.seed && `#${match.teamB.seed}`}
+                    </span>
+                  </div>
                 </div>
                 
                 {match.played && match.winner && (
