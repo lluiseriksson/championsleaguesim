@@ -5,6 +5,7 @@ import usePlayerMovement from './PlayerMovement';
 import MatchTimer from './MatchTimer';
 import { Player, Ball, Score, PITCH_WIDTH, PITCH_HEIGHT } from '../../types/football';
 import { toast } from 'sonner';
+import { getAwayTeamKit } from '../../types/teamKits';
 
 interface TournamentMatchProps {
   homeTeam: string;
@@ -96,6 +97,9 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   const initializePlayers = () => {
     const newPlayers: Player[] = [];
     
+    // Determine the best away kit to use based on color similarity
+    const awayTeamKitType = getAwayTeamKit(homeTeam, awayTeam);
+    
     const redTeamPositions = [
       { x: 50, y: PITCH_HEIGHT/2, role: 'goalkeeper' },
       { x: 150, y: PITCH_HEIGHT/4, role: 'defender' },
@@ -160,7 +164,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         },
         targetPosition: { x: pos.x, y: pos.y },
         teamName: awayTeam,
-        kitType: 'away'
+        kitType: awayTeamKitType
       });
     }
     

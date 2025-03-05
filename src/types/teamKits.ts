@@ -141,22 +141,25 @@ export const teamKitColors: TeamColors = {
 };
 
 // Function to get the best contrasting kit for away team
-export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): string => {
+export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): 'away' | 'third' => {
   const homeTeam = teamKitColors[homeTeamName];
   const awayTeam = teamKitColors[awayTeamName];
 
   if (!homeTeam || !awayTeam) {
-    // Fallback colors if teams not found
-    return !homeTeam || homeTeam.home === "#FF0000" ? "#0000FF" : "#FF0000";
+    return 'away'; // Default to away kit if team not found
   }
 
-  // If home team's primary color is different from away team's primary, use away team's primary
-  if (homeTeam.home !== awayTeam.home) {
-    return awayTeam.home;
-  }
-
-  // Otherwise use away kit
-  return awayTeam.away;
+  // Calculate color distance between home team's home kit and away team's kits
+  const homeColor = parseHexColor(homeTeam.home);
+  const awayColor = parseHexColor(awayTeam.away);
+  const thirdColor = parseHexColor(awayTeam.third);
+  
+  // Calculate color distances
+  const homeToAwayDistance = getColorDistance(homeColor, awayColor);
+  const homeToThirdDistance = getColorDistance(homeColor, thirdColor);
+  
+  // Choose the kit with the greatest color distance from home team's kit
+  return homeToAwayDistance > homeToThirdDistance ? 'away' : 'third';
 };
 
 // Function to get team kit color based on the team name and kit type
@@ -196,4 +199,22 @@ function adjustColor(r: number, g: number, b: number, amount: number): string {
   b = Math.max(0, Math.min(255, b + amount));
   
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
+
+// Helper function to parse hex color to RGB
+function parseHexColor(hex: string): { r: number, g: number, b: number } {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  
+  return { r, g, b };
+}
+
+// Helper function to calculate color distance (Euclidean distance in RGB space)
+function getColorDistance(color1: { r: number, g: number, b: number }, color2: { r: number, g: number, b: number }): number {
+  return Math.sqrt(
+    Math.pow(color2.r - color1.r, 2) +
+    Math.pow(color2.g - color1.g, 2) +
+    Math.pow(color2.b - color1.b, 2)
+  );
 }
