@@ -26,9 +26,10 @@ interface Match {
 
 interface TournamentBracketProps {
   matches: Match[];
+  onMatchClick?: (match: Match) => void;
 }
 
-const TournamentBracket: React.FC<TournamentBracketProps> = ({ matches }) => {
+const TournamentBracket: React.FC<TournamentBracketProps> = ({ matches, onMatchClick }) => {
   // Group matches by round
   const roundMatches = Array.from({ length: 7 }, (_, i) => {
     return matches.filter(match => match.round === i + 1);
@@ -57,6 +58,12 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({ matches }) => {
     };
   };
 
+  const handleMatchClick = (match: Match) => {
+    if (onMatchClick && match.teamA && match.teamB && !match.played) {
+      onMatchClick(match);
+    }
+  };
+
   return (
     <div className="tournament-bracket flex overflow-x-auto min-w-full" style={{ minWidth: '1600px' }}>
       {roundMatches.map((matches, roundIndex) => (
@@ -76,7 +83,8 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({ matches }) => {
             {matches.map(match => (
               <div 
                 key={match.id} 
-                className={`match-container relative p-2 border rounded-md shadow-sm mb-1 ${getMatchClass(match)}`}
+                className={`match-container relative p-2 border rounded-md shadow-sm mb-1 ${getMatchClass(match)} ${match.teamA && match.teamB && !match.played ? 'cursor-pointer hover:bg-gray-50 transition-colors' : ''}`}
+                onClick={() => handleMatchClick(match)}
               >
                 <div 
                   className="team-entry p-2 rounded flex justify-between items-center mb-1"

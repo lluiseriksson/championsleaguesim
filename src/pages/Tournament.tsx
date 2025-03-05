@@ -3,8 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { teamKitColors } from '../types/teamKits';
 import TournamentBracket from '../components/TournamentBracket';
+import TournamentMatch from '../components/game/TournamentMatch';
 import { Button } from '../components/ui/button';
-import { Trophy } from 'lucide-react';
+import { Trophy, ArrowLeftCircle } from 'lucide-react';
 
 // Tournament data structure
 interface TournamentTeam {
@@ -34,6 +35,8 @@ const Tournament: React.FC = () => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [initialized, setInitialized] = useState(false);
   const [currentRound, setCurrentRound] = useState(1);
+  const [activeMatch, setActiveMatch] = useState<Match | null>(null);
+  const [playingMatch, setPlayingMatch] = useState(false);
 
   // Initialize tournament with teams
   useEffect(() => {
@@ -86,19 +89,62 @@ const Tournament: React.FC = () => {
     setMatches(initialMatches);
   };
 
-  // Play a single match and determine winner
-  const playMatch = (match: Match): TournamentTeam | undefined => {
-    if (!match.teamA || !match.teamB) return undefined;
+  // Funciones para jugar partidos
+  const playMatch = (match: Match) => {
+    if (!match.teamA || !match.teamB) return;
     
-    // Determine winner based on ELO rating with some randomness
-    const teamAStrength = match.teamA.eloRating + Math.random() * 100;
-    const teamBStrength = match.teamB.eloRating + Math.random() * 100;
-    
-    return teamAStrength > teamBStrength ? match.teamA : match.teamB;
+    setActiveMatch(match);
+    setPlayingMatch(true);
   };
 
-  // Play next round of matches
-  const playNextRound = () => {
+  const handleMatchComplete = (winnerName: string) => {
+    if (!activeMatch) return;
+    
+    const updatedMatches = [...matches];
+    const currentMatch = updatedMatches.find(m => m.id === activeMatch.id);
+    
+    if (!currentMatch || !currentMatch.teamA || !currentMatch.teamB) return;
+    
+    // Determinar el equipo ganador
+    const winner = winnerName === currentMatch.teamA.name 
+      ? currentMatch.teamA 
+      : currentMatch.teamB;
+    
+    // Actualizar el partido actual
+    currentMatch.winner = winner;
+    currentMatch.played = true;
+    
+    // Avanzar el ganador a la siguiente ronda
+    if (currentMatch.round < 7) {
+      const nextRoundPosition = Math.ceil(currentMatch.position / 2);
+      const nextMatch = updatedMatches.find(
+        m => m.round === currentMatch.round + 1 && m.position === nextRoundPosition
+      );
+      
+      if (nextMatch) {
+        if (!nextMatch.teamA) {
+          nextMatch.teamA = winner;
+        } else {
+          nextMatch.teamB = winner;
+        }
+      }
+    }
+    
+    setMatches(updatedMatches);
+    setActiveMatch(null);
+    setPlayingMatch(false);
+    
+    // Comprobar si se ha completado toda la ronda
+    const roundMatches = updatedMatches.filter(m => m.round === currentRound);
+    const allRoundMatchesPlayed = roundMatches.every(m => m.played);
+    
+    if (allRoundMatchesPlayed) {
+      setCurrentRound(prevRound => prevRound + 1);
+    }
+  };
+
+  // Auto-jugar todos los partidos de una ronda usando simulación
+  const playRoundWithSimulation = () => {
     if (currentRound > 7) return; // Tournament is complete
     
     const updatedMatches = [...matches];
@@ -108,7 +154,13 @@ const Tournament: React.FC = () => {
     
     // Play each match and set winners
     currentMatches.forEach(match => {
-      match.winner = playMatch(match);
+      if (!match.teamA || !match.teamB) return;
+      
+      // Determine winner based on ELO rating with some randomness
+      const teamAStrength = match.teamA.eloRating + Math.random() * 100;
+      const teamBStrength = match.teamB.eloRating + Math.random() * 100;
+      
+      match.winner = teamAStrength > teamBStrength ? match.teamA : match.teamB;
       match.played = true;
       
       // Advance winner to next round
@@ -144,6 +196,37 @@ const Tournament: React.FC = () => {
     return matches.find(m => m.round === 7)?.winner;
   };
 
+  // Si hay un partido activo en juego, mostrar el componente de partidos
+  if (playingMatch && activeMatch && activeMatch.teamA && activeMatch.teamB) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-6 flex items-center justify-between">
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              setActiveMatch(null);
+              setPlayingMatch(false);
+            }}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeftCircle className="h-4 w-4" />
+            Volver al Torneo
+          </Button>
+          <h2 className="text-xl font-semibold">
+            {activeMatch.teamA.name} vs {activeMatch.teamB.name}
+          </h2>
+        </div>
+        
+        <TournamentMatch 
+          homeTeam={activeMatch.teamA.name}
+          awayTeam={activeMatch.teamB.name}
+          onMatchComplete={handleMatchComplete}
+          matchDuration={180} // 3 minutos
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6 text-center">Football Tournament</h1>
@@ -151,9 +234,28 @@ const Tournament: React.FC = () => {
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-xl font-semibold">{getTournamentStatus()}</h2>
         {currentRound <= 7 ? (
-          <Button onClick={playNextRound} className="bg-green-600 hover:bg-green-700">
-            Play {currentRound === 7 ? "Final" : "Round " + currentRound}
-          </Button>
+          <div className="flex gap-4">
+            <Button 
+              onClick={playRoundWithSimulation} 
+              className="bg-gray-600 hover:bg-gray-700"
+            >
+              Simular {currentRound === 7 ? "Final" : "Ronda " + currentRound}
+            </Button>
+            <Button 
+              onClick={() => {
+                // Buscar el primer partido no jugado de la ronda actual
+                const matchToPlay = matches.find(
+                  m => m.round === currentRound && !m.played && m.teamA && m.teamB
+                );
+                if (matchToPlay) {
+                  playMatch(matchToPlay);
+                }
+              }} 
+              className="bg-green-600 hover:bg-green-700"
+            >
+              Jugar Partido
+            </Button>
+          </div>
         ) : (
           <div className="flex items-center text-amber-500 font-bold gap-2">
             <Trophy className="h-6 w-6" />
@@ -167,7 +269,14 @@ const Tournament: React.FC = () => {
       </div>
       
       <div className="overflow-x-auto">
-        <TournamentBracket matches={matches} />
+        <TournamentBracket 
+          matches={matches} 
+          onMatchClick={(match) => {
+            if (match.teamA && match.teamB && !match.played) {
+              playMatch(match);
+            }
+          }}
+        />
       </div>
     </div>
   );
