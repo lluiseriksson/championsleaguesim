@@ -1,3 +1,4 @@
+
 export type TeamKit = {
   home: string;
   away: string;
@@ -168,3 +169,31 @@ export const getTeamKitColor = (teamName: string | undefined, kitType: 'home' | 
   
   return teamKitColors[teamName][kitType];
 };
+
+// Function to get accent colors for team kit designs
+export const getTeamAccentColors = (teamName: string, kitType: 'home' | 'away' | 'third'): { accent1: string, accent2: string } => {
+  // Generate complementary accent colors based on the main kit color
+  const mainColor = getTeamKitColor(teamName, kitType);
+  
+  // Generate accent colors by adjusting the main color
+  let r = parseInt(mainColor.slice(1, 3), 16);
+  let g = parseInt(mainColor.slice(3, 5), 16);
+  let b = parseInt(mainColor.slice(5, 7), 16);
+  
+  // First accent - slightly lighter version of the main color
+  const accent1 = adjustColor(r, g, b, 30);
+  
+  // Second accent - slightly darker version of the main color
+  const accent2 = adjustColor(r, g, b, -30);
+  
+  return { accent1, accent2 };
+};
+
+// Helper function to adjust RGB values and return a hex color
+function adjustColor(r: number, g: number, b: number, amount: number): string {
+  r = Math.max(0, Math.min(255, r + amount));
+  g = Math.max(0, Math.min(255, g + amount));
+  b = Math.max(0, Math.min(255, b + amount));
+  
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}

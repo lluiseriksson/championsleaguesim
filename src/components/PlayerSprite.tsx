@@ -2,7 +2,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Player } from '../types/football';
-import { getTeamKitColor } from '../types/teamKits';
+import { getTeamKitColor, getTeamAccentColors } from '../types/teamKits';
 
 interface PlayerSpriteProps {
   player: Player;
@@ -64,12 +64,25 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
     // Default to white text for legacy gradient backgrounds
     return 'text-white';
   };
+  
+  // Get accent colors for the player's team design
+  const getPlayerAccentStyles = (player: Player) => {
+    if (!player.teamName || !player.kitType) return '';
+    
+    const { accent1, accent2 } = getTeamAccentColors(player.teamName, player.kitType);
+    
+    // Create a dynamic style with the accent colors
+    return {
+      '--accent1': accent1,
+      '--accent2': accent2
+    } as React.CSSProperties;
+  };
 
   return (
     <motion.div
       key={player.id}
       className={`absolute w-6 h-6 rounded-full ${getPlayerColor(player)} ${getRoleIndicator(player.role)} 
-                flex items-center justify-center shadow-md`}
+                flex items-center justify-center shadow-md overflow-hidden`}
       animate={{
         x: player.position.x,
         y: player.position.y,
@@ -81,9 +94,20 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
         mass: 0.8
       }}
       initial={false}
+      style={getPlayerAccentStyles(player)}
     >
+      {/* Team design pattern/stripes using accent colors */}
+      <div className="absolute inset-0 w-full h-full opacity-70">
+        {player.teamName && player.kitType && (
+          <>
+            <div className="absolute top-0 left-0 w-1/3 h-full" style={{backgroundColor: 'var(--accent1)'}}></div>
+            <div className="absolute top-0 right-0 w-1/3 h-full" style={{backgroundColor: 'var(--accent2)'}}></div>
+          </>
+        )}
+      </div>
+      
       {/* Small letter to indicate the role */}
-      <span className={`text-[8px] font-bold ${getTextColor(player)}`}>
+      <span className={`relative z-10 text-[8px] font-bold ${getTextColor(player)}`}>
         {player.role === 'goalkeeper' ? 'G' : 
          player.role === 'defender' ? 'D' : 
          player.role === 'midfielder' ? 'M' : 
