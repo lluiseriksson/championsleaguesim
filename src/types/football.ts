@@ -1,3 +1,4 @@
+
 import * as brain from 'brain.js';
 
 export interface Position {
@@ -54,8 +55,9 @@ export interface NeuralNet {
   lastAction?: 'move' | 'shoot' | 'pass' | 'intercept';
 }
 
-export type KitType = 'home' | 'away' | 'third';
+export type KitType = 'home' | 'away' | 'third' | 'special';
 
+// Expanded player interface to include custom kit colors
 export interface Player {
   id: number;
   position: Position;
@@ -66,6 +68,11 @@ export interface Player {
   teamName?: string;
   kitType?: KitType;
   speedMultiplier?: number;
+  customKit?: {
+    primary: string;
+    secondary: string;
+    accent: string;
+  };
 }
 
 // Added bounceDetection property to Ball interface

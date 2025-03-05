@@ -1,8 +1,10 @@
+
 import React from 'react';
 import { Player, PITCH_WIDTH, PITCH_HEIGHT, KitType } from '../../types/football';
 import { createPlayerBrain } from '../../utils/playerBrain';
 import { initializePlayerBrain } from '../../utils/modelLoader';
 import { getAwayTeamKit, teamKitColors } from '../../types/kits';
+import { toast } from 'sonner';
 
 interface PlayerInitializerProps {
   setPlayers: React.Dispatch<React.SetStateAction<Player[]>>;
@@ -27,9 +29,17 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
         const awayTeamName = teamNames[awayTeamIndex];
         
         // Determine the best away kit to use based on color similarity
-        const awayTeamKitType = getAwayTeamKit(homeTeamName, awayTeamName);
+        const awayTeamKitResult = getAwayTeamKit(homeTeamName, awayTeamName);
+        const awayTeamKitType = awayTeamKitResult.kitType;
+        const customKit = awayTeamKitResult.customKit;
         
-        console.log(`Match: ${homeTeamName} (home) vs ${awayTeamName} (${awayTeamKitType})`);
+        if (awayTeamKitType === 'special' && customKit) {
+          toast.info(`${awayTeamName} using special kit to avoid color clash with ${homeTeamName}`, {
+            duration: 4000,
+          });
+        } else {
+          console.log(`Match: ${homeTeamName} (home) vs ${awayTeamName} (${awayTeamKitType})`);
+        }
         
         // Initialize red team players (home team) with 3-4-3 formation
         const redTeamPositions = [
@@ -111,7 +121,8 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
             }
           }
           
-          initialPlayers.push({
+          // Create the player with either standard kit or custom kit
+          const player: Player = {
             id: i + 11,
             position: { x: pos.x, y: pos.y },
             role: role,
@@ -120,7 +131,14 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
             targetPosition: { x: pos.x, y: pos.y },
             teamName: awayTeamName,
             kitType: awayTeamKitType as KitType
-          });
+          };
+          
+          // If using a special kit, add the custom colors
+          if (awayTeamKitType === 'special' && customKit) {
+            player.customKit = customKit;
+          }
+          
+          initialPlayers.push(player);
         }
 
         setPlayers(initialPlayers);

@@ -1,3 +1,4 @@
+
 import { useCallback, useEffect, useRef } from 'react';
 import { Player, Ball, PITCH_WIDTH, PITCH_HEIGHT } from '../../types/football';
 import { calculateNetworkInputs } from '../../utils/playerBrain';
@@ -94,6 +95,7 @@ const usePlayerMovement = ({ players, setPlayers, ball, gameReady }: PlayerMovem
               player.brain.lastAction = 'move';
             }
             
+            // Return updated player with new position
             return { 
               ...player, 
               position: { x: newX, y: newY }
