@@ -58,7 +58,7 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
   };
   
   return (
-    <div className="match-timer font-mono text-xl font-bold bg-black bg-opacity-80 text-white px-4 py-2 rounded-md shadow-lg absolute top-4 left-1/2 transform -translate-x-1/2 z-10">
+    <div className="match-timer font-mono text-xl font-bold bg-black bg-opacity-80 text-white px-4 py-2 rounded-md shadow-lg absolute top-4 right-4 z-10">
       {goldenGoal && timeRemaining === 0 ? (
         <span className="text-amber-400">¡GOL DE ORO!</span>
       ) : (
