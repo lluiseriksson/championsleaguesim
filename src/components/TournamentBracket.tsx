@@ -130,7 +130,6 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
                     {match.played && match.score && (
                       <span className="text-sm font-bold text-left">{match.score.teamA}</span>
                     )}
-                    {/* Seed ranking display removed */}
                   </div>
                 </div>
                 
@@ -145,7 +144,6 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
                     {match.played && match.score && (
                       <span className="text-sm font-bold text-left">{match.score.teamB}</span>
                     )}
-                    {/* Seed ranking display removed */}
                   </div>
                 </div>
                 

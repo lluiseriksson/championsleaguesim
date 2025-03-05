@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
@@ -7,6 +6,33 @@ import { Player, Ball, Score, PITCH_WIDTH, PITCH_HEIGHT } from '../../types/foot
 import { toast } from 'sonner';
 import { getAwayTeamKit } from '../../types/kits';
 import GameLogic from '../GameLogic';
+
+const transliterateRussianName = (name: string): string => {
+  const cyrillicToLatin: Record<string, string> = {
+    'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G', 'Д': 'D', 'Е': 'E', 'Ё': 'Yo', 
+    'Ж': 'Zh', 'З': 'Z', 'И': 'I', 'Й': 'Y', 'К': 'K', 'Л': 'L', 'М': 'M', 
+    'Н': 'N', 'О': 'O', 'П': 'P', 'Р': 'R', 'С': 'S', 'Т': 'T', 'У': 'U', 
+    'Ф': 'F', 'Х': 'Kh', 'Ц': 'Ts', 'Ч': 'Ch', 'Ш': 'Sh', 'Щ': 'Shch', 
+    'Ъ': '', 'Ы': 'Y', 'Ь': '', 'Э': 'E', 'Ю': 'Yu', 'Я': 'Ya',
+    'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo', 
+    'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 
+    'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 
+    'ф': 'f', 'х': 'kh', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'shch', 
+    'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+  };
+
+  const hasCyrillic = /[А-Яа-яЁё]/.test(name);
+  
+  if (!hasCyrillic) return name;
+  
+  let result = '';
+  for (let i = 0; i < name.length; i++) {
+    const char = name[i];
+    result += cyrillicToLatin[char] || char;
+  }
+  
+  return result;
+};
 
 interface TournamentMatchProps {
   homeTeam: string;
@@ -21,6 +47,9 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   onMatchComplete,
   matchDuration = 180 // 3 minutos por defecto
 }) => {
+  const displayHomeTeam = transliterateRussianName(homeTeam);
+  const displayAwayTeam = transliterateRussianName(awayTeam);
+  
   const [players, setPlayers] = useState<Player[]>([]);
   const [ball, setBall] = useState<Ball>({
     position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
@@ -58,9 +87,10 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         });
       } else {
         const winner = score.red > score.blue ? homeTeam : awayTeam;
-        console.log("Partido terminado. Ganador:", winner);
-        toast(`¡Fin del partido! ${winner} gana`, {
-          description: `Resultado final: ${homeTeam} ${score.red} - ${score.blue} ${awayTeam}`,
+        const displayWinner = transliterateRussianName(winner);
+        console.log("Partido terminado. Ganador:", displayWinner);
+        toast(`¡Fin del partido! ${displayWinner} gana`, {
+          description: `Resultado final: ${displayHomeTeam} ${score.red} - ${score.blue} ${displayAwayTeam}`,
         });
         
         setTimeout(() => {
@@ -69,18 +99,16 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         }, 2000);
       }
     };
-  }, [score, homeTeam, awayTeam, onMatchComplete]);
+  }, [score, homeTeam, awayTeam, onMatchComplete, displayHomeTeam, displayAwayTeam]);
   
   useEffect(() => {
     if (players.length === 0 && homeTeam && awayTeam) {
-      console.log("Initializing players for match:", homeTeam, "vs", awayTeam);
+      console.log("Initializing players for match:", displayHomeTeam, "vs", displayAwayTeam);
       initializePlayers();
     }
     
-    // Cleanup function to help with memory management
     return () => {
       console.log("Tournament match component unmounting, cleaning up resources");
-      // Force garbage collection by clearing references
       setPlayers([]);
     };
   }, [homeTeam, awayTeam]);
@@ -91,10 +119,11 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         console.log("Golden goal scored by:", lastScorer);
         setGoldenGoalScored(true);
         const winner = lastScorer === 'red' ? homeTeam : awayTeam;
+        const displayWinner = transliterateRussianName(winner);
         
-        console.log("Golden goal winner:", winner);
-        toast(`¡${winner} gana con gol de oro!`, {
-          description: `Resultado final: ${homeTeam} ${score.red} - ${score.blue} ${awayTeam}`,
+        console.log("Golden goal winner:", displayWinner);
+        toast(`¡${displayWinner} gana con gol de oro!`, {
+          description: `Resultado final: ${displayHomeTeam} ${score.red} - ${score.blue} ${displayAwayTeam}`,
         });
         
         setTimeout(() => {
@@ -103,13 +132,13 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         }, 2000);
       }
     }
-  }, [goldenGoal, lastScorer, score, homeTeam, awayTeam, onMatchComplete, goldenGoalScored]);
+  }, [goldenGoal, lastScorer, score, homeTeam, awayTeam, onMatchComplete, goldenGoalScored, displayHomeTeam, displayAwayTeam]);
   
   const initializePlayers = () => {
     const newPlayers: Player[] = [];
     
     const awayTeamKitType = getAwayTeamKit(homeTeam, awayTeam);
-    console.log(`Tournament match: ${homeTeam} (home) vs ${awayTeam} (${awayTeamKitType})`);
+    console.log(`Tournament match: ${displayHomeTeam} (home) vs ${displayAwayTeam} (${awayTeamKitType})`);
     
     const redTeamPositions = [
       { x: 50, y: PITCH_HEIGHT/2, role: 'goalkeeper' },
@@ -194,10 +223,10 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       <div className="flex flex-col items-center justify-center h-96 bg-gray-100 rounded-lg">
         <h2 className="text-2xl font-bold mb-4">Partido finalizado</h2>
         <div className="text-xl">
-          {homeTeam} {score.red} - {score.blue} {awayTeam}
+          {displayHomeTeam} {score.red} - {score.blue} {displayAwayTeam}
         </div>
         <div className="mt-4 text-lg font-semibold">
-          Ganador: {score.red > score.blue ? homeTeam : awayTeam}
+          Ganador: {score.red > score.blue ? displayHomeTeam : displayAwayTeam}
           {goldenGoalScored && <span className="ml-2 text-amber-500">(Gol de Oro)</span>}
         </div>
       </div>
@@ -220,8 +249,8 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         score={score}
         setScore={setScore}
         updatePlayerPositions={updatePlayerPositions}
-        homeTeam={homeTeam}
-        awayTeam={awayTeam}
+        homeTeam={displayHomeTeam}
+        awayTeam={displayAwayTeam}
         tournamentMode={true}
         onGoalScored={(team) => {
           console.log(`Goal scored by ${team} team, golden goal mode: ${goldenGoal}`);
