@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 
 interface MatchTimerProps {
-  initialTime: number; // in seconds
+  initialTime: number; // in seconds (total match duration)
   onTimeEnd: () => void;
   goldenGoal?: boolean;
 }
@@ -12,23 +12,30 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
   onTimeEnd,
   goldenGoal = false
 }) => {
-  const [timeLeft, setTimeLeft] = useState(initialTime);
+  // Instead of counting down, we'll track elapsed time
+  const [elapsedTime, setElapsedTime] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const initializedRef = useRef(false);
   
-  console.log('MatchTimer renderizado con initialTime:', initialTime, 'timeLeft:', timeLeft);
+  // Calculate what time should show on the chronometer (scaling to 90 minutes)
+  const getDisplayMinutes = (elapsed: number, total: number) => {
+    // Scale the elapsed time to a 90-minute match
+    return Math.floor((elapsed / total) * 90);
+  };
+  
+  console.log('MatchTimer renderizado con initialTime:', initialTime, 'elapsedTime:', elapsedTime);
 
   useEffect(() => {
-    // Only set timeLeft when the component mounts or initialTime changes
-    if (!initializedRef.current || initialTime !== timeLeft) {
-      console.log('Setting initial time to:', initialTime);
-      setTimeLeft(initialTime);
+    // Only reset elapsed time when initialTime changes
+    if (!initializedRef.current) {
+      console.log('Setting up chronometer with total time:', initialTime);
+      setElapsedTime(0);
       initializedRef.current = true;
     }
   }, [initialTime]);
 
   useEffect(() => {
-    console.log('Setting up timer with timeLeft:', timeLeft, 'goldenGoal:', goldenGoal);
+    console.log('Setting up timer with elapsedTime:', elapsedTime, 'initialTime:', initialTime, 'goldenGoal:', goldenGoal);
     
     // Clear any existing interval
     if (timerRef.current) {
@@ -36,21 +43,21 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
       timerRef.current = null;
     }
     
-    // Only start the timer if we have time left and we're not in golden goal
-    if (timeLeft > 0 && !goldenGoal) {
+    // Only start the timer if we haven't reached the end time and we're not in golden goal
+    if (elapsedTime < initialTime && !goldenGoal) {
       timerRef.current = setInterval(() => {
-        setTimeLeft((prevTime) => {
-          const newTime = prevTime - 1;
-          console.log('Tick, new time:', newTime);
+        setElapsedTime((prevTime) => {
+          const newTime = prevTime + 1;
+          console.log('Tick, elapsed time:', newTime, 'of', initialTime);
           
-          if (newTime <= 0) {
+          if (newTime >= initialTime) {
             console.log('Time ended, calling onTimeEnd');
             if (timerRef.current) {
               clearInterval(timerRef.current);
               timerRef.current = null;
             }
             onTimeEnd();
-            return 0;
+            return initialTime;
           }
           
           return newTime;
@@ -58,9 +65,9 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
       }, 1000);
     }
 
-    // Call onTimeEnd immediately if we activate golden goal and time is already 0
-    if (goldenGoal && timeLeft === 0 && !timerRef.current) {
-      console.log('Golden goal activated with no time left');
+    // Call onTimeEnd immediately if we activate golden goal and time has already elapsed
+    if (goldenGoal && elapsedTime >= initialTime && !timerRef.current) {
+      console.log('Golden goal activated with time already elapsed');
     }
 
     // Cleanup function
@@ -71,12 +78,12 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
         timerRef.current = null;
       }
     };
-  }, [timeLeft, onTimeEnd, goldenGoal]);
+  }, [elapsedTime, onTimeEnd, goldenGoal, initialTime]);
 
-  // Format time as MM:SS
-  const minutes = Math.floor(timeLeft / 60);
-  const seconds = timeLeft % 60;
-  const formattedTime = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+  // Calculate the display time in football match format (MM:SS)
+  const displayMinutes = getDisplayMinutes(elapsedTime, initialTime);
+  const displaySeconds = Math.floor((elapsedTime / initialTime) * 90 * 60) % 60;
+  const formattedTime = `${displayMinutes}:${displaySeconds < 10 ? '0' : ''}${displaySeconds}`;
   
   console.log('Displaying formatted time:', formattedTime);
 
