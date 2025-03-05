@@ -49,6 +49,43 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
     return match.winner.id === team.id;
   };
 
+  // Transliterate Russian team names to Latin alphabet
+  const transliterateRussianName = (name: string): string => {
+    // Map of Cyrillic to Latin characters
+    const cyrillicToLatin: Record<string, string> = {
+      'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G', 'Д': 'D', 'Е': 'E', 'Ё': 'Yo', 
+      'Ж': 'Zh', 'З': 'Z', 'И': 'I', 'Й': 'Y', 'К': 'K', 'Л': 'L', 'М': 'M', 
+      'Н': 'N', 'О': 'O', 'П': 'P', 'Р': 'R', 'С': 'S', 'Т': 'T', 'У': 'U', 
+      'Ф': 'F', 'Х': 'Kh', 'Ц': 'Ts', 'Ч': 'Ch', 'Ш': 'Sh', 'Щ': 'Shch', 
+      'Ъ': '', 'Ы': 'Y', 'Ь': '', 'Э': 'E', 'Ю': 'Yu', 'Я': 'Ya',
+      'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo', 
+      'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 
+      'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 
+      'ф': 'f', 'х': 'kh', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'shch', 
+      'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+    };
+
+    // Check if the name has Cyrillic characters
+    const hasCyrillic = /[А-Яа-яЁё]/.test(name);
+    
+    if (!hasCyrillic) return name;
+    
+    // Transliterate character by character
+    let result = '';
+    for (let i = 0; i < name.length; i++) {
+      const char = name[i];
+      result += cyrillicToLatin[char] || char;
+    }
+    
+    return result;
+  };
+
+  // Function to display team name (with transliteration for Russian teams)
+  const getDisplayTeamName = (team?: TournamentTeam): string => {
+    if (!team) return "TBD";
+    return transliterateRussianName(team.name);
+  };
+
   const handleMatchClick = (match: Match) => {
     if (onMatchClick && match.teamA && match.teamB && !match.played) {
       onMatchClick(match);
@@ -87,7 +124,7 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
                   style={getTeamColorStyle(match.teamA)}
                 >
                   <span className="font-medium truncate max-w-[65%]">
-                    {match.teamA?.name || "TBD"}
+                    {getDisplayTeamName(match.teamA)}
                   </span>
                   <div className="flex items-center gap-2 justify-end">
                     {match.played && match.score && (
@@ -102,7 +139,7 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
                   style={getTeamColorStyle(match.teamB)}
                 >
                   <span className="font-medium truncate max-w-[65%]">
-                    {match.teamB?.name || "TBD"}
+                    {getDisplayTeamName(match.teamB)}
                   </span>
                   <div className="flex items-center gap-2 justify-end">
                     {match.played && match.score && (
