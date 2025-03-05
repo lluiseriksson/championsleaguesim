@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { teamKitColors, TeamKit } from '../types/teamKits';
@@ -113,16 +114,25 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
       }
     }
 
+    // Randomly shuffle the home teams (strongest 64 teams)
+    const homeTeams = [...tournamentTeams.slice(0, 64)];
+    for (let i = homeTeams.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [homeTeams[i], homeTeams[j]] = [homeTeams[j], homeTeams[i]];
+    }
+
+    // Also randomly shuffle the away teams (as was already done)
     const awayTeams = [...tournamentTeams.slice(64)];
     for (let i = awayTeams.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [awayTeams[i], awayTeams[j]] = [awayTeams[j], awayTeams[i]];
     }
 
+    // Assign teams to first-round matches using the shuffled arrays
     for (let i = 0; i < 64; i++) {
       const match = initialMatches.find(m => m.round === 1 && m.position === i + 1);
       if (match) {
-        match.teamA = tournamentTeams[i];
+        match.teamA = homeTeams[i];
         match.teamB = awayTeams[i];
       }
     }
