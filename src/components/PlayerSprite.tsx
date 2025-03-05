@@ -2,7 +2,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Player } from '../types/football';
-import { getTeamKitColor, getTeamAccentColors } from '../types/teamKits';
+import { getTeamKitColor, getTeamKitColors, KitType } from '../types/teamKits';
 
 interface PlayerSpriteProps {
   player: Player;
@@ -13,7 +13,7 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
   const getPlayerColor = (player: Player) => {
     // If the player has a teamName and kitType, use the corresponding kit color
     if (player.teamName && player.kitType) {
-      const kitColor = getTeamKitColor(player.teamName, player.kitType);
+      const kitColor = getTeamKitColor(player.teamName, player.kitType as KitType);
       return `bg-[${kitColor}]`;
     }
     
@@ -46,7 +46,7 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
   const getTextColor = (player: Player) => {
     // If the player has a teamName and kitType, check the color brightness
     if (player.teamName && player.kitType) {
-      const hexColor = getTeamKitColor(player.teamName, player.kitType);
+      const hexColor = getTeamKitColor(player.teamName, player.kitType as KitType);
       
       // Simple brightness formula (adjust as needed)
       // Convert hex to RGB and calculate brightness
@@ -65,16 +65,17 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
     return 'text-white';
   };
   
-  // Get accent colors for the player's team design
-  const getPlayerAccentStyles = (player: Player) => {
+  // Get the kit colors for the player's team
+  const getPlayerKitStyles = (player: Player) => {
     if (!player.teamName || !player.kitType) return {};
     
-    const { accent1, accent2 } = getTeamAccentColors(player.teamName, player.kitType);
+    const kitColors = getTeamKitColors(player.teamName, player.kitType as KitType);
     
-    // Create a dynamic style with the accent colors
+    // Create a dynamic style with the kit colors
     return {
-      '--accent1': accent1,
-      '--accent2': accent2
+      '--primary-color': kitColors.primary,
+      '--secondary-color': kitColors.secondary,
+      '--accent-color': kitColors.accent
     } as React.CSSProperties;
   };
 
@@ -94,14 +95,14 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
         mass: 0.8
       }}
       initial={false}
-      style={getPlayerAccentStyles(player)}
+      style={getPlayerKitStyles(player)}
     >
-      {/* Team design pattern/stripes using accent colors */}
+      {/* Team design pattern/stripes using kit colors */}
       <div className="absolute inset-0 w-full h-full opacity-70">
         {player.teamName && player.kitType && (
           <>
-            <div className="absolute top-0 left-0 w-1/3 h-full" style={{backgroundColor: 'var(--accent1)'}}></div>
-            <div className="absolute top-0 right-0 w-1/3 h-full" style={{backgroundColor: 'var(--accent2)'}}></div>
+            <div className="absolute top-0 left-0 w-1/3 h-full" style={{backgroundColor: 'var(--secondary-color)'}}></div>
+            <div className="absolute top-0 right-0 w-1/3 h-full" style={{backgroundColor: 'var(--accent-color)'}}></div>
           </>
         )}
       </div>

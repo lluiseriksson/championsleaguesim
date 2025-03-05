@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Score } from '../types/football';
-import { getTeamKitColor } from '../types/teamKits';
+import { getTeamKitColor, KitType } from '../types/teamKits';
 
 interface ScoreDisplayProps {
   score: Score;
@@ -13,11 +13,6 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ score, homeTeam = 'Home', a
   // Get team colors for display
   const homeTeamColor = getTeamKitColor(homeTeam, 'home');
   const awayTeamColor = getTeamKitColor(awayTeam, 'away');
-
-  // Add log to verify score is being updated correctly
-  React.useEffect(() => {
-    console.log(`ScoreDisplay rendering with score: ${homeTeam} ${score.red} - ${score.blue} ${awayTeam}`);
-  }, [score, homeTeam, awayTeam]);
 
   return (
     <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white/80 px-4 py-2 rounded-full font-bold text-xl shadow-md z-20 flex items-center">

@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { Player, PITCH_WIDTH, PITCH_HEIGHT, KitType } from '../../types/football';
 import { createPlayerBrain } from '../../utils/playerBrain';
 import { initializePlayerBrain } from '../../utils/modelLoader';
-import { teamKitColors, getAwayTeamKit } from '../../types/teamKits';
+import { getAwayTeamKit, teamKitColors } from '../../types/teamKits';
 
 interface PlayerInitializerProps {
   setPlayers: React.Dispatch<React.SetStateAction<Player[]>>;

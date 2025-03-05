@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { getTeamKitColor } from '../types/teamKits';
+import { getTeamKitColor, KitType } from '../types/teamKits';
 
 interface TournamentTeam {
   id: number;
@@ -55,7 +55,8 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({ matches, onMatchC
   const getTeamColorStyle = (team?: TournamentTeam) => {
     if (!team) return {};
     
-    const kitColor = team.kitColors.home;
+    // Use the team's name to get the kit color from our system
+    const kitColor = getTeamKitColor(team.name, 'home' as KitType);
     return { 
       backgroundColor: `${kitColor}20`, 
       borderLeft: `4px solid ${kitColor}` 
