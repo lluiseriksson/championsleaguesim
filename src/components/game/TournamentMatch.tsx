@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
@@ -99,6 +98,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
     const newPlayers: Player[] = [];
     
     const awayTeamKitType = getAwayTeamKit(homeTeam, awayTeam);
+    console.log(`Tournament match: ${homeTeam} (home) vs ${awayTeam} (${awayTeamKitType})`);
     
     const redTeamPositions = [
       { x: 50, y: PITCH_HEIGHT/2, role: 'goalkeeper' },

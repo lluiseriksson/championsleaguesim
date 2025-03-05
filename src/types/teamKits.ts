@@ -120,7 +120,7 @@ export const teamKitColors: TeamColors = {
   "Tottenham": {
     home: { primary: "#FFFFFF", secondary: "#000000", accent: "#FFFFFF" },
     away: { primary: "#0E172A", secondary: "#FFFFFF", accent: "#000000" },
-    third: { primary: "#008080", secondary: "#FFFFFF", accent: "#000000" }
+    third: { primary: "#008000", secondary: "#FFFFFF", accent: "#000000" }
   },
   "PSV": {
     home: { primary: "#ED7100", secondary: "#FFFFFF", accent: "#ED7100" },
@@ -668,17 +668,37 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
     return 'away'; // Default to away kit if team not found
   }
 
-  // Calculate color distance between home team's primary home kit and away team's kits
+  // Parse home team's primary home kit color
   const homeColor = parseHexColor(homeTeam.home.primary);
+  
+  // Parse away team's away and third kit colors
   const awayColor = parseHexColor(awayTeam.away.primary);
   const thirdColor = parseHexColor(awayTeam.third.primary);
 
-  // Calculate color distances
+  // Calculate color distances between home team's primary and away team's kits
   const homeToAwayDistance = getColorDistance(homeColor, awayColor);
   const homeToThirdDistance = getColorDistance(homeColor, thirdColor);
 
+  console.log(`Kit color comparison for ${homeTeamName} vs ${awayTeamName}:`);
+  console.log(`Home to away distance: ${homeToAwayDistance}`);
+  console.log(`Home to third distance: ${homeToThirdDistance}`);
+
   // Choose the kit with the greatest color distance from home team's kit
-  return homeToAwayDistance > homeToThirdDistance ? 'away' : 'third';
+  // Use a minimum threshold to ensure good contrast
+  const MINIMUM_COLOR_DISTANCE = 120; // Threshold for good contrast
+  
+  if (homeToAwayDistance < MINIMUM_COLOR_DISTANCE && homeToThirdDistance >= homeToAwayDistance) {
+    console.log(`Using third kit for ${awayTeamName} for better contrast with ${homeTeamName}`);
+    return 'third';
+  }
+  
+  if (homeToThirdDistance > homeToAwayDistance * 1.5) {
+    console.log(`Using third kit for ${awayTeamName} for significantly better contrast with ${homeTeamName}`);
+    return 'third';
+  }
+  
+  console.log(`Using away kit for ${awayTeamName} against ${homeTeamName}`);
+  return 'away';
 };
 
 // Function to get team kit color based on the team name and kit type
@@ -718,18 +738,35 @@ export const getTeamAccentColors = (teamName: string, kitType: KitType): { accen
 
 // Helper function to parse hex color to RGB
 function parseHexColor(hex: string): { r: number, g: number, b: number } {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
+  // Handle invalid hex colors
+  if (!hex || hex.length < 7) {
+    console.warn(`Invalid hex color: ${hex}, defaulting to black`);
+    return { r: 0, g: 0, b: 0 };
+  }
 
-  return { r, g, b };
+  try {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return { r, g, b };
+  } catch (error) {
+    console.warn(`Error parsing hex color ${hex}:`, error);
+    return { r: 0, g: 0, b: 0 };
+  }
 }
 
-// Helper function to calculate color distance (Euclidean distance in RGB space)
+// Improved color distance calculation (using weighted RGB to account for human perception)
 function getColorDistance(color1: { r: number, g: number, b: number }, color2: { r: number, g: number, b: number }): number {
+  // Apply human perception weights to RGB components
+  // Human eyes are more sensitive to green, less to blue
+  const rWeight = 0.3;
+  const gWeight = 0.59;
+  const bWeight = 0.11;
+  
+  // Calculate weighted Euclidean distance
   return Math.sqrt(
-    Math.pow(color2.r - color1.r, 2) +
-    Math.pow(color2.g - color1.g, 2) +
-    Math.pow(color2.b - color1.b, 2)
+    rWeight * Math.pow(color2.r - color1.r, 2) +
+    gWeight * Math.pow(color2.g - color1.g, 2) +
+    bWeight * Math.pow(color2.b - color1.b, 2)
   );
 }
