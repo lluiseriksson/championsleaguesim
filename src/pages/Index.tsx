@@ -22,6 +22,13 @@ const Index = () => {
       </header>
       
       <main className="flex-1 container mx-auto p-4 space-y-8">
+        {/* Descripción del juego */}
+        <div className="bg-white rounded-lg shadow-lg p-6 text-center">
+          <p className="text-lg text-gray-800">
+            Bienvenido al AI Football Simulator, un simulador de fútbol impulsado por redes neuronales donde los equipos compiten en tiempo real. Los jugadores virtuales aprenden y mejoran con cada partido, adaptando sus estrategias mientras compiten por la gloria en un emocionante torneo mundial. Observa cómo equipos de todo el mundo se enfrentan en partidos dinámicos con física realista y tácticas emergentes desarrolladas por inteligencia artificial.
+          </p>
+        </div>
+        
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <FootballPitch />
         </div>
