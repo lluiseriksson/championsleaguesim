@@ -1,11 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { teamKitColors } from '../types/teamKits';
 import TournamentBracket from '../components/TournamentBracket';
 import TournamentMatch from '../components/game/TournamentMatch';
 import { Button } from '../components/ui/button';
-import { Trophy, ArrowLeftCircle } from 'lucide-react';
+import { Trophy, ArrowLeftCircle, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
 
 // Tournament data structure
 interface TournamentTeam {
@@ -77,16 +77,40 @@ const Tournament: React.FC = () => {
       }
     }
     
-    // Fill in first round with teams (seeding logic: 1 vs 128, 2 vs 127, etc.)
+    // Fill in first round with teams (seeding logic but with randomized away teams)
+    const awayTeams = [...tournamentTeams.slice(64)]; // Get the away teams (65-128)
+    
+    // Shuffle the away teams for random matchups
+    for (let i = awayTeams.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [awayTeams[i], awayTeams[j]] = [awayTeams[j], awayTeams[i]];
+    }
+    
     for (let i = 0; i < 64; i++) {
       const match = initialMatches.find(m => m.round === 1 && m.position === i + 1);
       if (match) {
-        match.teamA = tournamentTeams[i];
-        match.teamB = tournamentTeams[127 - i];
+        match.teamA = tournamentTeams[i]; // Home teams in order of seed
+        match.teamB = awayTeams[i]; // Randomized away teams
       }
     }
     
     setMatches(initialMatches);
+    setCurrentRound(1);
+    
+    toast.success("Tournament initialized", {
+      description: "128 teams ready for the competition"
+    });
+  };
+
+  // Reset the tournament with new random matchups
+  const resetTournament = () => {
+    setActiveMatch(null);
+    setPlayingMatch(false);
+    setInitialized(false);
+    
+    toast("Tournament reset", {
+      description: "New random matchups have been created"
+    });
   };
 
   // Funciones para jugar partidos
@@ -236,6 +260,14 @@ const Tournament: React.FC = () => {
         {currentRound <= 7 ? (
           <div className="flex gap-4">
             <Button 
+              onClick={resetTournament}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Reset Tournament
+            </Button>
+            <Button 
               onClick={playRoundWithSimulation} 
               className="bg-gray-600 hover:bg-gray-700"
             >
@@ -257,9 +289,19 @@ const Tournament: React.FC = () => {
             </Button>
           </div>
         ) : (
-          <div className="flex items-center text-amber-500 font-bold gap-2">
-            <Trophy className="h-6 w-6" />
-            <span>Champion: {getWinner()?.name}</span>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center text-amber-500 font-bold gap-2">
+              <Trophy className="h-6 w-6" />
+              <span>Champion: {getWinner()?.name}</span>
+            </div>
+            <Button 
+              onClick={resetTournament}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Reset Tournament
+            </Button>
           </div>
         )}
       </div>
