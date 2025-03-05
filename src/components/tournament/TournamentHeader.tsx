@@ -60,9 +60,16 @@ const TournamentHeader: React.FC<TournamentHeaderProps> = ({
           </div>
         ) : (
           <div className="flex items-center gap-4">
-            <div className="flex items-center text-amber-500 font-bold gap-2">
-              <Trophy className="h-6 w-6" />
-              <span>Champion: {getWinner()?.name}</span>
+            <div className="flex flex-col items-end">
+              <div className="flex items-center text-amber-500 font-bold gap-2">
+                <Trophy className="h-6 w-6" />
+                <span>Champion: {getWinner()?.name}</span>
+              </div>
+              {getWinner() && (
+                <div className="text-sm text-gray-600">
+                  ELO Rating: {getWinner()?.eloRating}
+                </div>
+              )}
             </div>
             <Button 
               onClick={resetTournament}

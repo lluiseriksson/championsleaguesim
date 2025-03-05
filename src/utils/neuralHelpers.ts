@@ -1,96 +1,60 @@
-import { Position, NeuralInput, NeuralOutput, TeamContext, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
+
 import * as brain from 'brain.js';
+import { NeuralInput, NeuralOutput, NeuralNet, Position, Player, Ball, TeamContext } from '../types/football';
+import { calculateNetworkInputs } from './neuralInputs';
 
-// Normalize a position to a value between 0 and 1
-export const normalizePosition = (pos: Position): Position => ({
-  x: pos.x / PITCH_WIDTH,
-  y: pos.y / PITCH_HEIGHT
-});
+// Normaliza coordenadas para que estén dentro del rango 0-1
+export const normalizePosition = (pos: Position, width: number, height: number): Position => {
+  return {
+    x: pos.x / width,
+    y: pos.y / height
+  };
+};
 
-// Calculate angle and distance between two positions (normalized)
-export const calculateAngleAndDistance = (from: Position, to: Position) => {
+// Calcula ángulo y distancia entre dos puntos
+export const calculateAngleAndDistance = (from: Position, to: Position): { angle: number, distance: number } => {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   return {
-    angle: Math.atan2(dy, dx) / Math.PI, // Normalize angle to -1 to 1
-    distance: Math.sqrt(dx * dx + dy * dy) / Math.sqrt(PITCH_WIDTH * PITCH_WIDTH + PITCH_HEIGHT * PITCH_HEIGHT) // Normalize distance
+    angle: Math.atan2(dy, dx),
+    distance: Math.sqrt(dx * dx + dy * dy)
   };
 };
 
-// Find the nearest entity (teammate or opponent) from a list
-export const getNearestEntity = (position: Position, entities: Position[]) => {
-  if (!entities || entities.length === 0) {
-    return { distance: 1, angle: 0 }; // Default values if no entities
-  }
+// Encuentra la entidad más cercana entre un grupo de posiciones
+export function getNearestEntity(position: Position, entities: Position[]): { position: Position, distance: number } | null {
+  if (entities.length === 0) return null;
   
-  let nearest = { distance: Infinity, angle: 0 };
+  let nearestEntity = entities[0];
+  let minDistance = Math.sqrt(
+    Math.pow(position.x - entities[0].x, 2) + 
+    Math.pow(position.y - entities[0].y, 2)
+  );
   
-  entities.forEach(entity => {
-    const result = calculateAngleAndDistance(position, entity);
-    if (result.distance < nearest.distance) {
-      nearest = result;
+  for (let i = 1; i < entities.length; i++) {
+    const distance = Math.sqrt(
+      Math.pow(position.x - entities[i].x, 2) + 
+      Math.pow(position.y - entities[i].y, 2)
+    );
+    
+    if (distance < minDistance) {
+      minDistance = distance;
+      nearestEntity = entities[i];
     }
-  });
-  
-  return nearest;
-};
-
-// Create neural network input data from game state
-export const createNeuralInput = (
-  ball: { position: Position, velocity: Position },
-  player: Position,
-  context: TeamContext
-): NeuralInput => {
-  const normalizedBall = normalizePosition(ball.position);
-  const normalizedPlayer = normalizePosition(player);
-  const goalAngle = calculateAngleAndDistance(player, context.opponentGoal);
-  
-  // Handle potential empty arrays
-  const teammates = Array.isArray(context.teammates) ? context.teammates : [];
-  const opponents = Array.isArray(context.opponents) ? context.opponents : [];
-  
-  const nearestTeammate = getNearestEntity(player, teammates);
-  const nearestOpponent = getNearestEntity(player, opponents);
-  
-  // Calculate strategic flags with safe values
-  const isInShootingRange = goalAngle.distance < 0.3 ? 1 : 0;
-  const isInPassingRange = nearestTeammate.distance < 0.2 ? 1 : 0;
-  const isDefendingRequired = nearestOpponent.distance < 0.15 ? 1 : 0;
-
-  // Return the neural input object with normalized values
-  return {
-    ballX: normalizedBall.x,
-    ballY: normalizedBall.y,
-    playerX: normalizedPlayer.x,
-    playerY: normalizedPlayer.y,
-    ballVelocityX: ball.velocity.x / 20, // Normalize velocity
-    ballVelocityY: ball.velocity.y / 20,
-    distanceToGoal: goalAngle.distance,
-    angleToGoal: goalAngle.angle,
-    nearestTeammateDistance: nearestTeammate.distance,
-    nearestTeammateAngle: nearestTeammate.angle,
-    nearestOpponentDistance: nearestOpponent.distance,
-    nearestOpponentAngle: nearestOpponent.angle,
-    isInShootingRange,
-    isInPassingRange,
-    isDefendingRequired,
-    distanceToOwnGoal: 0.5, // Default values that will be overridden when used properly
-    angleToOwnGoal: 0,
-    isFacingOwnGoal: 0,
-    isDangerousPosition: 0,
-    isBetweenBallAndOwnGoal: 0
-  };
-};
-
-// Improve neural network validation with more robust error handling
-export const isNetworkValid = (net: brain.NeuralNetwork<NeuralInput, NeuralOutput>): boolean => {
-  if (!net || typeof net.run !== 'function') {
-    console.warn("Neural network is missing or run function is not available");
-    return false;
   }
   
+  return { position: nearestEntity, distance: minDistance };
+}
+
+// Función para crear una entrada de red neuronal con datos normalizados
+export function createNeuralInput(player: Player, ball: Ball, context: TeamContext): NeuralInput {
+  return calculateNetworkInputs(ball, player, context);
+}
+
+// Verifica si una red neuronal es válida
+export function isNetworkValid(net: brain.NeuralNetwork<NeuralInput, NeuralOutput>): boolean {
   try {
-    // Create a simple test input with default values
+    // Creamos una entrada de prueba con valores aleatorios
     const testInput: NeuralInput = {
       ballX: 0.5,
       ballY: 0.5,
@@ -111,26 +75,28 @@ export const isNetworkValid = (net: brain.NeuralNetwork<NeuralInput, NeuralOutpu
       angleToOwnGoal: 0,
       isFacingOwnGoal: 0,
       isDangerousPosition: 0,
-      isBetweenBallAndOwnGoal: 0
+      isBetweenBallAndOwnGoal: 0,
+      strengthMultiplier: 0.9
     };
-
-    // Run the network with test input and check if output is valid
+    
+    // Intentamos realizar una predicción
     const output = net.run(testInput);
     
-    if (!output) {
-      console.warn("Network returned null or undefined output");
-      return false;
-    }
-    
-    // Check that all values are valid numbers
-    return Object.values(output).every(value => 
-      value !== undefined && 
-      value !== null && 
-      !isNaN(value) && 
-      isFinite(value)
+    // Verificamos que la salida tenga todos los campos necesarios
+    return (
+      typeof output.moveX === 'number' &&
+      typeof output.moveY === 'number' &&
+      typeof output.shootBall === 'number' &&
+      typeof output.passBall === 'number' &&
+      typeof output.intercept === 'number' &&
+      !isNaN(output.moveX) &&
+      !isNaN(output.moveY) &&
+      !isNaN(output.shootBall) &&
+      !isNaN(output.passBall) &&
+      !isNaN(output.intercept)
     );
   } catch (error) {
-    console.warn("Error validating network:", error);
+    console.error("Error validating network:", error);
     return false;
   }
-};
+}

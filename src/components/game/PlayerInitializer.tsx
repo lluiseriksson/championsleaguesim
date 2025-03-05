@@ -1,8 +1,10 @@
+
 import React from 'react';
 import { Player, PITCH_WIDTH, PITCH_HEIGHT, KitType } from '../../types/football';
 import { createPlayerBrain } from '../../utils/playerBrain';
 import { initializePlayerBrain } from '../../utils/modelLoader';
 import { getAwayTeamKit, teamKitColors } from '../../types/kits';
+import { getTeamElo, calculateStrengthMultiplier } from '../../data/teamEloData';
 
 interface PlayerInitializerProps {
   setPlayers: React.Dispatch<React.SetStateAction<Player[]>>;
@@ -29,7 +31,14 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
         // Determine the best away kit to use based on color similarity
         const awayTeamKitType = getAwayTeamKit(homeTeamName, awayTeamName);
         
-        console.log(`Match: ${homeTeamName} (home) vs ${awayTeamName} (${awayTeamKitType})`);
+        // Get ELO ratings and calculate strength multipliers
+        const homeTeamElo = getTeamElo(homeTeamName);
+        const awayTeamElo = getTeamElo(awayTeamName);
+        
+        const homeTeamMultiplier = calculateStrengthMultiplier(homeTeamElo);
+        const awayTeamMultiplier = calculateStrengthMultiplier(awayTeamElo);
+        
+        console.log(`Match: ${homeTeamName} (ELO: ${homeTeamElo}, Strength: ${homeTeamMultiplier.toFixed(2)}) vs ${awayTeamName} (ELO: ${awayTeamElo}, Strength: ${awayTeamMultiplier.toFixed(2)})`);
         
         // Initialize red team players (home team) with 3-4-3 formation
         const redTeamPositions = [
@@ -73,7 +82,8 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
             brain: brain,
             targetPosition: { x: pos.x, y: pos.y },
             teamName: homeTeamName,
-            kitType: 'home' as KitType
+            kitType: 'home' as KitType,
+            strengthMultiplier: homeTeamMultiplier
           });
         }
 
@@ -119,7 +129,8 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
             brain: brain,
             targetPosition: { x: pos.x, y: pos.y },
             teamName: awayTeamName,
-            kitType: awayTeamKitType as KitType
+            kitType: awayTeamKitType as KitType,
+            strengthMultiplier: awayTeamMultiplier
           });
         }
 

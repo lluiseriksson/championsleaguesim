@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { Player } from '../../../types/football';
 import { useMatchContext } from './MatchContext';
 import { getAwayTeamKit } from '../../../types/kits';
+import { getTeamElo, calculateStrengthMultiplier } from '../../../data/teamEloData';
 
 export const useMatchInitialization = () => {
   const { 
@@ -24,6 +25,16 @@ export const useMatchInitialization = () => {
     
     const awayTeamKitType = getAwayTeamKit(homeTeam, awayTeam);
     console.log(`Tournament match: ${homeTeam} (home) vs ${awayTeam} (${awayTeamKitType})`);
+    
+    // Obtener ELO para cada equipo
+    const homeTeamElo = getTeamElo(homeTeam);
+    const awayTeamElo = getTeamElo(awayTeam);
+    
+    // Calcular multiplicadores de fuerza basados en ELO
+    const homeTeamMultiplier = calculateStrengthMultiplier(homeTeamElo);
+    const awayTeamMultiplier = calculateStrengthMultiplier(awayTeamElo);
+    
+    console.log(`Team strengths - ${homeTeam}: ${homeTeamMultiplier.toFixed(2)} (ELO: ${homeTeamElo}), ${awayTeam}: ${awayTeamMultiplier.toFixed(2)} (ELO: ${awayTeamElo})`);
     
     const redTeamPositions = [
       { x: 50, y: 600/2, role: 'goalkeeper' },
@@ -55,7 +66,9 @@ export const useMatchInitialization = () => {
         },
         targetPosition: { x: pos.x, y: pos.y },
         teamName: homeTeam,
-        kitType: 'home'
+        kitType: 'home',
+        // Asignar el multiplicador de fuerza al jugador
+        strengthMultiplier: homeTeamMultiplier
       });
     }
     
@@ -89,7 +102,9 @@ export const useMatchInitialization = () => {
         },
         targetPosition: { x: pos.x, y: pos.y },
         teamName: awayTeam,
-        kitType: awayTeamKitType
+        kitType: awayTeamKitType,
+        // Asignar el multiplicador de fuerza al jugador
+        strengthMultiplier: awayTeamMultiplier
       });
     }
     
