@@ -58,10 +58,6 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   useEffect(() => {
     if (players.length === 0 && homeTeam && awayTeam) {
       initializePlayers();
-      
-      toast(`¡Comienza el partido entre ${homeTeam} y ${awayTeam}!`, {
-        description: "Duración del partido: 3 minutos"
-      });
     }
   }, [homeTeam, awayTeam, players.length]);
   

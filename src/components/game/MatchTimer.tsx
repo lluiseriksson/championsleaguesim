@@ -21,9 +21,14 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
   const [started, setStarted] = useState(autoStart);
   
   useEffect(() => {
+    // Siempre iniciar el timer automáticamente cuando se monta el componente
+    setStarted(true);
+  }, []);
+  
+  useEffect(() => {
     let timer: NodeJS.Timeout;
     
-    if ((isRunning && started) && timeRemaining > 0) {
+    if ((isRunning || started) && timeRemaining > 0) {
       timer = setInterval(() => {
         setTimeRemaining(prev => {
           const newTime = prev - 1;
