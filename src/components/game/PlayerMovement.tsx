@@ -41,7 +41,14 @@ const usePlayerMovement = ({ players, setPlayers, ball, gameReady }: PlayerMovem
       return prevPlayers.map(player => {
         // Move goalkeepers with simple logic
         if (player.role === 'goalkeeper') {
-          return moveGoalkeeper(player, ball);
+          const movement = moveGoalkeeper(player, ball);
+          return {
+            ...player,
+            position: {
+              x: Math.max(0, Math.min(PITCH_WIDTH, player.position.x + movement.x)),
+              y: Math.max(0, Math.min(PITCH_HEIGHT, player.position.y + movement.y))
+            }
+          };
         }
         
         // Get context for this player's team
@@ -78,27 +85,31 @@ const usePlayerMovement = ({ players, setPlayers, ball, gameReady }: PlayerMovem
             const newY = Math.max(0, Math.min(PITCH_HEIGHT, player.position.y + moveY * (speed/10)));
             
             // Update the player's brain with the last output
-            player.brain.lastOutput = { x: moveX, y: moveY };
+            const updatedBrain = {
+              ...player.brain,
+              lastOutput: { x: moveX, y: moveY }
+            };
             
             // Determine action based on output values
             if (output.shootBall > 0.7 && 
                 Math.abs(player.position.x - ball.position.x) < 30 && 
                 Math.abs(player.position.y - ball.position.y) < 30) {
-              player.brain.lastAction = 'shoot';
+              updatedBrain.lastAction = 'shoot';
             } else if (output.passBall > 0.7 && 
                        Math.abs(player.position.x - ball.position.x) < 30 && 
                        Math.abs(player.position.y - ball.position.y) < 30) {
-              player.brain.lastAction = 'pass';
+              updatedBrain.lastAction = 'pass';
             } else if (output.intercept > 0.7) {
-              player.brain.lastAction = 'intercept';
+              updatedBrain.lastAction = 'intercept';
             } else {
-              player.brain.lastAction = 'move';
+              updatedBrain.lastAction = 'move';
             }
             
             // Return updated player with new position
             return { 
               ...player, 
-              position: { x: newX, y: newY }
+              position: { x: newX, y: newY },
+              brain: updatedBrain
             };
           } catch (error) {
             console.error(`Error running neural network for player ${player.id}:`, error);
