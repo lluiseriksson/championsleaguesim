@@ -2,9 +2,10 @@
 import React from 'react';
 import { Button } from '../../components/ui/button';
 import { ArrowLeftCircle } from 'lucide-react';
-import TournamentMatch from '../../components/game/TournamentMatch';
 import { Match } from '../../types/tournament';
 import { Score } from '../../types/football';
+import ActiveMatchContent from './ActiveMatchContent';
+import { useBackToTournament } from '../../hooks/tournament/useBackToTournament';
 
 interface ActiveMatchProps {
   activeMatch: Match;
@@ -17,6 +18,8 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
   onBackClick,
   onMatchComplete
 }) => {
+  const { handleBackClick } = useBackToTournament({ onBackClick });
+
   if (!activeMatch || !activeMatch.teamA || !activeMatch.teamB) return null;
 
   return (
@@ -27,7 +30,7 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
         </h3>
         <Button 
           variant="outline" 
-          onClick={onBackClick}
+          onClick={handleBackClick}
           className="flex items-center gap-2"
         >
           <ArrowLeftCircle className="h-4 w-4" />
@@ -35,11 +38,9 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
         </Button>
       </div>
       
-      <TournamentMatch 
-        homeTeam={activeMatch.teamA.name}
-        awayTeam={activeMatch.teamB.name}
+      <ActiveMatchContent 
+        activeMatch={activeMatch}
         onMatchComplete={onMatchComplete}
-        matchDuration={180}
       />
     </div>
   );
