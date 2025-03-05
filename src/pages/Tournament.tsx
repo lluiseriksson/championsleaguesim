@@ -195,7 +195,7 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
     setMatches(updatedMatches);
   };
 
-  const handleMatchComplete = (winnerName: string, finalScore: Score) => {
+  const handleMatchComplete = (winnerName: string, finalScore: Score, wasGoldenGoal: boolean) => {
     if (!activeMatch) return;
     
     const updatedMatches = [...matches];
@@ -207,11 +207,25 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
       ? currentMatch.teamA 
       : currentMatch.teamB;
     
+    const homeIsWinner = currentMatch.teamA.name === winnerName;
+    
+    let homeScore = homeIsWinner ? finalScore.red : finalScore.blue;
+    let awayScore = homeIsWinner ? finalScore.blue : finalScore.red;
+    
+    if (wasGoldenGoal && homeScore === awayScore) {
+      if (homeIsWinner) {
+        homeScore += 1;
+      } else {
+        awayScore += 1;
+      }
+    }
+    
     currentMatch.winner = winner;
     currentMatch.played = true;
+    currentMatch.goldenGoal = wasGoldenGoal;
     currentMatch.score = {
-      teamA: currentMatch.teamA.name === winnerName ? finalScore.red : finalScore.blue,
-      teamB: currentMatch.teamB.name === winnerName ? finalScore.red : finalScore.blue
+      teamA: homeScore,
+      teamB: awayScore
     };
     
     if (currentMatch.round < 7) {

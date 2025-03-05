@@ -1,6 +1,4 @@
 
-import { TeamKit } from './teamKits';
-
 export interface TournamentTeam {
   id: number;
   name: string;
@@ -17,6 +15,7 @@ export interface Match {
   teamB?: TournamentTeam;
   winner?: TournamentTeam;
   played: boolean;
+  goldenGoal?: boolean;
   score?: {
     teamA: number;
     teamB: number;

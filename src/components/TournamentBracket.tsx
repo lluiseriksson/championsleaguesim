@@ -49,8 +49,6 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
   };
 
   // Determine how many rounds to display
-  // If showFullBracket is true, show all 7 rounds
-  // Otherwise, show only a few rounds (for embedded view)
   const displayRounds = showFullBracket 
     ? roundMatches 
     : roundMatches.slice(0, 7); // Show all rounds
@@ -114,6 +112,12 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
                 {match.played && match.winner && (
                   <div className="absolute -right-1 -top-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
                     ✓
+                  </div>
+                )}
+                
+                {match.played && match.goldenGoal && (
+                  <div className="absolute -left-1 -top-1 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center text-white text-xs font-bold" title="Golden Goal">
+                    ⚽
                   </div>
                 )}
               </div>

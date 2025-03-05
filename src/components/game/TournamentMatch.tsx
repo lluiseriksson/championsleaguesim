@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
@@ -9,7 +10,7 @@ import { getAwayTeamKit } from '../../types/teamKits';
 interface TournamentMatchProps {
   homeTeam: string;
   awayTeam: string;
-  onMatchComplete: (winner: string, finalScore: Score) => void;
+  onMatchComplete: (winner: string, finalScore: Score, wasGoldenGoal: boolean) => void;
   matchDuration?: number; // en segundos
 }
 
@@ -60,7 +61,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         
         setTimeout(() => {
           setMatchEnded(true);
-          onMatchComplete(winner, score);
+          onMatchComplete(winner, score, false);
         }, 2000);
       }
     };
@@ -71,8 +72,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
     const previousTotalGoals = lastScorer ? 1 : 0;
     
     if (goldenGoal && totalGoals > previousTotalGoals) {
-      const winner = score.red > score.blue ? homeTeam : awayTeam;
-      setLastScorer(score.red > score.blue ? 'red' : 'blue');
+      const winner = lastScorer === 'red' ? homeTeam : awayTeam;
       
       console.log("Golden goal winner:", winner);
       console.log("Final score (including golden goal):", score);
@@ -83,7 +83,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       
       setTimeout(() => {
         setMatchEnded(true);
-        onMatchComplete(winner, score);
+        onMatchComplete(winner, score, true);
       }, 2000);
     }
   }, [score, goldenGoal, homeTeam, awayTeam, onMatchComplete, lastScorer]);
