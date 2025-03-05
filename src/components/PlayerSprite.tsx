@@ -97,14 +97,14 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
       initial={false}
       style={getPlayerKitStyles(player)}
     >
-      {/* Team design pattern/stripes using all three kit colors */}
-      <div className="absolute inset-0 w-full h-full opacity-70">
+      {/* Team design showing all three kit colors using a three-section pattern */}
+      <div className="absolute inset-0 w-full h-full opacity-80">
         {player.teamName && player.kitType && (
           <>
-            <div className="absolute top-0 left-0 w-1/3 h-full" style={{backgroundColor: 'var(--secondary-color)'}}></div>
-            {/* Middle stripe now using accent color instead of primary */}
-            <div className="absolute top-0 left-1/3 w-1/3 h-full" style={{backgroundColor: 'var(--accent-color)'}}></div>
-            <div className="absolute top-0 right-0 w-1/3 h-full" style={{backgroundColor: 'var(--secondary-color)'}}></div>
+            {/* Three-color design with primary, secondary, and accent colors */}
+            <div className="absolute top-0 left-0 w-1/3 h-full" style={{backgroundColor: 'var(--primary-color)'}}></div>
+            <div className="absolute top-0 left-1/3 w-1/3 h-full" style={{backgroundColor: 'var(--secondary-color)'}}></div>
+            <div className="absolute top-0 right-0 w-1/3 h-full" style={{backgroundColor: 'var(--accent-color)'}}></div>
           </>
         )}
       </div>
