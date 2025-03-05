@@ -1,7 +1,7 @@
 
 import { KitType, TeamKit } from './kitTypes';
 import { teamKitColors } from './teamColorsData';
-import { parseHexColor, getColorDistance } from './colorUtils';
+import { parseHexColor, getColorDistance, areColorsConflicting, categorizeColor, ColorCategory } from './colorUtils';
 
 // Function to get the best contrasting kit for away team
 export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitType => {
@@ -13,36 +13,74 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
   }
 
   // Parse home team's primary home kit color
-  const homeColor = parseHexColor(homeTeam.home.primary);
+  const homeColor = homeTeam.home.primary;
   
   // Parse away team's kit colors
-  const awayColor = parseHexColor(awayTeam.away.primary);
-  const thirdColor = parseHexColor(awayTeam.third.primary);
-
-  // Calculate color distances between home team's primary and away team's kits
-  const homeToAwayDistance = getColorDistance(homeColor, awayColor);
-  const homeToThirdDistance = getColorDistance(homeColor, thirdColor);
+  const awayColor = awayTeam.away.primary;
+  const thirdColor = awayTeam.third.primary;
 
   console.log(`Kit color comparison for ${homeTeamName} vs ${awayTeamName}:`);
-  console.log(`Home to away distance: ${homeToAwayDistance}`);
-  console.log(`Home to third distance: ${homeToThirdDistance}`);
+  console.log(`Home primary: ${homeColor} (${categorizeColor(homeColor)})`);
+  console.log(`Away primary: ${awayColor} (${categorizeColor(awayColor)})`);
+  console.log(`Third primary: ${thirdColor} (${categorizeColor(thirdColor)})`);
 
-  // Choose the kit with the greatest color distance from home team's kit
-  // Use a higher minimum threshold to ensure better contrast
-  const MINIMUM_COLOR_DISTANCE = 150; // Increased threshold for better contrast
+  // Check for color conflicts using our categorization system
+  const homeAwayConflict = areColorsConflicting(homeColor, awayColor);
+  const homeThirdConflict = areColorsConflicting(homeColor, thirdColor);
   
-  // If both kits have poor contrast, use a special case with a monochrome kit
-  if (homeToAwayDistance < MINIMUM_COLOR_DISTANCE && homeToThirdDistance < MINIMUM_COLOR_DISTANCE) {
-    console.log(`Both away and third kits for ${awayTeamName} have poor contrast with ${homeTeamName}`);
-    return homeColor.r + homeColor.g + homeColor.b > 382 ? 'third' : 'away';
+  console.log(`Home-Away conflict: ${homeAwayConflict}`);
+  console.log(`Home-Third conflict: ${homeThirdConflict}`);
+
+  // If neither kit conflicts, use traditional distance-based selection
+  if (!homeAwayConflict && !homeThirdConflict) {
+    // Calculate color distances for traditional method
+    const homeColorRgb = parseHexColor(homeColor);
+    const awayColorRgb = parseHexColor(awayColor);
+    const thirdColorRgb = parseHexColor(thirdColor);
+    
+    const homeToAwayDistance = getColorDistance(homeColorRgb, awayColorRgb);
+    const homeToThirdDistance = getColorDistance(homeColorRgb, thirdColorRgb);
+    
+    console.log(`Using distance-based selection: away=${homeToAwayDistance}, third=${homeToThirdDistance}`);
+    
+    // Choose the kit with the greatest color distance from home team's kit
+    if (homeToThirdDistance > homeToAwayDistance) {
+      console.log(`Selected third kit for ${awayTeamName} based on better contrast with ${homeTeamName}`);
+      return 'third';
+    } else {
+      console.log(`Selected away kit for ${awayTeamName} against ${homeTeamName}`);
+      return 'away';
+    }
   }
   
-  // Always choose the kit with better contrast
-  if (homeToThirdDistance > homeToAwayDistance) {
-    console.log(`Using third kit for ${awayTeamName} for better contrast with ${homeTeamName}`);
+  // If only one kit doesn't conflict, use that
+  if (!homeAwayConflict) {
+    console.log(`Selected away kit for ${awayTeamName} as it doesn't conflict with ${homeTeamName}`);
+    return 'away';
+  }
+  
+  if (!homeThirdConflict) {
+    console.log(`Selected third kit for ${awayTeamName} as it doesn't conflict with ${homeTeamName}`);
     return 'third';
   }
   
-  console.log(`Using away kit for ${awayTeamName} against ${homeTeamName}`);
+  // If both kits conflict, use a fallback based on which might be least problematic
+  // For this fallback, we'll use traditional color distance
+  const homeColorRgb = parseHexColor(homeColor);
+  const awayColorRgb = parseHexColor(awayColor);
+  const thirdColorRgb = parseHexColor(thirdColor);
+  
+  const homeToAwayDistance = getColorDistance(homeColorRgb, awayColorRgb);
+  const homeToThirdDistance = getColorDistance(homeColorRgb, thirdColorRgb);
+  
+  console.log(`Both kits conflict, falling back to distance: away=${homeToAwayDistance}, third=${homeToThirdDistance}`);
+  
+  // Use the kit with the greater distance when both conflict
+  if (homeToThirdDistance > homeToAwayDistance) {
+    console.log(`Fallback to third kit for ${awayTeamName} despite conflict with ${homeTeamName}`);
+    return 'third';
+  }
+  
+  console.log(`Fallback to away kit for ${awayTeamName} despite conflict with ${homeTeamName}`);
   return 'away';
 };

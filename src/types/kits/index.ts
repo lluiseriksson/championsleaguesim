@@ -8,7 +8,13 @@ export * from './kitTypes';
 export { teamKitColors } from './teamColorsData';
 
 // Color utilities
-export { parseHexColor, getColorDistance } from './colorUtils';
+export { 
+  parseHexColor, 
+  getColorDistance,
+  categorizeColor,
+  ColorCategory,
+  areColorsConflicting
+} from './colorUtils';
 
 // Kit selection functions
 export { getAwayTeamKit } from './kitSelection';
