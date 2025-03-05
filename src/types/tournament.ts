@@ -1,4 +1,6 @@
 
+import { TeamKit } from './teamKits';
+
 export interface TournamentTeam {
   id: number;
   name: string;
