@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
@@ -51,6 +50,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       if (score.red === score.blue) {
         console.log("Comenzando gol de oro");
         setGoldenGoal(true);
+        setLastScorer(null);
         toast("¡TIEMPO AGOTADO! - Comienza el tiempo de gol de oro", {
           description: "El primer equipo en marcar gana el partido"
         });
@@ -76,11 +76,10 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
     }
   }, [homeTeam, awayTeam, players.length]);
   
-  // Watch for score changes during golden goal
   useEffect(() => {
     if (goldenGoal && !goldenGoalScored) {
-      // Check if a goal was scored
       if (lastScorer) {
+        console.log("Golden goal scored by:", lastScorer);
         setGoldenGoalScored(true);
         const winner = lastScorer === 'red' ? homeTeam : awayTeam;
         
@@ -214,6 +213,10 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         updatePlayerPositions={updatePlayerPositions}
         homeTeam={homeTeam}
         awayTeam={awayTeam}
+        onGoalScored={(team) => {
+          console.log(`Goal scored by ${team} team, golden goal mode: ${goldenGoal}`);
+          setLastScorer(team);
+        }}
       />
     </div>
   );

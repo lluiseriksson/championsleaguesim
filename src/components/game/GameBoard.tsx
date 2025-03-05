@@ -17,6 +17,7 @@ interface GameBoardProps {
   updatePlayerPositions: () => void;
   homeTeam?: string;
   awayTeam?: string;
+  onGoalScored?: (team: 'red' | 'blue') => void;
 }
 
 const GameBoard: React.FC<GameBoardProps> = ({
@@ -28,7 +29,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
   setScore,
   updatePlayerPositions,
   homeTeam = 'Home',
-  awayTeam = 'Away'
+  awayTeam = 'Away',
+  onGoalScored
 }) => {
   return (
     <div className="relative w-[800px] h-[600px] bg-pitch mx-auto overflow-hidden rounded-lg shadow-lg">
@@ -47,7 +49,15 @@ const GameBoard: React.FC<GameBoardProps> = ({
         ball={ball}
         setBall={setBall}
         score={score}
-        setScore={setScore}
+        setScore={(newScore) => {
+          // Check if a goal was scored
+          if (newScore.red > score.red) {
+            onGoalScored?.('red');
+          } else if (newScore.blue > score.blue) {
+            onGoalScored?.('blue');
+          }
+          setScore(newScore);
+        }}
         updatePlayerPositions={updatePlayerPositions}
       />
     </div>
