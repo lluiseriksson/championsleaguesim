@@ -87,10 +87,19 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
   const displayMinutes = getDisplayMinutes(elapsedTime, initialTime);
   const displaySeconds = Math.floor((elapsedTime / initialTime) * 90 * 60) % 60;
   
-  // In golden goal mode after regulation time, show 90+ minutes
-  const formattedTime = goldenGoal && elapsedTime >= initialTime 
-    ? `90+${Math.floor((elapsedTime - initialTime) / 60)}:${displaySeconds < 10 ? '0' : ''}${displaySeconds}`
-    : `${displayMinutes}:${displaySeconds < 10 ? '0' : ''}${displaySeconds}`;
+  // In golden goal mode, calculate the extra time in minutes and seconds properly
+  let formattedTime;
+  if (goldenGoal && elapsedTime >= initialTime) {
+    // Calculate extra time in seconds
+    const extraTimeSeconds = elapsedTime - initialTime;
+    // Convert to minutes and seconds
+    const extraMinutes = Math.floor(extraTimeSeconds / 60);
+    const extraSeconds = extraTimeSeconds % 60;
+    
+    formattedTime = `90+${extraMinutes}:${extraSeconds < 10 ? '0' : ''}${extraSeconds}`;
+  } else {
+    formattedTime = `${displayMinutes}:${displaySeconds < 10 ? '0' : ''}${displaySeconds}`;
+  }
   
   console.log('Displaying formatted time:', formattedTime, 'goldenGoal:', goldenGoal);
 
