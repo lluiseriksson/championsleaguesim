@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Player } from '../types/football';
@@ -100,10 +101,10 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
       <div className="absolute inset-0 w-full h-full opacity-80">
         {player.teamName && player.kitType && (
           <>
-            {/* Three-color design with primary, secondary, and accent colors */}
-            <div className="absolute top-0 left-0 w-1/3 h-full" style={{backgroundColor: 'var(--primary-color)'}}></div>
-            <div className="absolute top-0 left-1/3 w-1/3 h-full" style={{backgroundColor: 'var(--secondary-color)'}}></div>
-            <div className="absolute top-0 right-0 w-1/3 h-full" style={{backgroundColor: 'var(--accent-color)'}}></div>
+            {/* Modified design: primary and secondary colors take more space, accent in the middle */}
+            <div className="absolute top-0 left-0 w-[45%] h-full" style={{backgroundColor: 'var(--primary-color)'}}></div>
+            <div className="absolute top-0 left-[45%] w-[10%] h-full" style={{backgroundColor: 'var(--accent-color)'}}></div>
+            <div className="absolute top-0 right-0 w-[45%] h-full" style={{backgroundColor: 'var(--secondary-color)'}}></div>
           </>
         )}
       </div>
