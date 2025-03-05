@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
 import MatchTimer from './MatchTimer';
@@ -74,6 +74,9 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   
   const [goldenGoalScored, setGoldenGoalScored] = useState(false);
   
+  // New ref to track if the match result has been determined
+  const resultDeterminedRef = useRef(false);
+  
   useEffect(() => {
     console.log('TournamentMatch: matchDuration =', matchDuration);
   }, [matchDuration]);
@@ -96,6 +99,9 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         toast(`¡Fin del partido! ${displayWinner} gana`, {
           description: `Resultado final: ${displayHomeTeam} ${score.red} - ${score.blue} ${displayAwayTeam}`,
         });
+        
+        // Mark that result has been determined
+        resultDeterminedRef.current = true;
         
         setTimeout(() => {
           setMatchEnded(true);
@@ -129,6 +135,9 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         toast(`¡${displayWinner} gana con gol de oro!`, {
           description: `Resultado final: ${displayHomeTeam} ${score.red} - ${score.blue} ${displayAwayTeam}`,
         });
+        
+        // Mark that result has been determined
+        resultDeterminedRef.current = true;
         
         setTimeout(() => {
           setMatchEnded(true);
@@ -251,10 +260,26 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         ball={ball}
         setBall={setBall}
         score={score}
-        setScore={setScore}
+        setScore={(newScore) => {
+          // Prevent score changes if the match result has already been determined
+          if (resultDeterminedRef.current) {
+            console.log("Ignoring late goal - match result already determined");
+            return;
+          }
+          
+          const currentScore = typeof newScore === 'function' 
+            ? (newScore as (prev: Score) => Score)(score)
+            : newScore;
+            
+          // Check if a goal was scored
+          if (currentScore.red > score.red) {
+            onGoalScored?.('red');
+          } else if (currentScore.blue > score.blue) {
+            onGoalScored?.('blue');
+          }
+          setScore(currentScore);
+        }}
         updatePlayerPositions={updatePlayerPositions}
-        homeTeam={displayHomeTeam}
-        awayTeam={displayAwayTeam}
         tournamentMode={true}
         onGoalScored={(team) => {
           console.log(`Goal scored by ${team} team, golden goal mode: ${goldenGoal}`);
