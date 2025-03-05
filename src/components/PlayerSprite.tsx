@@ -67,7 +67,7 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
   
   // Get accent colors for the player's team design
   const getPlayerAccentStyles = (player: Player) => {
-    if (!player.teamName || !player.kitType) return '';
+    if (!player.teamName || !player.kitType) return {};
     
     const { accent1, accent2 } = getTeamAccentColors(player.teamName, player.kitType);
     

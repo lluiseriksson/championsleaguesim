@@ -1,19 +1,34 @@
 
 import React from 'react';
-import FootballPitch from '@/components/FootballPitch';
+import { Link } from 'react-router-dom';
+import FootballPitch from '../components/FootballPitch';
+import { Button } from '../components/ui/button';
+import { Trophy } from 'lucide-react';
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Pixel Football Simulation</h1>
-          <p className="text-gray-600">A minimalist 2D football match simulation</p>
+    <div className="relative min-h-screen bg-gray-100 flex flex-col">
+      <header className="bg-green-700 text-white p-4 shadow-md">
+        <div className="container mx-auto flex justify-between items-center">
+          <h1 className="text-2xl font-bold">AI Football Simulator</h1>
+          <Link to="/tournament">
+            <Button variant="outline" className="bg-white text-green-700 hover:bg-green-100 flex items-center gap-2">
+              <Trophy className="h-4 w-4" />
+              <span>Tournament</span>
+            </Button>
+          </Link>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-lg">
+      </header>
+      
+      <main className="flex-1 container mx-auto p-4">
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <FootballPitch />
         </div>
-      </div>
+      </main>
+      
+      <footer className="bg-gray-800 text-white p-4 text-center text-sm">
+        <p>AI Football Simulator - Neural Network Powered</p>
+      </footer>
     </div>
   );
 };
