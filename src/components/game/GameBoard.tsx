@@ -18,6 +18,7 @@ interface GameBoardProps {
   homeTeam?: string;
   awayTeam?: string;
   onGoalScored?: (team: 'red' | 'blue') => void;
+  tournamentMode?: boolean;
 }
 
 const GameBoard: React.FC<GameBoardProps> = ({
@@ -30,7 +31,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
   updatePlayerPositions,
   homeTeam = 'Home',
   awayTeam = 'Away',
-  onGoalScored
+  onGoalScored,
+  tournamentMode = false
 }) => {
   return (
     <div className="relative w-[800px] h-[600px] bg-pitch mx-auto overflow-hidden rounded-lg shadow-lg">
@@ -63,6 +65,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
           setScore(currentScore);
         }}
         updatePlayerPositions={updatePlayerPositions}
+        tournamentMode={tournamentMode}
       />
     </div>
   );
