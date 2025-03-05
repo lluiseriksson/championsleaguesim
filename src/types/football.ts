@@ -55,24 +55,17 @@ export interface NeuralNet {
   lastAction?: 'move' | 'shoot' | 'pass' | 'intercept';
 }
 
-export type KitType = 'home' | 'away' | 'third' | 'special';
+export type KitType = 'home' | 'away' | 'third';
 
-// Expanded player interface to include custom kit colors
 export interface Player {
   id: number;
   position: Position;
-  targetPosition: Position;
-  team: 'red' | 'blue';
   role: 'goalkeeper' | 'defender' | 'midfielder' | 'forward';
+  team: 'red' | 'blue';
   brain: NeuralNet;
-  teamName?: string;
-  kitType?: KitType;
-  speedMultiplier?: number;
-  customKit?: {
-    primary: string;
-    secondary: string;
-    accent: string;
-  };
+  targetPosition: Position;
+  teamName?: string;  // Actual team name like "Barcelona", "Liverpool", etc.
+  kitType?: KitType;  // Which kit the player is wearing (home/away/third)
 }
 
 // Added bounceDetection property to Ball interface

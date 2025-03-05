@@ -1,11 +1,8 @@
-
 import React from 'react';
 import { Player, PITCH_WIDTH, PITCH_HEIGHT, KitType } from '../../types/football';
 import { createPlayerBrain } from '../../utils/playerBrain';
 import { initializePlayerBrain } from '../../utils/modelLoader';
-import { getAwayTeamKit } from '../../types/kits';
-import { teamKitColors } from '../../types/kits';
-import { toast } from 'sonner';
+import { getAwayTeamKit, teamKitColors } from '../../types/kits';
 
 interface PlayerInitializerProps {
   setPlayers: React.Dispatch<React.SetStateAction<Player[]>>;
@@ -30,17 +27,9 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
         const awayTeamName = teamNames[awayTeamIndex];
         
         // Determine the best away kit to use based on color similarity
-        const awayTeamKitResult = getAwayTeamKit(homeTeamName, awayTeamName);
-        const awayTeamKitType = awayTeamKitResult.kitType;
-        const customKit = awayTeamKitResult.customKit;
+        const awayTeamKitType = getAwayTeamKit(homeTeamName, awayTeamName);
         
-        if (awayTeamKitType === 'special' && customKit) {
-          toast.info(`${awayTeamName} using special kit to avoid color clash with ${homeTeamName}`, {
-            duration: 4000,
-          });
-        } else {
-          console.log(`Match: ${homeTeamName} (home) vs ${awayTeamName} (${awayTeamKitType})`);
-        }
+        console.log(`Match: ${homeTeamName} (home) vs ${awayTeamName} (${awayTeamKitType})`);
         
         // Initialize red team players (home team) with 3-4-3 formation
         const redTeamPositions = [
@@ -122,8 +111,7 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
             }
           }
           
-          // Create the player with either standard kit or custom kit
-          const player: Player = {
+          initialPlayers.push({
             id: i + 11,
             position: { x: pos.x, y: pos.y },
             role: role,
@@ -131,19 +119,8 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
             brain: brain,
             targetPosition: { x: pos.x, y: pos.y },
             teamName: awayTeamName,
-            kitType: awayTeamKitType
-          };
-          
-          // If using a special kit, add the custom colors
-          if (awayTeamKitType === 'special' && customKit) {
-            player.customKit = {
-              primary: customKit.primary,
-              secondary: customKit.secondary,
-              accent: customKit.accent
-            };
-          }
-          
-          initialPlayers.push(player);
+            kitType: awayTeamKitType as KitType
+          });
         }
 
         setPlayers(initialPlayers);

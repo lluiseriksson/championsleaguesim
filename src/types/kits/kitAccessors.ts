@@ -7,14 +7,7 @@ export const getTeamKitColor = (teamName: string | undefined, kitType: KitType =
   if (!teamName || !teamKitColors[teamName]) {
     // Default fallback colors
     return kitType === 'home' ? '#FF0000' :
-           kitType === 'away' ? '#0000FF' : 
-           kitType === 'third' ? '#FFFFFF' : '#00FF00';
-  }
-
-  // For special kit, we don't have a direct reference in teamKitColors
-  // This would be handled by the customKit property on the Player instead
-  if (kitType === 'special') {
-    return '#00FF00'; // Default special kit color if not specified otherwise
+           kitType === 'away' ? '#0000FF' : '#FFFFFF';
   }
 
   return teamKitColors[teamName][kitType].primary;
@@ -25,19 +18,7 @@ export const getTeamKitColors = (teamName: string | undefined, kitType: KitType 
   if (!teamName || !teamKitColors[teamName]) {
     // Default fallback colors
     return {
-      primary: kitType === 'home' ? '#FF0000' : 
-               kitType === 'away' ? '#0000FF' : 
-               kitType === 'third' ? '#FFFFFF' : '#00FF00',
-      secondary: '#FFFFFF',
-      accent: '#000000'
-    };
-  }
-
-  // For special kit, we don't have a direct reference in teamKitColors
-  // This would be handled by the customKit property on the Player instead
-  if (kitType === 'special') {
-    return {
-      primary: '#00FF00',
+      primary: kitType === 'home' ? '#FF0000' : kitType === 'away' ? '#0000FF' : '#FFFFFF',
       secondary: '#FFFFFF',
       accent: '#000000'
     };

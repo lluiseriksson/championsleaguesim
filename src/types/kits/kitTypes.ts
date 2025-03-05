@@ -1,5 +1,5 @@
 
-export type KitType = 'home' | 'away' | 'third' | 'special';
+export type KitType = 'home' | 'away' | 'third';
 
 export type TeamKitColors = {
   primary: string;

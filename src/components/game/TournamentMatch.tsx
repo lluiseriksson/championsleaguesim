@@ -3,24 +3,20 @@ import React, { useState, useEffect, useMemo } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
 import MatchTimer from './MatchTimer';
-import { Player, Ball, Score, PITCH_WIDTH, PITCH_HEIGHT, KitType } from '../../types/football';
+import { Player, Ball, Score, PITCH_WIDTH, PITCH_HEIGHT } from '../../types/football';
 import { toast } from 'sonner';
 import { getAwayTeamKit } from '../../types/kits';
 
 interface TournamentMatchProps {
   homeTeam: string;
   awayTeam: string;
-  homeTeamElo?: number;
-  awayTeamElo?: number; 
   onMatchComplete: (winner: string, finalScore: Score, wasGoldenGoal: boolean) => void;
   matchDuration?: number; // en segundos
 }
 
 const TournamentMatch: React.FC<TournamentMatchProps> = ({ 
   homeTeam, 
-  awayTeam,
-  homeTeamElo = 1700,
-  awayTeamElo = 1700, 
+  awayTeam, 
   onMatchComplete,
   matchDuration = 180 // 3 minutos por defecto
 }) => {
@@ -45,25 +41,9 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   // Track goals during golden goal period
   const [goldenGoalScored, setGoldenGoalScored] = useState(false);
   
-  // Calculate ELO bonuses for each team (slight advantages for teams with higher ELO)
-  const homeTeamBonus = useMemo(() => {
-    // Calculate a bonus based on ELO difference, but keep it small
-    const eloDifference = homeTeamElo - awayTeamElo;
-    // Convert to a small percentage (0.5% per 100 ELO points difference, max 5%)
-    return Math.min(Math.max(eloDifference / 2000, 0), 0.05);
-  }, [homeTeamElo, awayTeamElo]);
-
-  const awayTeamBonus = useMemo(() => {
-    // Calculate a bonus based on ELO difference, but keep it small
-    const eloDifference = awayTeamElo - homeTeamElo;
-    // Convert to a small percentage (0.5% per 100 ELO points difference, max 5%)
-    return Math.min(Math.max(eloDifference / 2000, 0), 0.05);
-  }, [homeTeamElo, awayTeamElo]);
-  
   useEffect(() => {
     console.log('TournamentMatch: matchDuration =', matchDuration);
-    console.log(`Team ELO ratings - ${homeTeam}: ${homeTeamElo} (bonus: ${(homeTeamBonus*100).toFixed(2)}%), ${awayTeam}: ${awayTeamElo} (bonus: ${(awayTeamBonus*100).toFixed(2)}%)`);
-  }, [matchDuration, homeTeam, awayTeam, homeTeamElo, awayTeamElo, homeTeamBonus, awayTeamBonus]);
+  }, [matchDuration]);
   
   const handleTimeEnd = useMemo(() => {
     return () => {
@@ -131,10 +111,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   const initializePlayers = () => {
     const newPlayers: Player[] = [];
     
-    const awayTeamKitResult = getAwayTeamKit(homeTeam, awayTeam);
-    const awayTeamKitType = awayTeamKitResult.kitType;
-    const customKit = awayTeamKitResult.customKit;
-    
+    const awayTeamKitType = getAwayTeamKit(homeTeam, awayTeam);
     console.log(`Tournament match: ${homeTeam} (home) vs ${awayTeam} (${awayTeamKitType})`);
     
     const redTeamPositions = [
@@ -155,10 +132,6 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       const pos = redTeamPositions[i];
       const role = pos.role as Player['role'];
       
-      // Apply the ELO bonus to the movement speed (subtle but meaningful)
-      // A team with higher ELO will have slightly faster players
-      const speedMultiplier = 1 + homeTeamBonus;
-      
       newPlayers.push({
         id: i + 1,
         position: { x: pos.x, y: pos.y },
@@ -171,9 +144,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         },
         targetPosition: { x: pos.x, y: pos.y },
         teamName: homeTeam,
-        kitType: 'home',
-        // Add a speedMultiplier property based on ELO rating
-        speedMultiplier
+        kitType: 'home'
       });
     }
     
@@ -195,10 +166,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       const pos = blueTeamPositions[i];
       const role = pos.role as Player['role'];
       
-      // Apply the ELO bonus to the movement speed
-      const speedMultiplier = 1 + awayTeamBonus;
-      
-      const player: Player = {
+      newPlayers.push({
         id: i + 12,
         position: { x: pos.x, y: pos.y },
         role: role,
@@ -210,21 +178,8 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         },
         targetPosition: { x: pos.x, y: pos.y },
         teamName: awayTeam,
-        kitType: awayTeamKitType,
-        // Add a speedMultiplier property based on ELO rating
-        speedMultiplier
-      };
-      
-      // If using a special kit, add the custom colors
-      if (awayTeamKitType === 'special' && customKit) {
-        player.customKit = {
-          primary: customKit.primary,
-          secondary: customKit.secondary,
-          accent: customKit.accent
-        };
-      }
-      
-      newPlayers.push(player);
+        kitType: awayTeamKitType
+      });
     }
     
     setPlayers(newPlayers);

@@ -1,7 +1,8 @@
+
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Player } from '../types/football';
-import { getTeamKitColor, getTeamKitColors } from '../types/kits';
+import { getTeamKitColor, getTeamKitColors, KitType } from '../types/kits';
 
 interface PlayerSpriteProps {
   player: Player;
@@ -10,14 +11,9 @@ interface PlayerSpriteProps {
 const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
   // Get player color based on team name and kit type, falling back to basic colors if not available
   const getPlayerColor = (player: Player) => {
-    // If the player has a custom kit, use that color
-    if (player.customKit) {
-      return `bg-[${player.customKit.primary}]`;
-    }
-    
     // If the player has a teamName and kitType, use the corresponding kit color
     if (player.teamName && player.kitType) {
-      const kitColor = getTeamKitColor(player.teamName, player.kitType);
+      const kitColor = getTeamKitColor(player.teamName, player.kitType as KitType);
       return `bg-[${kitColor}]`;
     }
     
@@ -48,29 +44,12 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
 
   // Determine if we need a light or dark text color based on the player color
   const getTextColor = (player: Player) => {
-    // If the player has a custom kit, check the primary color brightness
-    if (player.customKit) {
-      const hexColor = player.customKit.primary;
-      
-      // Simple brightness formula
-      const r = parseInt(hexColor.slice(1, 3), 16);
-      const g = parseInt(hexColor.slice(3, 5), 16);
-      const b = parseInt(hexColor.slice(5, 7), 16);
-      
-      const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-      return brightness > 125 ? 'text-black' : 'text-white';
-    }
-    
     // If the player has a teamName and kitType, check the color brightness
     if (player.teamName && player.kitType) {
-      // Handle special kitType differently since it's not in teamKitColors
-      if (player.kitType === 'special') {
-        return 'text-white'; // Default for special kits
-      }
+      const hexColor = getTeamKitColor(player.teamName, player.kitType as KitType);
       
-      const hexColor = getTeamKitColor(player.teamName, player.kitType);
-      
-      // Simple brightness formula
+      // Simple brightness formula (adjust as needed)
+      // Convert hex to RGB and calculate brightness
       const r = parseInt(hexColor.slice(1, 3), 16);
       const g = parseInt(hexColor.slice(3, 5), 16);
       const b = parseInt(hexColor.slice(5, 7), 16);
@@ -88,28 +67,9 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
   
   // Get the kit colors for the player's team
   const getPlayerKitStyles = (player: Player) => {
-    // If player has a custom kit, use those colors
-    if (player.customKit) {
-      return {
-        '--primary-color': player.customKit.primary,
-        '--secondary-color': player.customKit.secondary,
-        '--accent-color': player.customKit.accent
-      } as React.CSSProperties;
-    }
-    
-    // Otherwise use standard kit colors
     if (!player.teamName || !player.kitType) return {};
     
-    // Handle special kitType differently
-    if (player.kitType === 'special') {
-      return {
-        '--primary-color': '#00FF00',  // Default values that should be overridden by customKit
-        '--secondary-color': '#FFFFFF',
-        '--accent-color': '#000000'
-      } as React.CSSProperties;
-    }
-    
-    const kitColors = getTeamKitColors(player.teamName, player.kitType);
+    const kitColors = getTeamKitColors(player.teamName, player.kitType as KitType);
     
     // Create a dynamic style with the kit colors
     return {
@@ -139,7 +99,7 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
     >
       {/* Team design showing all three kit colors with a thinner accent stripe */}
       <div className="absolute inset-0 w-full h-full opacity-80">
-        {((player.teamName && player.kitType) || player.customKit) && (
+        {player.teamName && player.kitType && (
           <>
             {/* Modified design: primary and secondary colors take more space, accent in the middle as a thin stripe */}
             <div className="absolute top-0 left-0 w-[45%] h-full" style={{backgroundColor: 'var(--primary-color)'}}></div>
