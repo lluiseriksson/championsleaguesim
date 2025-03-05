@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Position, PITCH_HEIGHT, BALL_RADIUS, GOAL_HEIGHT, PITCH_WIDTH, Player, Ball } from '../../types/football';
 import { Score } from '../../types/football';
@@ -94,7 +93,7 @@ export const useGoalSystem = ({
         const wasLastTouchHarmful = lastTouchRelevant && 
           lastPlayerTouchRef.current.team !== scoringTeam;
         
-        // Guardar referencia a la pelota con la posición en el momento del gol para los porteros
+        // Save reference to the ball with position at the time of the goal for goalkeepers
         const ballAtGoal = {
           ...ball,
           position: ballPositionAtGoal
@@ -145,7 +144,7 @@ export const useGoalSystem = ({
           }
         }
         
-        // También guardar el modelo del portero que recibió el gol
+        // Also save the model of the goalkeeper who conceded the goal
         const concedingTeam = scoringTeam === 'red' ? 'blue' : 'red';
         const goalkeeper = updatedPlayers.find(p => p.team === concedingTeam && p.role === 'goalkeeper');
         if (goalkeeper) {

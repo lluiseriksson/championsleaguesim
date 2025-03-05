@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 
 interface MatchTimerProps {
@@ -25,7 +26,7 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
     return goldenGoal ? Math.max(90, scaledMinutes) : scaledMinutes;
   };
   
-  console.log('MatchTimer renderizado con initialTime:', initialTime, 'elapsedTime:', elapsedTime, 'goldenGoal:', goldenGoal);
+  console.log('MatchTimer rendered with initialTime:', initialTime, 'elapsedTime:', elapsedTime, 'goldenGoal:', goldenGoal);
 
   useEffect(() => {
     // Only reset elapsed time when initialTime changes
@@ -96,7 +97,7 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
   return (
     <div className="match-timer font-mono text-2xl font-bold bg-black bg-opacity-80 text-white px-6 py-3 rounded-md shadow-lg absolute top-[-70px] left-1/2 transform -translate-x-1/2 z-30">
       {goldenGoal ? (
-        <span className="text-amber-400 animate-pulse">¡GOL DE ORO! {formattedTime}</span>
+        <span className="text-amber-400 animate-pulse">GOLDEN GOAL! {formattedTime}</span>
       ) : (
         formattedTime
       )}

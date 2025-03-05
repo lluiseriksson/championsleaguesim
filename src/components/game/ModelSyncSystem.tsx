@@ -53,19 +53,19 @@ export const useModelSyncSystem = ({
       
       // Report progress
       if (mostTrainedModel.training_sessions > 0) {
-        toast(`Progreso de aprendizaje: ${mostTrainedModel.team} ${mostTrainedModel.role} (${mostTrainedModel.training_sessions} sesiones)`, {
-          description: `Rendimiento: Red ${teamComparison.teamA} - Blue ${teamComparison.teamB}`
+        toast(`Learning Progress: ${mostTrainedModel.team} ${mostTrainedModel.role} (${mostTrainedModel.training_sessions} sessions)`, {
+          description: `Performance: Red ${teamComparison.teamA} - Blue ${teamComparison.teamB}`
         });
         
         // Log detailed stats
-        console.log("Estadísticas de aprendizaje:", {
-          modelos: modelStats.length,
-          sesionesMax: mostTrainedModel.training_sessions,
-          comparación: teamComparison
+        console.log("Learning Statistics:", {
+          models: modelStats.length,
+          maxSessions: mostTrainedModel.training_sessions,
+          comparison: teamComparison
         });
       }
     } catch (error) {
-      console.error("Error al verificar progreso de aprendizaje:", error);
+      console.error("Error checking learning progress:", error);
     }
   }, [tournamentMode]);
   
