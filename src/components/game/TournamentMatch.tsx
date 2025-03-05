@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
@@ -69,12 +68,14 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   
   useEffect(() => {
     const totalGoals = score.red + score.blue;
+    const previousTotalGoals = lastScorer ? 1 : 0;
     
-    if (goldenGoal && totalGoals > 0) {
+    if (goldenGoal && totalGoals > previousTotalGoals) {
       const winner = score.red > score.blue ? homeTeam : awayTeam;
       setLastScorer(score.red > score.blue ? 'red' : 'blue');
       
       console.log("Golden goal winner:", winner);
+      console.log("Final score (including golden goal):", score);
       
       toast(`¡${winner} gana con gol de oro!`, {
         description: `Resultado final: ${homeTeam} ${score.red} - ${score.blue} ${awayTeam}`,
@@ -85,7 +86,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         onMatchComplete(winner, score);
       }, 2000);
     }
-  }, [score, goldenGoal, homeTeam, awayTeam, onMatchComplete]);
+  }, [score, goldenGoal, homeTeam, awayTeam, onMatchComplete, lastScorer]);
   
   useEffect(() => {
     if (players.length === 0 && homeTeam && awayTeam) {
@@ -97,7 +98,6 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   const initializePlayers = () => {
     const newPlayers: Player[] = [];
     
-    // Determine the best away kit to use based on color similarity
     const awayTeamKitType = getAwayTeamKit(homeTeam, awayTeam);
     
     const redTeamPositions = [
@@ -187,6 +187,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         </div>
         <div className="mt-4 text-lg font-semibold">
           Ganador: {score.red > score.blue ? homeTeam : awayTeam}
+          {lastScorer && <span className="ml-2 text-amber-500">(Gol de Oro)</span>}
         </div>
       </div>
     );

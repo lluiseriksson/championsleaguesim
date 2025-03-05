@@ -28,7 +28,7 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
   }, [initialTime]);
 
   useEffect(() => {
-    console.log('Setting up timer with timeLeft:', timeLeft);
+    console.log('Setting up timer with timeLeft:', timeLeft, 'goldenGoal:', goldenGoal);
     
     // Clear any existing interval
     if (timerRef.current) {
@@ -36,8 +36,8 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
       timerRef.current = null;
     }
     
-    // Only start the timer if we have time left
-    if (timeLeft > 0) {
+    // Only start the timer if we have time left and we're not in golden goal
+    if (timeLeft > 0 && !goldenGoal) {
       timerRef.current = setInterval(() => {
         setTimeLeft((prevTime) => {
           const newTime = prevTime - 1;
@@ -58,6 +58,11 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
       }, 1000);
     }
 
+    // Call onTimeEnd immediately if we activate golden goal and time is already 0
+    if (goldenGoal && timeLeft === 0 && !timerRef.current) {
+      console.log('Golden goal activated with no time left');
+    }
+
     // Cleanup function
     return () => {
       console.log('Cleaning up timer');
@@ -66,7 +71,7 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
         timerRef.current = null;
       }
     };
-  }, [timeLeft, onTimeEnd]);
+  }, [timeLeft, onTimeEnd, goldenGoal]);
 
   // Format time as MM:SS
   const minutes = Math.floor(timeLeft / 60);
@@ -77,8 +82,8 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
 
   return (
     <div className="match-timer font-mono text-2xl font-bold bg-black bg-opacity-80 text-white px-6 py-3 rounded-md shadow-lg absolute top-[-70px] left-1/2 transform -translate-x-1/2 z-30">
-      {goldenGoal && timeLeft === 0 ? (
-        <span className="text-amber-400">¡GOL DE ORO!</span>
+      {goldenGoal ? (
+        <span className="text-amber-400 animate-pulse">¡GOL DE ORO!</span>
       ) : (
         formattedTime
       )}
