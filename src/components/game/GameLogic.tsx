@@ -1,9 +1,10 @@
+
 import React from 'react';
-import { Player, Ball, Score, Position } from '../types/football';
-import { saveModel } from '../utils/neuralModelService';
-import { useBallMovementSystem } from './game/BallMovementSystem';
-import { useModelSyncSystem } from './game/ModelSyncSystem';
-import { useGoalSystem } from './game/GoalSystem';
+import { Player, Ball, Score, Position } from '../../types/football';
+import { saveModel } from '../../utils/neuralModelService';
+import { useBallMovementSystem } from './BallMovementSystem';
+import { useModelSyncSystem } from './ModelSyncSystem';
+import { useGoalSystem } from './GoalSystem';
 import { toast } from 'sonner';
 
 interface GameLogicProps {
