@@ -3,7 +3,8 @@ import React from 'react';
 import { Player, PITCH_WIDTH, PITCH_HEIGHT, KitType } from '../../types/football';
 import { createPlayerBrain } from '../../utils/playerBrain';
 import { initializePlayerBrain } from '../../utils/modelLoader';
-import { getAwayTeamKit, teamKitColors } from '../../types/kits';
+import { getAwayTeamKit } from '../../types/kits';
+import { teamKitColors } from '../../types/kits';
 import { toast } from 'sonner';
 
 interface PlayerInitializerProps {
@@ -130,12 +131,16 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
             brain: brain,
             targetPosition: { x: pos.x, y: pos.y },
             teamName: awayTeamName,
-            kitType: awayTeamKitType as KitType
+            kitType: awayTeamKitType
           };
           
           // If using a special kit, add the custom colors
           if (awayTeamKitType === 'special' && customKit) {
-            player.customKit = customKit;
+            player.customKit = {
+              primary: customKit.primary,
+              secondary: customKit.secondary,
+              accent: customKit.accent
+            };
           }
           
           initialPlayers.push(player);

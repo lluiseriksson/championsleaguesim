@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Player } from '../types/football';
-import { getTeamKitColor, getTeamKitColors, KitType } from '../types/kits';
+import { getTeamKitColor, getTeamKitColors } from '../types/kits';
 
 interface PlayerSpriteProps {
   player: Player;
@@ -10,9 +10,14 @@ interface PlayerSpriteProps {
 const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
   // Get player color based on team name and kit type, falling back to basic colors if not available
   const getPlayerColor = (player: Player) => {
+    // If the player has a custom kit, use that color
+    if (player.customKit) {
+      return `bg-[${player.customKit.primary}]`;
+    }
+    
     // If the player has a teamName and kitType, use the corresponding kit color
     if (player.teamName && player.kitType) {
-      const kitColor = getTeamKitColor(player.teamName, player.kitType as KitType);
+      const kitColor = getTeamKitColor(player.teamName, player.kitType);
       return `bg-[${kitColor}]`;
     }
     
@@ -57,8 +62,13 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
     }
     
     // If the player has a teamName and kitType, check the color brightness
-    if (player.teamName && player.kitType && player.kitType !== 'special') {
-      const hexColor = getTeamKitColor(player.teamName, player.kitType as KitType);
+    if (player.teamName && player.kitType) {
+      // Handle special kitType differently since it's not in teamKitColors
+      if (player.kitType === 'special') {
+        return 'text-white'; // Default for special kits
+      }
+      
+      const hexColor = getTeamKitColor(player.teamName, player.kitType);
       
       // Simple brightness formula
       const r = parseInt(hexColor.slice(1, 3), 16);
@@ -88,9 +98,18 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
     }
     
     // Otherwise use standard kit colors
-    if (!player.teamName || !player.kitType || player.kitType === 'special') return {};
+    if (!player.teamName || !player.kitType) return {};
     
-    const kitColors = getTeamKitColors(player.teamName, player.kitType as KitType);
+    // Handle special kitType differently
+    if (player.kitType === 'special') {
+      return {
+        '--primary-color': '#00FF00',  // Default values that should be overridden by customKit
+        '--secondary-color': '#FFFFFF',
+        '--accent-color': '#000000'
+      } as React.CSSProperties;
+    }
+    
+    const kitColors = getTeamKitColors(player.teamName, player.kitType);
     
     // Create a dynamic style with the kit colors
     return {

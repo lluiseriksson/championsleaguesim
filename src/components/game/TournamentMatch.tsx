@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
 import MatchTimer from './MatchTimer';
-import { Player, Ball, Score, PITCH_WIDTH, PITCH_HEIGHT } from '../../types/football';
+import { Player, Ball, Score, PITCH_WIDTH, PITCH_HEIGHT, KitType } from '../../types/football';
 import { toast } from 'sonner';
 import { getAwayTeamKit } from '../../types/kits';
 
@@ -130,7 +131,10 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   const initializePlayers = () => {
     const newPlayers: Player[] = [];
     
-    const awayTeamKitType = getAwayTeamKit(homeTeam, awayTeam);
+    const awayTeamKitResult = getAwayTeamKit(homeTeam, awayTeam);
+    const awayTeamKitType = awayTeamKitResult.kitType;
+    const customKit = awayTeamKitResult.customKit;
+    
     console.log(`Tournament match: ${homeTeam} (home) vs ${awayTeam} (${awayTeamKitType})`);
     
     const redTeamPositions = [
@@ -194,7 +198,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       // Apply the ELO bonus to the movement speed
       const speedMultiplier = 1 + awayTeamBonus;
       
-      newPlayers.push({
+      const player: Player = {
         id: i + 12,
         position: { x: pos.x, y: pos.y },
         role: role,
@@ -209,7 +213,18 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         kitType: awayTeamKitType,
         // Add a speedMultiplier property based on ELO rating
         speedMultiplier
-      });
+      };
+      
+      // If using a special kit, add the custom colors
+      if (awayTeamKitType === 'special' && customKit) {
+        player.customKit = {
+          primary: customKit.primary,
+          secondary: customKit.secondary,
+          accent: customKit.accent
+        };
+      }
+      
+      newPlayers.push(player);
     }
     
     setPlayers(newPlayers);

@@ -1,9 +1,10 @@
-import { KitType, TeamKit } from './kitTypes';
+
+import { KitType, TeamKit, TeamKitColors } from './kitTypes';
 import { teamKitColors } from './teamColorsData';
 import { parseHexColor, getColorDistance } from './colorUtils';
 
 // Function to check if two kit colors have any matching elements
-const hasColorClash = (homeKit: TeamKit, awayKit: TeamKit): boolean => {
+const hasColorClash = (homeKit: TeamKitColors, awayKit: TeamKitColors): boolean => {
   const homeColors = [homeKit.primary, homeKit.secondary, homeKit.accent];
   const awayColors = [awayKit.primary, awayKit.secondary, awayKit.accent];
   
@@ -28,7 +29,7 @@ const hasColorClash = (homeKit: TeamKit, awayKit: TeamKit): boolean => {
 };
 
 // Function to generate a special kit that doesn't clash with home team colors
-const generateSpecialKit = (awayTeamName: string, homeKit: TeamKit): TeamKit => {
+const generateSpecialKit = (awayTeamName: string, homeKit: TeamKitColors): TeamKitColors => {
   console.log(`Generating special kit for ${awayTeamName}`);
   
   // Get team identity colors (might be from historic kits or alternate colors)
@@ -120,7 +121,7 @@ const getTeamIdentityColors = (teamName: string): string[] => {
 };
 
 // Function to get the best contrasting kit for away team
-export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): { kitType: KitType, customKit?: TeamKit } => {
+export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): { kitType: KitType, customKit?: TeamKitColors } => {
   const homeTeam = teamKitColors[homeTeamName];
   const awayTeam = teamKitColors[awayTeamName];
 
