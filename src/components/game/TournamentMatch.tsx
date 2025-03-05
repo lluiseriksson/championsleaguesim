@@ -1,10 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
 import MatchTimer from './MatchTimer';
 import { Player, Ball, Score, PITCH_WIDTH, PITCH_HEIGHT } from '../../types/football';
-import { Button } from '../ui/button';
 import { getTeamKitColor } from '../../types/teamKits';
 import { toast } from 'sonner';
 
@@ -34,16 +32,14 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   });
   
   const [score, setScore] = useState<Score>({ red: 0, blue: 0 });
-  const [gameStarted, setGameStarted] = useState(false);
+  const [gameStarted, setGameStarted] = useState(true);
   const [matchEnded, setMatchEnded] = useState(false);
   const [goldenGoal, setGoldenGoal] = useState(false);
   const [lastScorer, setLastScorer] = useState<'red' | 'blue' | null>(null);
   
-  // Escuchar cambios en la puntuación para detectar goles
   useEffect(() => {
     const totalGoals = score.red + score.blue;
     
-    // Si estamos en modo gol de oro y se marca un gol, terminar el partido
     if (goldenGoal && totalGoals > 0) {
       const winner = score.red > score.blue ? homeTeam : awayTeam;
       setLastScorer(score.red > score.blue ? 'red' : 'blue');
@@ -59,18 +55,19 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
     }
   }, [score, goldenGoal, homeTeam, awayTeam, onMatchComplete]);
   
-  // Inicializar jugadores
   useEffect(() => {
     if (players.length === 0 && homeTeam && awayTeam) {
-      // Crear jugadores basados en equipos del torneo
       initializePlayers();
+      
+      toast(`¡Comienza el partido entre ${homeTeam} y ${awayTeam}!`, {
+        description: "Duración del partido: 3 minutos"
+      });
     }
-  }, [homeTeam, awayTeam]);
+  }, [homeTeam, awayTeam, players.length]);
   
   const initializePlayers = () => {
     const newPlayers: Player[] = [];
     
-    // Posiciones para equipo rojo (home)
     const redTeamPositions = [
       { x: 50, y: PITCH_HEIGHT/2, role: 'goalkeeper' },
       { x: 150, y: PITCH_HEIGHT/4, role: 'defender' },
@@ -105,7 +102,6 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       });
     }
     
-    // Posiciones para equipo azul (away)
     const blueTeamPositions = [
       { x: PITCH_WIDTH - 50, y: PITCH_HEIGHT/2, role: 'goalkeeper' },
       { x: PITCH_WIDTH - 150, y: PITCH_HEIGHT/4, role: 'defender' },
@@ -150,22 +146,13 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
     gameReady: true 
   });
   
-  const handleMatchStart = () => {
-    setGameStarted(true);
-    toast(`¡Comienza el partido entre ${homeTeam} y ${awayTeam}!`, {
-      description: "Duración del partido: 3 minutos"
-    });
-  };
-  
   const handleTimeEnd = () => {
-    // Si hay empate, activar modo gol de oro
     if (score.red === score.blue) {
       setGoldenGoal(true);
       toast("¡TIEMPO AGOTADO! - Comienza el tiempo de gol de oro", {
         description: "El primer equipo en marcar gana el partido"
       });
     } else {
-      // Si hay un ganador, terminar el partido
       const winner = score.red > score.blue ? homeTeam : awayTeam;
       toast(`¡Fin del partido! ${winner} gana`, {
         description: `Resultado final: ${homeTeam} ${score.red} - ${score.blue} ${awayTeam}`,
@@ -194,29 +181,13 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   
   return (
     <div className="relative">
-      {!gameStarted ? (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-70 z-20 rounded-lg">
-          <h2 className="text-2xl font-bold text-white mb-6">Partido de Torneo</h2>
-          <div className="flex items-center space-x-4 mb-8">
-            <span className="text-xl font-bold text-white">{homeTeam}</span>
-            <span className="text-white">vs</span>
-            <span className="text-xl font-bold text-white">{awayTeam}</span>
-          </div>
-          <Button 
-            onClick={handleMatchStart}
-            className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 text-lg"
-          >
-            Iniciar Partido
-          </Button>
-        </div>
-      ) : (
-        <MatchTimer 
-          initialTime={matchDuration} 
-          isRunning={gameStarted && !matchEnded} 
-          onTimeEnd={handleTimeEnd}
-          goldenGoal={goldenGoal}
-        />
-      )}
+      <MatchTimer 
+        initialTime={matchDuration} 
+        isRunning={gameStarted && !matchEnded} 
+        onTimeEnd={handleTimeEnd}
+        goldenGoal={goldenGoal}
+        autoStart={true}
+      />
       
       <GameBoard
         players={players}

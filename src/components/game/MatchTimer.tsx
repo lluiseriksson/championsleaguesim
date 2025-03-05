@@ -7,20 +7,23 @@ interface MatchTimerProps {
   isRunning: boolean;
   onTimeEnd: () => void;
   goldenGoal?: boolean;
+  autoStart?: boolean; // Nuevo prop para iniciar automáticamente
 }
 
 const MatchTimer: React.FC<MatchTimerProps> = ({ 
   initialTime, 
   isRunning, 
   onTimeEnd,
-  goldenGoal = false 
+  goldenGoal = false,
+  autoStart = true // Por defecto, el timer inicia automáticamente
 }) => {
   const [timeRemaining, setTimeRemaining] = useState(initialTime);
+  const [started, setStarted] = useState(autoStart);
   
   useEffect(() => {
     let timer: NodeJS.Timeout;
     
-    if (isRunning && timeRemaining > 0) {
+    if ((isRunning && started) && timeRemaining > 0) {
       timer = setInterval(() => {
         setTimeRemaining(prev => {
           const newTime = prev - 1;
@@ -39,7 +42,14 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [isRunning, timeRemaining, onTimeEnd, goldenGoal]);
+  }, [isRunning, timeRemaining, onTimeEnd, goldenGoal, started]);
+  
+  // Efecto para manejar cambios en isRunning
+  useEffect(() => {
+    if (isRunning && !started) {
+      setStarted(true);
+    }
+  }, [isRunning, started]);
   
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
