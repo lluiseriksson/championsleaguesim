@@ -50,13 +50,17 @@ const GameBoard: React.FC<GameBoardProps> = ({
         setBall={setBall}
         score={score}
         setScore={(newScore) => {
+          const currentScore = typeof newScore === 'function' 
+            ? (newScore as (prev: Score) => Score)(score)
+            : newScore;
+            
           // Check if a goal was scored
-          if (newScore.red > score.red) {
+          if (currentScore.red > score.red) {
             onGoalScored?.('red');
-          } else if (newScore.blue > score.blue) {
+          } else if (currentScore.blue > score.blue) {
             onGoalScored?.('blue');
           }
-          setScore(newScore);
+          setScore(currentScore);
         }}
         updatePlayerPositions={updatePlayerPositions}
       />
