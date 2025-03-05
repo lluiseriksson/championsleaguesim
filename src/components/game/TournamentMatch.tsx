@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
@@ -48,7 +49,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   homeTeam, 
   awayTeam, 
   onMatchComplete,
-  matchDuration = 180 // 3 minutos por defecto
+  matchDuration = 120 // 2 minutos por defecto (changed from 180)
 }) => {
   const displayHomeTeam = transliterateRussianName(homeTeam);
   const displayAwayTeam = transliterateRussianName(awayTeam);
