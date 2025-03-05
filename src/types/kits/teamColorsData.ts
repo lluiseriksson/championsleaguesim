@@ -1,4 +1,3 @@
-
 import { TeamColors } from './kitTypes';
 
 export const teamKitColors: TeamColors = {
@@ -618,9 +617,9 @@ export const teamKitColors: TeamColors = {
     third: { primary: "#000080", secondary: "#FF0000", accent: "#000000" }
   },
   "Шахтар": {
-    home: { primary: "#FFD700", secondary: "#000000", accent: "#FFD700" },
-    away: { primary: "#000000", secondary: "#FFD700", accent: "#000000" },
-    third: { primary: "#0000FF", secondary: "#FFD700", accent: "#000000" }
+    home: { primary: "#f77720", secondary: "#000000", accent: "#FFFFFF" },
+    away: { primary: "#000000", secondary: "#f77720", accent: "#000000" },
+    third: { primary: "#0000FF", secondary: "#f77720", accent: "#000000" }
   },
   "Almería": {
     home: { primary: "#FF0000", secondary: "#FFFFFF", accent: "#FF0000" },

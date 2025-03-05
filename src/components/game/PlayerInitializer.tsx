@@ -12,6 +12,9 @@ interface PlayerInitializerProps {
 
 // Transliterate Russian team names to Latin alphabet
 const transliterateRussianName = (name: string): string => {
+  // Special case for Greek team
+  if (name === 'Ολυμπιακός') return 'Olympiakos';
+  
   // Map of Cyrillic to Latin characters
   const cyrillicToLatin: Record<string, string> = {
     'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G', 'Д': 'D', 'Е': 'E', 'Ё': 'Yo', 

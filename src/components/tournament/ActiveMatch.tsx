@@ -23,7 +23,7 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
     <div className="mb-10 p-4 bg-gray-50 rounded-lg shadow-md">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-xl font-semibold">
-          {activeMatch.teamA.name} vs {activeMatch.teamB.name}
+          {activeMatch.teamA.name} - {activeMatch.teamB.name}
         </h3>
         <Button 
           variant="outline" 

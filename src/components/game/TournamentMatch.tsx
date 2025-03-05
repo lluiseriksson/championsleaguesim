@@ -21,6 +21,9 @@ const transliterateRussianName = (name: string): string => {
     'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
   };
 
+  // Special case for Greek team
+  if (name === 'Ολυμπιακός') return 'Olympiakos';
+
   const hasCyrillic = /[А-Яа-яЁё]/.test(name);
   
   if (!hasCyrillic) return name;
