@@ -231,6 +231,12 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
     gameReady: true 
   });
   
+  // Handler function for goal scoring, to be passed to GameBoard
+  const handleGoalScored = (team: 'red' | 'blue') => {
+    console.log(`Goal scored by ${team} team, golden goal mode: ${goldenGoal}`);
+    setLastScorer(team);
+  };
+  
   if (matchEnded) {
     return (
       <div className="flex flex-col items-center justify-center h-96 bg-gray-100 rounded-lg">
@@ -273,18 +279,15 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
             
           // Check if a goal was scored
           if (currentScore.red > score.red) {
-            onGoalScored?.('red');
+            handleGoalScored('red');
           } else if (currentScore.blue > score.blue) {
-            onGoalScored?.('blue');
+            handleGoalScored('blue');
           }
           setScore(currentScore);
         }}
         updatePlayerPositions={updatePlayerPositions}
         tournamentMode={true}
-        onGoalScored={(team) => {
-          console.log(`Goal scored by ${team} team, golden goal mode: ${goldenGoal}`);
-          setLastScorer(team);
-        }}
+        onGoalScored={handleGoalScored}
       />
     </div>
   );
