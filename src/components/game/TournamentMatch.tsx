@@ -288,6 +288,8 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         updatePlayerPositions={updatePlayerPositions}
         tournamentMode={true}
         onGoalScored={handleGoalScored}
+        homeTeam={homeTeam}
+        awayTeam={awayTeam}
       />
     </div>
   );
