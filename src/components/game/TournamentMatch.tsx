@@ -183,7 +183,6 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
     <div className="relative">
       <MatchTimer 
         initialTime={matchDuration} 
-        isRunning={gameStarted && !matchEnded} 
         onTimeEnd={handleTimeEnd}
         goldenGoal={goldenGoal}
       />
