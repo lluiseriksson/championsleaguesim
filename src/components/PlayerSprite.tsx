@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Player } from '../types/football';
-import { getTeamKitColor, getTeamKitColors, KitType } from '../types/teamKits';
+import { getTeamKitColor, getTeamKitColors, KitType } from '../types/kits';
 
 interface PlayerSpriteProps {
   player: Player;

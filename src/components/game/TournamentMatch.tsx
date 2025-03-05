@@ -4,7 +4,7 @@ import usePlayerMovement from './PlayerMovement';
 import MatchTimer from './MatchTimer';
 import { Player, Ball, Score, PITCH_WIDTH, PITCH_HEIGHT } from '../../types/football';
 import { toast } from 'sonner';
-import { getAwayTeamKit } from '../../types/teamKits';
+import { getAwayTeamKit } from '../../types/kits';
 
 interface TournamentMatchProps {
   homeTeam: string;
