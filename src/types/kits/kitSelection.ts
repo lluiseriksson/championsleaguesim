@@ -15,7 +15,7 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
   // Parse home team's primary home kit color
   const homeColor = parseHexColor(homeTeam.home.primary);
   
-  // Parse away team's away and third kit colors
+  // Parse away team's kit colors
   const awayColor = parseHexColor(awayTeam.away.primary);
   const thirdColor = parseHexColor(awayTeam.third.primary);
 
@@ -28,16 +28,18 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
   console.log(`Home to third distance: ${homeToThirdDistance}`);
 
   // Choose the kit with the greatest color distance from home team's kit
-  // Use a minimum threshold to ensure good contrast
-  const MINIMUM_COLOR_DISTANCE = 120; // Threshold for good contrast
+  // Use a higher minimum threshold to ensure better contrast
+  const MINIMUM_COLOR_DISTANCE = 150; // Increased threshold for better contrast
   
-  if (homeToAwayDistance < MINIMUM_COLOR_DISTANCE && homeToThirdDistance >= homeToAwayDistance) {
-    console.log(`Using third kit for ${awayTeamName} for better contrast with ${homeTeamName}`);
-    return 'third';
+  // If both kits have poor contrast, use a special case with a monochrome kit
+  if (homeToAwayDistance < MINIMUM_COLOR_DISTANCE && homeToThirdDistance < MINIMUM_COLOR_DISTANCE) {
+    console.log(`Both away and third kits for ${awayTeamName} have poor contrast with ${homeTeamName}`);
+    return homeColor.r + homeColor.g + homeColor.b > 382 ? 'third' : 'away';
   }
   
-  if (homeToThirdDistance > homeToAwayDistance * 1.5) {
-    console.log(`Using third kit for ${awayTeamName} for significantly better contrast with ${homeTeamName}`);
+  // Always choose the kit with better contrast
+  if (homeToThirdDistance > homeToAwayDistance) {
+    console.log(`Using third kit for ${awayTeamName} for better contrast with ${homeTeamName}`);
     return 'third';
   }
   

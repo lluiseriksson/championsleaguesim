@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
@@ -74,6 +75,27 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       initializePlayers();
     }
   }, [homeTeam, awayTeam, players.length]);
+  
+  // Watch for score changes during golden goal
+  useEffect(() => {
+    if (goldenGoal && !goldenGoalScored) {
+      // Check if a goal was scored
+      if (lastScorer) {
+        setGoldenGoalScored(true);
+        const winner = lastScorer === 'red' ? homeTeam : awayTeam;
+        
+        console.log("Golden goal winner:", winner);
+        toast(`¡${winner} gana con gol de oro!`, {
+          description: `Resultado final: ${homeTeam} ${score.red} - ${score.blue} ${awayTeam}`,
+        });
+        
+        setTimeout(() => {
+          setMatchEnded(true);
+          onMatchComplete(winner, score, true);
+        }, 2000);
+      }
+    }
+  }, [goldenGoal, lastScorer, score, homeTeam, awayTeam, onMatchComplete, goldenGoalScored]);
   
   const initializePlayers = () => {
     const newPlayers: Player[] = [];
