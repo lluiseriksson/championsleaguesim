@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { getTeamKitColor, KitType } from '../types/teamKits';
 import { Match, TournamentTeam } from '../types/tournament';
@@ -42,6 +43,12 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
     };
   };
 
+  // Determine if a team is the winner of a match
+  const isWinner = (match: Match, team?: TournamentTeam) => {
+    if (!match.played || !match.winner || !team) return false;
+    return match.winner.id === team.id;
+  };
+
   const handleMatchClick = (match: Match) => {
     if (onMatchClick && match.teamA && match.teamB && !match.played) {
       onMatchClick(match);
@@ -76,7 +83,7 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
                 onClick={() => handleMatchClick(match)}
               >
                 <div 
-                  className="team-entry p-2 rounded flex justify-between items-center mb-1"
+                  className={`team-entry p-2 rounded flex justify-between items-center mb-1 ${isWinner(match, match.teamA) ? 'bg-green-50' : ''}`}
                   style={getTeamColorStyle(match.teamA)}
                 >
                   <span className="font-medium truncate max-w-[65%]">
@@ -93,7 +100,7 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
                 </div>
                 
                 <div 
-                  className="team-entry p-2 rounded flex justify-between items-center"
+                  className={`team-entry p-2 rounded flex justify-between items-center ${isWinner(match, match.teamB) ? 'bg-green-50' : ''}`}
                   style={getTeamColorStyle(match.teamB)}
                 >
                   <span className="font-medium truncate max-w-[65%]">
