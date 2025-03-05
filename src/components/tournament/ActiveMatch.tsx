@@ -19,17 +19,11 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
 
   return (
     <div className="mb-10 p-4 bg-gray-50 rounded-lg shadow-md">
-      <div className="mb-4">
-        <h3 className="text-xl font-semibold">
-          {activeMatch.teamA.name} - {activeMatch.teamB.name}
-        </h3>
-      </div>
-      
       <TournamentMatch 
         homeTeam={activeMatch.teamA.name}
         awayTeam={activeMatch.teamB.name}
         onMatchComplete={onMatchComplete}
-        matchDuration={120} // Changed from 180 to 120 seconds (2 minutes)
+        matchDuration={120} // 2 minutes match duration
       />
     </div>
   );
