@@ -94,14 +94,14 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({ matches, onMatchC
                   className="team-entry p-2 rounded flex justify-between items-center mb-1"
                   style={getTeamColorStyle(match.teamA)}
                 >
-                  <span className="font-medium truncate max-w-[70%]">
+                  <span className="font-medium truncate max-w-[65%]">
                     {match.teamA?.name || "TBD"}
                   </span>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-2 justify-end">
                     {match.played && match.score && (
                       <span className="text-sm font-bold">{match.score.teamA}</span>
                     )}
-                    <span className="text-xs">
+                    <span className="text-xs text-gray-500">
                       {match.teamA?.seed && `#${match.teamA.seed}`}
                     </span>
                   </div>
@@ -111,14 +111,14 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({ matches, onMatchC
                   className="team-entry p-2 rounded flex justify-between items-center"
                   style={getTeamColorStyle(match.teamB)}
                 >
-                  <span className="font-medium truncate max-w-[70%]">
+                  <span className="font-medium truncate max-w-[65%]">
                     {match.teamB?.name || "TBD"}
                   </span>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-2 justify-end">
                     {match.played && match.score && (
                       <span className="text-sm font-bold">{match.score.teamB}</span>
                     )}
-                    <span className="text-xs">
+                    <span className="text-xs text-gray-500">
                       {match.teamB?.seed && `#${match.teamB.seed}`}
                     </span>
                   </div>
