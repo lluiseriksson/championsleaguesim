@@ -2,6 +2,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import FootballPitch from '../components/FootballPitch';
+import Tournament from './Tournament';
 import { Button } from '../components/ui/button';
 import { Trophy } from 'lucide-react';
 
@@ -20,9 +21,15 @@ const Index = () => {
         </div>
       </header>
       
-      <main className="flex-1 container mx-auto p-4">
+      <main className="flex-1 container mx-auto p-4 space-y-8">
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <FootballPitch />
+        </div>
+        
+        {/* Tournament section */}
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden p-4">
+          <h2 className="text-xl font-bold mb-4">Tournament Bracket</h2>
+          <Tournament embeddedMode={true} />
         </div>
       </main>
       

@@ -9,7 +9,11 @@ import { Trophy, ArrowLeftCircle, RefreshCw, Play, Pause } from 'lucide-react';
 import { toast } from 'sonner';
 import { Score } from '../types/football';
 
-const Tournament: React.FC = () => {
+interface TournamentProps {
+  embeddedMode?: boolean;
+}
+
+const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
   const [teams, setTeams] = useState<TournamentTeam[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [initialized, setInitialized] = useState(false);
@@ -325,7 +329,7 @@ const Tournament: React.FC = () => {
     return matches.find(m => m.round === 7)?.winner;
   };
 
-  if (playingMatch && activeMatch && activeMatch.teamA && activeMatch.teamB) {
+  if (playingMatch && activeMatch && activeMatch.teamA && activeMatch.teamB && !embeddedMode) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6 flex items-center justify-between">
@@ -351,6 +355,60 @@ const Tournament: React.FC = () => {
           onMatchComplete={handleMatchComplete}
           matchDuration={180}
         />
+      </div>
+    );
+  }
+
+  if (embeddedMode) {
+    return (
+      <div className="tournament-embedded">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold">{getTournamentStatus()}</h2>
+          <div className="flex gap-2">
+            <Button 
+              onClick={resetTournament}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Reset
+            </Button>
+            <Button 
+              onClick={toggleAutoSimulation}
+              variant={autoSimulation ? "destructive" : "default"}
+              size="sm"
+              className={`flex items-center gap-1 ${!autoSimulation ? "bg-green-600 hover:bg-green-700" : ""}`}
+            >
+              {autoSimulation ? (
+                <>
+                  <Pause className="h-3 w-3" />
+                  Pause
+                </>
+              ) : (
+                <>
+                  <Play className="h-3 w-3" />
+                  Simulate
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+        
+        <div className="overflow-x-auto">
+          <TournamentBracket 
+            matches={matches} 
+            onMatchClick={(match) => {
+              if (!autoSimulation && match.teamA && match.teamB && !match.played) {
+                if (embeddedMode) {
+                  simulateSingleMatch(match);
+                } else {
+                  playMatch(match);
+                }
+              }
+            }}
+          />
+        </div>
       </div>
     );
   }
