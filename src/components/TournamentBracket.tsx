@@ -94,7 +94,7 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
                       <span className="text-sm font-bold text-left">{match.score.teamA}</span>
                     )}
                     <span className="text-xs text-gray-500">
-                      {match.teamA?.seed && `#${match.teamA.seed}`}
+                      {match.teamA?.eloRating && `${match.teamA.eloRating}`}
                     </span>
                   </div>
                 </div>
@@ -111,7 +111,7 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
                       <span className="text-sm font-bold text-left">{match.score.teamB}</span>
                     )}
                     <span className="text-xs text-gray-500">
-                      {match.teamB?.seed && `#${match.teamB.seed}`}
+                      {match.teamB?.eloRating && `${match.teamB.eloRating}`}
                     </span>
                   </div>
                 </div>

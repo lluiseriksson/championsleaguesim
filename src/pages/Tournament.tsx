@@ -9,6 +9,141 @@ import { Trophy, ArrowLeftCircle, RefreshCw, Play } from 'lucide-react';
 import { toast } from 'sonner';
 import { Score } from '../types/football';
 
+const teamEloRatings: Record<string, number> = {
+  "Liverpool": 2010,
+  "Arsenal": 1991,
+  "Real Madrid": 1959,
+  "Paris SG": 1946,
+  "Inter": 1945,
+  "Barcelona": 1926,
+  "Man City": 1924,
+  "Bayern": 1914,
+  "Leverkusen": 1910,
+  "Atlético": 1884,
+  "Atalanta": 1851,
+  "Chelsea": 1840,
+  "Juventus": 1836,
+  "Napoli": 1831,
+  "Newcastle": 1822,
+  "Bilbao": 1801,
+  "Aston Villa": 1798,
+  "Crystal Palace": 1798,
+  "Lille": 1797,
+  "Bournemouth": 1796,
+  "Tottenham": 1795,
+  "PSV": 1795,
+  "Lazio": 1793,
+  "Roma": 1787,
+  "Benfica": 1784,
+  "Brighton": 1783,
+  "Forest": 1782,
+  "Sporting": 1776,
+  "Dortmund": 1772,
+  "Fulham": 1771,
+  "Milan": 1770,
+  "Villarreal": 1769,
+  "Bologna": 1765,
+  "Brentford": 1759,
+  "Man United": 1758,
+  "Monaco": 1754,
+  "Marseille": 1752,
+  "Feyenoord": 1750,
+  "Fiorentina": 1749,
+  "Everton": 1746,
+  "Lyon": 1738,
+  "West Ham": 1736,
+  "Ajax": 1725,
+  "RB Leipzig": 1724,
+  "Stuttgart": 1718,
+  "Brugge": 1718,
+  "Mainz": 1718,
+  "Frankfurt": 1717,
+  "Torino": 1717,
+  "Real Sociedad": 1716,
+  "Betis": 1714,
+  "Nice": 1707,
+  "Fenerbahçe": 1707,
+  "Porto": 1703,
+  "Leeds": 1695,
+  "Slavia Praha": 1695,
+  "Girona": 1689,
+  "Wolfsburg": 1689,
+  "Wolves": 1683,
+  "Freiburg": 1679,
+  "Celtic": 1679,
+  "Sevilla": 1679,
+  "Galatasaray": 1676,
+  "Brest": 1674,
+  "Strasbourg": 1673,
+  "Osasuna": 1672,
+  "Udinese": 1671,
+  "Celta": 1671,
+  "Olympiacos": 1671,
+  "Burnley": 1670,
+  "St Gillis": 1669,
+  "Toulouse": 1668,
+  "Genoa": 1665,
+  "Rayo Vallecano": 1662,
+  "Lens": 1660,
+  "Rennes": 1658,
+  "Gladbach": 1657,
+  "Getafe": 1657,
+  "Mallorca": 1657,
+  "Braga": 1648,
+  "Valencia": 1645,
+  "Alkmaar": 1641,
+  "Genk": 1638,
+  "Zenit": 1635,
+  "Sparta Praha": 1634,
+  "Augsburg": 1634,
+  "Sassuolo": 1629,
+  "Twente": 1621,
+  "Bodo/Glimt": 1619,
+  "Alavés": 1619,
+  "Espanyol": 1618,
+  "Werder": 1618,
+  "Hoffenheim": 1616,
+  "Viktoria Plzen": 1614,
+  "Crvena Zvezda": 1613,
+  "Anderlecht": 1611,
+  "Sheffield United": 1607,
+  "Como": 1605,
+  "FC Kobenhavn": 1602,
+  "Cagliari": 1600,
+  "Verona": 1600,
+  "Rangers": 1600,
+  "Auxerre": 1596,
+  "Krasnodar": 1595,
+  "Leicester": 1594,
+  "Empoli": 1592,
+  "Guimaraes": 1592,
+  "Las Palmas": 1591,
+  "Spartak Moskva": 1591,
+  "Leganes": 1590,
+  "Lecce": 1588,
+  "Ipswich": 1583,
+  "Utrecht": 1582,
+  "Reims": 1579,
+  "AEK": 1578,
+  "Levante": 1578,
+  "Union Berlin": 1577,
+  "Lorient": 1575,
+  "Antwerp": 1574,
+  "Gent": 1571,
+  "Midtjylland": 1571,
+  "Huesca": 1567,
+  "Monza": 1567,
+  "Shakhtar": 1567,
+  "Almería": 1564,
+  "Parma": 1563,
+  "Nantes": 1563,
+  "St. Pauli": 1560
+};
+
+const getTeamElo = (teamName: string): number => {
+  return teamEloRatings[teamName] || 1700;
+};
+
 interface TournamentProps {
   embeddedMode?: boolean;
 }
@@ -85,13 +220,19 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
   }, [autoSimulation, playingMatch, currentRound, matches, simulationSpeed]);
 
   const initializeTournament = () => {
-    const tournamentTeams: TournamentTeam[] = Object.entries(teamKitColors).map(([name, colors], index) => ({
-      id: index + 1,
-      name,
-      seed: index + 1,
-      eloRating: 2000 - index * 4,
-      kitColors: colors
-    })).slice(0, 128);
+    const tournamentTeams: TournamentTeam[] = Object.entries(teamKitColors)
+      .map(([name, colors], index) => {
+        const eloRating = teamEloRatings[name] || (2000 - index * 4);
+        
+        return {
+          id: index + 1,
+          name,
+          seed: index + 1,
+          eloRating,
+          kitColors: colors
+        };
+      })
+      .slice(0, 128);
 
     setTeams(tournamentTeams);
 
@@ -160,16 +301,19 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
     
     if (!currentMatch || !currentMatch.teamA || !currentMatch.teamB) return;
     
-    const teamAStrength = currentMatch.teamA.eloRating + Math.random() * 100;
-    const teamBStrength = currentMatch.teamB.eloRating + Math.random() * 100;
+    const teamAStrength = currentMatch.teamA.eloRating + Math.random() * 150;
+    const teamBStrength = currentMatch.teamB.eloRating + Math.random() * 150;
     
     const winner = teamAStrength > teamBStrength ? currentMatch.teamA : currentMatch.teamB;
     currentMatch.winner = winner;
     currentMatch.played = true;
     
-    const strengthDiff = Math.abs(teamAStrength - teamBStrength);
-    const goalDiff = Math.min(Math.floor(strengthDiff / 30), 5);
-    const winnerGoals = 1 + Math.floor(Math.random() * 3) + Math.floor(goalDiff / 2);
+    const eloDiff = Math.abs(teamAStrength - teamBStrength);
+    const baseGoalDiff = Math.min(Math.floor(eloDiff / 100), 4);
+    const randomFactor = Math.random() > 0.7 ? 1 : 0;
+    const goalDiff = baseGoalDiff + randomFactor;
+    
+    const winnerGoals = 1 + Math.floor(Math.random() * 2) + Math.floor(goalDiff / 2);
     const loserGoals = Math.max(0, winnerGoals - goalDiff);
     
     currentMatch.score = {
@@ -356,6 +500,9 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
             <h3 className="text-xl font-semibold">
               {activeMatch.teamA.name} vs {activeMatch.teamB.name}
             </h3>
+            <div className="text-sm text-gray-500">
+              ELO: {activeMatch.teamA.eloRating} vs {activeMatch.teamB.eloRating}
+            </div>
             <Button 
               variant="outline" 
               onClick={() => {
@@ -372,6 +519,8 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
           <TournamentMatch 
             homeTeam={activeMatch.teamA.name}
             awayTeam={activeMatch.teamB.name}
+            homeTeamElo={activeMatch.teamA.eloRating}
+            awayTeamElo={activeMatch.teamB.eloRating}
             onMatchComplete={handleMatchComplete}
             matchDuration={180}
           />

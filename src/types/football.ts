@@ -1,4 +1,3 @@
-
 import * as brain from 'brain.js';
 
 export interface Position {
@@ -60,12 +59,13 @@ export type KitType = 'home' | 'away' | 'third';
 export interface Player {
   id: number;
   position: Position;
-  role: 'goalkeeper' | 'defender' | 'midfielder' | 'forward';
-  team: 'red' | 'blue';
-  brain: NeuralNet;
   targetPosition: Position;
-  teamName?: string;  // Actual team name like "Barcelona", "Liverpool", etc.
-  kitType?: KitType;  // Which kit the player is wearing (home/away/third)
+  team: 'red' | 'blue';
+  role: 'goalkeeper' | 'defender' | 'midfielder' | 'forward';
+  brain: NeuralNet;
+  teamName?: string;
+  kitType?: KitType;
+  speedMultiplier?: number;
 }
 
 // Added bounceDetection property to Ball interface
