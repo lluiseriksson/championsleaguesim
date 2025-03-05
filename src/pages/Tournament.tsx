@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { teamKitColors } from '../types/teamKits';
+import { teamKitColors, TeamKit } from '../types/teamKits';
 import TournamentBracket from '../components/TournamentBracket';
 import TournamentMatch from '../components/game/TournamentMatch';
 import { Button } from '../components/ui/button';
@@ -13,11 +13,7 @@ interface TournamentTeam {
   name: string;
   seed: number;
   eloRating: number;
-  kitColors: {
-    home: string;
-    away: string;
-    third: string;
-  };
+  kitColors: TeamKit;
 }
 
 interface Match {
@@ -398,7 +394,7 @@ const Tournament: React.FC = () => {
             </Button>
             <Button 
               onClick={toggleAutoSimulation}
-              variant={autoSimulation ? "destructive" : "success"}
+              variant={autoSimulation ? "destructive" : "default"}
               className={`flex items-center gap-2 ${!autoSimulation ? "bg-green-600 hover:bg-green-700" : ""}`}
             >
               {autoSimulation ? (
