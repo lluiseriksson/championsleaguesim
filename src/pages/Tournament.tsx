@@ -5,7 +5,7 @@ import { TournamentTeam, Match } from '../types/tournament';
 import TournamentBracket from '../components/TournamentBracket';
 import TournamentMatch from '../components/game/TournamentMatch';
 import { Button } from '../components/ui/button';
-import { Trophy, ArrowLeftCircle, RefreshCw, Play, Pause } from 'lucide-react';
+import { Trophy, ArrowLeftCircle, RefreshCw, Play } from 'lucide-react';
 import { toast } from 'sonner';
 import { Score } from '../types/football';
 
@@ -266,18 +266,11 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
     }
   };
 
-  const toggleAutoSimulation = () => {
-    setAutoSimulation(prev => !prev);
-    
-    if (!autoSimulation) {
-      toast.success("Auto Simulation Enabled", {
-        description: "Tournament will progress automatically"
-      });
-    } else {
-      toast.info("Auto Simulation Disabled", {
-        description: "Tournament progress paused"
-      });
-    }
+  const startAutoSimulation = () => {
+    setAutoSimulation(true);
+    toast.success("Auto Simulation Started", {
+      description: "Tournament will progress automatically"
+    });
   };
 
   const getTournamentStatus = () => {
@@ -310,23 +303,16 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
               <RefreshCw className="h-4 w-4" />
               Reset Tournament
             </Button>
-            <Button 
-              onClick={toggleAutoSimulation}
-              variant={autoSimulation ? "destructive" : "default"}
-              className={`flex items-center gap-2 ${!autoSimulation ? "bg-green-600 hover:bg-green-700" : ""}`}
-            >
-              {autoSimulation ? (
-                <>
-                  <Pause className="h-4 w-4" />
-                  Pause Auto Simulation
-                </>
-              ) : (
-                <>
-                  <Play className="h-4 w-4" />
-                  Start Auto Simulation
-                </>
-              )}
-            </Button>
+            {!autoSimulation && (
+              <Button 
+                onClick={startAutoSimulation}
+                variant="default"
+                className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+              >
+                <Play className="h-4 w-4" />
+                Start Auto Simulation
+              </Button>
+            )}
           </div>
         ) : (
           <div className="flex items-center gap-4">
