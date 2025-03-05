@@ -2,11 +2,7 @@
 
 ## Project info
 
-<<<<<<< HEAD
-**URL**: https://lovable.dev/projects/a1bd8beb-1866-4528-9f7d-279666a03782
-=======
 **URL**: https://lovable.dev/projects/97138cd6-b5ae-4c3b-a068-c7c40c76fb6c
->>>>>>> pixelfootball/main
 
 ## How can I edit this code?
 
@@ -14,11 +10,7 @@ There are several ways of editing your application.
 
 **Use Lovable**
 
-<<<<<<< HEAD
-Simply visit the [Lovable Project](https://lovable.dev/projects/a1bd8beb-1866-4528-9f7d-279666a03782) and start prompting.
-=======
 Simply visit the [Lovable Project](https://lovable.dev/projects/97138cd6-b5ae-4c3b-a068-c7c40c76fb6c) and start prompting.
->>>>>>> pixelfootball/main
 
 Changes made via Lovable will be committed automatically to this repo.
 
@@ -70,11 +62,7 @@ This project is built with .
 
 ## How can I deploy this project?
 
-<<<<<<< HEAD
-Simply open [Lovable](https://lovable.dev/projects/a1bd8beb-1866-4528-9f7d-279666a03782) and click on Share -> Publish.
-=======
 Simply open [Lovable](https://lovable.dev/projects/97138cd6-b5ae-4c3b-a068-c7c40c76fb6c) and click on Share -> Publish.
->>>>>>> pixelfootball/main
 
 ## I want to use a custom domain - is that possible?
 
