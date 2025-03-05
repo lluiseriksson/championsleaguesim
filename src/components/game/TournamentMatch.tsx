@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
@@ -36,6 +35,10 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   const [matchEnded, setMatchEnded] = useState(false);
   const [goldenGoal, setGoldenGoal] = useState(false);
   const [lastScorer, setLastScorer] = useState<'red' | 'blue' | null>(null);
+  
+  useEffect(() => {
+    console.log('TournamentMatch: matchDuration =', matchDuration);
+  }, [matchDuration]);
   
   useEffect(() => {
     const totalGoals = score.red + score.blue;
@@ -146,15 +149,17 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   });
   
   const handleTimeEnd = () => {
-    console.log("Time ended. Score:", score);
+    console.log("Tiempo terminado. Puntuación:", score);
     
     if (score.red === score.blue) {
+      console.log("Comenzando gol de oro");
       setGoldenGoal(true);
       toast("¡TIEMPO AGOTADO! - Comienza el tiempo de gol de oro", {
         description: "El primer equipo en marcar gana el partido"
       });
     } else {
       const winner = score.red > score.blue ? homeTeam : awayTeam;
+      console.log("Partido terminado. Ganador:", winner);
       toast(`¡Fin del partido! ${winner} gana`, {
         description: `Resultado final: ${homeTeam} ${score.red} - ${score.blue} ${awayTeam}`,
       });
@@ -181,7 +186,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   }
   
   return (
-    <div className="relative mt-12 pt-8"> {/* Added padding and margin to make room for timer */}
+    <div className="relative mt-12 pt-8"> {/* Espacio para el temporizador */}
       <MatchTimer 
         initialTime={matchDuration} 
         onTimeEnd={handleTimeEnd}
