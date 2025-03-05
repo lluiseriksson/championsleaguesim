@@ -18,17 +18,18 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
   autoStart = true // Por defecto, el timer inicia automáticamente
 }) => {
   const [timeRemaining, setTimeRemaining] = useState(initialTime);
-  const [started, setStarted] = useState(autoStart);
+  const [timerActive, setTimerActive] = useState(autoStart);
   
+  // Reiniciar el timer cuando cambie initialTime
   useEffect(() => {
-    // Siempre iniciar el timer automáticamente cuando se monta el componente
-    setStarted(true);
-  }, []);
+    setTimeRemaining(initialTime);
+  }, [initialTime]);
   
+  // Efecto principal para gestionar el contador
   useEffect(() => {
     let timer: NodeJS.Timeout;
     
-    if ((isRunning || started) && timeRemaining > 0) {
+    if ((isRunning || timerActive) && timeRemaining > 0) {
       timer = setInterval(() => {
         setTimeRemaining(prev => {
           const newTime = prev - 1;
@@ -40,21 +41,33 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
           return newTime;
         });
       }, 1000);
-    } else if (goldenGoal && timeRemaining === 0) {
-      // En modo gol de oro, el contador se detiene pero el juego continúa
+      
+      console.log("Timer started/running", { timeRemaining, isRunning, timerActive });
     }
     
     return () => {
-      if (timer) clearInterval(timer);
+      if (timer) {
+        console.log("Clearing timer interval");
+        clearInterval(timer);
+      }
     };
-  }, [isRunning, timeRemaining, onTimeEnd, goldenGoal, started]);
+  }, [isRunning, timeRemaining, onTimeEnd, timerActive]);
   
-  // Efecto para manejar cambios en isRunning
+  // Activar el timer cuando isRunning cambie a true
   useEffect(() => {
-    if (isRunning && !started) {
-      setStarted(true);
+    if (isRunning && !timerActive) {
+      console.log("Setting timer active due to isRunning change");
+      setTimerActive(true);
     }
-  }, [isRunning, started]);
+  }, [isRunning, timerActive]);
+  
+  // Activar el timer automáticamente al montar el componente si autoStart es true
+  useEffect(() => {
+    if (autoStart) {
+      console.log("Auto-starting timer");
+      setTimerActive(true);
+    }
+  }, [autoStart]);
   
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);

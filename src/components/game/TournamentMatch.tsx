@@ -44,6 +44,8 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       const winner = score.red > score.blue ? homeTeam : awayTeam;
       setLastScorer(score.red > score.blue ? 'red' : 'blue');
       
+      console.log("Golden goal winner:", winner);
+      
       toast(`¡${winner} gana con gol de oro!`, {
         description: `Resultado final: ${homeTeam} ${score.red} - ${score.blue} ${awayTeam}`,
       });
@@ -57,6 +59,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   
   useEffect(() => {
     if (players.length === 0 && homeTeam && awayTeam) {
+      console.log("Initializing players for match:", homeTeam, "vs", awayTeam);
       initializePlayers();
     }
   }, [homeTeam, awayTeam, players.length]);
@@ -143,6 +146,8 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   });
   
   const handleTimeEnd = () => {
+    console.log("Time ended. Score:", score);
+    
     if (score.red === score.blue) {
       setGoldenGoal(true);
       toast("¡TIEMPO AGOTADO! - Comienza el tiempo de gol de oro", {
