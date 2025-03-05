@@ -3,7 +3,6 @@ import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
 import MatchTimer from './MatchTimer';
 import { Player, Ball, Score, PITCH_WIDTH, PITCH_HEIGHT } from '../../types/football';
-import { getTeamKitColor } from '../../types/teamKits';
 import { toast } from 'sonner';
 
 interface TournamentMatchProps {
@@ -187,7 +186,6 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         isRunning={gameStarted && !matchEnded} 
         onTimeEnd={handleTimeEnd}
         goldenGoal={goldenGoal}
-        autoStart={true}
       />
       
       <GameBoard
