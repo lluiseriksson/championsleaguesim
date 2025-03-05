@@ -25,7 +25,7 @@ const TournamentHeader: React.FC<TournamentHeaderProps> = ({
 
   return (
     <>
-      <h1 className="text-3xl font-bold mb-6 text-center">Football Tournament</h1>
+      <h1 className="text-3xl font-bold mb-6 text-center">Champions League Simulator</h1>
       
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-xl font-semibold">{getTournamentStatus()}</h2>
