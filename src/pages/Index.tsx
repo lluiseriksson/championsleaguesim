@@ -27,8 +27,11 @@ const Index = () => {
         </div>
         
         {/* Tournament section */}
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden p-4">
-          <h2 className="text-xl font-bold mb-4">Tournament Bracket</h2>
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold">Football Tournament</h2>
+            <Link to="/tournament" className="text-blue-600 hover:underline">View Full Tournament</Link>
+          </div>
           <Tournament embeddedMode={true} />
         </div>
       </main>
