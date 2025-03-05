@@ -1,7 +1,8 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 
 interface MatchTimerProps {
-  initialTime: number; // in seconds (real time)
+  initialTime: number; // in seconds
   onTimeEnd: () => void;
   goldenGoal?: boolean;
 }
@@ -11,30 +12,23 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
   onTimeEnd,
   goldenGoal = false
 }) => {
-  const [gameTime, setGameTime] = useState(0); // Virtual game time in seconds
-  const [realTimeElapsed, setRealTimeElapsed] = useState(0); // Real time elapsed in seconds
+  const [timeLeft, setTimeLeft] = useState(initialTime);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const initializedRef = useRef(false);
   
-  // Virtual match duration (90 minutes = 5400 seconds)
-  const MATCH_DURATION = 5400;
-  
-  // Calculate time conversion factor (how many virtual seconds per real second)
-  const timeConversionFactor = MATCH_DURATION / initialTime;
-  
-  console.log('MatchTimer rendered with initialTime:', initialTime, 'gameTime:', gameTime);
+  console.log('MatchTimer renderizado con initialTime:', initialTime, 'timeLeft:', timeLeft);
 
   useEffect(() => {
-    // Only initialize when the component mounts
-    if (!initializedRef.current) {
-      setGameTime(0);
-      setRealTimeElapsed(0);
+    // Only set timeLeft when the component mounts or initialTime changes
+    if (!initializedRef.current || initialTime !== timeLeft) {
+      console.log('Setting initial time to:', initialTime);
+      setTimeLeft(initialTime);
       initializedRef.current = true;
     }
-  }, []);
+  }, [initialTime]);
 
   useEffect(() => {
-    console.log('Setting up timer with gameTime:', gameTime, 'goldenGoal:', goldenGoal);
+    console.log('Setting up timer with timeLeft:', timeLeft, 'goldenGoal:', goldenGoal);
     
     // Clear any existing interval
     if (timerRef.current) {
@@ -42,41 +36,32 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
       timerRef.current = null;
     }
     
-    // Start the timer
-    timerRef.current = setInterval(() => {
-      setRealTimeElapsed((prevRealTime) => {
-        const newRealTime = prevRealTime + 1;
-        
-        // Update game time based on real time
-        setGameTime((prevGameTime) => {
-          const newGameTime = Math.min(
-            Math.floor(newRealTime * timeConversionFactor), 
-            !goldenGoal ? MATCH_DURATION : Number.MAX_SAFE_INTEGER
-          );
+    // Only start the timer if we have time left and we're not in golden goal
+    if (timeLeft > 0 && !goldenGoal) {
+      timerRef.current = setInterval(() => {
+        setTimeLeft((prevTime) => {
+          const newTime = prevTime - 1;
+          console.log('Tick, new time:', newTime);
           
-          console.log('Tick, new game time:', newGameTime);
-          
-          // If we reached the end of regular time and not in golden goal
-          if (newGameTime >= MATCH_DURATION && !goldenGoal && prevGameTime < MATCH_DURATION) {
-            console.log('Regular time ended, calling onTimeEnd');
+          if (newTime <= 0) {
+            console.log('Time ended, calling onTimeEnd');
+            if (timerRef.current) {
+              clearInterval(timerRef.current);
+              timerRef.current = null;
+            }
             onTimeEnd();
+            return 0;
           }
           
-          return newGameTime;
+          return newTime;
         });
-        
-        // Stop the timer if we reach initialTime and we're not in golden goal
-        if (newRealTime >= initialTime && !goldenGoal) {
-          console.log('Real time elapsed, stopping timer');
-          if (timerRef.current) {
-            clearInterval(timerRef.current);
-            timerRef.current = null;
-          }
-        }
-        
-        return newRealTime;
-      });
-    }, 1000); // Update every real second
+      }, 1000);
+    }
+
+    // Call onTimeEnd immediately if we activate golden goal and time is already 0
+    if (goldenGoal && timeLeft === 0 && !timerRef.current) {
+      console.log('Golden goal activated with no time left');
+    }
 
     // Cleanup function
     return () => {
@@ -86,24 +71,21 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
         timerRef.current = null;
       }
     };
-  }, [initialTime, onTimeEnd, goldenGoal, timeConversionFactor]);
+  }, [timeLeft, onTimeEnd, goldenGoal]);
 
-  // Format game time as MM:SS
-  const formatGameTime = () => {
-    const minutes = Math.floor(gameTime / 60);
-    const seconds = Math.floor(gameTime % 60);
-    
-    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-  };
+  // Format time as MM:SS
+  const minutes = Math.floor(timeLeft / 60);
+  const seconds = timeLeft % 60;
+  const formattedTime = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
   
-  console.log('Displaying formatted time:', formatGameTime());
+  console.log('Displaying formatted time:', formattedTime);
 
   return (
     <div className="match-timer font-mono text-2xl font-bold bg-black bg-opacity-80 text-white px-6 py-3 rounded-md shadow-lg absolute top-[-70px] left-1/2 transform -translate-x-1/2 z-30">
       {goldenGoal ? (
         <span className="text-amber-400 animate-pulse">¡GOL DE ORO!</span>
       ) : (
-        formatGameTime()
+        formattedTime
       )}
     </div>
   );
