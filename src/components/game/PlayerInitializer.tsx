@@ -1,10 +1,8 @@
-
 import React from 'react';
 import { Player, PITCH_WIDTH, PITCH_HEIGHT, KitType } from '../../types/football';
 import { createPlayerBrain } from '../../utils/playerBrain';
 import { initializePlayerBrain } from '../../utils/modelLoader';
 import { getAwayTeamKit, teamKitColors } from '../../types/kits';
-import { getTeamElo, calculateStrengthMultiplier } from '../../data/teamEloData';
 
 interface PlayerInitializerProps {
   setPlayers: React.Dispatch<React.SetStateAction<Player[]>>;
@@ -15,7 +13,6 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
   React.useEffect(() => {
     const loadPlayers = async () => {
       try {
-        console.log("Starting player initialization...");
         const initialPlayers: Player[] = [];
         
         // Get random team names from the available teams
@@ -32,14 +29,7 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
         // Determine the best away kit to use based on color similarity
         const awayTeamKitType = getAwayTeamKit(homeTeamName, awayTeamName);
         
-        // Get ELO ratings and calculate strength multipliers
-        const homeTeamElo = getTeamElo(homeTeamName);
-        const awayTeamElo = getTeamElo(awayTeamName);
-        
-        const homeTeamMultiplier = calculateStrengthMultiplier(homeTeamElo);
-        const awayTeamMultiplier = calculateStrengthMultiplier(awayTeamElo);
-        
-        console.log(`Match: ${homeTeamName} (ELO: ${homeTeamElo}, Strength: ${homeTeamMultiplier.toFixed(2)}) vs ${awayTeamName} (ELO: ${awayTeamElo}, Strength: ${awayTeamMultiplier.toFixed(2)})`);
+        console.log(`Match: ${homeTeamName} (home) vs ${awayTeamName} (${awayTeamKitType})`);
         
         // Initialize red team players (home team) with 3-4-3 formation
         const redTeamPositions = [
@@ -59,7 +49,6 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
           { x: 500, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
         ];
         
-        // Create home team players
         for (let i = 0; i < redTeamPositions.length; i++) {
           const pos = redTeamPositions[i];
           const role = pos.role as Player['role'];
@@ -84,8 +73,7 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
             brain: brain,
             targetPosition: { x: pos.x, y: pos.y },
             teamName: homeTeamName,
-            kitType: 'home' as KitType,
-            strengthMultiplier: homeTeamMultiplier
+            kitType: 'home' as KitType
           });
         }
 
@@ -107,7 +95,6 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
           { x: PITCH_WIDTH - 500, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
         ];
         
-        // Create away team players
         for (let i = 0; i < blueTeamPositions.length; i++) {
           const pos = blueTeamPositions[i];
           const role = pos.role as Player['role'];
@@ -125,26 +112,17 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
           }
           
           initialPlayers.push({
-            id: i + 12, // Cambié de 11 a 12 para asegurar IDs únicos
+            id: i + 11,
             position: { x: pos.x, y: pos.y },
             role: role,
             team: 'blue',
             brain: brain,
             targetPosition: { x: pos.x, y: pos.y },
             teamName: awayTeamName,
-            kitType: awayTeamKitType as KitType,
-            strengthMultiplier: awayTeamMultiplier
+            kitType: awayTeamKitType as KitType
           });
         }
 
-        console.log("Initialized players:", initialPlayers.length);
-        
-        // Verificar los jugadores inicializados
-        if (initialPlayers.length === 0) {
-          console.error("No se inicializaron jugadores");
-          return;
-        }
-        
         setPlayers(initialPlayers);
         console.log("Game initialized successfully with", initialPlayers.length, "players");
         setGameReady(true);

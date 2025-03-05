@@ -37,8 +37,7 @@ export const createPlayerBrain = (): NeuralNet => {
         angleToOwnGoal: Math.random() * 2 - 1,
         isFacingOwnGoal: Math.random() > 0.8 ? 1 : 0,
         isDangerousPosition: Math.random() > 0.8 ? 1 : 0,
-        isBetweenBallAndOwnGoal: Math.random() > 0.8 ? 1 : 0,
-        strengthMultiplier: 0.8 + Math.random() * 0.2 // Valor entre 0.8 y 1
+        isBetweenBallAndOwnGoal: Math.random() > 0.8 ? 1 : 0
       };
       
       // Simple random output values
@@ -55,7 +54,6 @@ export const createPlayerBrain = (): NeuralNet => {
     
     // ENHANCED: Add training examples for RED TEAM shooting in CORRECT direction
     for (let i = 0; i < 15; i++) {
-      const strengthMult = 0.8 + Math.random() * 0.2;
       const input: NeuralInput = {
         ballX: 0.6 + Math.random() * 0.3, // Ball on right side of field
         ballY: Math.random(),
@@ -69,22 +67,21 @@ export const createPlayerBrain = (): NeuralNet => {
         nearestTeammateAngle: Math.random() * 2 - 1,
         nearestOpponentDistance: 0.3 + Math.random() * 0.7,
         nearestOpponentAngle: Math.random() * 2 - 1,
-        isInShootingRange: strengthMult, // In shooting range, affected by strength
+        isInShootingRange: 1, // In shooting range
         isInPassingRange: 0, // Not in passing range
         isDefendingRequired: 0, // Not defending
         distanceToOwnGoal: 0.7 + Math.random() * 0.3, // Far from own goal
         angleToOwnGoal: Math.random() * 2 - 1,
         isFacingOwnGoal: 0, // Not facing own goal
         isDangerousPosition: 0, // Not dangerous
-        isBetweenBallAndOwnGoal: 0, // Not between ball and own goal
-        strengthMultiplier: strengthMult
+        isBetweenBallAndOwnGoal: 0 // Not between ball and own goal
       };
       
       // Output: shoot RIGHT (for red team)
       const output: NeuralOutput = {
         moveX: 0.8 + Math.random() * 0.2, // Move right
         moveY: 0.5 + (Math.random() - 0.5) * 0.2,
-        shootBall: 0.8 * strengthMult + Math.random() * 0.2, // High shoot probability, adjusted by strength
+        shootBall: 0.8 + Math.random() * 0.2, // High shoot probability
         passBall: Math.random() * 0.2, // Low pass probability
         intercept: Math.random() * 0.1 // Very low intercept
       };
@@ -94,7 +91,6 @@ export const createPlayerBrain = (): NeuralNet => {
     
     // ENHANCED: Add training examples for BLUE TEAM shooting in CORRECT direction
     for (let i = 0; i < 15; i++) {
-      const strengthMult = 0.8 + Math.random() * 0.2;
       const input: NeuralInput = {
         ballX: Math.random() * 0.3, // Ball on left side of field
         ballY: Math.random(),
@@ -108,22 +104,21 @@ export const createPlayerBrain = (): NeuralNet => {
         nearestTeammateAngle: Math.random() * 2 - 1,
         nearestOpponentDistance: 0.3 + Math.random() * 0.7,
         nearestOpponentAngle: Math.random() * 2 - 1,
-        isInShootingRange: strengthMult, // In shooting range, affected by strength
+        isInShootingRange: 1, // In shooting range
         isInPassingRange: 0, // Not in passing range
         isDefendingRequired: 0, // Not defending
         distanceToOwnGoal: 0.7 + Math.random() * 0.3, // Far from own goal
         angleToOwnGoal: Math.random() * 2 - 1,
         isFacingOwnGoal: 0, // Not facing own goal
         isDangerousPosition: 0, // Not dangerous
-        isBetweenBallAndOwnGoal: 0, // Not between ball and own goal
-        strengthMultiplier: strengthMult
+        isBetweenBallAndOwnGoal: 0 // Not between ball and own goal
       };
       
       // Output: shoot LEFT (for blue team)
       const output: NeuralOutput = {
         moveX: Math.random() * 0.2, // Move left
         moveY: 0.5 + (Math.random() - 0.5) * 0.2,
-        shootBall: 0.8 * strengthMult + Math.random() * 0.2, // High shoot probability, adjusted by strength
+        shootBall: 0.8 + Math.random() * 0.2, // High shoot probability
         passBall: Math.random() * 0.2, // Low pass probability
         intercept: Math.random() * 0.1 // Very low intercept
       };
@@ -134,7 +129,6 @@ export const createPlayerBrain = (): NeuralNet => {
     // Now add EXPLICIT training examples to avoid own goals
     for (let i = 0; i < 10; i++) {
       // Create dangerous own goal scenarios
-      const strengthMult = 0.8 + Math.random() * 0.2;
       const input: NeuralInput = {
         ballX: Math.random(),
         ballY: Math.random(),
@@ -149,14 +143,13 @@ export const createPlayerBrain = (): NeuralNet => {
         nearestOpponentDistance: 0.3 + Math.random() * 0.7, // Opponents far
         nearestOpponentAngle: Math.random() * 2 - 1,
         isInShootingRange: 0, // Not in shooting range
-        isInPassingRange: strengthMult, // In passing range, adjusted by strength
+        isInPassingRange: 1, // In passing range
         isDefendingRequired: 1, // Defending required
         distanceToOwnGoal: Math.random() * 0.3, // Close to own goal
         angleToOwnGoal: Math.random() * 2 - 1,
         isFacingOwnGoal: 1, // Facing own goal
         isDangerousPosition: 1, // In dangerous position
-        isBetweenBallAndOwnGoal: 1, // Between ball and own goal
-        strengthMultiplier: strengthMult
+        isBetweenBallAndOwnGoal: 1 // Between ball and own goal
       };
       
       // Teach to NEVER shoot in these scenarios, prefer passing and moving away
@@ -164,7 +157,7 @@ export const createPlayerBrain = (): NeuralNet => {
         moveX: Math.random() > 0.5 ? 0.8 : 0.2, // Move away from own goal
         moveY: 0.5 + (Math.random() - 0.5) * 0.4,
         shootBall: 0, // Never shoot
-        passBall: 0.8 * strengthMult + Math.random() * 0.2, // Prefer passing, adjusted by strength
+        passBall: 0.8 + Math.random() * 0.2, // Prefer passing
         intercept: Math.random() * 0.3 // Sometimes intercept
       };
 
@@ -184,7 +177,7 @@ export const createPlayerBrain = (): NeuralNet => {
       return createFallbackBrain();
     }
 
-    console.log("Created new neural network successfully with strength-adjusted training");
+    console.log("Created new neural network successfully with directional shooting training");
     return {
       net,
       lastOutput: { x: 0, y: 0 },
@@ -216,8 +209,7 @@ const createFallbackBrain = (): NeuralNet => {
     isInShootingRange: 0, isInPassingRange: 0, isDefendingRequired: 0,
     distanceToOwnGoal: 0.5, angleToOwnGoal: 0,
     isFacingOwnGoal: 0, isDangerousPosition: 0,
-    isBetweenBallAndOwnGoal: 0,
-    strengthMultiplier: 0.9 // Valor predeterminado
+    isBetweenBallAndOwnGoal: 0
   };
   
   const output: NeuralOutput = {

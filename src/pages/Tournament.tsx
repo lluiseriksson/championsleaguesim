@@ -40,15 +40,7 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
           onBackToTournament={handleBackToTournament}
           onMatchComplete={handleMatchComplete}
         />
-      ) : (
-        <div className="mb-6 text-center">
-          <p className="text-gray-600">
-            Tournament using real ELO ratings to determine team strength.
-            <br />
-            Higher ELO teams maintain full strength while lower ELO teams have reduced capabilities.
-          </p>
-        </div>
-      )}
+      ) : null}
       
       <div className="overflow-x-auto">
         <TournamentBracket 

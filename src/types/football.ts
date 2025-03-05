@@ -37,8 +37,6 @@ export interface NeuralInput {
   isFacingOwnGoal: number;
   isDangerousPosition: number;
   isBetweenBallAndOwnGoal: number;
-  // Add strengthMultiplier input
-  strengthMultiplier?: number;
 }
 
 // Cambiamos NeuralOutput para que cumpla con INeuralNetworkData
@@ -68,7 +66,6 @@ export interface Player {
   targetPosition: Position;
   teamName?: string;  // Actual team name like "Barcelona", "Liverpool", etc.
   kitType?: KitType;  // Which kit the player is wearing (home/away/third)
-  strengthMultiplier?: number; // Add the strengthMultiplier property
 }
 
 // Added bounceDetection property to Ball interface

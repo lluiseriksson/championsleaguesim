@@ -4,7 +4,6 @@ import { TournamentTeam, Match } from '../../types/tournament';
 import { Score } from '../../types/football';
 import { toast } from 'sonner';
 import { teamKitColors } from '../../types/teamKits';
-import { teamEloRatings, calculateStrengthMultiplier } from '../../data/teamEloData';
 
 export const useTournamentLogic = (embeddedMode = false) => {
   const [teams, setTeams] = useState<TournamentTeam[]>([]);
@@ -78,19 +77,13 @@ export const useTournamentLogic = (embeddedMode = false) => {
   }, [autoSimulation, playingMatch, currentRound, matches, simulationSpeed]);
 
   const initializeTournament = () => {
-    // Usamos los equipos reales con sus ELO
-    const tournamentTeams: TournamentTeam[] = teamEloRatings.map((team, index) => {
-      // Buscamos los colores de kit. Si no existe, usamos un equipo genérico
-      const kitColors = teamKitColors[team.name] || Object.values(teamKitColors)[0];
-      
-      return {
-        id: index + 1,
-        name: team.name,
-        seed: index + 1,
-        eloRating: team.elo,
-        kitColors
-      };
-    }).slice(0, 128);
+    const tournamentTeams: TournamentTeam[] = Object.entries(teamKitColors).map(([name, colors], index) => ({
+      id: index + 1,
+      name,
+      seed: index + 1,
+      eloRating: 2000 - index * 4,
+      kitColors: colors
+    })).slice(0, 128);
 
     setTeams(tournamentTeams);
 
@@ -111,18 +104,17 @@ export const useTournamentLogic = (embeddedMode = false) => {
       }
     }
 
-    // Agrupamos los equipos por seeding (usando el ELO como base)
-    const sortedTeams = [...tournamentTeams].sort((a, b) => b.eloRating - a.eloRating);
-    const topTeams = sortedTeams.slice(0, 64);
-    const bottomTeams = sortedTeams.slice(64);
-    
-    // Distribuimos los enfrentamientos para que los mejores equipos
-    // se enfrenten a los peores en la primera ronda
+    const awayTeams = [...tournamentTeams.slice(64)];
+    for (let i = awayTeams.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [awayTeams[i], awayTeams[j]] = [awayTeams[j], awayTeams[i]];
+    }
+
     for (let i = 0; i < 64; i++) {
       const match = initialMatches.find(m => m.round === 1 && m.position === i + 1);
       if (match) {
-        match.teamA = topTeams[i];
-        match.teamB = bottomTeams[i];
+        match.teamA = tournamentTeams[i];
+        match.teamB = awayTeams[i];
       }
     }
 
@@ -130,7 +122,7 @@ export const useTournamentLogic = (embeddedMode = false) => {
     setCurrentRound(1);
     
     toast.success("Tournament initialized", {
-      description: "128 teams ready for the competition with real ELO ratings"
+      description: "128 teams ready for the competition"
     });
   };
 
@@ -141,7 +133,7 @@ export const useTournamentLogic = (embeddedMode = false) => {
     setAutoSimulation(false);
     
     toast("Tournament reset", {
-      description: "New matchups based on real ELO ratings have been created"
+      description: "New random matchups have been created"
     });
   };
 
@@ -160,21 +152,15 @@ export const useTournamentLogic = (embeddedMode = false) => {
     
     if (!currentMatch || !currentMatch.teamA || !currentMatch.teamB) return;
     
-    // Calculamos los multiplicadores de fuerza basados en ELO
-    const teamAMultiplier = calculateStrengthMultiplier(currentMatch.teamA.eloRating);
-    const teamBMultiplier = calculateStrengthMultiplier(currentMatch.teamB.eloRating);
-    
-    // Aplicamos los multiplicadores a la fuerza base y añadimos algo de aleatoriedad
-    const teamAStrength = currentMatch.teamA.eloRating * teamAMultiplier + Math.random() * 100;
-    const teamBStrength = currentMatch.teamB.eloRating * teamBMultiplier + Math.random() * 100;
+    const teamAStrength = currentMatch.teamA.eloRating + Math.random() * 100;
+    const teamBStrength = currentMatch.teamB.eloRating + Math.random() * 100;
     
     const winner = teamAStrength > teamBStrength ? currentMatch.teamA : currentMatch.teamB;
     currentMatch.winner = winner;
     currentMatch.played = true;
     
-    // La diferencia de goles se basa en la diferencia de fuerzas
     const strengthDiff = Math.abs(teamAStrength - teamBStrength);
-    const goalDiff = Math.min(Math.floor(strengthDiff / 200), 5); // Ajustado para que sea menos extremo
+    const goalDiff = Math.min(Math.floor(strengthDiff / 30), 5);
     const winnerGoals = 1 + Math.floor(Math.random() * 3) + Math.floor(goalDiff / 2);
     const loserGoals = Math.max(0, winnerGoals - goalDiff);
     
@@ -289,7 +275,7 @@ export const useTournamentLogic = (embeddedMode = false) => {
   const startAutoSimulation = () => {
     setAutoSimulation(true);
     toast.success("Auto Simulation Started", {
-      description: "Tournament will progress automatically with ELO-based strength"
+      description: "Tournament will progress automatically"
     });
   };
 

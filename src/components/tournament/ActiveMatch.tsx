@@ -5,7 +5,6 @@ import { ArrowLeftCircle } from 'lucide-react';
 import TournamentMatch from '../game/TournamentMatch';
 import { Score } from '../../types/football';
 import { Match } from '../../types/tournament';
-import { calculateStrengthMultiplier } from '../../data/teamEloData';
 
 interface ActiveMatchProps {
   activeMatch: Match;
@@ -20,36 +19,12 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
 }) => {
   if (!activeMatch.teamA || !activeMatch.teamB) return null;
 
-  // Calcular los multiplicadores de fuerza basados en ELO
-  const teamAMultiplier = calculateStrengthMultiplier(activeMatch.teamA.eloRating);
-  const teamBMultiplier = calculateStrengthMultiplier(activeMatch.teamB.eloRating);
-
-  // Redondear a 2 decimales para mostrar
-  const teamAStrength = Math.round(teamAMultiplier * 100) / 100;
-  const teamBStrength = Math.round(teamBMultiplier * 100) / 100;
-
   return (
     <div className="mb-10 p-4 bg-gray-50 rounded-lg shadow-md">
       <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h3 className="text-xl font-semibold">
-            {activeMatch.teamA.name} vs {activeMatch.teamB.name}
-          </h3>
-          <div className="mt-1 grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="font-medium">{activeMatch.teamA.name}</span>
-              <div className="text-gray-600">
-                ELO: {activeMatch.teamA.eloRating} (Strength: {teamAStrength})
-              </div>
-            </div>
-            <div>
-              <span className="font-medium">{activeMatch.teamB.name}</span>
-              <div className="text-gray-600">
-                ELO: {activeMatch.teamB.eloRating} (Strength: {teamBStrength})
-              </div>
-            </div>
-          </div>
-        </div>
+        <h3 className="text-xl font-semibold">
+          {activeMatch.teamA.name} vs {activeMatch.teamB.name}
+        </h3>
         <Button 
           variant="outline" 
           onClick={onBackToTournament}

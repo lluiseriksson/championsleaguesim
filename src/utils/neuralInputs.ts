@@ -4,9 +4,6 @@ import { calculateDistance, normalizeValue } from './neuralCore';
 
 // Calculate inputs for the neural network
 export const calculateNetworkInputs = (ball: Ball, player: Player, context: TeamContext): NeuralInput => {
-  // Apply strength multiplier (default to 1 if not defined)
-  const strengthMultiplier = player.strengthMultiplier !== undefined ? player.strengthMultiplier : 1;
-  
   // Normalize values for the neural network (between 0 and 1)
   const normalizedBallX = normalizeValue(ball.position.x, 0, 800);
   const normalizedBallY = normalizeValue(ball.position.y, 0, 600);
@@ -96,18 +93,18 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
   
   // Improve shooting range detection with directional component
   let isInShootingRange = 0;
-  if (distanceToBall < 100 * strengthMultiplier && distanceToGoal < 300) {
+  if (distanceToBall < 100 && distanceToGoal < 300) {
     // Add directional awareness: only consider in shooting range if player is on correct side
     if ((player.team === 'red' && player.position.x > 400) || 
         (player.team === 'blue' && player.position.x < 400)) {
-      isInShootingRange = strengthMultiplier;
+      isInShootingRange = 1;
     } else {
       // Far from correct shooting position, reduce shooting probability
-      isInShootingRange = 0.2 * strengthMultiplier;
+      isInShootingRange = 0.2;
     }
   }
   
-  const isInPassingRange = distanceToBall < 80 * strengthMultiplier && nearestTeammateDistance < 200 ? strengthMultiplier : 0;
+  const isInPassingRange = distanceToBall < 80 && nearestTeammateDistance < 200 ? 1 : 0;
   
   // ENHANCED: Better detection of dangerous shooting positions
   const isDangerousPosition = (distanceToBall < 100 && distanceToOwnGoal < 200) || 
@@ -138,8 +135,6 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
     angleToOwnGoal: normalizedAngleToOwnGoal,
     isFacingOwnGoal,
     isDangerousPosition,
-    isBetweenBallAndOwnGoal,
-    // Add strength multiplier as an explicit input
-    strengthMultiplier
+    isBetweenBallAndOwnGoal
   };
 };

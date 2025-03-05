@@ -18,17 +18,11 @@ const usePlayerMovement = ({
   gameReady 
 }: PlayerMovementProps) => {
   const updatePlayerPositions = React.useCallback(() => {
-    if (!gameReady || players.length === 0) {
-      console.log("Game not ready or no players available", { gameReady, playerCount: players.length });
-      return;
-    }
+    if (!gameReady) return;
     
     setPlayers(currentPlayers => 
       currentPlayers.map(player => {
         try {
-          // Get the strength multiplier (default to 1 if not set)
-          const strengthMultiplier = player.strengthMultiplier !== undefined ? player.strengthMultiplier : 1;
-          
           if (player.role === 'goalkeeper') {
             const movement = moveGoalkeeper(player, ball);
             const newPosition = {
@@ -53,8 +47,7 @@ const usePlayerMovement = ({
             const dx = ball.position.x - player.position.x;
             const dy = ball.position.y - player.position.y;
             const dist = Math.sqrt(dx*dx + dy*dy);
-            // Apply strength multiplier to movement speed
-            const moveSpeed = 1.5 * strengthMultiplier;
+            const moveSpeed = 1.5;
             const moveX = dist > 0 ? (dx / dist) * moveSpeed : 0;
             const moveY = dist > 0 ? (dy / dist) * moveSpeed : 0;
             
@@ -63,12 +56,11 @@ const usePlayerMovement = ({
               y: player.position.y + moveY
             };
             
-            // Adjust maximum distances based on role and strength
-            let maxDistance = 50 * strengthMultiplier;
+            let maxDistance = 50;
             switch (player.role) {
-              case 'defender': maxDistance = 70 * strengthMultiplier; break;
-              case 'midfielder': maxDistance = 100 * strengthMultiplier; break;
-              case 'forward': maxDistance = 120 * strengthMultiplier; break;
+              case 'defender': maxDistance = 70; break;
+              case 'midfielder': maxDistance = 100; break;
+              case 'forward': maxDistance = 120; break;
             }
             
             const distanceFromStart = Math.sqrt(
@@ -114,20 +106,16 @@ const usePlayerMovement = ({
             nearestOpponentAngle: 0,
             isInShootingRange: 0,
             isInPassingRange: 0,
-            isDefendingRequired: 0,
-            // Add strength multiplier to neural input
-            strengthMultiplier
+            isDefendingRequired: 0
           };
 
           const output = player.brain.net.run(input);
-          // Apply strength multiplier to movement
-          const moveX = ((output.moveX || 0.5) * 2 - 1) * strengthMultiplier;
-          const moveY = ((output.moveY || 0.5) * 2 - 1) * strengthMultiplier;
+          const moveX = (output.moveX || 0.5) * 2 - 1;
+          const moveY = (output.moveY || 0.5) * 2 - 1;
           
           player.brain.lastOutput = { x: moveX, y: moveY };
 
-          // Adjust maximum distances based on role and strength
-          let maxDistance = 50 * strengthMultiplier;
+          let maxDistance = 50;
           const distanceToBall = Math.sqrt(
             Math.pow(ball.position.x - player.position.x, 2) +
             Math.pow(ball.position.y - player.position.y, 2)
@@ -135,13 +123,13 @@ const usePlayerMovement = ({
 
           switch (player.role) {
             case 'defender':
-              maxDistance = distanceToBall < 150 ? 96 * strengthMultiplier : 60 * strengthMultiplier;
+              maxDistance = distanceToBall < 150 ? 96 : 60;
               break;
             case 'midfielder':
-              maxDistance = distanceToBall < 200 ? 120 * strengthMultiplier : 80 * strengthMultiplier;
+              maxDistance = distanceToBall < 200 ? 120 : 80;
               break;
             case 'forward':
-              maxDistance = distanceToBall < 250 ? 200 * strengthMultiplier : 120 * strengthMultiplier;
+              maxDistance = distanceToBall < 250 ? 200 : 120;
               break;
           }
 
@@ -177,7 +165,7 @@ const usePlayerMovement = ({
         }
       })
     );
-  }, [ball, gameReady, setPlayers, players.length]);
+  }, [ball, gameReady, setPlayers]);
 
   return { updatePlayerPositions };
 };

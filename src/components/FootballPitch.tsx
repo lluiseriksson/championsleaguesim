@@ -25,7 +25,6 @@ const FootballPitch: React.FC = () => {
   // Update team names when players are initialized
   React.useEffect(() => {
     if (players.length > 0) {
-      console.log("Players array updated, updating team names", players.length);
       const redTeamPlayer = players.find(p => p.team === 'red');
       const blueTeamPlayer = players.find(p => p.team === 'blue');
       
@@ -46,34 +45,6 @@ const FootballPitch: React.FC = () => {
     ball, 
     gameReady 
   });
-
-  // Add debug outputs
-  React.useEffect(() => {
-    console.log("FootballPitch state:", { 
-      playersCount: players.length, 
-      gameReady 
-    });
-
-    if (players.length > 0) {
-      // Log the first player of each team for debugging
-      const redPlayer = players.find(p => p.team === 'red');
-      const bluePlayer = players.find(p => p.team === 'blue');
-      console.log("Sample players:", { 
-        red: redPlayer ? 
-          { 
-            role: redPlayer.role, 
-            position: redPlayer.position,
-            strengthMultiplier: redPlayer.strengthMultiplier 
-          } : 'none',
-        blue: bluePlayer ? 
-          { 
-            role: bluePlayer.role, 
-            position: bluePlayer.position,
-            strengthMultiplier: bluePlayer.strengthMultiplier 
-          } : 'none' 
-      });
-    }
-  }, [players.length, gameReady]);
 
   if (!gameReady) {
     return <LoadingState setPlayers={setPlayers} setGameReady={setGameReady} />;
