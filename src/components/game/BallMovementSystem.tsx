@@ -9,6 +9,7 @@ interface BallMovementSystemProps {
   players: Player[];
   checkGoal: (position: Position) => 'red' | 'blue' | null;
   onBallTouch: (player: Player) => void;
+  tournamentMode?: boolean;
 }
 
 // Re-export the hook as useBallMovementSystem for backwards compatibility

@@ -1,7 +1,14 @@
 
 import React from 'react';
-import { Player, Ball, Position, PITCH_WIDTH, PITCH_HEIGHT, BALL_RADIUS } from '../../types/football';
+import { Player, Ball, Position } from '../../types/football';
 import { handleBallPhysics } from './useBallPhysics';
+import { useBallCollisionTracking } from './useBallCollisionTracking';
+import { useBallGoalDetection } from './useBallGoalDetection';
+import { 
+  checkBallStuckInPlace, 
+  applyRandomKick, 
+  calculateBallSpeed 
+} from './useBallInitialization';
 
 interface BallMovementProps {
   ball: Ball;
@@ -26,75 +33,41 @@ export const useBallMovement = ({
     fieldPlayers: players.filter(p => p.role !== 'goalkeeper')
   }), [players]);
 
-  // Track last collision time to prevent multiple collisions in a short time
-  const lastCollisionTimeRef = React.useRef(0);
+  // Use collision tracking hook
+  const { 
+    lastCollisionTimeRef, 
+    lastKickPositionRef, 
+    noMovementTimeRef, 
+    lastPositionRef 
+  } = useBallCollisionTracking();
   
-  // Track the last position the ball was kicked from to prevent "stuck" situations
-  const lastKickPositionRef = React.useRef<Position | null>(null);
-  
-  // Track time without movement to add a random kick if needed
-  const noMovementTimeRef = React.useRef(0);
-  const lastPositionRef = React.useRef<Position | null>(null);
+  // Use goal detection hook
+  const { handleGoalCheck } = useBallGoalDetection({ checkGoal, tournamentMode });
 
   const updateBallPosition = React.useCallback(() => {
     setBall(currentBall => {
       // Check current ball speed
-      const currentSpeed = Math.sqrt(
-        currentBall.velocity.x * currentBall.velocity.x + 
-        currentBall.velocity.y * currentBall.velocity.y
-      );
+      const currentSpeed = calculateBallSpeed(currentBall.velocity);
       
       // Detect if ball is stuck in same position
-      if (lastPositionRef.current) {
-        const dx = currentBall.position.x - lastPositionRef.current.x;
-        const dy = currentBall.position.y - lastPositionRef.current.y;
-        const positionDelta = Math.sqrt(dx * dx + dy * dy);
-        
-        if (positionDelta < 0.1) {
-          noMovementTimeRef.current += 1;
-          
-          // If ball hasn't moved for a while, give it a random kick
-          if (noMovementTimeRef.current > 20) {
-            // Log less in tournament mode to reduce memory usage
-            if (!tournamentMode) {
-              console.log("Ball stuck in place, giving it a random kick");
-            }
-            noMovementTimeRef.current = 0;
-            
-            // Random direction but not completely random
-            return {
-              ...currentBall,
-              position: currentBall.position,
-              velocity: {
-                x: (Math.random() * 6) - 3,
-                y: (Math.random() * 6) - 3
-              }
-            };
-          }
-        } else {
-          // Reset counter if the ball is moving
-          noMovementTimeRef.current = 0;
-        }
-      }
+      const isStuck = checkBallStuckInPlace(
+        currentBall.position, 
+        lastPositionRef.current, 
+        noMovementTimeRef
+      );
       
       // Update last position reference
       lastPositionRef.current = { ...currentBall.position };
       
+      // If ball is stuck, give it a random kick
+      if (isStuck) {
+        return applyRandomKick(currentBall, tournamentMode);
+      }
+      
       // If ball has zero velocity (should only happen at game start/reset),
       // give it a small push in a random direction
       if (currentSpeed === 0) {
-        // Log less in tournament mode to reduce memory usage
-        if (!tournamentMode) {
-          console.log("Ball has zero velocity, giving it an initial push");
-        }
-        return {
-          ...currentBall,
-          position: currentBall.position,
-          velocity: {
-            x: (Math.random() * 6) - 3,
-            y: (Math.random() * 6) - 3
-          }
-        };
+        return applyRandomKick(currentBall, tournamentMode);
       }
       
       // Calculate new position based on current velocity
@@ -104,27 +77,9 @@ export const useBallMovement = ({
       };
 
       // First check if a goal was scored
-      const goalScored = checkGoal(newPosition);
+      const { goalScored, updatedBall } = handleGoalCheck(currentBall, newPosition);
       if (goalScored) {
-        // Log less in tournament mode to reduce memory usage
-        if (!tournamentMode) {
-          console.log(`Goal detected for team ${goalScored}`);
-        }
-        // Reset ball position to center with a significant initial velocity
-        return {
-          ...currentBall,
-          position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
-          velocity: { 
-            x: goalScored === 'red' ? 5 : -5, 
-            y: (Math.random() - 0.5) * 5
-          },
-          bounceDetection: {
-            consecutiveBounces: 0,
-            lastBounceTime: 0,
-            lastBounceSide: '',
-            sideEffect: false
-          }
-        };
+        return updatedBall;
       }
 
       // Handle ball collisions and movement
@@ -138,7 +93,14 @@ export const useBallMovement = ({
         lastKickPositionRef
       );
     });
-  }, [setBall, checkGoal, goalkeepers, fieldPlayers, onBallTouch, tournamentMode]);
+  }, [
+    setBall, 
+    goalkeepers, 
+    fieldPlayers, 
+    onBallTouch, 
+    tournamentMode, 
+    handleGoalCheck
+  ]);
 
   return { updateBallPosition };
 };
