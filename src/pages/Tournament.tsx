@@ -411,31 +411,6 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
                 </>
               )}
             </Button>
-            {!autoSimulation && (
-              <>
-                <Button 
-                  onClick={playRoundWithSimulation} 
-                  className="bg-gray-600 hover:bg-gray-700"
-                  disabled={autoSimulation}
-                >
-                  Simular {currentRound === 7 ? "Final" : "Ronda " + currentRound}
-                </Button>
-                <Button 
-                  onClick={() => {
-                    const matchToPlay = matches.find(
-                      m => m.round === currentRound && !m.played && m.teamA && m.teamB
-                    );
-                    if (matchToPlay) {
-                      playMatch(matchToPlay);
-                    }
-                  }} 
-                  className="bg-green-600 hover:bg-green-700"
-                  disabled={autoSimulation}
-                >
-                  Jugar Partido
-                </Button>
-              </>
-            )}
           </div>
         ) : (
           <div className="flex items-center gap-4">
