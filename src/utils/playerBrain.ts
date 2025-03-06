@@ -1,5 +1,6 @@
 import { NeuralNet, Player, TeamContext, Ball, Position } from '../types/football';
 import { calculateDistance } from './neuralCore';
+import { isPassingLaneOpen } from './movementConstraints';
 
 // Re-export all functions from their respective files
 export { createPlayerBrain, normalizeValue } from './neuralCore';
