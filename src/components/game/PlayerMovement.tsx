@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Player, Ball, PITCH_WIDTH, PITCH_HEIGHT, NeuralNet } from '../../types/football';
 import { moveGoalkeeper } from '../../utils/goalkeeperLogic';
@@ -312,8 +313,8 @@ const usePlayerMovement = ({
             };
           }
           
-          const gameTimeMinutes = gameTime || 0;
-          const earlyGameBonus = gameTimeMinutes < 10 ? 0.2 : 0;
+          const currentGameTimeMinutes = gameTime || 0;
+          const earlyGameBonus = currentGameTimeMinutes < 10 ? 0.2 : 0;
           const neuralNetworkThreshold = (player.role === 'defender' ? 0.6 : 0.65) - earlyGameBonus;
           const useNeuralNetwork = Math.random() > neuralNetworkThreshold;
           
@@ -332,7 +333,7 @@ const usePlayerMovement = ({
               player.targetPosition,
               newPosition,
               player.role,
-              gameTimeMinutes
+              currentGameTimeMinutes
             );
             
             newPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, newPosition.x));
@@ -380,9 +381,9 @@ const usePlayerMovement = ({
           const dy = targetY - player.position.y;
           const dist = Math.sqrt(dx*dx + dy*dy);
           
-          const gameTimeMinutes = gameTime || 0;
-          const earlyGameSpeedBonus = gameTimeMinutes < 5 ? 0.5 : 
-                                     gameTimeMinutes < 15 ? 0.3 : 0;
+          const timeMinutes = gameTime || 0;
+          const earlyGameSpeedBonus = timeMinutes < 5 ? 0.5 : 
+                                     timeMinutes < 15 ? 0.3 : 0;
           
           let moveSpeed = 2.2 + earlyGameSpeedBonus;
           if (player.role === 'defender') {
@@ -410,7 +411,7 @@ const usePlayerMovement = ({
             player.targetPosition,
             proposedPosition,
             player.role,
-            gameTimeMinutes
+            timeMinutes
           );
           
           proposedPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, proposedPosition.x));
