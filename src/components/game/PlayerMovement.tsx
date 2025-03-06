@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Player, Ball, Position, PITCH_WIDTH, PITCH_HEIGHT, NeuralNet } from '../../types/football';
 import { moveGoalkeeper } from '../../utils/playerBrain';
@@ -12,6 +11,7 @@ import { isNetworkValid } from '../../utils/neuralHelpers';
 import { validatePlayerBrain, createTacticalInput } from '../../utils/neural/networkValidator';
 import { constrainMovementToRadius } from '../../utils/movementConstraints';
 import { calculateCollisionAvoidance } from '../../hooks/game/useTeamCollisions';
+import { normalizeCoordinates, denormalizeCoordinates, normalizeVelocity } from '../../utils/gamePhysics';
 
 interface PlayerMovementProps {
   players: Player[];
@@ -142,10 +142,14 @@ const usePlayerMovement = ({
         return null;
       }
       
-      const normalizedBallX = ball.position.x / PITCH_WIDTH;
-      const normalizedBallY = ball.position.y / PITCH_HEIGHT;
-      const normalizedPlayerX = player.position.x / PITCH_WIDTH;
-      const normalizedPlayerY = player.position.y / PITCH_HEIGHT;
+      const normalizedBallPosition = normalizeCoordinates(ball.position, player.team);
+      const normalizedPlayerPosition = normalizeCoordinates(player.position, player.team);
+      const normalizedBallVelocity = normalizeVelocity(ball.velocity, player.team);
+      
+      const normalizedBallX = normalizedBallPosition.x / PITCH_WIDTH;
+      const normalizedBallY = normalizedBallPosition.y / PITCH_HEIGHT;
+      const normalizedPlayerX = normalizedPlayerPosition.x / PITCH_WIDTH;
+      const normalizedPlayerY = normalizedPlayerPosition.y / PITCH_HEIGHT;
       
       const input = {
         ballX: normalizedBallX,
@@ -197,8 +201,8 @@ const usePlayerMovement = ({
         pressureResistance: 0.5,
         recoveryPosition: 0.5,
         transitionSpeed: 0.5,
-        ballVelocityX: ball.velocity.x / 10,
-        ballVelocityY: ball.velocity.y / 10
+        ballVelocityX: normalizedBallVelocity.x / 10,
+        ballVelocityY: normalizedBallVelocity.y / 10
       };
       
       const output = player.brain.net.run(input);
@@ -215,8 +219,12 @@ const usePlayerMovement = ({
           moveYMultiplier = 3.3;
         }
         
-        const moveX = (output.moveX * 2 - 1) * moveXMultiplier; 
-        const moveY = (output.moveY * 2 - 1) * moveYMultiplier;
+        let moveX = (output.moveX * 2 - 1) * moveXMultiplier;
+        let moveY = (output.moveY * 2 - 1) * moveYMultiplier;
+        
+        if (player.team === 'blue') {
+          moveX = -moveX;
+        }
         
         const result = { x: moveX, y: moveY };
         

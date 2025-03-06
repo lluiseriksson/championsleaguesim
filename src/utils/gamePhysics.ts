@@ -3,6 +3,55 @@ import { Position, PLAYER_RADIUS, BALL_RADIUS, PITCH_WIDTH, PITCH_HEIGHT } from 
 const MAX_BALL_SPEED = 18; // Keeping higher speed for powerful shots
 const MIN_BALL_SPEED = 8.4; // Doubled from 4.2 to 8.4
 
+// Helper functions for coordinate mirroring
+export const normalizeCoordinates = (position: Position, team: 'red' | 'blue'): Position => {
+  // For blue team (playing right to left), flip the x-coordinate to normalize to red team's perspective
+  if (team === 'blue') {
+    return {
+      x: PITCH_WIDTH - position.x,
+      y: position.y
+    };
+  }
+  // Red team coordinates remain unchanged as they're our reference frame
+  return { ...position };
+};
+
+export const denormalizeCoordinates = (normalizedPosition: Position, team: 'red' | 'blue'): Position => {
+  // For blue team, flip the x-coordinate back to their original perspective
+  if (team === 'blue') {
+    return {
+      x: PITCH_WIDTH - normalizedPosition.x,
+      y: normalizedPosition.y
+    };
+  }
+  // Red team coordinates remain unchanged
+  return { ...normalizedPosition };
+};
+
+export const normalizeVelocity = (velocity: Position, team: 'red' | 'blue'): Position => {
+  // For blue team, flip the x-velocity to normalize to red team's perspective
+  if (team === 'blue') {
+    return {
+      x: -velocity.x,
+      y: velocity.y
+    };
+  }
+  // Red team velocities remain unchanged
+  return { ...velocity };
+};
+
+export const denormalizeVelocity = (normalizedVelocity: Position, team: 'red' | 'blue'): Position => {
+  // For blue team, flip the x-velocity back to their original perspective
+  if (team === 'blue') {
+    return {
+      x: -normalizedVelocity.x,
+      y: normalizedVelocity.y
+    };
+  }
+  // Red team velocities remain unchanged
+  return { ...normalizedVelocity };
+};
+
 const limitSpeed = (velocity: Position): Position => {
   const speed = Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
   

@@ -1,5 +1,6 @@
 
 import { Position } from '../../types/football';
+import { normalizeVelocity, denormalizeVelocity } from '../../utils/gamePhysics';
 
 // Increased by 140% from 3.5 to 8.4 (doubled from current 4.2)
 const MIN_BALL_SPEED = 8.4;
@@ -30,4 +31,14 @@ export function constrainBallPosition(position: Position, ballRadius: number, pi
     x: Math.max(ballRadius, Math.min(pitchWidth - ballRadius, position.x)),
     y: Math.max(ballRadius, Math.min(pitchHeight - ballRadius, position.y))
   };
+}
+
+// Team-aware velocity normalization helper (for symmetric gameplay)
+export function normalizeTeamVelocity(velocity: Position, team: 'red' | 'blue'): Position {
+  return normalizeVelocity(velocity, team);
+}
+
+// Team-aware velocity denormalization helper (for symmetric gameplay)
+export function denormalizeTeamVelocity(normalizedVelocity: Position, team: 'red' | 'blue'): Position {
+  return denormalizeVelocity(normalizedVelocity, team);
 }
