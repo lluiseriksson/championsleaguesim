@@ -1,12 +1,11 @@
-
 import { Position, Player } from '../types/football';
 import { calculateDistance } from './neuralCore';
 
 const ROLE_RADIUS_LIMITS = {
-  goalkeeper: 90,    // Increased from 70 for more freedom
-  defender: 190,     // Increased from 150 for more dynamic behavior
-  midfielder: 180,   // Unchanged
-  forward: 250       // Increased from 220 for more passing options
+  goalkeeper: 70,     // Goalkeepers stay close to goal
+  defender: 150,      // Defenders maintain defensive structure
+  midfielder: 180,    // Midfielders have good movement range
+  forward: 220        // Forwards have most freedom to move
 };
 
 export const constrainMovementToRadius = (
