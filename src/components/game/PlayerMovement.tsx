@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Player, Ball, PITCH_WIDTH, PITCH_HEIGHT } from '../../types/football';
 import { moveGoalkeeper } from '../../utils/playerBrain';
@@ -112,8 +111,7 @@ const usePlayerMovement = ({
               y: player.position.y + moveY
             };
             
-            // Updated fallback movement ranges to match neural network movement ranges
-            let maxDistance = 200;
+            let maxDistance = 150;
             const distanceToBall = Math.sqrt(
               Math.pow(ball.position.x - player.position.x, 2) +
               Math.pow(ball.position.y - player.position.y, 2)
@@ -121,13 +119,13 @@ const usePlayerMovement = ({
             
             switch (player.role) {
               case 'defender': 
-                maxDistance = distanceToBall < 150 ? 400 : 200;
+                maxDistance = distanceToBall < 150 ? 300 : 150;
                 break;
               case 'midfielder': 
-                maxDistance = distanceToBall < 200 ? 400 : 200;
+                maxDistance = distanceToBall < 200 ? 300 : 150;
                 break;
               case 'forward': 
-                maxDistance = distanceToBall < 250 ? 400 : 200;
+                maxDistance = distanceToBall < 250 ? 300 : 150;
                 break;
             }
             
@@ -216,7 +214,7 @@ const usePlayerMovement = ({
           
           player.brain.lastOutput = { x: moveX, y: moveY };
 
-          let maxDistance = 200;
+          let maxDistance = 150;
           const distanceToBall = Math.sqrt(
             Math.pow(ball.position.x - player.position.x, 2) +
             Math.pow(ball.position.y - player.position.y, 2)
@@ -224,13 +222,13 @@ const usePlayerMovement = ({
 
           switch (player.role) {
             case 'defender':
-              maxDistance = distanceToBall < 150 ? 400 : 200;
+              maxDistance = distanceToBall < 150 ? 300 : 150;
               break;
             case 'midfielder':
-              maxDistance = distanceToBall < 200 ? 400 : 200;
+              maxDistance = distanceToBall < 200 ? 300 : 150;
               break;
             case 'forward':
-              maxDistance = distanceToBall < 250 ? 400 : 200;
+              maxDistance = distanceToBall < 250 ? 300 : 150;
               break;
           }
 
