@@ -35,7 +35,7 @@ export const checkCollision = (ballPos: Position, playerPos: Position, isGoalkee
   
   // Use a larger collision radius for goalkeepers to improve their effectiveness
   const collisionRadius = isGoalkeeper ? 
-    PLAYER_RADIUS * 1.2 + BALL_RADIUS : // 20% larger radius for goalkeepers
+    PLAYER_RADIUS * 1.4 + BALL_RADIUS : // 40% larger radius for goalkeepers (increased from 20%)
     PLAYER_RADIUS + BALL_RADIUS;
   
   // Add a small buffer to prevent the ball from getting stuck
@@ -58,7 +58,8 @@ export const calculateNewVelocity = (
   ballPosition: Position,
   playerPosition: Position,
   currentVelocity: Position,
-  isGoalkeeper: boolean = false
+  isGoalkeeper: boolean = false,
+  isAngledShot: boolean = false // New parameter for angled shots
 ): Position => {
   const dx = ballPosition.x - playerPosition.x;
   const dy = ballPosition.y - playerPosition.y;
@@ -79,17 +80,20 @@ export const calculateNewVelocity = (
                                  (!isLeftGoalkeeper && currentVelocity.x > 0);
     
     if (ballMovingTowardsGoal) {
+      // Apply extra power for angled shots
+      const angledShotMultiplier = isAngledShot ? 1.4 : 1.0;
+      
       // Calculate horizontal deflection direction (away from the goal)
-      const deflectionX = isLeftGoalkeeper ? 4.5 : -4.5; // Increased power for stronger clearance
+      const deflectionX = isLeftGoalkeeper ? 5.0 * angledShotMultiplier : -5.0 * angledShotMultiplier; 
       
-      // Calculate vertical deflection to push ball away from goal center for better clearances
+      // Calculate vertical deflection to push ball away from goal center
       const verticalOffset = ballPosition.y - centerY;
-      const verticalFactor = Math.sign(verticalOffset) * (1.0 + Math.min(Math.abs(verticalOffset) / 100, 1.0));
+      const verticalFactor = Math.sign(verticalOffset) * (1.2 + Math.min(Math.abs(verticalOffset) / 80, 1.2));
       
-      // Higher base speed for goalkeeper saves
-      const baseSpeed = 14; // Increased from 12
+      // Higher base speed for goalkeeper saves, with bonus for angled shots
+      const baseSpeed = isAngledShot ? 15 : 14;
       
-      console.log(`Goalkeeper SAVE by ${isLeftGoalkeeper ? 'red' : 'blue'} team!`);
+      console.log(`Goalkeeper SAVE by ${isLeftGoalkeeper ? 'red' : 'blue'} team! ${isAngledShot ? '(angled shot)' : ''}`);
       
       return limitSpeed({
         x: deflectionX * baseSpeed,
@@ -102,7 +106,7 @@ export const calculateNewVelocity = (
     const teamDirection = isLeftGoalkeeper ? 1 : -1; // 1 for red (left goalkeeper), -1 for blue (right goalkeeper)
     
     return limitSpeed({
-      x: Math.abs(currentVelocity.x) * teamDirection * 1.5,
+      x: Math.abs(currentVelocity.x) * teamDirection * 1.8, // Increased from 1.5
       y: currentVelocity.y
     });
   }
