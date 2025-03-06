@@ -16,9 +16,17 @@ const PitchLayout: React.FC = () => {
       <div className="absolute left-0 top-1/2 w-4 h-[184px] border-2 border-pitch-lines transform -translate-y-1/2 bg-white/20" />
       <div className="absolute right-0 top-1/2 w-4 h-[184px] border-2 border-pitch-lines transform -translate-y-1/2 bg-white/20" />
       
-      {/* Penalty areas */}
+      {/* Penalty areas (18-yard box) */}
       <div className="absolute left-0 top-1/2 w-36 h-72 border-2 border-pitch-lines transform -translate-y-1/2" />
       <div className="absolute right-0 top-1/2 w-36 h-72 border-2 border-pitch-lines transform -translate-y-1/2" />
+      
+      {/* Goal areas (6-yard box) */}
+      <div className="absolute left-0 top-1/2 w-16 h-36 border-2 border-pitch-lines transform -translate-y-1/2" />
+      <div className="absolute right-0 top-1/2 w-16 h-36 border-2 border-pitch-lines transform -translate-y-1/2" />
+      
+      {/* Penalty arcs */}
+      <div className="absolute left-[72px] top-1/2 w-24 h-24 border-2 border-pitch-lines rounded-full transform -translate-x-1/2 -translate-y-1/2 clip-right" />
+      <div className="absolute right-[72px] top-1/2 w-24 h-24 border-2 border-pitch-lines rounded-full transform -translate-x-1/2 -translate-y-1/2 clip-left" />
       
       {/* Penalty spots */}
       <div className="absolute left-[60px] top-1/2 w-2 h-2 bg-white rounded-full transform -translate-x-1/2 -translate-y-1/2" />
@@ -35,6 +43,16 @@ const PitchLayout: React.FC = () => {
       
       {/* Corner arcs - bottom right */}
       <div className="absolute right-0 bottom-0 w-10 h-10 border-l-2 border-t-2 border-pitch-lines rounded-tl-[10px]" />
+      
+      {/* Custom CSS for clipping the penalty arcs */}
+      <style jsx>{`
+        .clip-right {
+          clip-path: polygon(50% 0%, 100% 0%, 100% 100%, 50% 100%);
+        }
+        .clip-left {
+          clip-path: polygon(0% 0%, 50% 0%, 50% 100%, 0% 100%);
+        }
+      `}</style>
     </div>
   );
 };
