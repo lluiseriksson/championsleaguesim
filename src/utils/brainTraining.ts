@@ -3,6 +3,7 @@ import { saveModel } from './neuralModelService';
 import { calculateNetworkInputs } from './neuralInputs';
 import { calculateDistance } from './neuralCore';
 import { isNetworkValid } from './neuralHelpers';
+import { recordActionOutcome } from './gameContextTracker';
 
 const LEARNING_RATE = 0.1;
 const GOAL_REWARD = 1.5;
@@ -23,7 +24,8 @@ export const updatePlayerBrain = (
   player: Player, 
   context: TeamContext,
   isLastTouchBeforeGoal: boolean = false,
-  isOwnGoal: boolean = false
+  isOwnGoal: boolean = false,
+  gameContext: any = {}
 ): NeuralNet => {
   let rewardFactor = scored ? GOAL_REWARD : MISS_PENALTY;
 
@@ -51,7 +53,14 @@ export const updatePlayerBrain = (
         
         const inputs = calculateNetworkInputs(ball, player, context);
         
-        brain.net.train([{
+        const updatedBrain = recordActionOutcome(
+          brain,
+          'intercept',
+          !scored,
+          inputs
+        );
+        
+        updatedBrain.net.train([{
           input: inputs,
           output: {
             moveX: 0,
@@ -71,6 +80,8 @@ export const updatePlayerBrain = (
             console.error(`Error saving goalkeeper model after goal:`, error)
           );
         }
+        
+        return updatedBrain;
       } catch (error) {
         console.error('Error training goalkeeper neural network:', error);
       }
@@ -157,13 +168,35 @@ export const updatePlayerBrain = (
     
     const inputs = calculateNetworkInputs(ball, player, context);
     
-    brain.net.train([{
+    const success = scored && !isOwnGoal && !wrongDirection;
+    const updatedBrain = recordActionOutcome(
+      brain,
+      lastAction || 'move',
+      success,
+      inputs
+    );
+    
+    let dynamicLearningRate = LEARNING_RATE;
+    
+    if (updatedBrain.successRate) {
+      const actionType = lastAction as keyof typeof updatedBrain.successRate;
+      if (actionType && updatedBrain.successRate[actionType] < 0.3) {
+        dynamicLearningRate *= 1.5;
+        console.log(`Boosting learning rate for ${player.team} ${player.role} due to poor ${actionType} performance`);
+      }
+    }
+    
+    const finalLearningRate = wrongDirection ? 
+      dynamicLearningRate * 5 : 
+      (isOwnGoal ? dynamicLearningRate * 3 : dynamicLearningRate);
+    
+    updatedBrain.net.train([{
       input: inputs,
       output: trainOutput
     }], {
       iterations: wrongDirection ? 10 : (isOwnGoal ? 8 : 2),
       errorThresh: 0.01,
-      learningRate: wrongDirection ? LEARNING_RATE * 5 : (isOwnGoal ? LEARNING_RATE * 3 : LEARNING_RATE)
+      learningRate: finalLearningRate
     });
     
     const saveThreshold = wrongDirection || isOwnGoal ? 0.95 : 0.5;
@@ -172,9 +205,26 @@ export const updatePlayerBrain = (
         console.error(`Error saving model after goal for ${player.team} ${player.role}:`, error)
       );
     }
+    
+    return updatedBrain;
   } catch (error) {
     console.error('Error training neural network:', error);
+    return brain;
   }
-  
+};
+
+export const initializePlayerBrainWithHistory = (brain: NeuralNet): NeuralNet => {
+  if (!brain.actionHistory) {
+    return {
+      ...brain,
+      actionHistory: [],
+      successRate: {
+        shoot: 0.5,
+        pass: 0.5,
+        intercept: 0.5,
+        overall: 0.5
+      }
+    };
+  }
   return brain;
 };

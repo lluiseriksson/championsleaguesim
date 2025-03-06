@@ -1,12 +1,20 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Player, Ball, PITCH_WIDTH, PITCH_HEIGHT } from '../../types/football';
 import { moveGoalkeeper } from '../../utils/playerBrain';
+import { 
+  trackFormation, 
+  trackPossession, 
+  createGameContext 
+} from '../../utils/gameContextTracker';
+import { initializePlayerBrainWithHistory } from '../../utils/brainTraining';
 
 interface PlayerMovementProps {
   players: Player[];
   setPlayers: React.Dispatch<React.SetStateAction<Player[]>>;
   ball: Ball;
   gameReady: boolean;
+  gameTime?: number;
+  score?: { red: number, blue: number };
 }
 
 const calculateExecutionPrecision = (teamElo?: number): number => {
@@ -29,8 +37,36 @@ const usePlayerMovement = ({
   players, 
   setPlayers, 
   ball, 
-  gameReady 
+  gameReady,
+  gameTime = 0,
+  score = { red: 0, blue: 0 }
 }: PlayerMovementProps) => {
+  const [formations, setFormations] = useState({ redFormation: [], blueFormation: [] });
+  const [possession, setPossession] = useState({ team: null, player: null, duration: 0 });
+  
+  useEffect(() => {
+    if (gameReady && players.length > 0) {
+      setPlayers(currentPlayers => 
+        currentPlayers.map(player => ({
+          ...player,
+          brain: initializePlayerBrainWithHistory(player.brain)
+        }))
+      );
+    }
+  }, [gameReady, setPlayers]);
+  
+  useEffect(() => {
+    if (gameReady && players.length > 0) {
+      setFormations(trackFormation(players));
+    }
+  }, [players, gameReady]);
+  
+  useEffect(() => {
+    if (gameReady) {
+      setPossession(prev => trackPossession(ball, players, prev));
+    }
+  }, [ball, players, gameReady]);
+
   const updatePlayerPositions = React.useCallback(() => {
     if (!gameReady) return;
     
@@ -110,6 +146,16 @@ const usePlayerMovement = ({
             };
           }
           
+          const gameContext = createGameContext(
+            gameTime,
+            3600,
+            score,
+            player.team,
+            possession,
+            formations,
+            player
+          );
+          
           const input = {
             ballX: ball.position.x / PITCH_WIDTH,
             ballY: ball.position.y / PITCH_HEIGHT,
@@ -127,7 +173,19 @@ const usePlayerMovement = ({
             isInPassingRange: 0,
             isDefendingRequired: 0,
             teamElo: player.teamElo ? player.teamElo / 3000 : 0.5,
-            eloAdvantage: 0.5
+            eloAdvantage: 0.5,
+            gameTime: gameContext.gameTime,
+            scoreDifferential: gameContext.scoreDifferential,
+            momentum: player.brain.successRate?.overall || 0.5,
+            formationCompactness: 0.5,
+            formationWidth: 0.5,
+            recentSuccessRate: player.brain.successRate?.overall || 0.5,
+            possessionDuration: gameContext.possession?.team === player.team ? 
+              Math.min(1, gameContext.possession.duration / 600) : 0,
+            distanceFromFormationCenter: 0.5,
+            isInFormationPosition: 0.5,
+            teammateDensity: 0.5,
+            opponentDensity: 0.5
           };
 
           const output = player.brain.net.run(input);
@@ -202,9 +260,9 @@ const usePlayerMovement = ({
         }
       })
     );
-  }, [ball, gameReady, setPlayers]);
+  }, [ball, gameReady, setPlayers, formations, possession, gameTime, score]);
 
-  return { updatePlayerPositions };
+  return { updatePlayerPositions, formations, possession };
 };
 
 export default usePlayerMovement;

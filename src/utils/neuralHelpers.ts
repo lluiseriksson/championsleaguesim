@@ -1,4 +1,3 @@
-
 import { Position, NeuralInput, NeuralOutput, TeamContext, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
 import * as brain from 'brain.js';
 
@@ -36,12 +35,19 @@ export const getNearestEntity = (position: Position, entities: Position[]) => {
   return nearest;
 };
 
-// Create neural network input data from game state
+// Enhanced createNeuralInput function with more context
 export const createNeuralInput = (
   ball: { position: Position, velocity: Position },
   player: Position,
   context: TeamContext,
-  teamElo: number = 2000 // Default ELO if none provided
+  teamElo: number = 2000, // Default ELO if none provided
+  gameContext: {
+    gameTime?: number,
+    scoreDifferential?: number,
+    possession?: { team: string, duration: number },
+    teamFormation?: Position[],
+    actionHistory?: Array<{ action: string, success: boolean, timestamp: number }>
+  } = {}
 ): NeuralInput => {
   const normalizedBall = normalizePosition(ball.position);
   const normalizedPlayer = normalizePosition(player);
@@ -63,6 +69,12 @@ export const createNeuralInput = (
   const normalizedTeamElo = teamElo ? teamElo / 3000 : 0.5; // Normalize to 0-1 range assuming max ELO 3000
   const averageElo = 2000;
   const eloAdvantage = (teamElo - averageElo) / 1000; // Normalize to roughly -1 to 1 range
+
+  // Calculate formation metrics
+  const formationMetrics = calculateFormationMetrics(player, teammates);
+  
+  // Calculate recent performance metrics
+  const performanceMetrics = calculatePerformanceMetrics(gameContext.actionHistory || []);
 
   // Return the neural input object with normalized values
   return {
@@ -87,7 +99,113 @@ export const createNeuralInput = (
     isDangerousPosition: 0,
     isBetweenBallAndOwnGoal: 0,
     teamElo: normalizedTeamElo,
-    eloAdvantage: eloAdvantage
+    eloAdvantage: eloAdvantage,
+    
+    // New contextual features
+    gameTime: gameContext.gameTime || 0.5,
+    scoreDifferential: gameContext.scoreDifferential || 0,
+    momentum: performanceMetrics.momentum,
+    formationCompactness: formationMetrics.compactness,
+    formationWidth: formationMetrics.width,
+    recentSuccessRate: performanceMetrics.successRate,
+    possessionDuration: gameContext.possession ? 
+      Math.min(1, gameContext.possession.duration / 600) : 0, // Normalize to 0-1 (max 10 seconds)
+    distanceFromFormationCenter: formationMetrics.distanceFromCenter,
+    isInFormationPosition: formationMetrics.isInPosition,
+    teammateDensity: calculateDensity(player, teammates, 150),
+    opponentDensity: calculateDensity(player, opponents, 150)
+  };
+};
+
+// Calculate team formation metrics
+const calculateFormationMetrics = (playerPos: Position, teammates: Position[]) => {
+  if (!teammates.length) {
+    return {
+      compactness: 0.5,
+      width: 0.5,
+      distanceFromCenter: 0.5,
+      isInPosition: 1
+    };
+  }
+
+  // Calculate the team's formation center
+  const allPositions = [playerPos, ...teammates];
+  const center = {
+    x: allPositions.reduce((sum, pos) => sum + pos.x, 0) / allPositions.length,
+    y: allPositions.reduce((sum, pos) => sum + pos.y, 0) / allPositions.length
+  };
+
+  // Calculate distances from center
+  const distances = allPositions.map(pos => 
+    Math.sqrt(Math.pow(pos.x - center.x, 2) + Math.pow(pos.y - center.y, 2))
+  );
+  
+  // Find the min and max x positions to determine width
+  const xPositions = allPositions.map(pos => pos.x);
+  const minX = Math.min(...xPositions);
+  const maxX = Math.max(...xPositions);
+  const width = (maxX - minX) / PITCH_WIDTH;
+  
+  // Player distance from formation center
+  const playerDistance = Math.sqrt(
+    Math.pow(playerPos.x - center.x, 2) + Math.pow(playerPos.y - center.y, 2)
+  );
+  
+  return {
+    compactness: 1 - Math.min(1, Math.max(0, (Math.max(...distances) / (PITCH_WIDTH/2)))),
+    width: Math.min(1, width),
+    distanceFromCenter: Math.min(1, playerDistance / (PITCH_WIDTH/3)),
+    isInPosition: playerDistance < 100 ? 1 : Math.max(0, 1 - (playerDistance - 100) / 200)
+  };
+};
+
+// Calculate density of entities around a position
+const calculateDensity = (pos: Position, entities: Position[], radius: number): number => {
+  if (!entities.length) return 0;
+  
+  const count = entities.filter(entity => 
+    Math.sqrt(Math.pow(entity.x - pos.x, 2) + Math.pow(entity.y - pos.y, 2)) < radius
+  ).length;
+  
+  return Math.min(1, count / 5); // Normalize to 0-1, max of 5 entities counts as 1.0
+};
+
+// Calculate performance metrics from action history
+const calculatePerformanceMetrics = (actionHistory: Array<{ 
+  action: string, 
+  success: boolean, 
+  timestamp: number 
+}>) => {
+  if (!actionHistory.length) {
+    return {
+      successRate: 0.5,
+      momentum: 0.5
+    };
+  }
+  
+  // Only consider recent actions (last 10)
+  const recentActions = actionHistory.slice(-10);
+  
+  // Calculate success rate
+  const successCount = recentActions.filter(a => a.success).length;
+  const successRate = successCount / recentActions.length;
+  
+  // Calculate momentum (more recent actions have higher weight)
+  let momentumScore = 0;
+  let weightSum = 0;
+  
+  recentActions.forEach((action, index) => {
+    const weight = index + 1; // More recent actions have higher index
+    momentumScore += action.success ? weight : -weight;
+    weightSum += weight;
+  });
+  
+  // Normalize momentum to 0-1 range
+  const normalizedMomentum = 0.5 + (momentumScore / (2 * weightSum));
+  
+  return {
+    successRate,
+    momentum: Math.max(0, Math.min(1, normalizedMomentum))
   };
 };
 
@@ -122,7 +240,19 @@ export const isNetworkValid = (net: brain.NeuralNetwork<NeuralInput, NeuralOutpu
       isDangerousPosition: 0,
       isBetweenBallAndOwnGoal: 0,
       teamElo: 0.5,
-      eloAdvantage: 0
+      eloAdvantage: 0,
+      // New contextual features with default values
+      gameTime: 0.5,
+      scoreDifferential: 0,
+      momentum: 0.5,
+      formationCompactness: 0.5,
+      formationWidth: 0.5,
+      recentSuccessRate: 0.5,
+      possessionDuration: 0,
+      distanceFromFormationCenter: 0.5,
+      isInFormationPosition: 1,
+      teammateDensity: 0.5,
+      opponentDensity: 0.5
     };
 
     // Run the network with test input and check if output is valid

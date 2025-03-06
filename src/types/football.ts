@@ -12,9 +12,10 @@ export interface TeamContext {
   opponentGoal: Position;
 }
 
-// Cambiamos NeuralInput para que cumpla con INeuralNetworkData
+// Updated NeuralInput with more contextual features
 export interface NeuralInput {
-  [key: string]: number; // Añadimos index signature
+  [key: string]: number; // Index signature
+  // Existing spatial features
   ballX: number;
   ballY: number;
   playerX: number;
@@ -30,15 +31,26 @@ export interface NeuralInput {
   isInShootingRange: number;
   isInPassingRange: number;
   isDefendingRequired: number;
-  // Añadimos campos para mejor prevención de autogoles
   distanceToOwnGoal: number;
   angleToOwnGoal: number;
   isFacingOwnGoal: number;
   isDangerousPosition: number;
   isBetweenBallAndOwnGoal: number;
-  // Add team ELO as an input feature
   teamElo: number;
   eloAdvantage: number;
+  
+  // New contextual features
+  gameTime: number;                // Normalized game time (0-1)
+  scoreDifferential: number;       // Normalized score difference (-1 to 1)
+  momentum: number;                // Team momentum indicator (0-1)
+  formationCompactness: number;    // How compact team formation is (0-1)
+  formationWidth: number;          // Width of team formation (0-1)
+  recentSuccessRate: number;       // Success rate of recent actions (0-1)
+  possessionDuration: number;      // How long team has had possession (0-1)
+  distanceFromFormationCenter: number; // How far from team's formation center (0-1)
+  isInFormationPosition: number;   // Whether player is in correct position (0-1)
+  teammateDensity: number;         // Density of teammates around player (0-1)
+  opponentDensity: number;         // Density of opponents around player (0-1)
 }
 
 // Cambiamos NeuralOutput para que cumpla con INeuralNetworkData
@@ -51,10 +63,24 @@ export interface NeuralOutput {
   intercept: number;
 }
 
+// Add historical context to NeuralNet
 export interface NeuralNet {
   net: brain.NeuralNetwork<NeuralInput, NeuralOutput>;
   lastOutput: { x: number; y: number };
   lastAction?: 'move' | 'shoot' | 'pass' | 'intercept';
+  // New properties for tracking performance
+  actionHistory?: {
+    action: string;
+    success: boolean;
+    context: Partial<NeuralInput>;
+    timestamp: number;
+  }[];
+  successRate?: {
+    shoot: number;
+    pass: number;
+    intercept: number;
+    overall: number;
+  };
 }
 
 export type KitType = 'home' | 'away' | 'third';
