@@ -1,4 +1,4 @@
-
+<lov-code>
 import { TeamColors } from './kitTypes';
 
 export const teamKitColors: TeamColors = {
@@ -311,7 +311,7 @@ export const teamKitColors: TeamColors = {
   "Nice": {
     home: { primary: "#FF0000", secondary: "#000000", accent: "#FFFFFF" },
     away: { primary: "#000000", secondary: "#FF0000", accent: "#FFFFFF" },
-    third: { primary: "#0000CD", secondary: "#FF0000", accent: "#000000" },
+    third: { primary: "#0000CD", secondary: "#FF0000", accent: "#000000" }, // Changed third kit to deep blue
     goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
   },
   "Fenerbahçe": {
@@ -326,7 +326,7 @@ export const teamKitColors: TeamColors = {
     third: { primary: "#FF0000", secondary: "#0000FF", accent: "#FFFFFF" },
     goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
   },
-  "Leeds": {
+    "Leeds": {
     home: { primary: "#FFFFFF", secondary: "#0000FF", accent: "#FFFF00" },
     away: { primary: "#0000FF", secondary: "#FFFFFF", accent: "#FFFF00" },
     third: { primary: "#000000", secondary: "#FFFFFF", accent: "#0000FF" },
@@ -371,13 +371,4 @@ export const teamKitColors: TeamColors = {
   "Sevilla": {
     home: { primary: "#FFFFFF", secondary: "#FF0000", accent: "#FFFFFF" },
     away: { primary: "#FF0000", secondary: "#FFFFFF", accent: "#000000" },
-    third: { primary: "#000000", secondary: "#FF0000", accent: "#FFFFFF" },
-    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
-  },
-  "Auxerre": {
-    home: { primary: "#0053A0", secondary: "#FFFFFF", accent: "#0053A0" },
-    away: { primary: "#FFFFFF", secondary: "#0053A0", accent: "#000000" },
-    third: { primary: "#FFD700", secondary: "#0053A0", accent: "#FFFFFF" },
-    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
-  }
-};
+    third: { primary: "#000000",

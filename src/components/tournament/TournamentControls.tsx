@@ -2,6 +2,7 @@
 import React from 'react';
 import { Button } from '../../components/ui/button';
 import { RefreshCw, Play } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface TournamentControlsProps {
   currentRound: number;
@@ -16,8 +17,6 @@ const TournamentControls: React.FC<TournamentControlsProps> = ({
   resetTournament,
   startAutoSimulation
 }) => {
-  console.log("TournamentControls rendered: autoSimulation =", autoSimulation, "currentRound =", currentRound);
-  
   if (currentRound > 7) {
     return (
       <Button 
@@ -44,10 +43,7 @@ const TournamentControls: React.FC<TournamentControlsProps> = ({
       
       {!autoSimulation && (
         <Button 
-          onClick={() => {
-            console.log("Auto simulation button clicked");
-            startAutoSimulation();
-          }}
+          onClick={startAutoSimulation}
           variant="default"
           className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
         >

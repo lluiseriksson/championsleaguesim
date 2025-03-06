@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import TournamentBracket from '../components/TournamentBracket';
 import TournamentHeader from '../components/tournament/TournamentHeader';
 import TournamentControls from '../components/tournament/TournamentControls';
@@ -27,8 +27,6 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
     setPlayingMatch
   } = useTournament(embeddedMode);
 
-  console.log("Tournament rendered: autoSimulation =", autoSimulation, "activeMatch =", activeMatch?.id, "playingMatch =", playingMatch);
-
   return (
     <div className="container mx-auto px-4 py-8">
       <TournamentHeader 
@@ -37,48 +35,48 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
       />
       
       <div className="mb-6 flex items-center justify-between">
-        <TournamentControls
-          currentRound={currentRound}
-          autoSimulation={autoSimulation}
-          resetTournament={resetTournament}
-          startAutoSimulation={startAutoSimulation}
-        />
+        {currentRound <= 7 ? (
+          <TournamentControls
+            currentRound={currentRound}
+            autoSimulation={autoSimulation}
+            resetTournament={resetTournament}
+            startAutoSimulation={startAutoSimulation}
+          />
+        ) : (
+          <TournamentControls
+            currentRound={currentRound}
+            autoSimulation={autoSimulation}
+            resetTournament={resetTournament}
+            startAutoSimulation={startAutoSimulation}
+          />
+        )}
       </div>
       
-      <div className="grid grid-cols-1 gap-8">
-        {/* Always show the bracket */}
-        <div className="overflow-x-auto mb-8">
-          <TournamentBracket 
-            matches={matches} 
-            onMatchClick={(match) => {
-              if (!autoSimulation && match.teamA && match.teamB && !match.played) {
-                if (embeddedMode) {
-                  simulateSingleMatch(match);
-                } else {
-                  playMatch(match);
-                }
+      {playingMatch && activeMatch && activeMatch.teamA && activeMatch.teamB && !embeddedMode ? (
+        <ActiveMatch
+          activeMatch={activeMatch}
+          onBackClick={() => {
+            setActiveMatch(null);
+            setPlayingMatch(false);
+          }}
+          onMatchComplete={handleMatchComplete}
+        />
+      ) : null}
+      
+      <div className="overflow-x-auto">
+        <TournamentBracket 
+          matches={matches} 
+          onMatchClick={(match) => {
+            if (!autoSimulation && match.teamA && match.teamB && !match.played) {
+              if (embeddedMode) {
+                simulateSingleMatch(match);
+              } else {
+                playMatch(match);
               }
-            }}
-            showFullBracket={true}
-          />
-        </div>
-        
-        {/* Show the active match when it exists */}
-        {activeMatch && activeMatch.teamA && activeMatch.teamB && (
-          <div className="border-t pt-8">
-            <h3 className="text-xl font-bold mb-4">Current Match</h3>
-            <ActiveMatch
-              activeMatch={activeMatch}
-              onBackClick={() => {
-                if (!autoSimulation) {
-                  setActiveMatch(null);
-                  setPlayingMatch(false);
-                }
-              }}
-              onMatchComplete={handleMatchComplete}
-            />
-          </div>
-        )}
+            }
+          }}
+          showFullBracket={true}
+        />
       </div>
     </div>
   );
