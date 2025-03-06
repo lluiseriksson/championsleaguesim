@@ -114,6 +114,14 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
   const ballToOwnGoalDistance = calculateDistance(ball.position, context.ownGoal);
   const isDefendingRequired = ballToOwnGoalDistance < 300 ? 1 : 0;
   
+  // Add team ELO as an input
+  // Normalize team ELO to be between 0 and 1, assuming ELO ranges from 1000 to 3000
+  const normalizedTeamElo = player.teamElo ? normalizeValue(player.teamElo, 1000, 3000) : 0.5;
+  
+  // Calculate ELO advantage compared to average opponent ELO (2000 as default)
+  const averageElo = 2000; // Default average ELO if none provided
+  const eloAdvantage = player.teamElo ? normalizeValue(player.teamElo - averageElo, -1000, 1000) : 0.5;
+  
   return {
     ballX: normalizedBallX,
     ballY: normalizedBallY,
@@ -135,6 +143,9 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
     angleToOwnGoal: normalizedAngleToOwnGoal,
     isFacingOwnGoal,
     isDangerousPosition,
-    isBetweenBallAndOwnGoal
+    isBetweenBallAndOwnGoal,
+    // Add team ELO inputs
+    teamElo: normalizedTeamElo,
+    eloAdvantage: eloAdvantage
   };
 };

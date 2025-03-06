@@ -1,4 +1,3 @@
-
 import * as brain from 'brain.js';
 
 export interface Position {
@@ -37,6 +36,9 @@ export interface NeuralInput {
   isFacingOwnGoal: number;
   isDangerousPosition: number;
   isBetweenBallAndOwnGoal: number;
+  // Add team ELO as an input feature
+  teamElo: number;
+  eloAdvantage: number;
 }
 
 // Cambiamos NeuralOutput para que cumpla con INeuralNetworkData

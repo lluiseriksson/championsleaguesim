@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Player, Ball, PITCH_WIDTH, PITCH_HEIGHT } from '../../types/football';
 import { moveGoalkeeper } from '../../utils/playerBrain';
@@ -10,7 +9,22 @@ interface PlayerMovementProps {
   gameReady: boolean;
 }
 
-// Changed from React.FC to a custom hook
+const calculateExecutionPrecision = (teamElo?: number): number => {
+  if (!teamElo) return 1.0;
+  
+  const basePrecision = 0.7;
+  const eloPrecisionBonus = Math.max(0, (teamElo - 1500) / 100) * 0.02;
+  const precision = Math.min(0.98, basePrecision + eloPrecisionBonus);
+  
+  return precision;
+};
+
+const applyExecutionNoise = (value: number, precision: number): number => {
+  const noiseAmplitude = 1 - precision;
+  const noise = (Math.random() * 2 - 1) * noiseAmplitude;
+  return value + noise;
+};
+
 const usePlayerMovement = ({ 
   players, 
   setPlayers, 
@@ -23,8 +37,13 @@ const usePlayerMovement = ({
     setPlayers(currentPlayers => 
       currentPlayers.map(player => {
         try {
+          const opposingTeamElo = currentPlayers
+            .filter(p => p.team !== player.team)
+            .reduce((sum, p) => sum + (p.teamElo || 2000), 0) / 
+            currentPlayers.filter(p => p.team !== player.team).length;
+            
           if (player.role === 'goalkeeper') {
-            const movement = moveGoalkeeper(player, ball);
+            const movement = moveGoalkeeper(player, ball, opposingTeamElo);
             const newPosition = {
               x: player.position.x + movement.x,
               y: player.position.y + movement.y
@@ -106,12 +125,23 @@ const usePlayerMovement = ({
             nearestOpponentAngle: 0,
             isInShootingRange: 0,
             isInPassingRange: 0,
-            isDefendingRequired: 0
+            isDefendingRequired: 0,
+            teamElo: player.teamElo ? player.teamElo / 3000 : 0.5,
+            eloAdvantage: 0.5
           };
 
           const output = player.brain.net.run(input);
-          const moveX = (output.moveX || 0.5) * 2 - 1;
-          const moveY = (output.moveY || 0.5) * 2 - 1;
+          
+          const executionPrecision = calculateExecutionPrecision(player.teamElo);
+          
+          let moveX = (output.moveX || 0.5) * 2 - 1;
+          let moveY = (output.moveY || 0.5) * 2 - 1;
+          
+          moveX = applyExecutionNoise(moveX, executionPrecision);
+          moveY = applyExecutionNoise(moveY, executionPrecision);
+          
+          moveX = Math.max(-1, Math.min(1, moveX));
+          moveY = Math.max(-1, Math.min(1, moveY));
           
           player.brain.lastOutput = { x: moveX, y: moveY };
 
@@ -133,9 +163,12 @@ const usePlayerMovement = ({
               break;
           }
 
+          const eloSpeedBonus = player.teamElo ? Math.min(0.5, Math.max(0, (player.teamElo - 1500) / 1000)) : 0;
+          const moveSpeed = 2 + eloSpeedBonus;
+
           const newPosition = {
-            x: player.position.x + moveX * 2,
-            y: player.position.y + moveY * 2,
+            x: player.position.x + moveX * moveSpeed,
+            y: player.position.y + moveY * moveSpeed,
           };
 
           const distanceFromStart = Math.sqrt(
@@ -154,6 +187,10 @@ const usePlayerMovement = ({
 
           newPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, newPosition.x));
           newPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, newPosition.y));
+
+          if (player.teamElo && player.teamElo > 2200) {
+            console.log(`High ELO player ${player.team} #${player.id} moved with precision ${executionPrecision.toFixed(2)}`);
+          }
 
           return {
             ...player,
