@@ -33,10 +33,12 @@ export const checkCollision = (ballPos: Position, playerPos: Position, isGoalkee
   const dy = ballPos.y - playerPos.y;
   const distance = Math.sqrt(dx * dx + dy * dy);
   
-  // Restore more reasonable collision radius for goalkeepers to balance scoring
-  const collisionRadius = isGoalkeeper ? 
-    PLAYER_RADIUS * 1.04 + BALL_RADIUS : // Decreased from 1.08 to 1.04 (50% reduction in the extended part)
-    PLAYER_RADIUS + BALL_RADIUS;
+  // Standardize the reach to 5 units total for both field players and goalkeepers
+  // Base reach is calculated as 5 units minus the existing BALL_RADIUS
+  const standardReach = 5 - BALL_RADIUS; 
+  
+  // Calculate final collision radius
+  const collisionRadius = BALL_RADIUS + standardReach;
   
   // Add a small buffer to prevent the ball from getting stuck
   return distance <= collisionRadius + 0.5;
