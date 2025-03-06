@@ -53,18 +53,35 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
   const getTextColor = (player: Player) => {
     // If the player has a teamName and kitType, check the color brightness
     if (player.teamName && player.kitType) {
-      const hexColor = getTeamKitColor(player.teamName, player.kitType as KitType);
-      
-      // Parse the hex color to RGB
-      const rgb = parseHexColor(hexColor);
-      
-      // Calculate the perceived brightness using the luminance formula
-      // This formula gives more weight to green as human eyes are more sensitive to it
-      const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
-      
-      // Use black text on light backgrounds, white text on dark backgrounds
-      // Using a threshold of 0.5 for better contrast
-      return luminance > 0.5 ? 'text-black font-extrabold' : 'text-white font-extrabold';
+      // For goalkeepers, we use a different color calculation since their kits are often inverted
+      if (player.role === 'goalkeeper') {
+        // For goalkeepers we prefer to use the secondary color which is usually more distinct
+        const kitColors = getTeamKitColors(player.teamName, player.kitType as KitType);
+        const hexColor = kitColors.secondary; // Use secondary color for checking goalkeeper text color
+        
+        // Parse the hex color to RGB
+        const rgb = parseHexColor(hexColor);
+        
+        // Calculate the perceived brightness using the luminance formula
+        const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+        
+        // Use black text on light backgrounds, white text on dark backgrounds
+        return luminance > 0.5 ? 'text-black font-extrabold' : 'text-white font-extrabold';
+      } else {
+        // For field players, use the primary kit color
+        const hexColor = getTeamKitColor(player.teamName, player.kitType as KitType);
+        
+        // Parse the hex color to RGB
+        const rgb = parseHexColor(hexColor);
+        
+        // Calculate the perceived brightness using the luminance formula
+        // This formula gives more weight to green as human eyes are more sensitive to it
+        const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+        
+        // Use black text on light backgrounds, white text on dark backgrounds
+        // Using a threshold of 0.5 for better contrast
+        return luminance > 0.5 ? 'text-black font-extrabold' : 'text-white font-extrabold';
+      }
     }
     
     // Default to white text for legacy gradient backgrounds
