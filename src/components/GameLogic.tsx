@@ -50,22 +50,9 @@ const GameLogic: React.FC<GameLogicProps> = ({
   });
 
   // Goal notification system
-  const { totalGoalsRef } = useGameLoop({
-    players,
-    updatePlayerPositions,
-    updateBallPosition: () => {}, // Will be overridden below
-    incrementSyncCounter: () => {}, // Will be overridden below
-    syncModels: () => {}, // Will be overridden below
-    checkLearningProgress: () => {}, // Will be overridden below
-    ball,
-    score,
-    tournamentMode
-  });
-
-  // Goal notification hook
-  const { handleGoalScored } = useGoalNotification({
+  useGoalNotification({
     tournamentMode,
-    totalGoalsRef,
+    totalGoalsRef: React.useRef(0),
     ball,
     setBall
   });
@@ -80,9 +67,8 @@ const GameLogic: React.FC<GameLogicProps> = ({
       if (scoringTeam) {
         // If a goal is scored, process it immediately
         processGoal(scoringTeam);
-        
-        // Handle goal notification and ball reset
-        return handleGoalScored(scoringTeam);
+        console.log(`Goal scored by ${scoringTeam} team!`);
+        return scoringTeam;
       }
       return null;
     },
@@ -100,8 +86,26 @@ const GameLogic: React.FC<GameLogicProps> = ({
     tournamentMode
   });
 
+  // Force initial ball movement on component mount
+  React.useEffect(() => {
+    if (players.length > 0 && ball) {
+      console.log("Forcing initial ball and player movement");
+      // Apply a strong initial movement to the ball
+      setBall(currentBall => ({
+        ...currentBall,
+        velocity: {
+          x: Math.random() > 0.5 ? 8 : -8,
+          y: (Math.random() - 0.5) * 8
+        }
+      }));
+      
+      // Force an initial player position update
+      updatePlayerPositions();
+    }
+  }, [players.length, ball, setBall, updatePlayerPositions]);
+
   // Run game loop with actual functions
-  useGameLoop({
+  const { totalGoalsRef } = useGameLoop({
     players,
     updatePlayerPositions,
     updateBallPosition,

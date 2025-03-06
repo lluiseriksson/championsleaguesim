@@ -46,6 +46,9 @@ export const useBallMovement = ({
 
   // Reference to store previous ball position for tracking
   const previousBallPositionRef = React.useRef<Position>({ ...ball.position });
+  
+  // Initialization flag
+  const initialMovementAppliedRef = React.useRef(false);
 
   const updateBallPosition = React.useCallback(() => {
     setBall(currentBall => {
@@ -54,6 +57,18 @@ export const useBallMovement = ({
       
       // Check current ball speed
       const currentSpeed = calculateBallSpeed(currentBall.velocity);
+      
+      // If this is the first call and the ball isn't moving much,
+      // give it a strong initial kick to ensure movement
+      if (!initialMovementAppliedRef.current && currentSpeed < 5) {
+        initialMovementAppliedRef.current = true;
+        console.log("Applying initial ball movement with speed boost");
+        const kickedBall = applyRandomKick(currentBall, tournamentMode);
+        return {
+          ...kickedBall,
+          previousPosition: previousPosition
+        };
+      }
       
       // Detect if ball is stuck in same position
       const isStuck = checkBallStuckInPlace(

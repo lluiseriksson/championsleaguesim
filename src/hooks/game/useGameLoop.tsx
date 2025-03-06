@@ -56,7 +56,7 @@ export const useGameLoop = ({
       return;
     }
     
-    console.log(`Game loop started with ${players.length} players`);
+    console.log(`Game loop started with ${players.length} players, ball velocity: ${ball.velocity.x.toFixed(2)},${ball.velocity.y.toFixed(2)}`);
     let frameId: number;
     let lastTime = performance.now();
     const TIME_STEP = 16; // 60 FPS target
@@ -99,10 +99,15 @@ export const useGameLoop = ({
           checkLearningProgress();
         }, 5000); // Check after 5 seconds to allow initial loading
       }
+      
+      // Force immediate update of player positions and ball position
+      updatePlayerPositions();
+      updateBallPosition();
+      console.log("Initial positions updated on game start");
     }
     
     frameId = requestAnimationFrame(gameLoop);
-    console.log("Game loop initialized");
+    console.log("Game loop initialized with ball speed:", calculateBallSpeed(ball.velocity));
 
     // Debug timer to log ball state every 5 seconds (less frequent in tournament mode)
     const debugInterval = setInterval(() => {
@@ -143,6 +148,11 @@ export const useGameLoop = ({
     tournamentMode,
     initialized
   ]);
+  
+  // Helper function to calculate ball speed
+  const calculateBallSpeed = (velocity: {x: number, y: number}): number => {
+    return Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+  };
 
   return { totalGoalsRef };
 };
