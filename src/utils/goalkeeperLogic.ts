@@ -177,8 +177,8 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
   // REDUCED: Keeper vertical movement range - stay closer to goal center
   const randomYOffset = (Math.random() * 30 - 15); // Reduced from ±25 to ±15
   const limitedTargetY = Math.max(
-    PITCH_HEIGHT/2 - GOAL_HEIGHT/2 - 35 + randomYOffset, // Reduced from 60 to 35
-    Math.min(PITCH_HEIGHT/2 + GOAL_HEIGHT/2 + 35 + randomYOffset, targetY) // Reduced from 60 to 35
+    PITCH_HEIGHT/2 - GOAL_HEIGHT/2 - 20 + randomYOffset, // Reduced from 35 to 20
+    Math.min(PITCH_HEIGHT/2 + GOAL_HEIGHT/2 + 20 + randomYOffset, targetY) // Reduced from 35 to 20
   );
   
   // Calculate vertical movement with increased responsiveness
