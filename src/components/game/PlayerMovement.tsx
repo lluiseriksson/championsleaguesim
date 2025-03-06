@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { Player, Ball, PITCH_WIDTH, PITCH_HEIGHT, NeuralNet } from '../../types/football';
+import { Player, Ball, Position, PITCH_WIDTH, PITCH_HEIGHT, NeuralNet } from '../../types/football';
 import { moveGoalkeeper } from '../../utils/playerBrain';
 import { 
   trackFormation, 
