@@ -1,8 +1,6 @@
-
 import { Ball, Player, TeamContext, NeuralInput } from '../types/football';
 import { calculateDistance, normalizeValue } from './neuralCore';
 
-// Calculate inputs for the neural network
 export const calculateNetworkInputs = (ball: Ball, player: Player, context: TeamContext): NeuralInput => {
   // Normalize values for the neural network (between 0 and 1)
   const normalizedBallX = normalizeValue(ball.position.x, 0, 800);
@@ -122,6 +120,21 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
   const averageElo = 2000; // Default average ELO if none provided
   const eloAdvantage = player.teamElo ? normalizeValue(player.teamElo - averageElo, -1000, 1000) : 0.5;
   
+  // Calculate additional contextual inputs
+  const gameTime = context.gameTime || 0.5;
+  const scoreDifferential = context.scoreDiff || 0;
+  const momentum = player.brain.successRate?.overall || 0.5;
+  
+  // Formation-based calculations
+  const formationCompactness = context.formationCompactness || 0.5;
+  const formationWidth = context.formationWidth || 0.5;
+  const distanceFromFormationCenter = context.distanceFromCenter || 0.5;
+  const isInFormationPosition = context.isInPosition ? 1 : 0;
+  
+  // Density calculations
+  const teammateDensity = context.teammateDensity || 0.5;
+  const opponentDensity = context.opponentDensity || 0.5;
+
   return {
     ballX: normalizedBallX,
     ballY: normalizedBallY,
@@ -149,16 +162,16 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
     eloAdvantage: eloAdvantage,
     
     // Add new contextual features with default values
-    gameTime: 0.5,                        // Normalized game time (default middle)
-    scoreDifferential: 0,                 // Default no score difference
-    momentum: 0.5,                        // Default neutral momentum
-    formationCompactness: 0.5,            // Default medium compactness
-    formationWidth: 0.5,                  // Default medium formation width
-    recentSuccessRate: 0.5,               // Default neutral success rate
-    possessionDuration: 0,                // Default no possession
-    distanceFromFormationCenter: 0.5,     // Default medium distance
-    isInFormationPosition: 1,             // Default in position
-    teammateDensity: 0.5,                 // Default medium density
-    opponentDensity: 0.5                  // Default medium density
+    gameTime,
+    scoreDifferential,
+    momentum,
+    formationCompactness,
+    formationWidth,
+    recentSuccessRate: momentum,
+    possessionDuration: context.possessionDuration || 0,
+    distanceFromFormationCenter,
+    isInFormationPosition,
+    teammateDensity,
+    opponentDensity
   };
 };
