@@ -1,3 +1,4 @@
+
 import { KitType, TeamKit } from './kitTypes';
 import { teamKitColors } from './teamColorsData';
 import { 
@@ -10,10 +11,14 @@ import {
   areColorsSufficientlyDifferent,
   areRedColorsTooSimilar
 } from './colorUtils';
-import { teamHasRedPrimaryColor } from './kitConflictChecker';
+import { 
+  teamHasRedPrimaryColor, 
+  checkForestVsEspanyolConflict 
+} from './kitConflictChecker';
 
 const kitSelectionCache: Record<string, KitType> = {};
 
+// Updated to conditionally handle Forest vs Espanyol based on actual color analysis
 const teamConflictOverrides: Record<string, Record<string, KitType>> = {
   'Athletic Bilbao': {
     'Union Berlin': 'third',
@@ -50,19 +55,26 @@ const teamConflictOverrides: Record<string, Record<string, KitType>> = {
   'Bayern Munich': {
     'FC København': 'third',
     'AC Milan': 'third'
-  },
-  'Forest': {
-    'Espanyol': 'third'
-  },
-  'Espanyol': {
-    'Forest': 'away'
   }
+  // Removed static Forest/Espanyol override to use dynamic color check instead
 };
 
 export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitType => {
   const cacheKey = `${homeTeamName}:${awayTeamName}`;
   if (kitSelectionCache[cacheKey]) {
     return kitSelectionCache[cacheKey];
+  }
+  
+  // Special handling for Forest vs Espanyol based on actual colors
+  if ((homeTeamName === 'Forest' && awayTeamName === 'Espanyol') || 
+      (homeTeamName === 'Espanyol' && awayTeamName === 'Forest')) {
+    // Check if away kit conflicts with home kit
+    const awayKitConflict = checkForestVsEspanyolConflict(homeTeamName, awayTeamName, 'away');
+    // If away kit conflicts, use third kit, otherwise use away kit
+    const selectedKit = awayKitConflict ? 'third' : 'away';
+    console.log(`Selected ${selectedKit} kit for ${awayTeamName} against ${homeTeamName} based on color analysis`);
+    kitSelectionCache[cacheKey] = selectedKit;
+    return selectedKit;
   }
   
   if (teamConflictOverrides[homeTeamName]?.[awayTeamName]) {
