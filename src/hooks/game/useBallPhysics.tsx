@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Player, Ball, Position, BALL_RADIUS, PITCH_WIDTH, PITCH_HEIGHT, PLAYER_RADIUS } from '../../types/football';
 import { handleFieldPlayerCollisions } from './collisionHandlers';
@@ -60,7 +59,6 @@ export function handleBallPhysics(
   };
 }
 
-// Handle player (goalkeeper and field players) collisions
 function handlePlayerCollisions(
   newPosition: Position,
   newVelocity: Position,
@@ -76,64 +74,23 @@ function handlePlayerCollisions(
   const collisionCooldown = 150; // ms
   const goalkeeperCollisionCooldown = 100; // shorter cooldown for goalkeepers
 
-  // Enhanced goalkeeper collision detection with predictive positioning
+  // Standard goalkeeper collision detection with fixed 5-unit reach
   if (currentTime - lastCollisionTimeRef.current > goalkeeperCollisionCooldown) {
     for (const goalkeeper of goalkeepers) {
-      // Standard collision detection first
-      let collision = checkCollision(newPosition, goalkeeper.position, true); // Use goalkeepr flag
-      
-      // If no direct collision, check for angled shots using a more aggressive approach
-      if (!collision) {
-        // Calculate ball trajectory angle
-        const ballAngle = Math.atan2(currentVelocity.y, currentVelocity.x);
-        
-        // Get goalkeeper side (left or right)
-        const isLeftGoalkeeper = goalkeeper.position.x < PITCH_WIDTH / 2;
-        
-        // Check if ball is approaching the goal at ANY angle (more permissive)
-        const isAngledShot = Math.abs(ballAngle) > Math.PI/8; // Consider almost any non-straight shot
-        
-        // Is ball moving toward the goal?
-        const ballMovingTowardsGoal = 
-          (isLeftGoalkeeper && currentVelocity.x < -0.5) || 
-          (!isLeftGoalkeeper && currentVelocity.x > 0.5);
-        
-        // Calculate distance with much larger collision radius for angled shots
-        const dx = newPosition.x - goalkeeper.position.x;
-        const dy = newPosition.y - goalkeeper.position.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        // More aggressive collision detection for angled shots
-        // Use a variable extension factor based on shot angle
-        const angleExtensionFactor = 1.0 + Math.min(Math.abs(ballAngle) / Math.PI, 1.0);
-        const extendedRadius = ballMovingTowardsGoal ? 
-          (1.8 * angleExtensionFactor) : // Up to 2.8x larger for extreme angles 
-          1.6; // Basic extension for other cases
-        
-        // Check with significantly enlarged radius for angled shots
-        collision = distance <= (BALL_RADIUS + goalkeeper.radius * extendedRadius);
-          
-        if (collision) {
-          console.log(`Enhanced goalkeeper collision detected for angled shot (${Math.round(ballAngle * 180/Math.PI)}°)`);
-        }
-      }
+      // Use standard collision detection only
+      const collision = checkCollision(newPosition, goalkeeper.position, true);
       
       if (collision) {
-        // Record which player touched the ball
         onBallTouch(goalkeeper);
         lastCollisionTimeRef.current = currentTime;
         lastKickPositionRef.current = { ...newPosition };
         
-        // Calculate new velocity based on collision with improved deflection
-        const isAngledShot = Math.abs(Math.atan2(currentVelocity.y, currentVelocity.x)) > Math.PI/6;
-        
-        // Provide extra clearance power for angled shots
+        // Calculate new velocity based on collision
         newVelocity = calculateNewVelocity(
           newPosition,
           goalkeeper.position,
           currentVelocity,
-          true, // is goalkeeper
-          isAngledShot // Pass angle information for better response
+          true // is goalkeeper
         );
         
         console.log("Goalkeeper collision detected");
