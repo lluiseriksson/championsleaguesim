@@ -11,7 +11,6 @@ import { isNetworkValid } from '../../utils/neuralHelpers';
 import { validatePlayerBrain, createTacticalInput } from '../../utils/neural/networkValidator';
 import { constrainMovementToRadius } from '../../utils/movementConstraints';
 import { calculateCollisionAvoidance } from '../../hooks/game/useTeamCollisions';
-import { createPlayerBrain } from '../../utils/neuralNetwork';
 
 interface PlayerMovementProps {
   players: Player[];
@@ -36,19 +35,10 @@ const usePlayerMovement = ({
   useEffect(() => {
     if (gameReady && players.length > 0) {
       setPlayers(currentPlayers => 
-        currentPlayers.map(player => {
-          let updatedBrain = player.brain;
-          
-          if (!player.brain || !player.brain.net) {
-            console.log(`Creating new brain for ${player.team} ${player.role} #${player.id}`);
-            updatedBrain = createPlayerBrain();
-          }
-          
-          return {
-            ...player,
-            brain: initializePlayerBrainWithHistory(updatedBrain)
-          };
-        })
+        currentPlayers.map(player => ({
+          ...player,
+          brain: initializePlayerBrainWithHistory(player.brain)
+        }))
       );
     }
   }, [gameReady, setPlayers]);
@@ -107,22 +97,10 @@ const usePlayerMovement = ({
   };
 
   const useNeuralNetworkForPlayer = (player: Player, ball: Ball): { x: number, y: number } | null => {
-    if (!player.brain || !player.brain.net) {
-      console.log(`Missing brain for ${player.team} ${player.role} #${player.id}, creating new one`);
-      const newBrain = createPlayerBrain();
-      setPlayers(currentPlayers => 
-        currentPlayers.map(p => p.id === player.id ? {...p, brain: newBrain} : p)
-      );
-      return null;
-    }
+    if (!player.brain || !player.brain.net) return null;
     
     try {
       if (!isNetworkValid(player.brain.net)) {
-        console.log(`Invalid network for ${player.team} ${player.role} #${player.id}, recreating`);
-        const newBrain = createPlayerBrain();
-        setPlayers(currentPlayers => 
-          currentPlayers.map(p => p.id === player.id ? {...p, brain: newBrain} : p)
-        );
         return null;
       }
       
@@ -188,16 +166,8 @@ const usePlayerMovement = ({
       const output = player.brain.net.run(input);
       
       if (output && typeof output.moveX === 'number' && typeof output.moveY === 'number') {
-        let moveXMultiplier = 3.0;
-        let moveYMultiplier = 3.0;
-        
-        if (player.role === 'defender') {
-          moveXMultiplier = 3.5;
-          moveYMultiplier = 3.2;
-        }
-        
-        const moveX = (output.moveX * 2 - 1) * moveXMultiplier; 
-        const moveY = (output.moveY * 2 - 1) * moveYMultiplier;
+        const moveX = (output.moveX * 2 - 1) * 3.0; 
+        const moveY = (output.moveY * 2 - 1) * 3.0;
         
         return { x: moveX, y: moveY };
       }
@@ -214,30 +184,14 @@ const usePlayerMovement = ({
     setPlayers(currentPlayers => {
       const proposedPositions = currentPlayers.map(player => {
         try {
-          if (!player.brain || !player.brain.net) {
-            player = {
-              ...player,
-              brain: createPlayerBrain()
-            };
-          }
-          
           if (player.role === 'goalkeeper') {
             const movement = moveGoalkeeper(player, ball);
-            let newPosition = {
+            const newPosition = {
               x: player.position.x + movement.x,
               y: player.position.y + movement.y
             };
             
-            if (player.team === 'red') {
-              newPosition.x = Math.max(12, Math.min(120, newPosition.x));
-            } else {
-              newPosition.x = Math.max(PITCH_WIDTH - 120, Math.min(PITCH_WIDTH - 12, newPosition.x));
-            }
-            
-            const goalHeight = 200;
-            const centerY = PITCH_HEIGHT / 2;
-            newPosition.y = Math.max(centerY - goalHeight, Math.min(centerY + goalHeight, newPosition.y));
-            
+            newPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, newPosition.x));
             newPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, newPosition.y));
             
             const completeBrain = ensureCompleteBrain(player.brain);
@@ -254,8 +208,7 @@ const usePlayerMovement = ({
             };
           }
           
-          const neuralNetworkThreshold = player.role === 'defender' ? 0.25 : 0.3;
-          const neuralMovement = Math.random() > neuralNetworkThreshold ? useNeuralNetworkForPlayer(player, ball) : null;
+          const neuralMovement = Math.random() > 0.3 ? useNeuralNetworkForPlayer(player, ball) : null;
           
           if (neuralMovement) {
             let newPosition = {
@@ -293,40 +246,18 @@ const usePlayerMovement = ({
             forward: player.team === 'red' ? 500 : PITCH_WIDTH - 500
           };
           
-          let targetX = roleOffsets[player.role] || player.targetPosition.x;
-          let targetY = Math.max(100, Math.min(PITCH_HEIGHT - 100, ball.position.y));
-          
-          const defensiveThirdWidth = PITCH_WIDTH / 3;
-          const isInDefensiveThird = (player.team === 'red' && ball.position.x < defensiveThirdWidth) || 
-                                    (player.team === 'blue' && ball.position.x > PITCH_WIDTH - defensiveThirdWidth);
-          
-          if (isInDefensiveThird) {
-            const forwardOffset = player.team === 'red' ? 50 : -50;
-            targetX += forwardOffset;
-            
-            const ballYRelativeToCenter = (ball.position.y - PITCH_HEIGHT/2) / 2;
-            targetY = ball.position.y - ballYRelativeToCenter;
-          } else {
-            targetX += (Math.random() - 0.5) * 40;
-            targetY += (Math.random() - 0.5) * 60;
-          }
+          const targetX = roleOffsets[player.role] || player.targetPosition.x;
+          const targetY = Math.max(100, Math.min(PITCH_HEIGHT - 100, ball.position.y));
           
           const dx = targetX - player.position.x;
           const dy = targetY - player.position.y;
           const dist = Math.sqrt(dx*dx + dy*dy);
-          
-          let moveSpeed = 1.8;
-          if (player.role === 'defender') {
-            moveSpeed = 2.0;
-          }
+          const moveSpeed = 1.8;
           
           let moveX = dist > 0 ? (dx / dist) * moveSpeed : 0;
           let moveY = dist > 0 ? (dy / dist) * moveSpeed : 0;
           
-          if (player.role === 'defender' && Math.random() > 0.7) {
-            moveX += (Math.random() - 0.5) * 0.8;
-            moveY += (Math.random() - 0.5) * 0.8;
-          } else if (Math.random() > 0.8) {
+          if (Math.random() > 0.8) {
             moveX += (Math.random() - 0.5) * 0.5;
             moveY += (Math.random() - 0.5) * 0.5;
           }

@@ -7,8 +7,6 @@ import { toast } from 'sonner';
 import { getAwayTeamKit } from '../../types/kits';
 import { performFinalKitCheck, resolveKitConflict } from '../../types/kits/kitConflictChecker';
 import GameLogic from '../GameLogic';
-import { createPlayerBrain } from '../../utils/neuralNetwork';
-import { isNetworkValid } from '../../utils/neural/networkValidator';
 
 const transliterateRussianName = (name: string): string => {
   const cyrillicToLatin: Record<string, string> = {
@@ -58,7 +56,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   const [players, setPlayers] = useState<Player[]>([]);
   const [ball, setBall] = useState<Ball>({
     position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
-    velocity: { x: Math.random() > 0.5 ? 8 : -8, y: (Math.random() - 0.5) * 8 },
+    velocity: { x: Math.random() > 0.5 ? 3 : -3, y: (Math.random() - 0.5) * 3 },
     bounceDetection: {
       consecutiveBounces: 0,
       lastBounceTime: 0,
@@ -111,18 +109,9 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   }, [score, homeTeam, awayTeam, onMatchComplete, displayHomeTeam, displayAwayTeam]);
   
   useEffect(() => {
-    if (homeTeam && awayTeam) {
+    if (players.length === 0 && homeTeam && awayTeam) {
       console.log("Initializing players for match:", displayHomeTeam, "vs", displayAwayTeam);
       initializePlayers();
-      
-      // Force ball movement on match start
-      setBall(currentBall => ({
-        ...currentBall,
-        velocity: {
-          x: Math.random() > 0.5 ? 8 : -8, 
-          y: (Math.random() - 0.5) * 8
-        }
-      }));
     }
     
     return () => {
@@ -190,20 +179,16 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       const pos = redTeamPositions[i];
       const role = pos.role as Player['role'];
       
-      const playerBrain = createPlayerBrain();
-      const isValid = playerBrain && playerBrain.net ? isNetworkValid(playerBrain.net) : false;
-      console.log(`Created brain for red team ${role} #${i+1}, valid: ${isValid}`);
-      
-      if (!isValid) {
-        console.error(`Failed to create valid brain for red team ${role} #${i+1}`);
-      }
-      
       newPlayers.push({
         id: i + 1,
         position: { x: pos.x, y: pos.y },
         role: role,
         team: 'red',
-        brain: playerBrain,
+        brain: {
+          net: null as any,
+          lastOutput: { x: 0, y: 0 },
+          lastAction: 'move'
+        },
         targetPosition: { x: pos.x, y: pos.y },
         teamName: homeTeam,
         kitType: 'home',
@@ -229,20 +214,16 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       const pos = blueTeamPositions[i];
       const role = pos.role as Player['role'];
       
-      const playerBrain = createPlayerBrain();
-      const isValid = playerBrain && playerBrain.net ? isNetworkValid(playerBrain.net) : false;
-      console.log(`Created brain for blue team ${role} #${i+1}, valid: ${isValid}`);
-      
-      if (!isValid) {
-        console.error(`Failed to create valid brain for blue team ${role} #${i+1}`);
-      }
-      
       newPlayers.push({
         id: i + 12,
         position: { x: pos.x, y: pos.y },
         role: role,
         team: 'blue',
-        brain: playerBrain,
+        brain: {
+          net: null as any,
+          lastOutput: { x: 0, y: 0 },
+          lastAction: 'move'
+        },
         targetPosition: { x: pos.x, y: pos.y },
         teamName: awayTeam,
         kitType: awayTeamKitType,
@@ -250,10 +231,6 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       });
     }
     
-    console.log(`Initialized ${newPlayers.length} players with neural networks`);
-    if (newPlayers.length === 0) {
-      console.error("Failed to initialize any players!");
-    }
     setPlayers(newPlayers);
   };
   
@@ -261,17 +238,13 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
     players, 
     setPlayers, 
     ball, 
-    gameReady: players.length > 0 
+    gameReady: true 
   });
   
   const handleGoalScored = (team: 'red' | 'blue') => {
     console.log(`Goal scored by ${team} team, golden goal mode: ${goldenGoal}`);
     setLastScorer(team);
   };
-  
-  useEffect(() => {
-    console.log(`TournamentMatch rendered with ${players.length} players, homeTeam: ${homeTeam}, awayTeam: ${awayTeam}`);
-  });
   
   if (matchEnded) {
     return (
@@ -296,41 +269,35 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         goldenGoal={goldenGoal}
       />
       
-      {players.length === 0 ? (
-        <div className="w-[800px] h-[600px] bg-pitch mx-auto overflow-hidden rounded-lg shadow-lg flex items-center justify-center">
-          <div className="text-white text-xl">Loading players...</div>
-        </div>
-      ) : (
-        <GameBoard
-          players={players}
-          setPlayers={setPlayers}
-          ball={ball}
-          setBall={setBall}
-          score={score}
-          setScore={(newScore) => {
-            if (resultDeterminedRef.current) {
-              console.log("Ignoring late goal - match result already determined");
-              return;
-            }
+      <GameBoard
+        players={players}
+        setPlayers={setPlayers}
+        ball={ball}
+        setBall={setBall}
+        score={score}
+        setScore={(newScore) => {
+          if (resultDeterminedRef.current) {
+            console.log("Ignoring late goal - match result already determined");
+            return;
+          }
+          
+          const currentScore = typeof newScore === 'function' 
+            ? (newScore as (prev: Score) => Score)(score)
+            : newScore;
             
-            const currentScore = typeof newScore === 'function' 
-              ? (newScore as (prev: Score) => Score)(score)
-              : newScore;
-              
-            if (currentScore.red > score.red) {
-              handleGoalScored('red');
-            } else if (currentScore.blue > score.blue) {
-              handleGoalScored('blue');
-            }
-            setScore(currentScore);
-          }}
-          updatePlayerPositions={updatePlayerPositions}
-          tournamentMode={true}
-          onGoalScored={handleGoalScored}
-          homeTeam={homeTeam}
-          awayTeam={awayTeam}
-        />
-      )}
+          if (currentScore.red > score.red) {
+            handleGoalScored('red');
+          } else if (currentScore.blue > score.blue) {
+            handleGoalScored('blue');
+          }
+          setScore(currentScore);
+        }}
+        updatePlayerPositions={updatePlayerPositions}
+        tournamentMode={true}
+        onGoalScored={handleGoalScored}
+        homeTeam={homeTeam}
+        awayTeam={awayTeam}
+      />
     </div>
   );
 };

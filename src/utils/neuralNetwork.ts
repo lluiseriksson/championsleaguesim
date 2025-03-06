@@ -453,12 +453,10 @@ export const createPlayerBrain = (): NeuralNet => {
     console.log("Neural network created and trained successfully");
     const experienceReplay = createExperienceReplay(100);
     
-    // Make sure to return a complete NeuralNet object
     return {
       net,
       lastOutput: { x: 0, y: 0 },
       lastAction: 'move',
-      actionHistory: [],
       experienceReplay,
       learningStage: 0.1,
       lastReward: 0,
