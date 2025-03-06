@@ -17,6 +17,8 @@ import {
   combineSpecializedOutputs
 } from '../../utils/specializedNetworks';
 import { calculateCollisionAvoidance } from '../../hooks/game/useTeamCollisions';
+import * as brain from 'brain.js';
+import { NeuralInput, NeuralOutput, SituationContext } from '../../types/football';
 
 interface PlayerMovementProps {
   players: Player[];
@@ -104,7 +106,7 @@ const usePlayerMovement = ({
               brain: {
                 ...player.brain,
                 lastOutput: movement,
-                lastAction: 'move'
+                lastAction: 'move' as const
               }
             };
           }
@@ -177,7 +179,7 @@ const usePlayerMovement = ({
               brain: {
                 ...player.brain,
                 lastOutput: { x: moveX, y: moveY },
-                lastAction: 'move'
+                lastAction: 'move' as const
               }
             };
           }
@@ -336,7 +338,8 @@ const usePlayerMovement = ({
             movement: { x: moveX, y: moveY },
             brain: {
               ...player.brain,
-              lastOutput: { x: moveX, y: moveY }
+              lastOutput: { x: moveX, y: moveY },
+              lastAction: 'move' as const
             }
           };
         } catch (error) {
@@ -344,7 +347,12 @@ const usePlayerMovement = ({
           return {
             ...player,
             proposedPosition: player.position,
-            movement: { x: 0, y: 0 }
+            movement: { x: 0, y: 0 },
+            brain: {
+              ...player.brain,
+              lastOutput: { x: 0, y: 0 },
+              lastAction: 'move' as const
+            }
           };
         }
       });
@@ -365,7 +373,7 @@ const usePlayerMovement = ({
           position: collisionAdjustedPosition,
           proposedPosition: undefined,
           movement: undefined
-        };
+        } as Player;
       });
     });
   }, [ball, gameReady, setPlayers, formations, possession, gameTime, score]);
