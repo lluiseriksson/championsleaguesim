@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Player } from '../../types/football';
 import { saveModel } from '../../utils/neural/modelPersistence';
@@ -6,13 +5,17 @@ import { createExperienceReplay } from '../../utils/experienceReplay';
 import { toast } from 'sonner';
 import { validatePlayerBrain } from '../../utils/neural/networkValidator';
 import { createPlayerBrain } from '../../utils/playerBrain';
+import { clearModelCache, monitorMemoryUsage } from '../../utils/neuralModelService';
 
 // Interval between model synchronization (in frames)
-const DEFAULT_SYNC_INTERVAL = 600; // 10 seconds at 60fps
-const TOURNAMENT_SYNC_INTERVAL = 1200; // 20 seconds at 60fps
+const DEFAULT_SYNC_INTERVAL = 1200; // 20 seconds at 60fps
+const TOURNAMENT_SYNC_INTERVAL = 2400; // 40 seconds at 60fps
 
 // Learning check interval (in frames)
-const LEARNING_CHECK_INTERVAL = 1800; // 30 seconds at 60fps
+const LEARNING_CHECK_INTERVAL = 3600; // 60 seconds at 60fps
+
+// Performance monitoring
+const PERFORMANCE_CHECK_INTERVAL = 1800; // 30 seconds at 60fps
 
 interface ModelSyncSystemProps {
   players: Player[];
@@ -27,9 +30,33 @@ export const useModelSyncSystem = ({
 }: ModelSyncSystemProps) => {
   const syncCounter = useRef(0);
   const learningCheckCounter = useRef(0);
+  const performanceCheckCounter = useRef(0);
   const [lastSyncTime, setLastSyncTime] = useState(Date.now());
   const [initialCheckDone, setInitialCheckDone] = useState(false);
   const validationInProgressRef = useRef(false);
+  const lastFrameTimeRef = useRef(performance.now());
+  const lowFpsDetectedRef = useRef(false);
+  
+  // Performance monitoring to detect low FPS and reduce load
+  const checkPerformance = React.useCallback(() => {
+    const now = performance.now();
+    const frameDuration = now - lastFrameTimeRef.current;
+    lastFrameTimeRef.current = now;
+    
+    // If frame duration is consistently high (low FPS), reduce neural network usage
+    if (frameDuration > 50) { // More than 20ms per frame (less than 50 FPS)
+      if (!lowFpsDetectedRef.current) {
+        console.log("Performance issue detected: reducing neural network load");
+        lowFpsDetectedRef.current = true;
+        clearModelCache(); // Clear cache to free memory
+      }
+    } else if (lowFpsDetectedRef.current && frameDuration < 25) {
+      // Performance has recovered
+      lowFpsDetectedRef.current = false;
+    }
+    
+    performanceCheckCounter.current = 0;
+  }, []);
   
   // Perform initial neural network check when component loads
   useEffect(() => {
@@ -104,8 +131,8 @@ export const useModelSyncSystem = ({
             );
           }
           
-          // Process the next player after a small delay
-          setTimeout(() => fixPlayerNetworks(index + 1), 50);
+          // Process the next player after a small delay (increased to reduce CPU pressure)
+          setTimeout(() => fixPlayerNetworks(index + 1), 100);
         };
         
         // Start processing players one by one
@@ -122,16 +149,33 @@ export const useModelSyncSystem = ({
   const incrementSyncCounter = () => {
     syncCounter.current += 1;
     learningCheckCounter.current += 1;
+    performanceCheckCounter.current += 1;
+    
+    // Check performance periodically
+    if (performanceCheckCounter.current >= PERFORMANCE_CHECK_INTERVAL) {
+      checkPerformance();
+    }
+    
+    // Monitor memory usage
+    if (syncCounter.current % 600 === 0) { // Every 10 seconds at 60fps
+      monitorMemoryUsage();
+    }
   };
   
   const syncModels = React.useCallback(async () => {
+    // Skip sync if performance issues detected
+    if (lowFpsDetectedRef.current) {
+      syncCounter.current = 0;
+      return;
+    }
+    
     const syncInterval = tournamentMode ? TOURNAMENT_SYNC_INTERVAL : DEFAULT_SYNC_INTERVAL;
     
     if (syncCounter.current >= syncInterval && !validationInProgressRef.current) {
       const currentTime = Date.now();
       const timeSinceLastSync = currentTime - lastSyncTime;
       
-      if (timeSinceLastSync >= 5000) {
+      if (timeSinceLastSync >= 10000) { // Increased minimum time between syncs
         console.log('Synchronizing neural models...');
         
         // Instead of processing multiple players at once, just pick one
@@ -148,12 +192,15 @@ export const useModelSyncSystem = ({
             );
           }
           
-          const success = await saveModel(validatedPlayer);
-          if (success && !tournamentMode) {
-            toast.success(`Synced neural model for player #${playerToSync.id}`, {
-              duration: 2000,
-              position: 'bottom-right'
-            });
+          // Only save models for non-goalkeeper players to reduce load
+          if (playerToSync.role !== 'goalkeeper') {
+            const success = await saveModel(validatedPlayer);
+            if (success && !tournamentMode) {
+              toast.success(`Synced neural model for player #${playerToSync.id}`, {
+                duration: 2000,
+                position: 'bottom-right'
+              });
+            }
           }
         } catch (error) {
           console.error(`Error syncing model for ${playerToSync.team} ${playerToSync.role}:`, error);
@@ -167,6 +214,12 @@ export const useModelSyncSystem = ({
   }, [players, setPlayers, tournamentMode, lastSyncTime]);
   
   const checkLearningProgress = React.useCallback(() => {
+    // Skip if performance issues detected
+    if (lowFpsDetectedRef.current) {
+      learningCheckCounter.current = 0;
+      return;
+    }
+    
     if (learningCheckCounter.current >= LEARNING_CHECK_INTERVAL && !validationInProgressRef.current) {
       console.log('Checking neural network learning progress...');
       
