@@ -1,10 +1,11 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Player } from '../../types/football';
 import { saveModel } from '../../utils/neural/modelPersistence';
 import { createExperienceReplay } from '../../utils/experienceReplay';
 import { toast } from 'sonner';
 import { validatePlayerBrain } from '../../utils/neural/networkValidator';
-import { createPlayerBrain } from '../../utils/neuralNetwork';
+import { createPlayerBrain } from '../../utils/playerBrain';
 
 // Interval between model synchronization (in frames)
 const DEFAULT_SYNC_INTERVAL = 600; // 10 seconds at 60fps
@@ -68,24 +69,14 @@ export const useModelSyncSystem = ({
         setPlayers(currentPlayers => 
           currentPlayers.map(player => {
             // If player has no brain or invalid brain, create a new one
-            if (!player.brain || !player.brain.net || !player.brain.net.run || typeof player.brain.net.run !== 'function') {
+            if (!player.brain || !player.brain.net || typeof player.brain.net.run !== 'function') {
               console.log(`Creating new brain for ${player.team} ${player.role} #${player.id}`);
               return {
                 ...player,
                 brain: createPlayerBrain()
               };
             }
-            
-            try {
-              // Validate the brain anyway to make sure it's working correctly
-              return validatePlayerBrain(player);
-            } catch (error) {
-              console.error(`Failed to validate brain for ${player.team} ${player.role} #${player.id}, creating new one:`, error);
-              return {
-                ...player,
-                brain: createPlayerBrain()
-              };
-            }
+            return validatePlayerBrain(player);
           })
         );
         
@@ -119,62 +110,19 @@ export const useModelSyncSystem = ({
         
         let syncCount = 0;
         let errorCount = 0;
-        let fixedCount = 0;
         
         for (const player of playersToSync) {
           try {
-            let playerToSync = player;
+            const validatedPlayer = validatePlayerBrain(player);
             
-            // Check if the player's brain is valid before saving
-            if (!player.brain || !player.brain.net || typeof player.brain.net.run !== 'function') {
-              console.log(`Fixing invalid brain for ${player.team} ${player.role} #${player.id} before sync`);
-              playerToSync = {
-                ...player,
-                brain: createPlayerBrain()
-              };
-              
-              // Update player in the state
+            if (validatedPlayer !== player) {
+              console.log(`Validated and fixed player ${player.team} ${player.role} #${player.id}`);
               setPlayers(currentPlayers => 
-                currentPlayers.map(p => p.id === player.id ? playerToSync : p)
+                currentPlayers.map(p => p.id === player.id ? validatedPlayer : p)
               );
-              
-              fixedCount++;
-            } else {
-              try {
-                // Try to validate the player's brain
-                const validatedPlayer = validatePlayerBrain(player);
-                
-                if (validatedPlayer !== player) {
-                  console.log(`Validated and fixed player ${player.team} ${player.role} #${player.id}`);
-                  playerToSync = validatedPlayer;
-                  
-                  // Update player in the state
-                  setPlayers(currentPlayers => 
-                    currentPlayers.map(p => p.id === player.id ? validatedPlayer : p)
-                  );
-                  
-                  fixedCount++;
-                }
-              } catch (error) {
-                console.error(`Error validating player ${player.team} ${player.role} #${player.id}:`, error);
-                
-                // Create a new brain for the player
-                playerToSync = {
-                  ...player,
-                  brain: createPlayerBrain()
-                };
-                
-                // Update player in the state
-                setPlayers(currentPlayers => 
-                  currentPlayers.map(p => p.id === player.id ? playerToSync : p)
-                );
-                
-                fixedCount++;
-              }
             }
             
-            // Now try to save the model
-            if (await saveModel(playerToSync)) {
+            if (await saveModel(validatedPlayer)) {
               syncCount++;
             }
           } catch (error) {
@@ -190,13 +138,6 @@ export const useModelSyncSystem = ({
           });
         }
         
-        if (fixedCount > 0 && !tournamentMode) {
-          toast.info(`Fixed ${fixedCount} neural networks during sync`, {
-            duration: 2000,
-            position: 'bottom-right'
-          });
-        }
-        
         if (errorCount > 0) {
           console.warn(`Encountered ${errorCount} errors while syncing models`);
         }
@@ -206,7 +147,7 @@ export const useModelSyncSystem = ({
       
       syncCounter.current = 0;
     }
-  }, [players, setPlayers, tournamentMode, lastSyncTime, syncCounter, setLastSyncTime]);
+  }, [players, setPlayers, tournamentMode, lastSyncTime]);
   
   const checkLearningProgress = React.useCallback(() => {
     if (learningCheckCounter.current >= LEARNING_CHECK_INTERVAL) {
@@ -264,7 +205,7 @@ export const useModelSyncSystem = ({
       
       learningCheckCounter.current = 0;
     }
-  }, [setPlayers, tournamentMode, learningCheckCounter]);
+  }, [setPlayers, tournamentMode]);
   
   return { syncModels, incrementSyncCounter, checkLearningProgress };
 };

@@ -12,7 +12,6 @@ import { validatePlayerBrain, createTacticalInput } from '../../utils/neural/net
 import { constrainMovementToRadius } from '../../utils/movementConstraints';
 import { calculateCollisionAvoidance } from '../../hooks/game/useTeamCollisions';
 import { createPlayerBrain } from '../../utils/playerBrain';
-import { createExperienceReplay } from '../../utils/experienceReplay';
 
 interface PlayerMovementProps {
   players: Player[];
