@@ -1,8 +1,9 @@
 
-import { NeuralNet, Player, TeamContext, Ball } from '../types/football';
+import { NeuralNet, Player, TeamContext, Ball, Position } from '../types/football';
+import { calculateDistance } from './neuralCore';
 
 // Re-export all functions from their respective files
-export { createPlayerBrain, normalizeValue, calculateDistance } from './neuralCore';
+export { createPlayerBrain, normalizeValue } from './neuralCore';
 export { moveGoalkeeper } from './goalkeeperLogic';
 export { calculateNetworkInputs } from './neuralInputs';
 export { updatePlayerBrain } from './brainTraining';
