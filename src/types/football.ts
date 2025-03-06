@@ -1,3 +1,4 @@
+
 import * as brain from 'brain.js';
 
 export interface Position {
@@ -203,7 +204,7 @@ export interface Score {
 export const PITCH_WIDTH = 800;
 export const PITCH_HEIGHT = 600;
 export const GOAL_WIDTH = 120;
-export const GOAL_HEIGHT = 160;
+export const GOAL_HEIGHT = 184; // Increased from 160 (160 * 1.15 = 184)
 export const PLAYER_RADIUS = 12;
 export const BALL_RADIUS = 6;
 export const PLAYER_SPEED = 2;
