@@ -19,10 +19,6 @@ export interface TeamContext {
   isInPosition?: boolean;       // Whether player is in correct position
   teammateDensity?: number;     // Density of teammates around player (0-1)
   opponentDensity?: number;     // Density of opponents around player (0-1)
-  formationShape?: 'defensive' | 'balanced' | 'attacking'; // Current team formation shape
-  tacticalPhase?: 'buildup' | 'attack' | 'defense' | 'transition'; // Current tactical phase
-  teamPressure?: number;        // Level of pressing from team (0-1)
-  defensiveLine?: number;       // Height of defensive line (0-1)
 }
 
 export interface NeuralInput {
@@ -63,23 +59,6 @@ export interface NeuralInput {
   opponentDensity: number;         // Density of opponents around player (0-1)
   shootingAngle: number;    // Best angle for shooting (0-1, normalized from 0-2π)
   shootingQuality: number;  // Quality of best shooting opportunity (0-1)
-  
-  zoneControl: number;             // How much team controls current zone (0-1)
-  passingLanesQuality: number;     // Quality of available passing lanes (0-1)
-  spaceCreation: number;           // Ability to create space with movement (0-1)
-  defensiveSupport: number;        // Defensive coverage provided (0-1)
-  pressureIndex: number;           // Pressure on the player (0-1)
-  xgPosition: number;              // Expected goal value of current position (0-1)
-  optimalPositionDistance: number; // Distance to optimal position (0-1)
-  laneBlockingValue: number;       // Value of blocking passing/shooting lanes (0-1)
-  playerRoleSpecificValue: number; // Value based on player's specific role (0-1)
-  supportingRunValue: number;      // Value of making a supporting run (0-1)
-  offensivePositioningValue: number; // Value of current offensive position (0-1)
-  defensivePositioningValue: number; // Value of current defensive position (0-1)
-  teamTacticalBalance: number;     // Balance of team positioning (0-1)
-  formationAdherence: number;      // How well player adheres to formation (0-1)
-  uniquePositionalValue: number;   // Value of occupying unique position (0-1)
-  overlapWithTeammates: number;    // Negative value for overlapping teammates' space (0-1)
 }
 
 export interface NeuralOutput {
@@ -179,9 +158,6 @@ export interface Player {
   kitType?: KitType;  
   teamElo?: number;   
   radius: number;     // Add radius property for collision detection
-  positionPreference?: 'left' | 'center' | 'right'; // Preferred side of the field
-  tacticalId?: number; // Unique tactical ID within role (e.g., 1st, 2nd, 3rd midfielder)
-  specialization?: 'playmaker' | 'finisher' | 'defender' | 'generalist'; // Player specialization
 }
 
 export interface Ball {

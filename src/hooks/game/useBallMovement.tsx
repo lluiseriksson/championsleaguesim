@@ -28,42 +28,10 @@ export const useBallMovement = ({
   tournamentMode = false
 }: BallMovementProps) => {
   // Memoize player categorization
-  const { goalkeepers, fieldPlayers } = React.useMemo(() => {
-    // Assign unique tacticalId to players if not already set
-    const identifiedPlayers = players.map((player, index) => {
-      // Only assign if not already set
-      if (player.tacticalId === undefined) {
-        // Group by role and team to assign unique IDs within each group
-        const sameRoleTeammates = players.filter(
-          p => p.team === player.team && p.role === player.role
-        );
-        
-        const roleIndex = sameRoleTeammates.findIndex(p => p.id === player.id);
-        
-        // Assign positional preference based on tacticalId
-        let positionPreference: 'left' | 'center' | 'right';
-        switch (roleIndex % 3) {
-          case 0: positionPreference = 'left'; break;
-          case 1: positionPreference = 'center'; break;
-          default: positionPreference = 'right'; break;
-        }
-        
-        // Assign tactical ID and position preference
-        player.tacticalId = roleIndex;
-        player.positionPreference = positionPreference;
-        
-        // Log newly assigned tactical ID
-        console.log(`Assigned tacticalId ${roleIndex} (${positionPreference}) to ${player.team} ${player.role} #${player.id}`);
-      }
-      
-      return player;
-    });
-    
-    return {
-      goalkeepers: identifiedPlayers.filter(p => p.role === 'goalkeeper'),
-      fieldPlayers: identifiedPlayers.filter(p => p.role !== 'goalkeeper')
-    };
-  }, [players]);
+  const { goalkeepers, fieldPlayers } = React.useMemo(() => ({
+    goalkeepers: players.filter(p => p.role === 'goalkeeper'),
+    fieldPlayers: players.filter(p => p.role !== 'goalkeeper')
+  }), [players]);
 
   // Use collision tracking hook
   const { 
