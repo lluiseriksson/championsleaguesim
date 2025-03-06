@@ -72,6 +72,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   const [lastScorer, setLastScorer] = useState<'red' | 'blue' | null>(null);
   
   const [goldenGoalScored, setGoldenGoalScored] = useState(false);
+  const [initializing, setInitializing] = useState(true);
   
   const resultDeterminedRef = useRef(false);
   
@@ -234,12 +235,18 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
     setPlayers(newPlayers);
   };
   
-  const { updatePlayerPositions } = usePlayerMovement({ 
+  const { updatePlayerPositions, formations, possession, initializationProgress } = usePlayerMovement({ 
     players, 
     setPlayers, 
     ball, 
     gameReady: true 
   });
+  
+  useEffect(() => {
+    if (initializationProgress >= 100) {
+      setInitializing(false);
+    }
+  }, [initializationProgress]);
   
   const handleGoalScored = (team: 'red' | 'blue') => {
     console.log(`Goal scored by ${team} team, golden goal mode: ${goldenGoal}`);
@@ -268,6 +275,19 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         onTimeEnd={handleTimeEnd}
         goldenGoal={goldenGoal}
       />
+      
+      {initializing && (
+        <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center z-50 text-white">
+          <div className="text-lg font-semibold mb-2">Initializing Player AI</div>
+          <div className="w-64 bg-gray-200 rounded-full h-2.5 mb-4">
+            <div 
+              className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" 
+              style={{ width: `${initializationProgress}%` }}
+            ></div>
+          </div>
+          <div className="text-sm">{Math.round(initializationProgress)}% Complete</div>
+        </div>
+      )}
       
       <GameBoard
         players={players}

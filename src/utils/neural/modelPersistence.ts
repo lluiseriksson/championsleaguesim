@@ -176,6 +176,22 @@ export const loadModel = async (team: string, role: string, version: number = 1)
   }
 };
 
+// New non-blocking async version of loadModel that works with timeouts
+export const loadModelAsync = (team: string, role: string, version: number = 1): Promise<NeuralNet | null> => {
+  return new Promise((resolve) => {
+    // Wrap in setTimeout to prevent UI blocking
+    setTimeout(async () => {
+      try {
+        const result = await loadModel(team, role, version);
+        resolve(result);
+      } catch (error) {
+        console.error('Error in loadModelAsync:', error);
+        resolve(null);
+      }
+    }, 0);
+  });
+};
+
 // Function to save training session data (for later collaborative training)
 export const saveTrainingSession = async (player: Player, sessionData: any): Promise<boolean> => {
   try {

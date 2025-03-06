@@ -35,33 +35,56 @@ const usePlayerMovement = ({
   const [possession, setPossession] = useState({ team: null, player: null, duration: 0 });
   const [lastMovementTime, setLastMovementTime] = useState(Date.now());
   const [brainInitialized, setBrainInitialized] = useState(false);
+  const [initializationProgress, setInitializationProgress] = useState(0);
 
   useEffect(() => {
     if (gameReady && players.length > 0 && !brainInitialized) {
-      console.log("Initializing player brains for all players...");
+      console.log("Starting staggered initialization of player brains...");
       
-      setPlayers(currentPlayers => 
-        currentPlayers.map(player => {
-          let playerWithBrain = player;
+      let playersCopy = [...players];
+      
+      const batchSize = 3;
+      let currentBatch = 0;
+      const totalBatches = Math.ceil(players.length / batchSize);
+      
+      const initializeBatch = () => {
+        const startIdx = currentBatch * batchSize;
+        const endIdx = Math.min(startIdx + batchSize, players.length);
+        
+        console.log(`Initializing batch ${currentBatch + 1}/${totalBatches} (players ${startIdx} to ${endIdx - 1})`);
+        
+        for (let i = startIdx; i < endIdx; i++) {
+          let player = playersCopy[i];
           
           if (!player.brain || !player.brain.net || typeof player.brain.net.run !== 'function') {
             console.log(`Creating new brain for ${player.team} ${player.role} #${player.id}`);
-            playerWithBrain = {
+            player = {
               ...player,
               brain: createPlayerBrain()
             };
           } else {
-            playerWithBrain = validatePlayerBrain(player);
+            player = validatePlayerBrain(player);
           }
           
-          return {
-            ...playerWithBrain,
-            brain: initializePlayerBrainWithHistory(playerWithBrain.brain)
+          playersCopy[i] = {
+            ...player,
+            brain: initializePlayerBrainWithHistory(player.brain)
           };
-        })
-      );
+        }
+        
+        currentBatch++;
+        setInitializationProgress(Math.min(100, (currentBatch / totalBatches) * 100));
+        
+        if (currentBatch < totalBatches) {
+          setTimeout(initializeBatch, 50);
+        } else {
+          setPlayers(playersCopy);
+          setBrainInitialized(true);
+          console.log("All player brains initialized successfully");
+        }
+      };
       
-      setBrainInitialized(true);
+      setTimeout(initializeBatch, 10);
     }
   }, [gameReady, setPlayers, players, brainInitialized]);
 
@@ -226,6 +249,11 @@ const usePlayerMovement = ({
   const updatePlayerPositions = React.useCallback(() => {
     if (!gameReady) {
       console.log("Game not ready, skipping player position updates");
+      return;
+    }
+    
+    if (!brainInitialized) {
+      console.log("Player brains not fully initialized yet, skipping movement");
       return;
     }
     
@@ -420,9 +448,9 @@ const usePlayerMovement = ({
       
       return processedPlayers;
     });
-  }, [ball, gameReady, setPlayers, gameTime, score, lastMovementTime]);
+  }, [ball, gameReady, setPlayers, gameTime, score, lastMovementTime, brainInitialized]);
 
-  return { updatePlayerPositions, formations, possession };
+  return { updatePlayerPositions, formations, possession, initializationProgress };
 };
 
 const calculateExecutionPrecision = (teamElo?: number): number => {
