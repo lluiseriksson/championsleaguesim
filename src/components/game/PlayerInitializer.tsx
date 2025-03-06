@@ -5,6 +5,7 @@ import { initializePlayerBrain } from '../../utils/modelLoader';
 import { getAwayTeamKit } from '../../types/kits';
 import { teamKitColors } from '../../types/kits/teamColorsData';
 import { resetUsedGoalkeeperKits } from '../../types/kits/kitTypes';
+import { areColorsSufficientlyDifferent, parseHexColor } from '../../types/kits/colorUtils';
 
 interface PlayerInitializerProps {
   setPlayers: React.Dispatch<React.SetStateAction<Player[]>>;
@@ -41,6 +42,28 @@ const transliterateRussianName = (name: string): string => {
   return result;
 };
 
+const checkKitColorConflict = (homeTeamName: string, awayTeamName: string, awayKitType: KitType): boolean => {
+  const homeTeam = teamKitColors[homeTeamName];
+  const awayTeam = teamKitColors[awayTeamName];
+  
+  if (!homeTeam || !awayTeam) return false;
+  
+  const homePrimary = homeTeam.home.primary;
+  const awayPrimary = awayTeam[awayKitType].primary;
+  
+  const homeRgb = parseHexColor(homePrimary);
+  const awayRgb = parseHexColor(awayPrimary);
+  
+  const areDifferent = areColorsSufficientlyDifferent(homePrimary, awayPrimary);
+  
+  if (!areDifferent) {
+    console.warn(`⚠️ Kit color conflict detected between ${homeTeamName} (${homePrimary}) and ${awayTeamName} (${awayPrimary})`);
+    return true;
+  }
+  
+  return false;
+}
+
 const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGameReady }) => {
   React.useEffect(() => {
     const loadPlayers = async () => {
@@ -63,6 +86,12 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
         const displayAwayTeamName = transliterateRussianName(awayTeamName);
         
         const awayTeamKitType = getAwayTeamKit(homeTeamName, awayTeamName);
+        
+        const hasColorConflict = checkKitColorConflict(homeTeamName, awayTeamName, awayTeamKitType);
+        
+        if (hasColorConflict) {
+          console.warn(`⚠️ Kit conflict between ${displayHomeTeamName} and ${displayAwayTeamName} with kit ${awayTeamKitType}`);
+        }
         
         console.log(`Match: ${displayHomeTeamName} (home) vs ${displayAwayTeamName} (${awayTeamKitType})`);
         
