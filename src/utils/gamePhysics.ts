@@ -1,3 +1,4 @@
+
 import { Position, PLAYER_RADIUS, BALL_RADIUS, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
 
 const MAX_BALL_SPEED = 18; // Keeping higher speed for powerful shots
@@ -35,7 +36,7 @@ export const checkCollision = (ballPos: Position, playerPos: Position, isGoalkee
   
   // Restore more reasonable collision radius for goalkeepers to balance scoring
   const collisionRadius = isGoalkeeper ? 
-    PLAYER_RADIUS * 1.35 + BALL_RADIUS : // Adjusted from 1.25 to 1.35
+    PLAYER_RADIUS * 1.08 + BALL_RADIUS : // Decreased from 1.35 to 1.08 (20% reduction)
     PLAYER_RADIUS + BALL_RADIUS;
   
   // Add a small buffer to prevent the ball from getting stuck
