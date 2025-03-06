@@ -1,5 +1,3 @@
-
-
 import { KitType, TeamKit } from './kitTypes';
 import { teamKitColors } from './teamColorsData';
 import { parseHexColor, getColorDistance, areColorsConflicting, categorizeColor, ColorCategory } from './colorUtils';
@@ -53,6 +51,10 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
   // Parse home team's primary home kit color
   const homeColor = homeTeam.home.primary;
   
+  // Get home team's goalkeeper colors (which are typically the secondary color as primary)
+  const homeGkPrimary = homeTeam.home.secondary;
+  const homeGkSecondary = homeTeam.home.primary;
+  
   // Parse away team's kit colors
   const awayColor = awayTeam.away.primary;
   const thirdColor = awayTeam.third.primary;
@@ -63,6 +65,7 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
   if (shouldLog) {
     console.log(`Kit color comparison for ${homeTeamName} vs ${awayTeamName}:`);
     console.log(`Home primary: ${homeColor} (${categorizeColor(homeColor)})`);
+    console.log(`Home GK primary: ${homeGkPrimary} (${categorizeColor(homeGkPrimary)})`);
     console.log(`Away primary: ${awayColor} (${categorizeColor(awayColor)})`);
     console.log(`Third primary: ${thirdColor} (${categorizeColor(thirdColor)})`);
   }
@@ -70,6 +73,10 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
   // Check for color conflicts using our categorization system
   const homeAwayConflict = areColorsConflicting(homeColor, awayColor);
   const homeThirdConflict = areColorsConflicting(homeColor, thirdColor);
+  
+  // Check goalkeeper color conflicts
+  const gkAwayConflict = areColorsConflicting(homeGkPrimary, awayColor);
+  const gkThirdConflict = areColorsConflicting(homeGkPrimary, thirdColor);
   
   // Get secondary colors too for more comprehensive comparison
   const homeSecondary = homeTeam.home.secondary;
@@ -81,19 +88,28 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
   const homeThirdSecondaryConflict = areColorsConflicting(homeSecondary, thirdSecondary);
   
   if (shouldLog) {
-    console.log(`Home-Away conflict: ${homeAwayConflict}, secondary: ${homeAwaySecondaryConflict}`);
-    console.log(`Home-Third conflict: ${homeThirdConflict}, secondary: ${homeThirdSecondaryConflict}`);
+    console.log(`Home-Away conflict: ${homeAwayConflict}, secondary: ${homeAwaySecondaryConflict}, GK: ${gkAwayConflict}`);
+    console.log(`Home-Third conflict: ${homeThirdConflict}, secondary: ${homeThirdSecondaryConflict}, GK: ${gkThirdConflict}`);
   }
 
   let selectedKit: KitType;
   
   // Improved decision logic:
-  // 1. If a kit has no conflicts in either primary or secondary, use it
-  // 2. If both kits have some conflicts, pick the one with fewer conflicts
-  // 3. If all else equal, use distance-based selection
+  // 1. Consider both outfield player conflicts and goalkeeper conflicts
+  // 2. If a kit has no conflicts in either primary or secondary with both outfield and GK, use it
+  // 3. If both kits have some conflicts, pick the one with fewer total conflicts
+  // 4. If all else equal, use distance-based selection
   
-  const awayConflictScore = (homeAwayConflict ? 1 : 0) + (homeAwaySecondaryConflict ? 0.5 : 0);
-  const thirdConflictScore = (homeThirdConflict ? 1 : 0) + (homeThirdSecondaryConflict ? 0.5 : 0);
+  // Calculate conflict scores (including GK conflicts with higher weight)
+  const awayConflictScore = 
+    (homeAwayConflict ? 1 : 0) + 
+    (homeAwaySecondaryConflict ? 0.5 : 0) +
+    (gkAwayConflict ? 1.5 : 0);  // Give higher weight to GK conflicts
+    
+  const thirdConflictScore = 
+    (homeThirdConflict ? 1 : 0) + 
+    (homeThirdSecondaryConflict ? 0.5 : 0) +
+    (gkThirdConflict ? 1.5 : 0);  // Give higher weight to GK conflicts
   
   if (awayConflictScore < thirdConflictScore) {
     if (shouldLog) {
@@ -113,16 +129,25 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
     const homeColorRgb = parseHexColor(homeColor);
     const awayColorRgb = parseHexColor(awayColor);
     const thirdColorRgb = parseHexColor(thirdColor);
+    const homeGkColorRgb = parseHexColor(homeGkPrimary);
     
     const homeToAwayDistance = getColorDistance(homeColorRgb, awayColorRgb);
     const homeToThirdDistance = getColorDistance(homeColorRgb, thirdColorRgb);
     
+    // Add goalkeeper distance calculations
+    const gkToAwayDistance = getColorDistance(homeGkColorRgb, awayColorRgb);
+    const gkToThirdDistance = getColorDistance(homeGkColorRgb, thirdColorRgb);
+    
+    // Combined distances (normal distance + GK distance)
+    const totalAwayDistance = homeToAwayDistance + gkToAwayDistance;
+    const totalThirdDistance = homeToThirdDistance + gkToThirdDistance;
+    
     if (shouldLog) {
-      console.log(`Using distance-based selection: away=${homeToAwayDistance}, third=${homeToThirdDistance}`);
+      console.log(`Using combined distance-based selection: away=${totalAwayDistance}, third=${totalThirdDistance}`);
     }
     
-    // Choose the kit with the greatest color distance from home team's kit
-    if (homeToThirdDistance > homeToAwayDistance) {
+    // Choose the kit with the greatest combined color distance
+    if (totalThirdDistance > totalAwayDistance) {
       if (shouldLog) {
         console.log(`Selected third kit for ${awayTeamName} based on better contrast with ${homeTeamName}`);
       }
