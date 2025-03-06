@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Player } from '../types/football';
@@ -32,7 +31,7 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
       case 'goalkeeper':
         return 'border-2 border-white';
       case 'defender':
-        return 'border border-white/50';
+        return '';
       case 'midfielder':
         return '';
       case 'forward':
@@ -69,7 +68,17 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
   const getPlayerKitStyles = (player: Player) => {
     if (!player.teamName || !player.kitType) return {};
     
-    const kitColors = getTeamKitColors(player.teamName, player.kitType as KitType);
+    // Get standard kit colors
+    let kitColors = getTeamKitColors(player.teamName, player.kitType as KitType);
+    
+    // For goalkeepers, invert primary and secondary colors
+    if (player.role === 'goalkeeper') {
+      kitColors = {
+        primary: kitColors.secondary, // Use the secondary color as primary
+        secondary: kitColors.primary, // Use the primary color as secondary
+        accent: kitColors.accent      // Keep accent color the same
+      };
+    }
     
     // Create a dynamic style with the kit colors
     return {
