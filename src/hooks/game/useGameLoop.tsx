@@ -31,6 +31,9 @@ export const useGameLoop = ({
   // For debugging
   const lastScoreRef = React.useRef({ red: 0, blue: 0 });
   const totalGoalsRef = React.useRef(0);
+  
+  // Track initialization state
+  const [initialized, setInitialized] = React.useState(false);
 
   // Check for score changes to track goals
   React.useEffect(() => {
@@ -47,12 +50,20 @@ export const useGameLoop = ({
 
   // Initialize and run the game loop
   React.useEffect(() => {
+    // Don't start game loop if no players are available
+    if (players.length === 0) {
+      console.log("Game loop not started - waiting for players");
+      return;
+    }
+    
     console.log(`Game loop started with ${players.length} players`);
     let frameId: number;
     let lastTime = performance.now();
     const TIME_STEP = 16; // 60 FPS target
     
     const gameLoop = () => {
+      if (!isRunningRef.current) return;
+      
       const currentTime = performance.now();
       const deltaTime = currentTime - lastTime;
       
@@ -73,8 +84,9 @@ export const useGameLoop = ({
     };
 
     // Start the game loop immediately if we have players
-    if (players.length > 0) {
-      frameId = requestAnimationFrame(gameLoop);
+    if (!initialized) {
+      // Mark initialization as complete
+      setInitialized(true);
       
       // Sync models on startup only if not in tournament mode
       if (!tournamentMode) {
@@ -87,10 +99,9 @@ export const useGameLoop = ({
           checkLearningProgress();
         }, 5000); // Check after 5 seconds to allow initial loading
       }
-    } else {
-      console.warn("Game loop not started - no players available");
     }
-
+    
+    frameId = requestAnimationFrame(gameLoop);
     console.log("Game loop initialized");
 
     // Debug timer to log ball state every 5 seconds (less frequent in tournament mode)
@@ -129,7 +140,8 @@ export const useGameLoop = ({
     checkLearningProgress, 
     ball, 
     score, 
-    tournamentMode
+    tournamentMode,
+    initialized
   ]);
 
   return { totalGoalsRef };
