@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 
 interface MatchTimerProps {
@@ -15,7 +14,7 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
   // Instead of counting down, we'll track elapsed time
   const [elapsedTime, setElapsedTime] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const initializedRef = useRef(false);
+  const lastTickTimeRef = useRef<number>(Date.now());
   const timeEndCalledRef = useRef(false);
   const goldenGoalStartTimeRef = useRef(0);
   
@@ -25,16 +24,38 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
     const scaledMinutes = Math.floor((elapsed / total) * 90);
     return scaledMinutes;
   };
-  
-  console.log('MatchTimer rendered with initialTime:', initialTime, 'elapsedTime:', elapsedTime, 'goldenGoal:', goldenGoal);
 
+  // Function to tick the timer, with safeguards against missed frames
+  const tick = () => {
+    const now = Date.now();
+    const delta = Math.floor((now - lastTickTimeRef.current) / 1000);
+    
+    // If more than 5 seconds passed between ticks, something went wrong (tab inactive, etc.)
+    // In that case, only increment by 1 to prevent huge jumps
+    const increment = delta > 5 ? 1 : delta > 0 ? delta : 1;
+    
+    lastTickTimeRef.current = now;
+    
+    setElapsedTime(prev => {
+      const newTime = prev + increment;
+      return newTime;
+    });
+  };
+  
+  // Reset timer when component mounts or initialTime changes
   useEffect(() => {
-    // Only reset elapsed time when initialTime changes
-    if (!initializedRef.current) {
-      console.log('Setting up chronometer with total time:', initialTime);
-      setElapsedTime(0);
-      initializedRef.current = true;
-    }
+    console.log('Setting up chronometer with total time:', initialTime);
+    setElapsedTime(0);
+    lastTickTimeRef.current = Date.now();
+    timeEndCalledRef.current = false;
+    goldenGoalStartTimeRef.current = 0;
+    
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
   }, [initialTime]);
 
   // Store the time when golden goal starts
@@ -47,9 +68,8 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
     }
   }, [goldenGoal, elapsedTime]);
 
+  // Main timer effect
   useEffect(() => {
-    console.log('Setting up timer with elapsedTime:', elapsedTime, 'initialTime:', initialTime, 'goldenGoal:', goldenGoal);
-    
     // Clear any existing interval
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -66,18 +86,13 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
     // In regular mode: start timer if we haven't reached the end time
     // In golden goal mode: always keep the timer running
     if (elapsedTime < initialTime || goldenGoal) {
-      timerRef.current = setInterval(() => {
-        setElapsedTime((prevTime) => {
-          const newTime = prevTime + 1;
-          console.log('Tick, elapsed time:', newTime, 'of', initialTime, 'goldenGoal:', goldenGoal);
-          return newTime;
-        });
-      }, 1000);
+      // Use a more frequent interval (500ms) for better reliability
+      // and to recover more quickly from potential browser throttling
+      timerRef.current = setInterval(tick, 500);
     }
 
     // Cleanup function
     return () => {
-      console.log('Cleaning up timer');
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
@@ -109,8 +124,6 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
   } else {
     formattedTime = `${displayMinutes}:${displaySeconds < 10 ? '0' : ''}${displaySeconds}`;
   }
-  
-  console.log('Displaying formatted time:', formattedTime, 'goldenGoal:', goldenGoal);
 
   return (
     <div className="match-timer font-mono text-2xl font-bold bg-black bg-opacity-80 text-white px-6 py-3 rounded-md shadow-lg absolute top-[-70px] left-1/2 transform -translate-x-1/2 z-30">
