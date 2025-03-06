@@ -95,7 +95,7 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
   const shouldLog = Object.keys(kitSelectionCache).length < 50;
   
   if (shouldLog) {
-    console.log(`Kit color comparison for ${homeTeamName} vs ${awayTeamName}:`);
+    console.log(`Kit selection for ${homeTeamName} vs ${awayTeamName}:`);
     console.log(`Home outfield primary: ${homeOutfieldPrimary} (${categorizeColor(homeOutfieldPrimary)})`);
     console.log(`Home GK primary: ${homeGkPrimary} (${categorizeColor(homeGkPrimary)})`);
     console.log(`Away kit primary: ${awayPrimary} (${categorizeColor(awayPrimary)})`);
