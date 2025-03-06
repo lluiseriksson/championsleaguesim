@@ -1,7 +1,7 @@
 import { Player, Position, PLAYER_RADIUS } from '../../types/football';
 
-// Minimum distance players of the same team should maintain
-const MIN_TEAMMATE_DISTANCE = PLAYER_RADIUS * 2.5;
+// Minimum distance players should maintain (increased by 4x)
+const MIN_PLAYER_DISTANCE = PLAYER_RADIUS * 2.5 * 4;
 
 /**
  * Detects if two players are too close to each other
@@ -12,16 +12,18 @@ export const arePlayersTooClose = (player1: Position, player2: Position): boolea
   const distanceSquared = dx * dx + dy * dy;
   
   // Using squared distance for performance (avoiding square root)
-  return distanceSquared < MIN_TEAMMATE_DISTANCE * MIN_TEAMMATE_DISTANCE;
+  return distanceSquared < MIN_PLAYER_DISTANCE * MIN_PLAYER_DISTANCE;
 };
 
 /**
- * Calculates an adjusted position to avoid teammate collisions
+ * Calculates an adjusted position to avoid player collisions
+ * (both teammates and opponents)
  */
 export const calculateCollisionAvoidance = (
   player: Player,
   teammates: Player[],
-  proposedPosition: Position
+  proposedPosition: Position,
+  allPlayers?: Player[]
 ): Position => {
   // Skip processing for goalkeepers (they need to stay in position)
   if (player.role === 'goalkeeper') {
@@ -31,19 +33,22 @@ export const calculateCollisionAvoidance = (
   let adjustedPosition = { ...proposedPosition };
   let collisionDetected = false;
   
-  // Check for collisions with teammates
-  for (const teammate of teammates) {
+  // Get all other players (including opponents if provided)
+  const otherPlayers = allPlayers || teammates;
+  
+  // Check for collisions with all other players
+  for (const otherPlayer of otherPlayers) {
     // Skip self and goalkeeper comparisons
-    if (teammate.id === player.id || teammate.role === 'goalkeeper') {
+    if (otherPlayer.id === player.id || otherPlayer.role === 'goalkeeper') {
       continue;
     }
     
-    if (arePlayersTooClose(adjustedPosition, teammate.position)) {
+    if (arePlayersTooClose(adjustedPosition, otherPlayer.position)) {
       collisionDetected = true;
       
-      // Calculate vector from teammate to player
-      const dx = adjustedPosition.x - teammate.position.x;
-      const dy = adjustedPosition.y - teammate.position.y;
+      // Calculate vector from other player to this player
+      const dx = adjustedPosition.x - otherPlayer.position.x;
+      const dy = adjustedPosition.y - otherPlayer.position.y;
       
       // Calculate distance
       const distance = Math.sqrt(dx * dx + dy * dy);
@@ -54,15 +59,15 @@ export const calculateCollisionAvoidance = (
         const ny = dy / distance;
         
         // Calculate how much overlap needs to be resolved
-        const overlap = MIN_TEAMMATE_DISTANCE - distance;
+        const overlap = MIN_PLAYER_DISTANCE - distance;
         
         // Apply force proportional to overlap (push players apart)
         adjustedPosition.x += nx * overlap * 0.5;
         adjustedPosition.y += ny * overlap * 0.5;
       } else {
         // If distance is 0 (exactly same position), apply small random offset
-        adjustedPosition.x += (Math.random() - 0.5) * MIN_TEAMMATE_DISTANCE;
-        adjustedPosition.y += (Math.random() - 0.5) * MIN_TEAMMATE_DISTANCE;
+        adjustedPosition.x += (Math.random() - 0.5) * MIN_PLAYER_DISTANCE;
+        adjustedPosition.y += (Math.random() - 0.5) * MIN_PLAYER_DISTANCE;
       }
     }
   }

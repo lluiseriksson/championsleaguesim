@@ -55,9 +55,7 @@ const usePlayerMovement = ({
     }
   }, [ball, players, gameReady]);
 
-  // Helper function to ensure brain has all required properties
   const ensureCompleteBrain = (brain: Partial<NeuralNet> | null | { net: any }): NeuralNet => {
-    // If brain is null or undefined, create a default object
     if (!brain) {
       return {
         net: null,
@@ -68,7 +66,6 @@ const usePlayerMovement = ({
       };
     }
     
-    // If brain has only 'net' property, add all missing properties
     if ('net' in brain && Object.keys(brain).length === 1) {
       const basicBrain: NeuralNet = {
         net: brain.net,
@@ -80,7 +77,6 @@ const usePlayerMovement = ({
       return basicBrain;
     }
     
-    // For existing brains, ensure all required properties exist
     const completeBrain = brain as Partial<NeuralNet>;
     return {
       net: completeBrain.net || null,
@@ -129,7 +125,6 @@ const usePlayerMovement = ({
             };
           }
 
-          // Default fallback movement for all non-goalkeeper players
           const roleOffsets = {
             defender: player.team === 'red' ? 150 : PITCH_WIDTH - 150,
             midfielder: player.team === 'red' ? 300 : PITCH_WIDTH - 300,
@@ -142,12 +137,11 @@ const usePlayerMovement = ({
           const dx = targetX - player.position.x;
           const dy = targetY - player.position.y;
           const dist = Math.sqrt(dx*dx + dy*dy);
-          const moveSpeed = 1.8; // Increased speed slightly
+          const moveSpeed = 1.8;
           
           let moveX = dist > 0 ? (dx / dist) * moveSpeed : 0;
           let moveY = dist > 0 ? (dy / dist) * moveSpeed : 0;
           
-          // Add some randomness to movement for more dynamic gameplay
           if (Math.random() > 0.8) {
             moveX += (Math.random() - 0.5) * 0.5;
             moveY += (Math.random() - 0.5) * 0.5;
@@ -165,7 +159,6 @@ const usePlayerMovement = ({
             player.role
           );
           
-          // Keep players within pitch boundaries
           proposedPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, proposedPosition.x));
           proposedPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, proposedPosition.y));
           
@@ -202,26 +195,24 @@ const usePlayerMovement = ({
         }
       });
       
-      // Process the final positions and remove temporary properties
       const processedPlayers = proposedPositions.map(p => {
-        const teammates = proposedPositions.filter(
-          teammate => teammate.team === p.team && teammate.id !== p.id
+        const otherPlayers = proposedPositions.filter(
+          otherPlayer => otherPlayer.id !== p.id
         );
         
         const collisionAdjustedPosition = calculateCollisionAvoidance(
           p,
-          teammates,
-          p.proposedPosition || p.position
+          proposedPositions.filter(teammate => teammate.team === p.team && teammate.id !== p.id),
+          p.proposedPosition || p.position,
+          otherPlayers
         );
         
-        // Create a clean player object without the temporary properties
         const cleanPlayer = {
           ...p,
           position: collisionAdjustedPosition,
           brain: p.brain
         };
         
-        // Delete the temporary properties using a typed approach
         const playerWithTempProps: any = cleanPlayer;
         delete playerWithTempProps.proposedPosition;
         delete playerWithTempProps.movement;
