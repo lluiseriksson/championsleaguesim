@@ -1,4 +1,5 @@
-import { Ball, Player, TeamContext, NeuralInput, Position } from '../types/football';
+
+import { Ball, Player, TeamContext, NeuralInput, Position, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
 import { calculateDistance, normalizeValue } from './neuralCore';
 import { calculateShotQuality } from './playerBrain';
 
@@ -91,17 +92,87 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
     y: normalizeValue(player.position.y, 0, 600)
   };
 
+  // Calculate distances and angles
+  const distanceToBall = calculateDistance(player.position, ball.position);
+  const distanceToGoal = calculateDistance(player.position, context.opponentGoal);
+  const distanceToOwnGoal = calculateDistance(player.position, context.ownGoal);
+  
+  // Calculate normalized versions for the output
+  const normalizedDistanceToGoal = normalizeValue(distanceToGoal, 0, 1000);
+  const normalizedDistanceToOwnGoal = normalizeValue(distanceToOwnGoal, 0, 1000);
+  
+  // Calculate angles
+  const angleToGoal = Math.atan2(
+    context.opponentGoal.y - player.position.y,
+    context.opponentGoal.x - player.position.x
+  );
+  const angleToOwnGoal = Math.atan2(
+    context.ownGoal.y - player.position.y,
+    context.ownGoal.x - player.position.x
+  );
+  const normalizedAngleToGoal = normalizeValue(angleToGoal, -Math.PI, Math.PI);
+  const normalizedAngleToOwnGoal = normalizeValue(angleToOwnGoal, -Math.PI, Math.PI);
+  
+  // Calculate if player is facing own goal
+  const playerDirectionX = Math.cos(angleToOwnGoal);
+  const isFacingOwnGoal = playerDirectionX < 0 ? 1 : 0;
+  
+  // Calculate if player is between ball and own goal
+  const ballToOwnGoalDistance = calculateDistance(ball.position, context.ownGoal);
+  const isBetweenBallAndOwnGoal = (distanceToOwnGoal < ballToOwnGoalDistance) ? 1 : 0;
+  
+  // Calculate nearest teammate
+  let nearestTeammateDistance = 1000;
+  let nearestTeammateAngle = 0;
+  if (context.teammates.length > 0) {
+    context.teammates.forEach(teammate => {
+      const dist = calculateDistance(player.position, teammate);
+      if (dist < nearestTeammateDistance) {
+        nearestTeammateDistance = dist;
+        nearestTeammateAngle = Math.atan2(
+          teammate.y - player.position.y,
+          teammate.x - player.position.x
+        );
+      }
+    });
+  }
+  
+  // Calculate nearest opponent
+  let nearestOpponentDistance = 1000;
+  let nearestOpponentAngle = 0;
+  if (context.opponents.length > 0) {
+    context.opponents.forEach(opponent => {
+      const dist = calculateDistance(player.position, opponent);
+      if (dist < nearestOpponentDistance) {
+        nearestOpponentDistance = dist;
+        nearestOpponentAngle = Math.atan2(
+          opponent.y - player.position.y,
+          opponent.x - player.position.x
+        );
+      }
+    });
+  }
+  
+  const normalizedTeammateDistance = normalizeValue(nearestTeammateDistance, 0, 400);
+  const normalizedTeammateAngle = normalizeValue(nearestTeammateAngle, -Math.PI, Math.PI);
+  const normalizedOpponentDistance = normalizeValue(nearestOpponentDistance, 0, 400);
+  const normalizedOpponentAngle = normalizeValue(nearestOpponentAngle, -Math.PI, Math.PI);
+  
+  // Calculate densities
+  const teammateDensity = calculatePlayerDensity(player.position, context.teammates, 150);
+  const opponentDensity = calculatePlayerDensity(player.position, context.opponents, 150);
+
+  // Calculate tactical metrics
   const zoneControl = calculateZoneControl(player, context.teammates, context.opponents);
   const passingLanesQuality = evaluatePassingLanes(player, context.teammates, context.opponents);
   const tacticalRole = calculateTacticalRole(player, ball, context);
-
   const verticalSpacing = calculateVerticalSpacing(player, context.teammates);
   const horizontalSpacing = calculateHorizontalSpacing(player, context.teammates);
-
   const pressureIndex = calculatePressureIndex(player, context.opponents);
   const supportPositioning = calculateSupportPositioning(player, context.teammates, ball);
   
-  const isInShootingRange = 0;
+  // Determine shooting range - using let instead of const since we modify it
+  let isInShootingRange = 0;
   if (distanceToBall < 100 && distanceToGoal < 300) {
     if ((player.team === 'red' && player.position.x > 400) || 
         (player.team === 'blue' && player.position.x < 400)) {
@@ -111,29 +182,36 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
     }
   }
 
+  // Calculate passing quality
+  const passingLaneQuality = passingLanesQuality;
   const isInPassingRange = distanceToBall < 80 && 
-                          nearestTeammateDistance < 200 && 
-                          passingLaneQuality > 0.5 ? 1 : 0;
+                        nearestTeammateDistance < 200 && 
+                        passingLaneQuality > 0.5 ? 1 : 0;
 
+  // Determine dangerous position
   const isDangerousPosition = (distanceToBall < 100 && distanceToOwnGoal < 200) || 
-                             (isBetweenBallAndOwnGoal && distanceToBall < 120) ? 1 : 0;
+                           (isBetweenBallAndOwnGoal && distanceToBall < 120) ? 1 : 0;
 
+  // Determine if defending is required
   const isDefendingRequired = ballToOwnGoalDistance < 300 ? 1 : 0;
 
+  // ELO calculations
   const normalizedTeamElo = player.teamElo ? normalizeValue(player.teamElo, 1000, 3000) : 0.5;
-
   const averageElo = 2000;
   const eloAdvantage = player.teamElo ? normalizeValue(player.teamElo - averageElo, -1000, 1000) : 0.5;
 
+  // Game context factors
   const gameTime = context.gameTime || 0.5;
   const scoreDifferential = context.scoreDiff || 0;
   const momentum = player.brain.successRate?.overall || 0.5;
 
+  // Formation metrics
   const formationCompactness = context.formationCompactness || 0.5;
   const formationWidth = context.formationWidth || 0.5;
   const distanceFromFormationCenter = context.distanceFromCenter || 0.5;
   const isInFormationPosition = context.isInPosition ? 1 : 0;
 
+  // Calculate best shooting angle and quality
   let bestShootingAngle = 0;
   let bestShootingQuality = 0;
 
@@ -156,6 +234,7 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
     }
   }
 
+  // Return the comprehensive neural input object
   return {
     ballX: normalizedBall.x,
     ballY: normalizedBall.y,
@@ -178,7 +257,7 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
     isDangerousPosition,
     isBetweenBallAndOwnGoal,
     teamElo: normalizedTeamElo,
-    eloAdvantage: eloAdvantage,
+    eloAdvantage,
     gameTime,
     scoreDifferential,
     momentum,
@@ -194,7 +273,7 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
     shootingQuality: bestShootingQuality,
     zoneControl,
     passingLanesQuality,
-    spaceCreation: Math.max(0, 1 - (context.teammateDensity + context.opponentDensity) / 2),
+    spaceCreation: Math.max(0, 1 - (teammateDensity + opponentDensity) / 2),
     defensiveSupport: calculateDefensiveSupport(player, context),
     pressureIndex,
     tacticalRole,
@@ -209,6 +288,13 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
     recoveryPosition: calculateRecoveryPosition(player, ball, context),
     transitionSpeed: calculateTransitionSpeed(player, ball)
   };
+};
+
+// Helper function to calculate player density in an area
+const calculatePlayerDensity = (position: Position, players: Position[], radius: number): number => {
+  if (!players.length) return 0;
+  const count = players.filter(p => calculateDistance(position, p) < radius).length;
+  return Math.min(1, count / 5); // Normalize to 0-1, max density of 5 players
 };
 
 const calculateVerticalSpacing = (player: Player, teammates: Position[]): number => {

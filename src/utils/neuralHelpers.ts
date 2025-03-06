@@ -1,6 +1,7 @@
 import { Position, NeuralInput, NeuralOutput, TeamContext, PITCH_WIDTH, PITCH_HEIGHT, SituationContext } from '../types/football';
 import * as brain from 'brain.js';
 import { calculateShotQuality } from './playerBrain';
+import { calculateDistance, normalizeValue } from './neuralCore';
 
 // Normalize a position to a value between 0 and 1
 export const normalizePosition = (pos: Position): Position => ({
@@ -101,7 +102,23 @@ export const createNeuralInput = (
     }
   }
 
-  // Return the neural input object with normalized values
+  // Calculate additional tactical metrics
+  const teammateDensity = calculateDensity(player, teammates, 150);
+  const opponentDensity = calculateDensity(player, opponents, 150);
+  
+  // Calculate zone control and passing lanes if teammates and opponents are available
+  let zoneControl = 0.5;
+  let passingLanesQuality = 0.5;
+  let spaceCreation = 0.5;
+  
+  if (teammates.length > 0 && opponents.length > 0) {
+    // These calculations would typically be more complex in a real implementation
+    zoneControl = calculateZoneControl(player, teammates, opponents);
+    passingLanesQuality = calculatePassingLanes(player, teammates, opponents);
+    spaceCreation = Math.max(0, 1 - (teammateDensity + opponentDensity) / 2);
+  }
+
+  // Return the neural input object with normalized values and tactical metrics
   return {
     ballX: normalizedBall.x,
     ballY: normalizedBall.y,
@@ -126,7 +143,7 @@ export const createNeuralInput = (
     teamElo: normalizedTeamElo,
     eloAdvantage: eloAdvantage,
     
-    // New contextual features
+    // Game context features
     gameTime: gameContext.gameTime || 0.5,
     scoreDifferential: gameContext.scoreDifferential || 0,
     momentum: performanceMetrics.momentum,
@@ -137,11 +154,158 @@ export const createNeuralInput = (
       Math.min(1, gameContext.possession.duration / 600) : 0, // Normalize to 0-1 (max 10 seconds)
     distanceFromFormationCenter: formationMetrics.distanceFromCenter,
     isInFormationPosition: formationMetrics.isInPosition,
-    teammateDensity: calculateDensity(player, teammates, 150),
-    opponentDensity: calculateDensity(player, opponents, 150),
+    teammateDensity,
+    opponentDensity,
     shootingAngle: bestShootingAngle / (Math.PI * 2), // Normalize to 0-1
-    shootingQuality: bestShootingQuality
+    shootingQuality: bestShootingQuality,
+    
+    // New tactical metrics
+    zoneControl,
+    passingLanesQuality,
+    spaceCreation,
+    defensiveSupport: calculateDefensiveSupport(player, teammates),
+    pressureIndex: calculatePressureIndex(player, opponents),
+    tacticalRole: 0.5, // Default value, would be more complex in real implementation
+    supportPositioning: calculateSupportPositioning(player, teammates),
+    pressingEfficiency: calculatePressingEfficiency(player, normalizedBall),
+    coverShadow: calculateCoverShadow(player, opponents),
+    verticalSpacing: calculateVerticalSpacing(teammates),
+    horizontalSpacing: calculateHorizontalSpacing(teammates),
+    territorialControl: zoneControl * (1 - calculatePressureIndex(player, opponents)),
+    counterAttackPotential: 0.5, // Default value, would be more complex in real implementation
+    pressureResistance: 1 - calculatePressureIndex(player, opponents),
+    recoveryPosition: 0.5, // Default value, would be more complex in real implementation
+    transitionSpeed: 0.5 // Default value, would be more complex in real implementation
   };
+};
+
+// Simple helper implementations for tactical metrics
+const calculateZoneControl = (player: Position, teammates: Position[], opponents: Position[]): number => {
+  // Simple implementation - would be more sophisticated in a real system
+  const radius = 150;
+  let teammateCount = 0;
+  let opponentCount = 0;
+  
+  teammates.forEach(pos => {
+    if (calculateDistance(player, pos) < radius) teammateCount++;
+  });
+  
+  opponents.forEach(pos => {
+    if (calculateDistance(player, pos) < radius) opponentCount++;
+  });
+  
+  return Math.max(0, Math.min(1, (teammateCount - opponentCount + 3) / 6));
+};
+
+const calculatePassingLanes = (player: Position, teammates: Position[], opponents: Position[]): number => {
+  // Simple implementation for passing lanes quality
+  const lanes = teammates.map(teammate => {
+    let quality = 1;
+    const dist = calculateDistance(player, teammate);
+    if (dist > 300) quality *= 0.5; // Long passes are harder
+    
+    // Check if opponents block the passing lane
+    opponents.forEach(opp => {
+      if (isInPassingLane(player, teammate, opp, 30)) {
+        quality *= 0.7; // Reduce quality if opponent blocks lane
+      }
+    });
+    
+    return quality;
+  });
+  
+  return lanes.length > 0 ? lanes.reduce((sum, q) => sum + q, 0) / lanes.length : 0;
+};
+
+const isInPassingLane = (from: Position, to: Position, pos: Position, tolerance: number): boolean => {
+  // Check if pos is in the passing lane between from and to
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  
+  if (dist === 0) return false;
+  
+  // Project pos onto the line from->to
+  const t = ((pos.x - from.x) * dx + (pos.y - from.y) * dy) / (dist * dist);
+  
+  if (t < 0 || t > 1) return false;
+  
+  // Calculate perpendicular distance
+  const px = from.x + t * dx;
+  const py = from.y + t * dy;
+  const perpDist = Math.sqrt(Math.pow(pos.x - px, 2) + Math.pow(pos.y - py, 2));
+  
+  return perpDist < tolerance;
+};
+
+const calculateDefensiveSupport = (player: Position, teammates: Position[]): number => {
+  // Simple calculation of defensive support from teammates
+  const supportRadius = 200;
+  let supportScore = 0;
+  
+  teammates.forEach(pos => {
+    const dist = calculateDistance(player, pos);
+    if (dist < supportRadius) {
+      supportScore += 1 - (dist / supportRadius);
+    }
+  });
+  
+  return Math.min(1, supportScore / 3); // Max support from 3 teammates
+};
+
+const calculatePressureIndex = (player: Position, opponents: Position[]): number => {
+  // Calculate pressure from opponents
+  const pressureRadius = 150;
+  let pressureScore = 0;
+  
+  opponents.forEach(pos => {
+    const dist = calculateDistance(player, pos);
+    if (dist < pressureRadius) {
+      pressureScore += 1 - (dist / pressureRadius);
+    }
+  });
+  
+  return Math.min(1, pressureScore / 2); // Max pressure from 2 opponents
+};
+
+const calculateSupportPositioning = (player: Position, teammates: Position[]): number => {
+  // Simple implementation for support positioning quality
+  return teammates.length > 0 ? 
+    1 - Math.min(1, teammates.reduce((min, t) => 
+      Math.min(min, calculateDistance(player, t)), 1000) / 300) : 0;
+};
+
+const calculatePressingEfficiency = (player: Position, ball: { x: number, y: number }): number => {
+  // Simple implementation based on distance to ball
+  const dist = calculateDistance(player, ball);
+  return Math.max(0, 1 - Math.min(1, dist / 200));
+};
+
+const calculateCoverShadow = (player: Position, opponents: Position[]): number => {
+  // Simple implementation for cover shadow quality
+  const shadowAngle = Math.PI / 3; // 60 degrees shadow cone
+  let coverScore = 0;
+  
+  opponents.forEach(opp => {
+    const dist = calculateDistance(player, opp);
+    if (dist < 150) coverScore += 0.5 * (1 - dist / 150);
+  });
+  
+  return Math.min(1, coverScore);
+};
+
+const calculateVerticalSpacing = (positions: Position[]): number => {
+  if (positions.length < 2) return 1;
+  const yPositions = positions.map(p => p.y);
+  const spread = Math.max(...yPositions) - Math.min(...yPositions);
+  return Math.min(1, spread / PITCH_HEIGHT);
+};
+
+const calculateHorizontalSpacing = (positions: Position[]): number => {
+  if (positions.length < 2) return 1;
+  const xPositions = positions.map(p => p.x);
+  const spread = Math.max(...xPositions) - Math.min(...xPositions);
+  return Math.min(1, spread / PITCH_WIDTH);
 };
 
 // Calculate team formation metrics

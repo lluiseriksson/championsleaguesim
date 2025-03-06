@@ -1,4 +1,3 @@
-
 import * as brain from 'brain.js';
 import { NeuralNet, Position, NeuralInput, NeuralOutput, TeamContext, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
 import { createNeuralInput, isNetworkValid } from './neuralHelpers';
@@ -21,7 +20,7 @@ export const createPlayerBrain = (): NeuralNet => {
     const trainingData = [];
 
     for (let i = 0; i < 20; i++) {
-      const input: NeuralInput = {
+      const input: Partial<NeuralInput> = {
         ballX: Math.random(),
         ballY: Math.random(),
         playerX: Math.random(),
@@ -56,7 +55,24 @@ export const createPlayerBrain = (): NeuralNet => {
         teammateDensity: Math.random(),
         opponentDensity: Math.random(),
         shootingAngle: Math.random(),
-        shootingQuality: Math.random()
+        shootingQuality: Math.random(),
+        
+        zoneControl: Math.random(),
+        passingLanesQuality: Math.random(),
+        spaceCreation: Math.random(),
+        defensiveSupport: Math.random(),
+        pressureIndex: Math.random(),
+        tacticalRole: Math.random(),
+        supportPositioning: Math.random(),
+        pressingEfficiency: Math.random(),
+        coverShadow: Math.random(),
+        verticalSpacing: Math.random(),
+        horizontalSpacing: Math.random(),
+        territorialControl: Math.random(),
+        counterAttackPotential: Math.random(),
+        pressureResistance: Math.random(),
+        recoveryPosition: Math.random(),
+        transitionSpeed: Math.random()
       };
 
       const output: NeuralOutput = {
@@ -67,7 +83,7 @@ export const createPlayerBrain = (): NeuralNet => {
         intercept: Math.random() > 0.8 ? 0.8 : 0.2
       };
 
-      trainingData.push({ input, output });
+      trainingData.push({ input: input as NeuralInput, output });
     }
 
     for (let i = 0; i < 15; i++) {
@@ -374,7 +390,7 @@ const createFallbackBrain = (): NeuralNet => {
     learningRate: 0.1,
   });
 
-  const input: NeuralInput = {
+  const input: Partial<NeuralInput> = {
     ballX: 0.5, ballY: 0.5,
     playerX: 0.5, playerY: 0.5,
     ballVelocityX: 0, ballVelocityY: 0,
@@ -399,14 +415,31 @@ const createFallbackBrain = (): NeuralNet => {
     teammateDensity: 0.5,
     opponentDensity: 0.5,
     shootingAngle: 0.5,
-    shootingQuality: 0.5
+    shootingQuality: 0.5,
+    
+    zoneControl: 0.5,
+    passingLanesQuality: 0.5,
+    spaceCreation: 0.5,
+    defensiveSupport: 0.5,
+    pressureIndex: 0.5,
+    tacticalRole: 0.5,
+    supportPositioning: 0.5,
+    pressingEfficiency: 0.5,
+    coverShadow: 0.5,
+    verticalSpacing: 0.5,
+    horizontalSpacing: 0.5,
+    territorialControl: 0.5,
+    counterAttackPotential: 0.5,
+    pressureResistance: 0.5,
+    recoveryPosition: 0.5,
+    transitionSpeed: 0.5
   };
 
   const output: NeuralOutput = {
     moveX: 0.5, moveY: 0.5, shootBall: 0.2, passBall: 0.2, intercept: 0.2
   };
 
-  net.train([{ input, output }], {
+  net.train([{ input: input as NeuralInput, output }], {
     iterations: 100,
     errorThresh: 0.1
   });
