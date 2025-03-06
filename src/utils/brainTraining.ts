@@ -1,11 +1,20 @@
+
 import { NeuralNet, Player, TeamContext, Ball } from '../types/football';
 import { saveModel } from './neuralModelService';
 import { calculateNetworkInputs } from './neuralInputs';
 import { calculateDistance } from './neuralCore';
 import { isNetworkValid } from './neuralHelpers';
 import { recordActionOutcome } from './gameContextTracker';
+import { 
+  createExperienceReplay,
+  addExperience,
+  sampleExperiences,
+  getCurriculumDifficulty,
+  updateCurriculumStage
+} from './experienceReplay';
 
-const LEARNING_RATE = 0.1;
+// Enhanced reward parameters
+const LEARNING_RATE = 0.08;
 const GOAL_REWARD = 1.5;
 const MISS_PENALTY = -0.8;
 const LAST_TOUCH_GOAL_REWARD = 2.0;
@@ -16,6 +25,8 @@ const GOALKEEPER_DISTANCE_THRESHOLD = 50;
 const OWN_GOAL_TEAM_PENALTY = -2.0;
 const OWN_GOAL_PLAYER_PENALTY = -5.0;
 const WRONG_DIRECTION_SHOT_PENALTY = -4.0;
+const DELAYED_REWARD_DECAY = 0.9;
+const PRIORITY_SCALE = 2.0;
 
 export const updatePlayerBrain = (
   brain: NeuralNet, 
@@ -27,6 +38,12 @@ export const updatePlayerBrain = (
   isOwnGoal: boolean = false,
   gameContext: any = {}
 ): NeuralNet => {
+  if (!brain.experienceReplay) {
+    brain.experienceReplay = createExperienceReplay();
+    brain.learningStage = 0.1; // Initial curriculum stage
+    brain.cumulativeReward = 0;
+  }
+
   let rewardFactor = scored ? GOAL_REWARD : MISS_PENALTY;
 
   if (isOwnGoal) {
@@ -53,6 +70,7 @@ export const updatePlayerBrain = (
         
         const inputs = calculateNetworkInputs(ball, player, context);
         
+        // Record action outcome for tracking
         const updatedBrain = recordActionOutcome(
           brain,
           'intercept',
@@ -60,6 +78,42 @@ export const updatePlayerBrain = (
           inputs
         );
         
+        // Store experience in replay buffer with appropriate priority
+        // Bad experiences (goals against) get higher priority for learning
+        const priority = scored ? 1.0 : PRIORITY_SCALE;
+        updatedBrain.experienceReplay = addExperience(
+          updatedBrain.experienceReplay!,
+          inputs,
+          {
+            moveX: 0,
+            moveY: ball.position.y > player.position.y ? 1 : 0,
+            shootBall: 0,
+            passBall: 0,
+            intercept: 1
+          },
+          rewardFactor,
+          priority
+        );
+        
+        // Update curriculum stage based on performance
+        updatedBrain.learningStage = updateCurriculumStage(updatedBrain);
+        
+        // Get curriculum parameters for current stage
+        const { 
+          learningRate, 
+          batchSize,
+          errorThreshold
+        } = getCurriculumDifficulty(updatedBrain.learningStage);
+        
+        // Apply delayed rewards if available
+        let finalReward = rewardFactor;
+        if (updatedBrain.lastReward) {
+          finalReward += updatedBrain.lastReward * DELAYED_REWARD_DECAY;
+        }
+        updatedBrain.lastReward = finalReward;
+        updatedBrain.cumulativeReward = (updatedBrain.cumulativeReward || 0) + finalReward;
+        
+        // Train on current experience
         updatedBrain.net.train([{
           input: inputs,
           output: {
@@ -71,9 +125,30 @@ export const updatePlayerBrain = (
           }
         }], {
           iterations: isOwnGoal ? 5 : 2,
-          errorThresh: 0.01,
-          learningRate: LEARNING_RATE * (2 - distanceRatio) * (isOwnGoal ? 1.5 : 1)
+          errorThresh: errorThreshold,
+          learningRate: learningRate * (2 - distanceRatio) * (isOwnGoal ? 1.5 : 1)
         });
+        
+        // Experience replay - train on past experiences if we have enough
+        if (updatedBrain.experienceReplay!.inputs.length >= batchSize) {
+          const { inputs: replayInputs, outputs: replayOutputs } = 
+            sampleExperiences(updatedBrain.experienceReplay!, batchSize);
+            
+          // Create training data from experience replay
+          const trainingData = replayInputs.map((input, idx) => ({
+            input,
+            output: replayOutputs[idx]
+          }));
+          
+          // Train on replay experiences if we have enough
+          if (trainingData.length > 0) {
+            updatedBrain.net.train(trainingData, {
+              iterations: 1,
+              errorThresh: errorThreshold,
+              learningRate: learningRate
+            });
+          }
+        }
         
         if (Math.random() < 0.7) {
           saveModel(player).catch(error => 
@@ -176,7 +251,53 @@ export const updatePlayerBrain = (
       inputs
     );
     
-    let dynamicLearningRate = LEARNING_RATE;
+    // Initialize experience replay if needed
+    if (!updatedBrain.experienceReplay) {
+      updatedBrain.experienceReplay = createExperienceReplay();
+      updatedBrain.learningStage = 0.1;
+      updatedBrain.cumulativeReward = 0;
+    }
+    
+    // Update curriculum stage based on performance
+    updatedBrain.learningStage = updateCurriculumStage(updatedBrain);
+    
+    // Get curriculum parameters for current stage
+    const { 
+      learningRate, 
+      batchSize,
+      errorThreshold,
+      rewardScale 
+    } = getCurriculumDifficulty(updatedBrain.learningStage);
+    
+    // Scale reward based on curriculum stage
+    const scaledReward = rewardFactor * rewardScale;
+    
+    // Calculate priority for experience replay
+    // Important events (goals, own goals, etc.) get higher priority
+    let priority = 1.0;
+    if (scored) priority = 1.5;
+    if (isLastTouchBeforeGoal) priority = 2.0;
+    if (wrongDirection) priority = 2.5;
+    if (isOwnGoal) priority = 3.0;
+    
+    // Store experience in replay buffer
+    updatedBrain.experienceReplay = addExperience(
+      updatedBrain.experienceReplay,
+      inputs,
+      trainOutput,
+      scaledReward,
+      priority
+    );
+    
+    // Apply delayed rewards
+    let finalReward = scaledReward;
+    if (updatedBrain.lastReward) {
+      finalReward += updatedBrain.lastReward * DELAYED_REWARD_DECAY;
+    }
+    updatedBrain.lastReward = scaledReward;
+    updatedBrain.cumulativeReward = (updatedBrain.cumulativeReward || 0) + finalReward;
+    
+    let dynamicLearningRate = learningRate;
     
     if (updatedBrain.successRate) {
       const actionType = lastAction as keyof typeof updatedBrain.successRate;
@@ -190,14 +311,36 @@ export const updatePlayerBrain = (
       dynamicLearningRate * 5 : 
       (isOwnGoal ? dynamicLearningRate * 3 : dynamicLearningRate);
     
+    // Train on current experience
     updatedBrain.net.train([{
       input: inputs,
       output: trainOutput
     }], {
       iterations: wrongDirection ? 10 : (isOwnGoal ? 8 : 2),
-      errorThresh: 0.01,
+      errorThresh: errorThreshold,
       learningRate: finalLearningRate
     });
+    
+    // Experience replay - train on past experiences if we have enough
+    if (updatedBrain.experienceReplay.inputs.length >= batchSize) {
+      const { inputs: replayInputs, outputs: replayOutputs } = 
+        sampleExperiences(updatedBrain.experienceReplay, batchSize);
+        
+      // Create training data from experience replay
+      const trainingData = replayInputs.map((input, idx) => ({
+        input,
+        output: replayOutputs[idx]
+      }));
+      
+      // Train on replay experiences
+      if (trainingData.length > 0) {
+        updatedBrain.net.train(trainingData, {
+          iterations: 1,
+          errorThresh: errorThreshold,
+          learningRate: dynamicLearningRate
+        });
+      }
+    }
     
     const saveThreshold = wrongDirection || isOwnGoal ? 0.95 : 0.5;
     if (Math.random() < saveThreshold) {
@@ -215,7 +358,7 @@ export const updatePlayerBrain = (
 
 export const initializePlayerBrainWithHistory = (brain: NeuralNet): NeuralNet => {
   if (!brain.actionHistory) {
-    return {
+    brain = {
       ...brain,
       actionHistory: [],
       successRate: {
@@ -226,5 +369,17 @@ export const initializePlayerBrainWithHistory = (brain: NeuralNet): NeuralNet =>
       }
     };
   }
+  
+  // Initialize experience replay and curriculum learning if not present
+  if (!brain.experienceReplay) {
+    brain = {
+      ...brain,
+      experienceReplay: createExperienceReplay(),
+      learningStage: 0.1,
+      lastReward: 0,
+      cumulativeReward: 0
+    };
+  }
+  
   return brain;
 };

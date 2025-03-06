@@ -1,3 +1,4 @@
+
 import * as brain from 'brain.js';
 
 export interface Position {
@@ -60,7 +61,7 @@ export interface NeuralInput {
 }
 
 export interface NeuralOutput {
-  [key: string]: number; // Añadimos index signature
+  [key: string]: number; // Index signature
   moveX: number;
   moveY: number;
   shootBall: number;
@@ -68,11 +69,22 @@ export interface NeuralOutput {
   intercept: number;
 }
 
+// Enhanced experience replay memory for neural networks
+export interface ExperienceReplay {
+  inputs: NeuralInput[];
+  outputs: NeuralOutput[];
+  rewards: number[];
+  priorities: number[];  // For prioritized experience replay
+  timestamps: number[];  // When the experience was recorded
+  capacity: number;      // Maximum buffer size
+  currentIndex: number;  // Current position in the buffer
+}
+
 export interface NeuralNet {
   net: brain.NeuralNetwork<NeuralInput, NeuralOutput>;
   lastOutput: { x: number; y: number };
   lastAction?: 'move' | 'shoot' | 'pass' | 'intercept';
-  // New properties for tracking performance
+  // Performance tracking
   actionHistory?: {
     action: string;
     success: boolean;
@@ -85,6 +97,11 @@ export interface NeuralNet {
     intercept: number;
     overall: number;
   };
+  // New properties for advanced learning
+  experienceReplay?: ExperienceReplay;
+  learningStage?: number;  // For curriculum learning (0-1)
+  lastReward?: number;     // For delayed reward tracking
+  cumulativeReward?: number; // Track total rewards over time
 }
 
 export type KitType = 'home' | 'away' | 'third';

@@ -1,11 +1,12 @@
 import * as brain from 'brain.js';
 import { NeuralNet, Position, NeuralInput, NeuralOutput, TeamContext, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
 import { createNeuralInput, isNetworkValid } from './neuralHelpers';
+import { createExperienceReplay } from './experienceReplay';
 
 export const createPlayerBrain = (): NeuralNet => {
   try {
     const net = new brain.NeuralNetwork<NeuralInput, NeuralOutput>({
-      hiddenLayers: [24, 16, 8],
+      hiddenLayers: [24, 20, 16, 8],
       activation: 'leaky-relu',
       learningRate: 0.05,
       momentum: 0.1,
@@ -228,7 +229,9 @@ export const createPlayerBrain = (): NeuralNet => {
       return createFallbackBrain();
     }
 
-    console.log("Created enhanced neural network successfully");
+    const experienceReplay = createExperienceReplay(100);
+    
+    console.log("Created enhanced neural network with curriculum learning and experience replay");
     return {
       net,
       lastOutput: { x: 0, y: 0 },
@@ -239,7 +242,11 @@ export const createPlayerBrain = (): NeuralNet => {
         pass: 0.5,
         intercept: 0.5,
         overall: 0.5
-      }
+      },
+      experienceReplay,
+      learningStage: 0.1,
+      lastReward: 0,
+      cumulativeReward: 0
     };
   } catch (error) {
     console.error("Error creating neural network:", error);
@@ -290,10 +297,16 @@ const createFallbackBrain = (): NeuralNet => {
     errorThresh: 0.1
   });
 
+  const experienceReplay = createExperienceReplay(50);
+
   return {
     net,
     lastOutput: { x: 0, y: 0 },
-    lastAction: 'move'
+    lastAction: 'move',
+    experienceReplay,
+    learningStage: 0.1,
+    lastReward: 0,
+    cumulativeReward: 0
   };
 };
 
