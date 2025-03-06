@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
@@ -249,7 +250,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
     setPlayers, 
     ball, 
     gameReady: true,
-    batchSize: 1
+    batchSize: 11 // Set batch size to 11 to load one team at a time
   });
   
   useEffect(() => {

@@ -4,6 +4,48 @@ import { saveModel, loadModel, saveTrainingSession, loadModelAsync } from './neu
 import { getBestModel, combineModels } from './neural/modelOptimization';
 import { getModelStats, compareModelPerformance } from './neural/modelStatistics';
 
+// Throttling function to prevent too many simultaneous model loads
+const throttlePromises = async <T>(
+  tasks: (() => Promise<T>)[],
+  batchSize: number = 1,
+  delayBetweenBatches: number = 100
+): Promise<T[]> => {
+  console.log(`Throttling ${tasks.length} tasks with batch size ${batchSize}`);
+  const results: T[] = [];
+  
+  for (let i = 0; i < tasks.length; i += batchSize) {
+    const batch = tasks.slice(i, i + batchSize);
+    console.log(`Processing batch ${i / batchSize + 1} with ${batch.length} tasks`);
+    
+    const batchResults = await Promise.all(batch.map(task => task()));
+    results.push(...batchResults);
+    
+    if (i + batchSize < tasks.length) {
+      await new Promise(resolve => setTimeout(resolve, delayBetweenBatches));
+    }
+  }
+  
+  return results;
+};
+
+// Batch load multiple models with throttling
+const batchLoadModels = async (
+  playerIds: string[],
+  batchSize: number = 1
+): Promise<Record<string, any>> => {
+  console.log(`Batch loading ${playerIds.length} models with batch size ${batchSize}`);
+  
+  const tasks = playerIds.map(id => () => loadModelAsync(id));
+  const results = await throttlePromises(tasks, batchSize);
+  
+  const modelMap: Record<string, any> = {};
+  playerIds.forEach((id, index) => {
+    modelMap[id] = results[index];
+  });
+  
+  return modelMap;
+};
+
 // Export all functions
 export {
   // Persistence functions
@@ -18,5 +60,9 @@ export {
   
   // Statistics functions
   getModelStats,
-  compareModelPerformance
+  compareModelPerformance,
+  
+  // Batch loading utilities
+  batchLoadModels,
+  throttlePromises
 };

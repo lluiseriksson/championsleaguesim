@@ -31,7 +31,7 @@ const usePlayerMovement = ({
   gameReady,
   gameTime = 0,
   score = { red: 0, blue: 0 },
-  batchSize = 1
+  batchSize = 11
 }: PlayerMovementProps) => {
   const [formations, setFormations] = useState({ redFormation: [], blueFormation: [] });
   const [possession, setPossession] = useState({ team: null, player: null, duration: 0 });
@@ -57,7 +57,7 @@ const usePlayerMovement = ({
         const startIdx = currentBatch * batchSize;
         const endIdx = Math.min(startIdx + batchSize, players.length);
         
-        console.log(`Initializing player ${startIdx + 1}/${players.length}`);
+        console.log(`Initializing batch ${currentBatch + 1}/${totalBatches} (players ${startIdx + 1}-${endIdx}/${players.length})`);
         
         requestAnimationFrame(() => {
           Promise.all(
@@ -79,22 +79,20 @@ const usePlayerMovement = ({
                 brain: initializePlayerBrainWithHistory(player.brain)
               };
               
-              setProcessedPlayers(prev => {
-                const newCount = prev + 1;
-                const exactProgress = (newCount / totalPlayers) * 100;
-                setInitializationProgress(exactProgress);
-                return newCount;
-              });
-              
               return true;
             })
           ).then(() => {
+            const newProcessedCount = Math.min((currentBatch + 1) * batchSize, players.length);
+            setProcessedPlayers(newProcessedCount);
+            const exactProgress = (newProcessedCount / totalPlayers) * 100;
+            setInitializationProgress(exactProgress);
+            
             currentBatch++;
             
             if (currentBatch < totalBatches) {
               setTimeout(() => {
                 requestAnimationFrame(initializeBatch);
-              }, 100);
+              }, 500);
             } else {
               setPlayers(playersCopy);
               setBrainInitialized(true);
@@ -313,8 +311,7 @@ const usePlayerMovement = ({
             };
           }
           
-          const currentGameTimeMinutes = gameTime || 0;
-          const earlyGameBonus = currentGameTimeMinutes < 10 ? 0.2 : 0;
+          const earlyGameBonus = gameTime < 10 ? 0.2 : 0;
           const neuralNetworkThreshold = (player.role === 'defender' ? 0.6 : 0.65) - earlyGameBonus;
           const useNeuralNetwork = Math.random() > neuralNetworkThreshold;
           
@@ -333,7 +330,7 @@ const usePlayerMovement = ({
               player.targetPosition,
               newPosition,
               player.role,
-              currentGameTimeMinutes
+              gameTime
             );
             
             newPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, newPosition.x));

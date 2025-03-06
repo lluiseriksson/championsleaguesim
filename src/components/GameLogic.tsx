@@ -53,7 +53,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
     tournamentMode
   });
 
-  // Ball movement system
+  // Ball movement system with improved first movement detection
   const { updateBallPosition } = useBallMovementSystem({
     ball,
     setBall,
