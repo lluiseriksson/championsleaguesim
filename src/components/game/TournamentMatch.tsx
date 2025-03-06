@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
 import MatchTimer from './MatchTimer';
-import { Player, Ball, Score, PITCH_WIDTH, PITCH_HEIGHT } from '../../types/football';
+import { Player, Ball, Score, PITCH_WIDTH, PITCH_HEIGHT, PLAYER_RADIUS } from '../../types/football';
 import { toast } from 'sonner';
 import { getAwayTeamKit } from '../../types/kits';
 import GameLogic from '../GameLogic';
@@ -179,7 +179,8 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         },
         targetPosition: { x: pos.x, y: pos.y },
         teamName: homeTeam,
-        kitType: 'home'
+        kitType: 'home',
+        radius: PLAYER_RADIUS
       });
     }
     
@@ -213,7 +214,8 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         },
         targetPosition: { x: pos.x, y: pos.y },
         teamName: awayTeam,
-        kitType: awayTeamKitType
+        kitType: awayTeamKitType,
+        radius: PLAYER_RADIUS
       });
     }
     

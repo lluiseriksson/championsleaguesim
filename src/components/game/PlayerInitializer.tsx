@@ -1,5 +1,5 @@
 import React from 'react';
-import { Player, PITCH_WIDTH, PITCH_HEIGHT, KitType } from '../../types/football';
+import { Player, PITCH_WIDTH, PITCH_HEIGHT, KitType, PLAYER_RADIUS } from '../../types/football';
 import { createPlayerBrain } from '../../utils/playerBrain';
 import { initializePlayerBrain } from '../../utils/modelLoader';
 import { getAwayTeamKit } from '../../types/kits';
@@ -11,12 +11,9 @@ interface PlayerInitializerProps {
   setGameReady: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-// Transliterate Russian team names to Latin alphabet
 const transliterateRussianName = (name: string): string => {
-  // Special case for Greek team
   if (name === 'Ολυμπιακός') return 'Olympiakos';
   
-  // Map of Cyrillic to Latin characters
   const cyrillicToLatin: Record<string, string> = {
     'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G', 'Д': 'D', 'Е': 'E', 'Ё': 'Yo', 
     'Ж': 'Zh', 'З': 'Z', 'И': 'I', 'Й': 'Y', 'К': 'K', 'Л': 'L', 'М': 'M', 
@@ -30,12 +27,10 @@ const transliterateRussianName = (name: string): string => {
     'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
   };
 
-  // Check if the name has Cyrillic characters
   const hasCyrillic = /[А-Яа-яЁё]/.test(name);
   
   if (!hasCyrillic) return name;
   
-  // Transliterate character by character
   let result = '';
   for (let i = 0; i < name.length; i++) {
     const char = name[i];
@@ -49,12 +44,10 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
   React.useEffect(() => {
     const loadPlayers = async () => {
       try {
-        // Reset the used goalkeeper kits for this new match
         resetUsedGoalkeeperKits();
         
         const initialPlayers: Player[] = [];
         
-        // Get random team names from the available teams
         const teamNames = Object.keys(teamKitColors);
         const homeTeamIndex = Math.floor(Math.random() * teamNames.length);
         let awayTeamIndex;
@@ -65,28 +58,22 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
         const homeTeamName = teamNames[homeTeamIndex];
         const awayTeamName = teamNames[awayTeamIndex];
         
-        // Transliterate team names if they contain Russian characters
         const displayHomeTeamName = transliterateRussianName(homeTeamName);
         const displayAwayTeamName = transliterateRussianName(awayTeamName);
         
-        // Determine the best away kit to use based on color similarity
         const awayTeamKitType = getAwayTeamKit(homeTeamName, awayTeamName);
         
         console.log(`Match: ${displayHomeTeamName} (home) vs ${displayAwayTeamName} (${awayTeamKitType})`);
         
-        // Initialize red team players (home team) with 3-4-3 formation
         const redTeamPositions = [
           { x: 50, y: PITCH_HEIGHT/2, role: 'goalkeeper' },
-          // 3 defenders
           { x: 150, y: PITCH_HEIGHT/4, role: 'defender' },
           { x: 150, y: PITCH_HEIGHT/2, role: 'defender' },
           { x: 150, y: (PITCH_HEIGHT*3)/4, role: 'defender' },
-          // 4 midfielders
           { x: 300, y: PITCH_HEIGHT/5, role: 'midfielder' },
           { x: 300, y: (PITCH_HEIGHT*2)/5, role: 'midfielder' },
           { x: 300, y: (PITCH_HEIGHT*3)/5, role: 'midfielder' },
           { x: 300, y: (PITCH_HEIGHT*4)/5, role: 'midfielder' },
-          // 3 forwards
           { x: 500, y: PITCH_HEIGHT/4, role: 'forward' },
           { x: 500, y: PITCH_HEIGHT/2, role: 'forward' },
           { x: 500, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
@@ -116,23 +103,20 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
             brain: brain,
             targetPosition: { x: pos.x, y: pos.y },
             teamName: homeTeamName,
-            kitType: 'home' as KitType
+            kitType: 'home' as KitType,
+            radius: PLAYER_RADIUS
           });
         }
 
-        // Initialize blue team players (away team) with 3-4-3 formation
         const blueTeamPositions = [
           { x: PITCH_WIDTH - 50, y: PITCH_HEIGHT/2, role: 'goalkeeper' },
-          // 3 defenders
           { x: PITCH_WIDTH - 150, y: PITCH_HEIGHT/4, role: 'defender' },
           { x: PITCH_WIDTH - 150, y: PITCH_HEIGHT/2, role: 'defender' },
           { x: PITCH_WIDTH - 150, y: (PITCH_HEIGHT*3)/4, role: 'defender' },
-          // 4 midfielders
           { x: PITCH_WIDTH - 300, y: PITCH_HEIGHT/5, role: 'midfielder' },
           { x: PITCH_WIDTH - 300, y: (PITCH_HEIGHT*2)/5, role: 'midfielder' },
           { x: PITCH_WIDTH - 300, y: (PITCH_HEIGHT*3)/5, role: 'midfielder' },
           { x: PITCH_WIDTH - 300, y: (PITCH_HEIGHT*4)/5, role: 'midfielder' },
-          // 3 forwards
           { x: PITCH_WIDTH - 500, y: PITCH_HEIGHT/4, role: 'forward' },
           { x: PITCH_WIDTH - 500, y: PITCH_HEIGHT/2, role: 'forward' },
           { x: PITCH_WIDTH - 500, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
@@ -155,14 +139,15 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
           }
           
           initialPlayers.push({
-            id: i + 11,
+            id: i + 12,
             position: { x: pos.x, y: pos.y },
             role: role,
             team: 'blue',
             brain: brain,
             targetPosition: { x: pos.x, y: pos.y },
             teamName: awayTeamName,
-            kitType: awayTeamKitType as KitType
+            kitType: awayTeamKitType as KitType,
+            radius: PLAYER_RADIUS
           });
         }
 
