@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Match, TournamentTeam } from '../../types/tournament';
 import { teamKitColors } from '../../types/kits';
@@ -28,6 +27,7 @@ export const useTournament = (embeddedMode = false) => {
     
     setActiveMatch(match);
     setPlayingMatch(true);
+    console.log("Playing match:", match.teamA.name, "vs", match.teamB.name);
   }, []);
 
   const simulateSingleMatch = useCallback((match: Match) => {
@@ -37,6 +37,11 @@ export const useTournament = (embeddedMode = false) => {
     const currentMatch = updatedMatches.find(m => m.id === match.id);
     
     if (!currentMatch || !currentMatch.teamA || !currentMatch.teamB) return;
+    
+    // If in auto simulation mode, also set the active match for display
+    if (autoSimulation) {
+      setActiveMatch(match);
+    }
     
     const teamAStrength = currentMatch.teamA.eloRating + Math.random() * 100;
     const teamBStrength = currentMatch.teamB.eloRating + Math.random() * 100;
@@ -71,7 +76,7 @@ export const useTournament = (embeddedMode = false) => {
     }
     
     setMatches(updatedMatches);
-  }, [matches]);
+  }, [matches, autoSimulation]);
 
   // Now we can use them in the useEffect dependency array
   useEffect(() => {
@@ -85,11 +90,7 @@ export const useTournament = (embeddedMode = false) => {
       return;
     }
     
-    // In embedded mode, don't worry about playingMatch
-    if (playingMatch && !embeddedMode) {
-      console.log("Playing match active and not in embedded mode, skipping simulation");
-      return;
-    }
+    // Never return based on playingMatch to allow showing field during auto-simulation
     
     console.log("Auto simulation running, currentRound:", currentRound);
     
@@ -117,11 +118,15 @@ export const useTournament = (embeddedMode = false) => {
       
       if (nextMatch) {
         console.log("Simulating match:", nextMatch.teamA?.name, "vs", nextMatch.teamB?.name);
+        
+        // Always set active match during auto simulation
+        setActiveMatch(nextMatch);
+        
         if (embeddedMode) {
           simulateSingleMatch(nextMatch);
           
           // When in embedded mode, schedule the next match simulation immediately
-          timeoutId = setTimeout(simulateNextMatch, 800);
+          timeoutId = setTimeout(simulateNextMatch, 1500);
         } else {
           playMatch(nextMatch);
         }
@@ -143,8 +148,11 @@ export const useTournament = (embeddedMode = false) => {
           console.log("All matches in round", currentRound, "completed, advancing to next round");
           setCurrentRound(prevRound => prevRound + 1);
           
+          // Clear active match when changing rounds
+          setActiveMatch(null);
+          
           // Schedule the next round after a short delay
-          timeoutId = setTimeout(simulateNextMatch, 1500);
+          timeoutId = setTimeout(simulateNextMatch, 2500);
         } else if (currentRound === 7 && allRoundMatchesPlayed) {
           const winner = matches.find(m => m.round === 7)?.winner;
           toast.success(`Tournament Complete!`, {
@@ -153,6 +161,7 @@ export const useTournament = (embeddedMode = false) => {
           
           console.log("Tournament complete! Winner:", winner?.name);
           setAutoSimulation(false);
+          setActiveMatch(null);
         }
       }
     };
@@ -164,7 +173,7 @@ export const useTournament = (embeddedMode = false) => {
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [autoSimulation, playingMatch, currentRound, matches, embeddedMode, simulateSingleMatch, playMatch]);
+  }, [autoSimulation, matches, currentRound, embeddedMode, simulateSingleMatch, playMatch]);
 
   const initializeTournament = useCallback(() => {
     const tournamentTeams: TournamentTeam[] = Object.entries(teamKitColors).map(([name, colors], index) => ({

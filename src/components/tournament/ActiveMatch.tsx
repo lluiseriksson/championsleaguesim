@@ -18,7 +18,7 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
   if (!activeMatch || !activeMatch.teamA || !activeMatch.teamB) return null;
 
   return (
-    <div className="mb-10 p-4 bg-gray-50 rounded-lg shadow-md">
+    <div className="p-4 bg-gray-50 rounded-lg shadow-md">
       <div className="mb-2">
         <button 
           onClick={onBackClick}
@@ -26,6 +26,12 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
         >
           ← Back to Tournament
         </button>
+      </div>
+      
+      <div className="flex justify-between items-center mb-4">
+        <div className="text-lg font-semibold">
+          {activeMatch.teamA.name} vs {activeMatch.teamB.name}
+        </div>
       </div>
       
       <TournamentMatch 
