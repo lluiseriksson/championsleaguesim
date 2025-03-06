@@ -7,6 +7,7 @@ import {
   createGameContext 
 } from '../../utils/gameContextTracker';
 import { initializePlayerBrainWithHistory } from '../../utils/brainTraining';
+import { isStrategicMovement, calculateReceivingPositionQuality } from '../../utils/playerBrain';
 
 interface PlayerMovementProps {
   players: Player[];
@@ -98,12 +99,55 @@ const usePlayerMovement = ({
           }
           
           if (!player.brain || !player.brain.net || typeof player.brain.net.run !== 'function') {
+            const playerTeammates = currentPlayers.filter(p => p.team === player.team && p.id !== player.id);
+            const opponents = currentPlayers.filter(p => p.team !== player.team);
+            
+            let strategicX = player.targetPosition.x;
+            let strategicY = player.targetPosition.y;
+            
+            const positionQuality = calculateReceivingPositionQuality(
+              player.position,
+              ball.position,
+              playerTeammates.map(t => t.position),
+              opponents.map(o => o.position),
+              player.team === 'red' ? { x: 0, y: PITCH_HEIGHT/2 } : { x: PITCH_WIDTH, y: PITCH_HEIGHT/2 },
+              player.team === 'red' ? { x: PITCH_WIDTH, y: PITCH_HEIGHT/2 } : { x: 0, y: PITCH_HEIGHT/2 }
+            );
+            
+            if (positionQuality < 0.4) {
+              const roleOffsets = {
+                defender: player.team === 'red' ? 150 : PITCH_WIDTH - 150,
+                midfielder: player.team === 'red' ? 300 : PITCH_WIDTH - 300,
+                forward: player.team === 'red' ? 500 : PITCH_WIDTH - 500
+              };
+              
+              strategicX = roleOffsets[player.role] || player.targetPosition.x;
+              strategicY = Math.max(100, Math.min(PITCH_HEIGHT - 100, ball.position.y));
+            }
+            
             const dx = ball.position.x - player.position.x;
             const dy = ball.position.y - player.position.y;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-            const moveSpeed = 1.5;
-            const moveX = dist > 0 ? (dx / dist) * moveSpeed : 0;
-            const moveY = dist > 0 ? (dy / dist) * moveSpeed : 0;
+            const distToBall = Math.sqrt(dx*dx + dy*dy);
+            
+            const shouldChaseBall = distToBall < 100 && !isStrategicMovement(
+              player.position,
+              ball.position,
+              { x: dx, y: dy }
+            );
+            
+            let moveX, moveY;
+            if (shouldChaseBall) {
+              const moveSpeed = 1.5;
+              moveX = distToBall > 0 ? (dx / distToBall) * moveSpeed : 0;
+              moveY = distToBall > 0 ? (dy / distToBall) * moveSpeed : 0;
+            } else {
+              const dxStrategic = strategicX - player.position.x;
+              const dyStrategic = strategicY - player.position.y;
+              const distStrategic = Math.sqrt(dxStrategic*dxStrategic + dyStrategic*dyStrategic);
+              const moveSpeed = 1.2;
+              moveX = distStrategic > 0 ? (dxStrategic / distStrategic) * moveSpeed : 0;
+              moveY = distStrategic > 0 ? (dyStrategic / distStrategic) * moveSpeed : 0;
+            }
             
             const newPosition = {
               x: player.position.x + moveX,
@@ -117,20 +161,6 @@ const usePlayerMovement = ({
               case 'forward': maxDistance = 120; break;
             }
             
-            const distanceFromStart = Math.sqrt(
-              Math.pow(newPosition.x - player.targetPosition.x, 2) +
-              Math.pow(newPosition.y - player.targetPosition.y, 2)
-            );
-            
-            if (distanceFromStart > maxDistance) {
-              const angle = Math.atan2(
-                player.targetPosition.y - newPosition.y,
-                player.targetPosition.x - newPosition.x
-              );
-              newPosition.x = player.targetPosition.x - Math.cos(angle) * maxDistance;
-              newPosition.y = player.targetPosition.y - Math.sin(angle) * maxDistance;
-            }
-            
             newPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, newPosition.x));
             newPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, newPosition.y));
             
@@ -140,7 +170,7 @@ const usePlayerMovement = ({
               brain: {
                 ...player.brain,
                 lastOutput: { x: moveX, y: moveY },
-                lastAction: 'move'
+                lastAction: shouldChaseBall ? 'chase' : 'position'
               }
             };
           }

@@ -281,6 +281,8 @@ export const isNetworkValid = (net: brain.NeuralNetwork<NeuralInput, NeuralOutpu
   }
   
   try {
+    console.log("Validating neural network...");
+    
     // Create a simple test input with default values
     const testInput: NeuralInput = {
       ballX: 0.5,
@@ -329,13 +331,21 @@ export const isNetworkValid = (net: brain.NeuralNetwork<NeuralInput, NeuralOutpu
       return false;
     }
     
-    // Check that all values are valid numbers
-    return Object.values(output).every(value => 
-      value !== undefined && 
-      value !== null && 
-      !isNaN(value) && 
-      isFinite(value)
+    // Validate output structure and values
+    const requiredOutputs = ['moveX', 'moveY', 'shootBall', 'passBall', 'intercept'];
+    const hasAllOutputs = requiredOutputs.every(key => 
+      typeof output[key as keyof typeof output] === 'number' &&
+      !isNaN(output[key as keyof typeof output]) &&
+      isFinite(output[key as keyof typeof output])
     );
+    
+    if (!hasAllOutputs) {
+      console.warn("Network output missing required properties or has invalid values");
+      return false;
+    }
+    
+    console.log("Neural network validation successful");
+    return true;
   } catch (error) {
     console.warn("Error validating network:", error);
     return false;

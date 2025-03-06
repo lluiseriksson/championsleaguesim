@@ -6,6 +6,8 @@ import { initializeSpecializedBrain } from './specializedNetworks';
 
 export const createPlayerBrain = (): NeuralNet => {
   try {
+    console.log("Creating new neural network...");
+    
     const net = new brain.NeuralNetwork<NeuralInput, NeuralOutput>({
       hiddenLayers: [24, 20, 16, 8],
       activation: 'leaky-relu',
@@ -319,14 +321,13 @@ export const createPlayerBrain = (): NeuralNet => {
       trainingData.push({ input, output });
     }
 
+    console.log("Training neural network...");
     net.train(trainingData, {
       iterations: 2000,
       errorThresh: 0.005,
       logPeriod: 500,
       log: (stats) => {
-        if (stats.iterations % 500 === 0) {
-          console.log(`Training progress: ${stats.iterations} iterations, error: ${stats.error}`);
-        }
+        console.log(`Training progress: ${stats.iterations} iterations, error: ${stats.error}`);
       },
       learningRate: 0.05,
       momentum: 0.1,
@@ -336,19 +337,26 @@ export const createPlayerBrain = (): NeuralNet => {
     });
 
     if (!isNetworkValid(net)) {
-      console.warn("Network not valid after training, creating fallback");
+      console.warn("Network validation failed after training, creating fallback");
       return createFallbackBrain();
     }
 
+    console.log("Neural network created and trained successfully");
     const experienceReplay = createExperienceReplay(100);
     
-    console.log("Created enhanced neural network with curriculum learning and experience replay");
-    
-    const enhancedBrain = initializeSpecializedBrain();
-    
-    enhancedBrain.net = net;
-    
-    return enhancedBrain;
+    return {
+      net,
+      lastOutput: { x: 0, y: 0 },
+      lastAction: 'move',
+      experienceReplay,
+      learningStage: 0.1,
+      lastReward: 0,
+      cumulativeReward: 0,
+      successRate: {
+        overall: 0.5,
+        recent: []
+      }
+    };
   } catch (error) {
     console.error("Error creating neural network:", error);
     return createFallbackBrain();
@@ -409,7 +417,11 @@ const createFallbackBrain = (): NeuralNet => {
     experienceReplay,
     learningStage: 0.1,
     lastReward: 0,
-    cumulativeReward: 0
+    cumulativeReward: 0,
+    successRate: {
+      overall: 0.5,
+      recent: []
+    }
   };
 };
 
