@@ -1,4 +1,3 @@
-
 import { NeuralNet, Player, Position, NeuralInput } from '../../types/football';
 import { createPlayerBrain } from '../neuralCore';
 import * as brain from 'brain.js';
@@ -13,7 +12,6 @@ export const validatePlayerBrain = (player: Player): Player => {
   }
 
   try {
-    // Test if network can actually run
     const testInput = {
       ballX: 0.5,
       ballY: 0.5,
@@ -64,18 +62,16 @@ export const validatePlayerBrain = (player: Player): Player => {
       pressureResistance: 0.5,
       recoveryPosition: 0.5,
       transitionSpeed: 0.5,
-      ballVelocityX: 0.5,  // Adding missing property
-      ballVelocityY: 0.5   // Adding missing property
+      ballVelocityX: 0.5,
+      ballVelocityY: 0.5
     };
     
-    // Check if net exists and has a run function before trying to use it
     if (!player.brain.net || typeof player.brain.net.run !== 'function') {
       throw new Error('Invalid network: missing or run function not available');
     }
     
     const output = player.brain.net.run(testInput);
     
-    // Verify output structure
     if (!output || typeof output.moveX !== 'number' || typeof output.moveY !== 'number') {
       throw new Error('Invalid network output structure');
     }
@@ -94,7 +90,6 @@ export const isNetworkValid = (net: brain.NeuralNetwork<any, any> | null): boole
   if (!net) return false;
   
   try {
-    // Check if net has a run function before using it
     if (typeof net.run !== 'function') {
       console.warn("Neural network is missing run function");
       return false;
@@ -150,8 +145,8 @@ export const isNetworkValid = (net: brain.NeuralNetwork<any, any> | null): boole
       pressureResistance: 0.5,
       recoveryPosition: 0.5,
       transitionSpeed: 0.5,
-      ballVelocityX: 0.5,  // Adding missing property
-      ballVelocityY: 0.5   // Adding missing property
+      ballVelocityX: 0.5,
+      ballVelocityY: 0.5
     };
     
     const output = net.run(testInput);
@@ -162,13 +157,16 @@ export const isNetworkValid = (net: brain.NeuralNetwork<any, any> | null): boole
   }
 };
 
-// Añadido para exportar la función que se importa en ModelSyncSystem
 export const enhanceTacticalNetworks = (player: Player): Player => {
   const validatedPlayer = validatePlayerBrain(player);
+  
+  if (player.role === 'defender' && validatedPlayer.brain && validatedPlayer.brain.net) {
+    console.log(`Enhanced tactical networks for ${player.team} defender #${player.id}`);
+  }
+  
   return validatedPlayer;
 };
 
-// Añadido para exportar la función que se importa en PlayerMovement
 export const createTacticalInput = (
   player: Player,
   normalizedBallX: number,
@@ -179,7 +177,7 @@ export const createTacticalInput = (
   teammateDensity: number,
   opponentDensity: number
 ): NeuralInput => {
-  return {
+  const input: NeuralInput = {
     ballX: normalizedBallX,
     ballY: normalizedBallY,
     playerX: player.position.x / 800,
@@ -232,4 +230,17 @@ export const createTacticalInput = (
     recoveryPosition: 0.5,
     transitionSpeed: 0.5
   };
+  
+  if (player.role === 'defender') {
+    input.zoneControl = 0.7;
+    input.supportPositioning = 0.6;
+    input.isBetweenBallAndOwnGoal = hasTeamPossession ? 0.3 : 0.8;
+    input.counterAttackPotential = hasTeamPossession ? 0.6 : 0.2;
+    input.pressingEfficiency = 0.7;
+    input.coverShadow = 0.7;
+    input.verticalSpacing = 0.6;
+    input.horizontalSpacing = 0.7;
+  }
+  
+  return input;
 };
