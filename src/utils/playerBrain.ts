@@ -1,4 +1,3 @@
-
 import { NeuralNet, Player, TeamContext, Ball, Position } from '../types/football';
 import { calculateDistance } from './neuralCore';
 import { isPassingLaneOpen } from './movementConstraints';
@@ -333,10 +332,20 @@ export const calculatePassingSuccess = (
   let successRate = Math.max(0, 1 - passDistance / 500);
   
   // Calculate if pass lane is open
+  const dummyOpponents = opponentPositions.map((pos, index) => ({
+    id: -index - 1, // Negative IDs to avoid conflicts
+    position: pos,
+    role: 'defender' as const,
+    team: passer.team === 'red' ? 'blue' : 'red',
+    brain: { net: null, lastOutput: { x: 0, y: 0 } },
+    targetPosition: pos,
+    radius: 12 // Default player radius
+  }));
+  
   const passQuality = isPassingLaneOpen(
     passer.position,
     receiver.position,
-    opponentPositions
+    dummyOpponents
   );
   
   // Combine factors

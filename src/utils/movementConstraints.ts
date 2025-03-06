@@ -1,3 +1,4 @@
+
 import { Position, Player } from '../types/football';
 import { calculateDistance } from './neuralCore';
 
@@ -47,7 +48,7 @@ export const constrainMovementToRadius = (
   };
 };
 
-// This function is the one we need to make sure is properly exported
+// Updated to accept Player[] array instead of Position[]
 export const isPassingLaneOpen = (
   requester: Position,
   passer: Position,
@@ -66,8 +67,9 @@ export const isPassingLaneOpen = (
   
   // Check for obstacles in the passing lane
   allPlayers.forEach(player => {
-    if (player.position.x === passer.x && player.position.y === passer.y) return; // Skip the passer
-    if (player.position.x === requester.x && player.position.y === requester.y) return; // Skip the requester
+    // Skip the passer and requester (now checking player objects)
+    if (player.position.x === passer.x && player.position.y === passer.y) return;
+    if (player.position.x === requester.x && player.position.y === requester.y) return;
     
     // Calculate vector from passer to this player
     const toPlayerVector = {
