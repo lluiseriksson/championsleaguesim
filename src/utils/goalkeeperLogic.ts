@@ -1,7 +1,22 @@
 import { Player, Ball, PITCH_WIDTH, PITCH_HEIGHT, GOAL_HEIGHT } from '../types/football';
 
+// Calculate goalkeeper speed multiplier based on team ELO difference
+const calculateGoalkeeperSpeedMultiplier = (playerElo?: number, opposingTeamElo?: number): number => {
+  // Default to 1.0 if ELOs are not available
+  if (!playerElo || !opposingTeamElo) return 1.0;
+  
+  // Calculate ELO difference (capped at ±1000 to prevent extreme values)
+  const eloDifference = Math.min(Math.max(playerElo - opposingTeamElo, -1000), 1000);
+  
+  // For each ELO point difference, we adjust by 0.1% (0.001)
+  // Best team (highest ELO) has multiplier 1.0, lower ELO teams get reduced speed
+  const speedMultiplier = 1.0 - Math.max(0, -eloDifference) * 0.001;
+  
+  return speedMultiplier;
+};
+
 // Specialized movement logic for goalkeepers
-export const moveGoalkeeper = (player: Player, ball: Ball): { x: number, y: number } => {
+export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: number): { x: number, y: number } => {
   // Determine which side the goalkeeper is defending
   const isLeftSide = player.team === 'red';
   const goalLine = isLeftSide ? 30 : PITCH_WIDTH - 30;
@@ -18,6 +33,9 @@ export const moveGoalkeeper = (player: Player, ball: Ball): { x: number, y: numb
   
   // Calculate expected ball position based on trajectory
   const expectedBallY = ball.position.y + (ball.velocity.y * 10);
+  
+  // Apply ELO-based speed multiplier
+  const eloSpeedMultiplier = calculateGoalkeeperSpeedMultiplier(player.teamElo, opposingTeamElo);
   
   // Calculate horizontal movement - be smarter about when to come out
   let moveX = 0;
@@ -36,13 +54,14 @@ export const moveGoalkeeper = (player: Player, ball: Ball): { x: number, y: numb
     
     // Move faster when ball is coming directly at goal
     const directShot = Math.abs(ball.position.y - PITCH_HEIGHT/2) < GOAL_HEIGHT/2;
-    const speedMultiplier = directShot ? 3.0 : 2.0;
+    const baseSpeedMultiplier = directShot ? 3.0 : 2.0;
+    const adjustedSpeedMultiplier = baseSpeedMultiplier * eloSpeedMultiplier;
     
-    moveX = Math.sign(targetX - player.position.x) * speedMultiplier;
+    moveX = Math.sign(targetX - player.position.x) * adjustedSpeedMultiplier;
   } else {
-    // Return to goal line with higher urgency
+    // Return to goal line with higher urgency, adjusted by ELO
     const distanceToGoalLine = Math.abs(player.position.x - goalLine);
-    moveX = Math.sign(goalLine - player.position.x) * Math.min(distanceToGoalLine * 0.2, 2.5);
+    moveX = Math.sign(goalLine - player.position.x) * Math.min(distanceToGoalLine * 0.2, 2.5) * eloSpeedMultiplier;
   }
   
   // Calculate vertical movement to track the ball or expected ball position
@@ -58,16 +77,16 @@ export const moveGoalkeeper = (player: Player, ball: Ball): { x: number, y: numb
     Math.min(PITCH_HEIGHT/2 + GOAL_HEIGHT/2 + 30, targetY)
   );
   
-  // Calculate vertical movement with higher responsiveness
+  // Calculate vertical movement with higher responsiveness, adjusted by ELO
   const yDifference = limitedTargetY - player.position.y;
-  moveY = Math.sign(yDifference) * Math.min(Math.abs(yDifference) * 0.15, 3.0);
+  moveY = Math.sign(yDifference) * Math.min(Math.abs(yDifference) * 0.15, 3.0) * eloSpeedMultiplier;
   
   // Prioritize vertical movement when ball is coming directly at goal
   if (ballMovingTowardGoal && Math.abs(ball.position.x - player.position.x) < 100) {
-    moveY = moveY * 1.5; // Increase vertical movement priority
+    moveY = moveY * 1.5 * eloSpeedMultiplier; // Increase vertical movement priority, adjusted by ELO
   }
   
-  console.log(`GK ${player.team}: movement (${moveX.toFixed(1)},${moveY.toFixed(1)}), ball dist: ${distanceToBall.toFixed(0)}`);
+  console.log(`GK ${player.team}: movement (${moveX.toFixed(1)},${moveY.toFixed(1)}), ball dist: ${distanceToBall.toFixed(0)}, ELO mult: ${eloSpeedMultiplier.toFixed(2)}`);
   
   return { x: moveX, y: moveY };
 };

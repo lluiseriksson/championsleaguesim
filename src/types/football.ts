@@ -66,6 +66,7 @@ export interface Player {
   targetPosition: Position;
   teamName?: string;  // Actual team name like "Barcelona", "Liverpool", etc.
   kitType?: KitType;  // Which kit the player is wearing (home/away/third)
+  teamElo?: number;   // The ELO rating of the player's team
 }
 
 // Added bounceDetection property to Ball interface
