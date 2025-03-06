@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
@@ -167,6 +168,14 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
     
     console.log(`Tournament match: ${displayHomeTeam} (home) vs ${displayAwayTeam} (${awayTeamKitType})`);
     
+    // Create neural networks for the red team (home team, players 1-11)
+    const redTeamBrains = [];
+    for (let i = 0; i < 11; i++) {
+      const playerBrain = createPlayerBrain();
+      console.log(`Created brain for red player #${i + 1} - network valid: ${playerBrain.net !== null}`);
+      redTeamBrains.push(playerBrain);
+    }
+    
     const redTeamPositions = [
       { x: 50, y: PITCH_HEIGHT/2, role: 'goalkeeper' },
       { x: 150, y: PITCH_HEIGHT/4, role: 'defender' },
@@ -185,15 +194,12 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       const pos = redTeamPositions[i];
       const role = pos.role as Player['role'];
       
-      const playerBrain = createPlayerBrain();
-      console.log(`Created brain for red ${role} #${i + 1} - network valid: ${playerBrain.net !== null}`);
-      
       newPlayers.push({
         id: i + 1,
         position: { x: pos.x, y: pos.y },
         role: role,
         team: 'red',
-        brain: playerBrain,
+        brain: redTeamBrains[i],
         targetPosition: { x: pos.x, y: pos.y },
         teamName: homeTeam,
         kitType: 'home',
@@ -215,19 +221,21 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       { x: PITCH_WIDTH - 500, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
     ];
     
+    // Reuse same brains for blue team by mirroring them from the red team
     for (let i = 0; i < blueTeamPositions.length; i++) {
       const pos = blueTeamPositions[i];
       const role = pos.role as Player['role'];
       
-      const playerBrain = createPlayerBrain();
-      console.log(`Created brain for blue ${role} #${i + 12} - network valid: ${playerBrain.net !== null}`);
+      // Use corresponding brain from red team
+      const mirroredBrain = redTeamBrains[i];
+      console.log(`Mirrored brain for blue ${role} #${i + 12} from red player #${i + 1}`);
       
       newPlayers.push({
         id: i + 12,
         position: { x: pos.x, y: pos.y },
         role: role,
         team: 'blue',
-        brain: playerBrain,
+        brain: mirroredBrain, // Reuse the brain from the red team
         targetPosition: { x: pos.x, y: pos.y },
         teamName: awayTeam,
         kitType: awayTeamKitType,
