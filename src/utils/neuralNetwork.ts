@@ -1,3 +1,4 @@
+
 import * as brain from 'brain.js';
 import { NeuralNet, Position, NeuralInput, NeuralOutput, TeamContext, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
 import { createNeuralInput, isNetworkValid } from './neuralHelpers';
@@ -20,7 +21,7 @@ export const createPlayerBrain = (): NeuralNet => {
     const trainingData = [];
 
     for (let i = 0; i < 20; i++) {
-      const input: Partial<NeuralInput> = {
+      const input: NeuralInput = {
         ballX: Math.random(),
         ballY: Math.random(),
         playerX: Math.random(),
@@ -57,6 +58,7 @@ export const createPlayerBrain = (): NeuralNet => {
         shootingAngle: Math.random(),
         shootingQuality: Math.random(),
         
+        // Add the new tactical metrics
         zoneControl: Math.random(),
         passingLanesQuality: Math.random(),
         spaceCreation: Math.random(),
@@ -83,7 +85,7 @@ export const createPlayerBrain = (): NeuralNet => {
         intercept: Math.random() > 0.8 ? 0.8 : 0.2
       };
 
-      trainingData.push({ input: input as NeuralInput, output });
+      trainingData.push({ input, output });
     }
 
     for (let i = 0; i < 15; i++) {
@@ -122,7 +124,25 @@ export const createPlayerBrain = (): NeuralNet => {
         teammateDensity: 0.3 + Math.random() * 0.4,
         opponentDensity: 0.2 + Math.random() * 0.3,
         shootingAngle: Math.random(),
-        shootingQuality: Math.random()
+        shootingQuality: Math.random(),
+        
+        // Add the tactical metrics
+        zoneControl: 0.6 + Math.random() * 0.4,
+        passingLanesQuality: 0.5 + Math.random() * 0.5,
+        spaceCreation: 0.4 + Math.random() * 0.6,
+        defensiveSupport: 0.3 + Math.random() * 0.4,
+        pressureIndex: 0.1 + Math.random() * 0.3,
+        tacticalRole: 0.7 + Math.random() * 0.3,
+        supportPositioning: 0.5 + Math.random() * 0.5,
+        pressingEfficiency: 0.3 + Math.random() * 0.3,
+        coverShadow: 0.2 + Math.random() * 0.3,
+        verticalSpacing: 0.4 + Math.random() * 0.6,
+        horizontalSpacing: 0.5 + Math.random() * 0.5,
+        territorialControl: 0.6 + Math.random() * 0.4,
+        counterAttackPotential: 0.7 + Math.random() * 0.3,
+        pressureResistance: 0.7 + Math.random() * 0.3,
+        recoveryPosition: 0.3 + Math.random() * 0.3,
+        transitionSpeed: 0.6 + Math.random() * 0.4
       };
 
       const output: NeuralOutput = {
@@ -172,7 +192,25 @@ export const createPlayerBrain = (): NeuralNet => {
         teammateDensity: 0.3 + Math.random() * 0.4,
         opponentDensity: 0.2 + Math.random() * 0.3,
         shootingAngle: Math.random(),
-        shootingQuality: Math.random()
+        shootingQuality: Math.random(),
+        
+        // Add the tactical metrics
+        zoneControl: 0.6 + Math.random() * 0.4,
+        passingLanesQuality: 0.5 + Math.random() * 0.5,
+        spaceCreation: 0.4 + Math.random() * 0.6,
+        defensiveSupport: 0.3 + Math.random() * 0.4,
+        pressureIndex: 0.1 + Math.random() * 0.3,
+        tacticalRole: 0.7 + Math.random() * 0.3,
+        supportPositioning: 0.5 + Math.random() * 0.5,
+        pressingEfficiency: 0.3 + Math.random() * 0.3,
+        coverShadow: 0.2 + Math.random() * 0.3,
+        verticalSpacing: 0.4 + Math.random() * 0.6,
+        horizontalSpacing: 0.5 + Math.random() * 0.5,
+        territorialControl: 0.6 + Math.random() * 0.4,
+        counterAttackPotential: 0.7 + Math.random() * 0.3,
+        pressureResistance: 0.7 + Math.random() * 0.3,
+        recoveryPosition: 0.3 + Math.random() * 0.3,
+        transitionSpeed: 0.6 + Math.random() * 0.4
       };
 
       const output: NeuralOutput = {
@@ -222,7 +260,25 @@ export const createPlayerBrain = (): NeuralNet => {
         teammateDensity: 0.6 + Math.random() * 0.4,
         opponentDensity: 0.6 + Math.random() * 0.4,
         shootingAngle: Math.random(),
-        shootingQuality: Math.random()
+        shootingQuality: Math.random(),
+        
+        // Add defensive tactical metrics
+        zoneControl: 0.3 + Math.random() * 0.3,
+        passingLanesQuality: 0.2 + Math.random() * 0.3,
+        spaceCreation: 0.2 + Math.random() * 0.3,
+        defensiveSupport: 0.7 + Math.random() * 0.3,
+        pressureIndex: 0.6 + Math.random() * 0.4,
+        tacticalRole: 0.7 + Math.random() * 0.3,
+        supportPositioning: 0.6 + Math.random() * 0.4,
+        pressingEfficiency: 0.6 + Math.random() * 0.4,
+        coverShadow: 0.7 + Math.random() * 0.3,
+        verticalSpacing: 0.3 + Math.random() * 0.3,
+        horizontalSpacing: 0.3 + Math.random() * 0.3,
+        territorialControl: 0.3 + Math.random() * 0.3,
+        counterAttackPotential: 0.1 + Math.random() * 0.3,
+        pressureResistance: 0.2 + Math.random() * 0.4,
+        recoveryPosition: 0.7 + Math.random() * 0.3,
+        transitionSpeed: 0.4 + Math.random() * 0.3
       };
 
       const output: NeuralOutput = {
@@ -272,7 +328,25 @@ export const createPlayerBrain = (): NeuralNet => {
         teammateDensity: 0.7 + Math.random() * 0.3,
         opponentDensity: 0.7 + Math.random() * 0.3,
         shootingAngle: Math.random(),
-        shootingQuality: Math.random()
+        shootingQuality: Math.random(),
+        
+        // Add crowded field tactical metrics
+        zoneControl: 0.4 + Math.random() * 0.3,
+        passingLanesQuality: 0.3 + Math.random() * 0.3,
+        spaceCreation: 0.2 + Math.random() * 0.3,
+        defensiveSupport: 0.5 + Math.random() * 0.3,
+        pressureIndex: 0.6 + Math.random() * 0.4,
+        tacticalRole: 0.5 + Math.random() * 0.3,
+        supportPositioning: 0.5 + Math.random() * 0.3,
+        pressingEfficiency: 0.4 + Math.random() * 0.3,
+        coverShadow: 0.4 + Math.random() * 0.3,
+        verticalSpacing: 0.3 + Math.random() * 0.3,
+        horizontalSpacing: 0.3 + Math.random() * 0.3,
+        territorialControl: 0.4 + Math.random() * 0.3,
+        counterAttackPotential: 0.3 + Math.random() * 0.3,
+        pressureResistance: 0.3 + Math.random() * 0.3,
+        recoveryPosition: 0.5 + Math.random() * 0.3,
+        transitionSpeed: 0.4 + Math.random() * 0.3
       };
 
       const moveAwayAngle = Math.random() * 2 * Math.PI;
@@ -323,7 +397,25 @@ export const createPlayerBrain = (): NeuralNet => {
         teammateDensity: 0.3 + Math.random() * 0.3,
         opponentDensity: 0.3 + Math.random() * 0.3,
         shootingAngle: Math.random(),
-        shootingQuality: Math.random()
+        shootingQuality: Math.random(),
+        
+        // Add midfield tactical metrics
+        zoneControl: 0.5 + Math.random() * 0.3,
+        passingLanesQuality: 0.5 + Math.random() * 0.3,
+        spaceCreation: 0.5 + Math.random() * 0.3,
+        defensiveSupport: 0.4 + Math.random() * 0.3,
+        pressureIndex: 0.4 + Math.random() * 0.3,
+        tacticalRole: 0.6 + Math.random() * 0.3,
+        supportPositioning: 0.5 + Math.random() * 0.3,
+        pressingEfficiency: 0.5 + Math.random() * 0.3,
+        coverShadow: 0.4 + Math.random() * 0.3,
+        verticalSpacing: 0.5 + Math.random() * 0.3,
+        horizontalSpacing: 0.5 + Math.random() * 0.3,
+        territorialControl: 0.5 + Math.random() * 0.3,
+        counterAttackPotential: 0.5 + Math.random() * 0.3,
+        pressureResistance: 0.5 + Math.random() * 0.3,
+        recoveryPosition: 0.5 + Math.random() * 0.3,
+        transitionSpeed: 0.5 + Math.random() * 0.3
       };
 
       const moveTowardGoal = Math.random() > 0.4;
@@ -390,7 +482,7 @@ const createFallbackBrain = (): NeuralNet => {
     learningRate: 0.1,
   });
 
-  const input: Partial<NeuralInput> = {
+  const input: NeuralInput = {
     ballX: 0.5, ballY: 0.5,
     playerX: 0.5, playerY: 0.5,
     ballVelocityX: 0, ballVelocityY: 0,
@@ -417,6 +509,7 @@ const createFallbackBrain = (): NeuralNet => {
     shootingAngle: 0.5,
     shootingQuality: 0.5,
     
+    // Add tactical metrics with default values
     zoneControl: 0.5,
     passingLanesQuality: 0.5,
     spaceCreation: 0.5,
@@ -439,7 +532,7 @@ const createFallbackBrain = (): NeuralNet => {
     moveX: 0.5, moveY: 0.5, shootBall: 0.2, passBall: 0.2, intercept: 0.2
   };
 
-  net.train([{ input: input as NeuralInput, output }], {
+  net.train([{ input, output }], {
     iterations: 100,
     errorThresh: 0.1
   });

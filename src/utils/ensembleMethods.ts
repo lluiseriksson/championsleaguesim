@@ -1,3 +1,4 @@
+
 import * as brain from 'brain.js';
 import { NeuralNet, NeuralInput, NeuralOutput } from '../types/football';
 import { createPlayerBrain } from './neuralNetwork';
@@ -85,7 +86,24 @@ const createDefaultInput = (): NeuralInput => ({
   teammateDensity: 0.5,
   opponentDensity: 0.5,
   shootingAngle: 0.5,
-  shootingQuality: 0.5
+  shootingQuality: 0.5,
+  // Add the tactical metrics
+  zoneControl: 0.5,
+  passingLanesQuality: 0.5,
+  spaceCreation: 0.5,
+  defensiveSupport: 0.5,
+  pressureIndex: 0.5,
+  tacticalRole: 0.5,
+  supportPositioning: 0.5,
+  pressingEfficiency: 0.5,
+  coverShadow: 0.5,
+  verticalSpacing: 0.5,
+  horizontalSpacing: 0.5,
+  territorialControl: 0.5,
+  counterAttackPotential: 0.5,
+  pressureResistance: 0.5,
+  recoveryPosition: 0.5,
+  transitionSpeed: 0.5
 });
 
 // Create a default output for initialization
