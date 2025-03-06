@@ -312,7 +312,7 @@ const usePlayerMovement = ({
             };
           }
           
-          const neuralNetworkThreshold = player.role === 'defender' ? 0.45 : 0.5;
+          const neuralNetworkThreshold = player.role === 'defender' ? 0.6 : 0.65;
           const useNeuralNetwork = Math.random() > neuralNetworkThreshold;
           
           console.log(`${player.team} ${player.role} #${player.id} - Using neural network: ${useNeuralNetwork}`);
@@ -356,7 +356,7 @@ const usePlayerMovement = ({
           };
           
           let targetX = roleOffsets[player.role] || player.targetPosition.x;
-          let targetY = Math.max(100, Math.min(PITCH_HEIGHT - 100, ball.position.y));
+          let targetY = ball.position.y;
           
           const defensiveThirdWidth = PITCH_WIDTH / 3;
           const isInDefensiveThird = (player.team === 'red' && ball.position.x < defensiveThirdWidth) || 
@@ -369,28 +369,28 @@ const usePlayerMovement = ({
             const ballYRelativeToCenter = (ball.position.y - PITCH_HEIGHT/2) / 2;
             targetY = ball.position.y - ballYRelativeToCenter;
           } else {
-            targetX += (Math.random() - 0.5) * 25;
-            targetY += (Math.random() - 0.5) * 35;
+            targetX += (Math.random() - 0.5) * 10;
+            targetY += (Math.random() - 0.5) * 15;
           }
           
           const dx = targetX - player.position.x;
           const dy = targetY - player.position.y;
           const dist = Math.sqrt(dx*dx + dy*dy);
           
-          let moveSpeed = 2.4;
+          let moveSpeed = 2.2;
           if (player.role === 'defender') {
-            moveSpeed = 2.6;
+            moveSpeed = 2.4;
           }
           
           let moveX = dist > 0 ? (dx / dist) * moveSpeed : 0;
           let moveY = dist > 0 ? (dy / dist) * moveSpeed : 0;
           
-          if (player.role === 'defender' && Math.random() > 0.8) {
-            moveX += (Math.random() - 0.5) * 0.6;
-            moveY += (Math.random() - 0.5) * 0.6;
-          } else if (Math.random() > 0.85) {
-            moveX += (Math.random() - 0.5) * 0.5;
-            moveY += (Math.random() - 0.5) * 0.5;
+          if (player.role === 'defender' && Math.random() > 0.95) {
+            moveX += (Math.random() - 0.5) * 0.3;
+            moveY += (Math.random() - 0.5) * 0.3;
+          } else if (Math.random() > 0.95) {
+            moveX += (Math.random() - 0.5) * 0.2;
+            moveY += (Math.random() - 0.5) * 0.2;
           }
           
           let proposedPosition = {

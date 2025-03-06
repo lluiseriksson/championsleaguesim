@@ -3,9 +3,9 @@ import { calculateDistance } from './neuralCore';
 
 const ROLE_RADIUS_LIMITS = {
   goalkeeper: 70,     // Goalkeepers stay close to goal
-  defender: 120,      // Reduced from 150 - Defenders maintain tighter defensive structure
-  midfielder: 150,    // Reduced from 180 - Midfielders have more restricted movement range
-  forward: 180        // Reduced from 220 - Forwards have more constrained freedom to move
+  defender: 100,      // Further reduced from 120 - Defenders maintain tighter defensive structure
+  midfielder: 130,    // Further reduced from 150 - Midfielders have more restricted movement range
+  forward: 160        // Further reduced from 180 - Forwards have more constrained freedom to move
 };
 
 export const constrainMovementToRadius = (
@@ -14,19 +14,16 @@ export const constrainMovementToRadius = (
   proposedPosition: Position,
   role: Player['role']
 ): Position => {
-  // Reduced randomization to radius limits for more deterministic movement
-  const baseMaxRadius = ROLE_RADIUS_LIMITS[role];
-  const randomFactor = 1 + (Math.random() * 0.1 - 0.05); // ±5% randomization (reduced from ±10%)
+  // No randomization to radius limits for completely deterministic movement
+  const maxRadius = ROLE_RADIUS_LIMITS[role];
   
-  // Give forwards slight more freedom when they are in attacking position
-  const isForwardInAttackingPosition = role === 'forward' && 
-    ((currentPosition.x > 500 && proposedPosition.x > 450) || 
-     (currentPosition.x < 300 && proposedPosition.x < 350));
-  
-  // Slightly increased radius for attacking forwards, but still more constrained than before
-  const maxRadius = isForwardInAttackingPosition 
-    ? baseMaxRadius * 1.2 * randomFactor // Reduced from 1.3
-    : baseMaxRadius * randomFactor;
+  // Special case for goalkeeper - extremely strict constraints
+  if (role === 'goalkeeper') {
+    return {
+      x: Math.max(targetPosition.x - 10, Math.min(targetPosition.x + 10, proposedPosition.x)),
+      y: Math.max(targetPosition.y - 50, Math.min(targetPosition.y + 50, proposedPosition.y))
+    };
+  }
   
   // Calculate distance from tactical position
   const distanceFromTarget = calculateDistance(proposedPosition, targetPosition);
@@ -35,7 +32,7 @@ export const constrainMovementToRadius = (
     return proposedPosition;
   }
   
-  // If outside radius, constrain to the radius boundary more strictly
+  // If outside radius, strictly constrain to the radius boundary
   const angle = Math.atan2(
     proposedPosition.y - targetPosition.y,
     proposedPosition.x - targetPosition.x
