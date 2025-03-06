@@ -11,6 +11,7 @@ export type TeamKit = {
   home: TeamKitColors;
   away: TeamKitColors;
   third: TeamKitColors;
+  goalkeeper: TeamKitColors;
 };
 
 export type TeamColors = {
