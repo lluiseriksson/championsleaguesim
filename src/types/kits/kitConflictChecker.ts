@@ -1,4 +1,3 @@
-
 import { teamKitColors } from './teamColorsData';
 import { categorizeColor, ColorCategory } from './colorUtils';
 import { getTeamKitColor } from './kitAccessors';
@@ -12,7 +11,8 @@ const CONFLICTING_TEAM_PAIRS = [
   ['Athletic Bilbao', 'Southampton'],
   ['AC Milan', 'Athletic Bilbao'],
   ['Ajax', 'Fulham'],
-  ['Real Madrid', 'Leeds United']
+  ['Real Madrid', 'Leeds United'],
+  ['Forest', 'Espanyol']
 ];
 
 // Function to check if a team uses red as primary color

@@ -1,4 +1,3 @@
-
 // Helper function to parse hex color to RGB
 export function parseHexColor(hex: string): { r: number, g: number, b: number } {
   // Handle invalid hex colors
@@ -96,6 +95,18 @@ export function categorizeColor(hexColor: string): ColorCategory {
     return ColorCategory.GRAY;
   }
   
+  // Improved Red detection - more sensitive to different shades of red
+  // This fixes issues with similar red kits like Forest & Espanyol
+  if (r > 180 && r > g * 1.5 && r > b * 1.5) {
+    // Strong red detection
+    if (g < 100 && b < 100) {
+      return r > 220 ? ColorCategory.RED : ColorCategory.BURGUNDY;
+    }
+    if (g > 150 && b < 100) return ColorCategory.ORANGE;
+    if (g > 100 && b > 100) return ColorCategory.PINK;
+    return ColorCategory.RED;
+  }
+  
   // Color categorization based on dominant channel and ratios
   if (r > g && r > b) {
     // Red dominant
@@ -177,4 +188,27 @@ export function areColorsSufficientlyDifferent(color1: string, color2: string): 
   const isDistantEnough = enhancedDistance > 150; // Higher threshold for better contrast
   
   return !categoricalConflict && isDistantEnough;
+}
+
+// Add a new utility to specifically handle red color conflicts
+export function areRedColorsTooSimilar(color1: string, color2: string): boolean {
+  const rgb1 = parseHexColor(color1);
+  const rgb2 = parseHexColor(color2);
+  
+  const category1 = categorizeColor(color1);
+  const category2 = categorizeColor(color2);
+  
+  // If both are categorized as red or burgundy
+  const bothRedCategories = 
+    (category1 === ColorCategory.RED || category1 === ColorCategory.BURGUNDY) &&
+    (category2 === ColorCategory.RED || category2 === ColorCategory.BURGUNDY);
+    
+  if (bothRedCategories) {
+    // Calculate how similar the red values are
+    const redDifference = Math.abs(rgb1.r - rgb2.r);
+    // If the red values are within 40 units of each other, consider them too similar
+    return redDifference < 40;
+  }
+  
+  return false;
 }
