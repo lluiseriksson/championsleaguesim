@@ -9,7 +9,7 @@ import {
 import { initializePlayerBrainWithHistory } from '../../utils/brainTraining';
 import { isStrategicMovement, calculateReceivingPositionQuality } from '../../utils/playerBrain';
 import { isNetworkValid } from '../../utils/neuralHelpers';
-import { validatePlayerBrain } from '../../utils/neural/networkValidator';
+import { validatePlayerBrain, createTacticalInput } from '../../utils/neural/networkValidator';
 import { 
   analyzeSituation, 
   selectSpecializedNetwork, 
@@ -203,56 +203,24 @@ const usePlayerMovement = ({
           const isAttackingThird = (player.team === 'red' && playerX > 0.66) || 
                                   (player.team === 'blue' && playerX < 0.33);
           
-          const input = {
-            ballX: ball.position.x / PITCH_WIDTH,
-            ballY: ball.position.y / PITCH_HEIGHT,
-            playerX,
-            playerY: player.position.y / PITCH_HEIGHT,
-            ballVelocityX: ball.velocity.x / 20,
-            ballVelocityY: ball.velocity.y / 20,
-            distanceToGoal: 0.5,
-            angleToGoal: 0,
-            nearestTeammateDistance: 0.5,
-            nearestTeammateAngle: 0,
-            nearestOpponentDistance: 0.5,
-            nearestOpponentAngle: 0,
-            isInShootingRange: isAttackingThird ? 1 : 0,
-            isInPassingRange: 0,
-            isDefendingRequired: isDefensiveThird ? 1 : 0,
-            teamElo: player.teamElo ? player.teamElo / 3000 : 0.5,
-            eloAdvantage: 0.5,
-            gameTime: gameContext.gameTime,
-            scoreDifferential: gameContext.scoreDifferential,
-            momentum: player.brain.successRate?.overall || 0.5,
-            formationCompactness: 0.5,
-            formationWidth: 0.5,
-            recentSuccessRate: player.brain.successRate?.overall || 0.5,
-            possessionDuration: gameContext.possession?.team === player.team ? 
-              Math.min(1, gameContext.possession.duration / 600) : 0,
-            distanceFromFormationCenter: 0.5,
-            isInFormationPosition: 0.5,
-            teammateDensity: 0.5,
-            opponentDensity: 0.5,
-            shootingAngle: 0.5,
-            shootingQuality: isAttackingThird ? 0.7 : 0.3,
-            
-            zoneControl: 0.5,
-            passingLanesQuality: 0.5,
-            spaceCreation: 0.5,
-            defensiveSupport: isDefensiveThird ? 0.7 : 0.3,
-            pressureIndex: 0.5,
-            tacticalRole: player.role === 'defender' ? 0.8 : player.role === 'midfielder' ? 0.6 : 0.4,
-            supportPositioning: 0.5,
-            pressingEfficiency: 0.5,
-            coverShadow: 0.5,
-            verticalSpacing: 0.5,
-            horizontalSpacing: 0.5,
-            territorialControl: gameContext.possession?.team === player.team ? 0.7 : 0.3,
-            counterAttackPotential: 0.5,
-            pressureResistance: 0.5,
-            recoveryPosition: 0.5,
-            transitionSpeed: 0.5
-          };
+          const input = createTacticalInput(
+            player,
+            ball.position.x / PITCH_WIDTH,
+            ball.position.y / PITCH_HEIGHT,
+            gameContext.possession?.team === player.team,
+            isDefensiveThird,
+            isAttackingThird,
+            gameContext.teammateDensity || 0.5,
+            gameContext.opponentDensity || 0.5
+          );
+          
+          input.gameTime = gameContext.gameTime;
+          input.scoreDifferential = gameContext.scoreDifferential;
+          input.momentum = player.brain.successRate?.overall || 0.5;
+          input.possessionDuration = gameContext.possession?.team === player.team ? 
+            Math.min(1, gameContext.possession.duration / 600) : 0;
+          input.ballVelocityX = normalizeValue(ball.velocity.x, -20, 20);
+          input.ballVelocityY = normalizeValue(ball.velocity.y, -20, 20);
 
           let output;
           if (player.brain.specializedNetworks && player.brain.specializedNetworks.length > 0) {
@@ -380,6 +348,10 @@ const usePlayerMovement = ({
   }, [ball, gameReady, setPlayers, formations, possession, gameTime, score]);
 
   return { updatePlayerPositions, formations, possession };
+};
+
+const normalizeValue = (value: number, min: number, max: number): number => {
+  return Math.max(0, Math.min(1, (value - min) / (max - min)));
 };
 
 export default usePlayerMovement;

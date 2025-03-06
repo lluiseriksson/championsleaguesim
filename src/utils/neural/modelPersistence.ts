@@ -1,9 +1,10 @@
 import { supabase } from '../../integrations/supabase/client';
-import { NeuralNet, Player } from '../../types/football';
+import { NeuralNet, Player, SpecializedNeuralNet } from '../../types/football';
 import { isNetworkValid } from '../neuralHelpers';
 import { createPlayerBrain } from '../neuralNetwork';
 import { NeuralModelData } from './neuralTypes';
 import { calculatePerformanceScore } from './modelStatistics';
+import * as brain from 'brain.js';
 
 // Enhanced function to save a model to Supabase with better validation
 export const saveModel = async (player: Player, version: number = 1): Promise<boolean> => {
