@@ -52,23 +52,23 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
           }}
           onMatchComplete={handleMatchComplete}
         />
-      ) : null}
-      
-      <div className="overflow-x-auto">
-        <TournamentBracket 
-          matches={matches} 
-          onMatchClick={(match) => {
-            if (!autoSimulation && match.teamA && match.teamB && !match.played) {
-              if (embeddedMode) {
-                simulateSingleMatch(match);
-              } else {
-                playMatch(match);
+      ) : (
+        <div className="overflow-x-auto">
+          <TournamentBracket 
+            matches={matches} 
+            onMatchClick={(match) => {
+              if (!autoSimulation && match.teamA && match.teamB && !match.played) {
+                if (embeddedMode) {
+                  simulateSingleMatch(match);
+                } else {
+                  playMatch(match);
+                }
               }
-            }
-          }}
-          showFullBracket={true}
-        />
-      </div>
+            }}
+            showFullBracket={true}
+          />
+        </div>
+      )}
     </div>
   );
 };

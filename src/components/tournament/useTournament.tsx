@@ -75,7 +75,10 @@ export const useTournament = (embeddedMode = false) => {
 
   // Now we can use them in the useEffect dependency array
   useEffect(() => {
-    if (!autoSimulation || playingMatch || currentRound > 7) return;
+    if (!autoSimulation || currentRound > 7) return;
+    
+    // In embedded mode, don't set playingMatch to true to prevent hiding the tournament bracket
+    if (playingMatch && !embeddedMode) return;
     
     let timeoutId: NodeJS.Timeout;
     
@@ -92,6 +95,7 @@ export const useTournament = (embeddedMode = false) => {
       const nextMatch = findNextUnplayedMatch();
       
       if (nextMatch) {
+        console.log("Simulating match:", nextMatch.teamA?.name, "vs", nextMatch.teamB?.name);
         if (embeddedMode) {
           simulateSingleMatch(nextMatch);
         } else {
