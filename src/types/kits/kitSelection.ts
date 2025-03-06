@@ -1,4 +1,5 @@
 
+
 import { KitType, TeamKit } from './kitTypes';
 import { teamKitColors } from './teamColorsData';
 import { parseHexColor, getColorDistance, areColorsConflicting, categorizeColor, ColorCategory } from './colorUtils';
