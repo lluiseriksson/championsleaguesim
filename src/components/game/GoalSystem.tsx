@@ -1,8 +1,10 @@
+
 import React from 'react';
 import { Position, PITCH_HEIGHT, BALL_RADIUS, GOAL_HEIGHT, PITCH_WIDTH, Player, Ball } from '../../types/football';
 import { Score } from '../../types/football';
 import { updatePlayerBrain } from '../../utils/brainTraining';
 import { saveModel } from '../../utils/neuralModelService';
+import { calculateTacticalReward } from '../../utils/experienceReplay';
 
 interface GoalSystemProps {
   setScore: React.Dispatch<React.SetStateAction<Score>>;
@@ -69,6 +71,9 @@ export const useGoalSystem = ({
     setPlayers(currentPlayers => {
       // Save ball position at the time of the goal for training
       const ballPositionAtGoal = {...ball.position};
+      const ballPreviousPositionAtGoal = ball.previousPosition || {...ball.position};
+      const ballVelocityAtGoal = ball.velocity || { x: 0, y: 0 };
+      
       if (!tournamentMode) {
         console.log(`Ball position at goal: ${JSON.stringify(ballPositionAtGoal)}`);
       }
@@ -96,21 +101,60 @@ export const useGoalSystem = ({
         // Save reference to the ball with position at the time of the goal for goalkeepers
         const ballAtGoal = {
           ...ball,
-          position: ballPositionAtGoal
+          position: ballPositionAtGoal,
+          previousPosition: ballPreviousPositionAtGoal,
+          velocity: ballVelocityAtGoal
         };
         
-        // Update brain with own goal information
+        // Get team context for this player
+        const playerContext = getTeamContext(player);
+        
+        // Calculate additional tactical rewards
+        let tacticalBonus = 0;
+        if (player.brain.lastAction && 
+            (player.team === scoringTeam && !isOwnGoal)) {
+          try {
+            // Add tactical bonus for players on scoring team
+            const ballWithDetails = {
+              position: ballPositionAtGoal,
+              previousPosition: ballPreviousPositionAtGoal,
+              velocity: ballVelocityAtGoal
+            };
+            
+            tacticalBonus = calculateTacticalReward(
+              player,
+              ballWithDetails,
+              playerContext,
+              player.brain.lastAction as 'move' | 'pass' | 'shoot' | 'intercept'
+            ) * 0.5; // Scale tactical bonus
+            
+            if (!tournamentMode && tacticalBonus > 0.2) {
+              console.log(`${player.team} ${player.role} #${player.id} gets tactical bonus: ${tacticalBonus.toFixed(2)}`);
+            }
+          } catch (error) {
+            console.error('Error calculating tactical bonus:', error);
+          }
+        }
+        
+        // Update brain with own goal information and tactical bonus
+        const updatedBrain = updatePlayerBrain(
+          player.brain,
+          player.team === scoringTeam,
+          ballAtGoal, // Use ball position at the time of the goal
+          player,
+          playerContext,
+          (isLastTouch && (wasLastTouchHelpful || wasLastTouchHarmful)),
+          isOwnGoal && player.team !== scoringTeam // Pass own goal flag to learning function
+        );
+        
+        // Add tactical bonus to cumulative reward if applicable
+        if (tacticalBonus > 0 && updatedBrain.cumulativeReward !== undefined) {
+          updatedBrain.cumulativeReward += tacticalBonus;
+        }
+        
         return {
           ...player,
-          brain: updatePlayerBrain(
-            player.brain,
-            player.team === scoringTeam,
-            ballAtGoal, // Use ball position at the time of the goal
-            player,
-            getTeamContext(player),
-            (isLastTouch && (wasLastTouchHelpful || wasLastTouchHarmful)),
-            isOwnGoal && player.team !== scoringTeam // Pass own goal flag to learning function
-          )
+          brain: updatedBrain
         };
       });
 

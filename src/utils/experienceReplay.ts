@@ -1,7 +1,7 @@
-
 import { NeuralInput, NeuralOutput, ExperienceReplay, NeuralNet, SituationContext, Position, TeamContext } from '../types/football';
 import { selectSpecializedNetwork, updateSpecializedNetworks } from './specializedNetworks';
 import { createSituationContext } from './neuralHelpers';
+import { calculateDistance } from './neuralCore';
 
 // Initialize an experience replay buffer
 export const createExperienceReplay = (capacity: number = 100): ExperienceReplay => {
@@ -26,7 +26,6 @@ export const addExperience = (
 ): ExperienceReplay => {
   const { inputs, outputs, rewards, priorities, timestamps, capacity, currentIndex } = experienceReplay;
   
-  // If we haven't reached capacity yet, just push
   if (inputs.length < capacity) {
     return {
       inputs: [...inputs, input],
@@ -39,7 +38,6 @@ export const addExperience = (
     };
   }
   
-  // Otherwise, replace at the current index (circular buffer)
   const newInputs = [...inputs];
   const newOutputs = [...outputs];
   const newRewards = [...rewards];
@@ -75,20 +73,15 @@ export const sampleExperiences = (
     return { inputs: [], outputs: [], weights: [] };
   }
   
-  // Calculate sampling weights based on priorities
   const totalPriority = priorities.reduce((sum, priority) => sum + priority, 0);
   const weights = priorities.map(priority => priority / totalPriority);
   
-  // Filter by specialization if requested
   let selectedIndices: number[] = [];
   
   if (specializationType) {
-    // For specialized training, select related experiences
     for (let i = 0; i < inputs.length; i++) {
       const input = inputs[i];
       
-      // Create a situation context to determine if this experience is relevant
-      // to the specialization we're training
       const relevantToSpecialization = isExperienceRelevantToSpecialization(
         input,
         specializationType
@@ -99,14 +92,12 @@ export const sampleExperiences = (
       }
     }
     
-    // If we have too many samples, select a random subset
     if (selectedIndices.length > sampleSize) {
       selectedIndices = selectedIndices
         .sort(() => Math.random() - 0.5)
         .slice(0, sampleSize);
     }
   } else {
-    // Without specialization, use original priority-based sampling
     for (let i = 0; i < Math.min(sampleSize, inputs.length); i++) {
       const random = Math.random();
       let cumulativeWeight = 0;
@@ -121,7 +112,6 @@ export const sampleExperiences = (
     }
   }
   
-  // Extract the selected experiences
   const sampledInputs = selectedIndices.map(index => inputs[index]);
   const sampledOutputs = selectedIndices.map(index => outputs[index]);
   const sampledWeights = selectedIndices.map(index => weights[index]);
@@ -138,7 +128,6 @@ const isExperienceRelevantToSpecialization = (
   input: NeuralInput,
   specializationType: string
 ): boolean => {
-  // Simple rules to determine relevance
   switch (specializationType) {
     case 'attacking':
       return input.playerX > 0.6 && input.isInShootingRange > 0.5;
@@ -149,10 +138,9 @@ const isExperienceRelevantToSpecialization = (
     case 'transition':
       return Math.abs(input.ballVelocityX) > 0.3 || Math.abs(input.ballVelocityY) > 0.3;
     case 'setpiece':
-      // Would need more context about set pieces
       return false;
     default:
-      return true; // General is always relevant
+      return true;
   }
 };
 
@@ -163,19 +151,11 @@ export const getCurriculumDifficulty = (stage: number): {
   errorThreshold: number,
   rewardScale: number
 } => {
-  // Ensure stage is between 0 and 1
   const normalizedStage = Math.max(0, Math.min(1, stage));
   
-  // Learning rate decreases more gradually as stage increases (for more stable learning)
   const learningRate = 0.15 - (normalizedStage * 0.12);
-  
-  // Batch size increases more significantly in later stages (more complex patterns)
   const batchSize = Math.floor(8 + (normalizedStage * 22));
-  
-  // Error threshold decreases more aggressively (higher precision requirements)
   const errorThreshold = 0.015 - (normalizedStage * 0.013);
-  
-  // Reward scale increases more significantly in later stages (more ambitious goals)
   const rewardScale = 1.0 + (normalizedStage * 1.5);
   
   return {
@@ -189,28 +169,21 @@ export const getCurriculumDifficulty = (stage: number): {
 // Update curriculum learning stage based on performance with improved progression
 export const updateCurriculumStage = (brain: NeuralNet): number => {
   if (!brain.successRate) {
-    return 0.1; // Default starting stage
+    return 0.1;
   }
   
-  // Calculate stage based on overall success rate
   let stage = brain.learningStage || 0;
   
-  // Increase stage if doing well - more aggressive progression
   if (brain.successRate.overall > 0.65) {
     stage += 0.08;
-  }
-  else if (brain.successRate.overall > 0.55) {
+  } else if (brain.successRate.overall > 0.55) {
     stage += 0.05;
-  }
-  // Decrease stage if doing poorly - more forgiving regression
-  else if (brain.successRate.overall < 0.35) {
+  } else if (brain.successRate.overall < 0.35) {
     stage -= 0.02;
-  }
-  else if (brain.successRate.overall < 0.25) {
+  } else if (brain.successRate.overall < 0.25) {
     stage -= 0.04;
   }
   
-  // If using specialized networks, adjust based on their performance too
   if (brain.specializedNetworks && brain.specializedNetworks.length > 0) {
     const avgSpecializedPerformance = brain.specializedNetworks.reduce(
       (sum, network) => sum + network.performance.overallSuccess, 
@@ -228,13 +201,11 @@ export const updateCurriculumStage = (brain: NeuralNet): number => {
     }
   }
   
-  // Add performance stability check - if the network is oscillating, slow down progression
   if (brain.actionHistory && brain.actionHistory.length > 20) {
     const recentActions = brain.actionHistory.slice(-20);
     const successCount = recentActions.filter(action => action.success).length;
     const successRate = successCount / 20;
     
-    // Check for oscillation (alternating between success and failure)
     let oscillationCount = 0;
     for (let i = 1; i < recentActions.length; i++) {
       if (recentActions[i].success !== recentActions[i-1].success) {
@@ -242,18 +213,15 @@ export const updateCurriculumStage = (brain: NeuralNet): number => {
       }
     }
     
-    // If high oscillation, slow down progression
     if (oscillationCount > 14) {
       stage -= 0.02;
     }
     
-    // Reward consistent performance
     if (successRate > 0.7 && oscillationCount < 6) {
       stage += 0.03;
     }
   }
   
-  // Clamp to valid range
   return Math.max(0.1, Math.min(1.0, stage));
 };
 
@@ -271,7 +239,6 @@ export const trainSpecializedNetworks = (
   }
   
   try {
-    // Create a situation context to update the right networks
     const dummyContext: TeamContext = {
       teammates: [],
       opponents: [],
@@ -281,29 +248,25 @@ export const trainSpecializedNetworks = (
     
     const situation = createSituationContext(input, dummyContext, playerPosition, ballPosition);
     
-    // Determine which specialized network to use
     const specializationType = selectSpecializedNetwork(brain, situation);
     
-    // Get samples focused on this specialization for more targeted training
     if (brain.experienceReplay) {
       const { inputs, outputs } = sampleExperiences(
         brain.experienceReplay,
-        10, // Small batch size for incremental learning
+        10,
         specializationType
       );
       
       if (inputs.length > 0 && outputs.length > 0) {
-        // Find the right specialized network to train
         const specializedNetwork = brain.specializedNetworks.find(
           n => n.type === specializationType
         );
         
         if (specializedNetwork) {
-          // Train the specialized network
           specializedNetwork.net.train(
             inputs.map((input, i) => ({ input, output: outputs[i] })),
             {
-              iterations: 20, // Quick adaptive training
+              iterations: 20,
               errorThresh: 0.01,
               learningRate: 0.05,
               logPeriod: 100
@@ -315,12 +278,249 @@ export const trainSpecializedNetworks = (
       }
     }
     
-    // Update network performance based on reward
     const success = reward > 0;
     return updateSpecializedNetworks(brain, 'move', success, situation);
-    
   } catch (error) {
     console.warn('Error training specialized networks:', error);
     return brain;
   }
+};
+
+// New tactical reward functions
+
+// Calculate reward based on maintaining proper formation position
+export const calculateFormationReward = (
+  player: Position,
+  targetPosition: Position,
+  role: string
+): number => {
+  const distance = calculateDistance(player, targetPosition);
+  
+  let optimalDistance = 50;
+  switch(role) {
+    case 'goalkeeper': optimalDistance = 30; break;
+    case 'defender': optimalDistance = 80; break;
+    case 'midfielder': optimalDistance = 120; break;
+    case 'forward': optimalDistance = 150; break;
+  }
+  
+  const formationDeviation = Math.max(0, distance - optimalDistance) / 100;
+  return Math.max(0, 1 - (formationDeviation * formationDeviation));
+};
+
+// Calculate reward for creating or finding space
+export const calculateSpaceCreationReward = (
+  playerPosition: Position,
+  teammatePositions: Position[],
+  opponentPositions: Position[],
+  role: string
+): number => {
+  let totalOpponentDistance = 0;
+  opponentPositions.forEach(opponent => {
+    totalOpponentDistance += calculateDistance(playerPosition, opponent);
+  });
+  
+  const avgOpponentDistance = opponentPositions.length > 0 ? 
+    totalOpponentDistance / opponentPositions.length : 200;
+  
+  let optimalSpacing = 100;
+  let rewardScale = 1.0;
+  
+  switch(role) {
+    case 'forward': 
+      optimalSpacing = 150;
+      rewardScale = 1.5;
+      break;
+    case 'midfielder': 
+      optimalSpacing = 120;
+      rewardScale = 1.2;
+      break;
+    case 'defender': 
+      optimalSpacing = 80;
+      rewardScale = 0.8;
+      break;
+    case 'goalkeeper': 
+      return 0.5;
+  }
+  
+  const normalizedSpace = Math.min(1.5, avgOpponentDistance / optimalSpacing);
+  return Math.min(1, normalizedSpace * rewardScale);
+};
+
+// Calculate reward for strategic ball movement
+export const calculateBallMovementReward = (
+  ballPosition: Position,
+  ballPreviousPosition: Position,
+  ballVelocity: { x: number, y: number },
+  playerTeam: 'red' | 'blue',
+  opponentGoal: Position
+): number => {
+  const ballMovementDistance = calculateDistance(ballPosition, ballPreviousPosition);
+  if (ballMovementDistance < 5) return 0;
+  
+  const dirToGoal = {
+    x: opponentGoal.x - ballPreviousPosition.x,
+    y: opponentGoal.y - ballPreviousPosition.y
+  };
+  
+  const dirToGoalLength = Math.sqrt(dirToGoal.x * dirToGoal.x + dirToGoal.y * dirToGoal.y);
+  if (dirToGoalLength === 0) return 0;
+  
+  const normalizedDirToGoal = {
+    x: dirToGoal.x / dirToGoalLength,
+    y: dirToGoal.y / dirToGoalLength
+  };
+  
+  const ballVelocityLength = Math.sqrt(ballVelocity.x * ballVelocity.x + ballVelocity.y * ballVelocity.y);
+  if (ballVelocityLength === 0) return 0;
+  
+  const normalizedBallVelocity = {
+    x: ballVelocity.x / ballVelocityLength,
+    y: ballVelocity.y / ballVelocityLength
+  };
+  
+  const dotProduct = normalizedDirToGoal.x * normalizedBallVelocity.x + 
+                    normalizedDirToGoal.y * normalizedBallVelocity.y;
+  
+  return Math.max(0, (dotProduct + 1) / 2) * Math.min(1, ballMovementDistance / 50);
+};
+
+// Calculate reward for effective passing
+export const calculatePassingReward = (
+  startPosition: Position,
+  endPosition: Position,
+  teammatePositions: Position[],
+  opponentPositions: Position[],
+  opponentGoal: Position
+): number => {
+  const passDistance = calculateDistance(startPosition, endPosition);
+  const distanceReward = Math.min(1, passDistance / 200);
+  
+  const initialDistanceToGoal = calculateDistance(startPosition, opponentGoal);
+  const finalDistanceToGoal = calculateDistance(endPosition, opponentGoal);
+  const progressionReward = Math.max(0, 
+    Math.min(1, (initialDistanceToGoal - finalDistanceToGoal) / 100)
+  );
+  
+  let bypassedOpponents = 0;
+  for (const opponent of opponentPositions) {
+    const passVector = {
+      x: endPosition.x - startPosition.x,
+      y: endPosition.y - startPosition.y
+    };
+    
+    const startToOpponent = {
+      x: opponent.x - startPosition.x,
+      y: opponent.y - startPosition.y
+    };
+    
+    const passLength = Math.sqrt(passVector.x * passVector.x + passVector.y * passVector.y);
+    if (passLength === 0) continue;
+    
+    const normalizedPassVector = {
+      x: passVector.x / passLength,
+      y: passVector.y / passLength
+    };
+    
+    const projection = startToOpponent.x * normalizedPassVector.x + 
+                      startToOpponent.y * normalizedPassVector.y;
+    
+    if (projection >= 0 && projection <= passLength) {
+      const perpX = startToOpponent.x - projection * normalizedPassVector.x;
+      const perpY = startToOpponent.y - projection * normalizedPassVector.y;
+      const perpDistance = Math.sqrt(perpX * perpX + perpY * perpY);
+      
+      if (perpDistance < 30) {
+        bypassedOpponents++;
+      }
+    }
+  }
+  
+  const riskReward = Math.min(1, bypassedOpponents * 0.25);
+  
+  return 0.3 * distanceReward + 0.4 * progressionReward + 0.3 * riskReward;
+};
+
+// Calculate combined tactical reward
+export const calculateTacticalReward = (
+  player: {
+    position: Position,
+    role: string,
+    team: 'red' | 'blue',
+    targetPosition: Position
+  },
+  ball: {
+    position: Position,
+    previousPosition: Position,
+    velocity: { x: number, y: number }
+  },
+  context: TeamContext,
+  action: 'move' | 'pass' | 'shoot' | 'intercept'
+): number => {
+  let tacticalReward = 0;
+  
+  const formationReward = calculateFormationReward(
+    player.position, 
+    player.targetPosition, 
+    player.role
+  );
+  
+  const spaceReward = calculateSpaceCreationReward(
+    player.position,
+    context.teammates,
+    context.opponents,
+    player.role
+  );
+  
+  switch(action) {
+    case 'move':
+      tacticalReward = 0.6 * formationReward + 0.4 * spaceReward;
+      break;
+      
+    case 'pass':
+      const ballMovementReward = calculateBallMovementReward(
+        ball.position,
+        ball.previousPosition,
+        ball.velocity,
+        player.team,
+        context.opponentGoal
+      );
+      
+      const passingReward = calculatePassingReward(
+        ball.previousPosition,
+        ball.position,
+        context.teammates,
+        context.opponents,
+        context.opponentGoal
+      );
+      
+      tacticalReward = 0.2 * formationReward + 0.3 * spaceReward + 
+                      0.2 * ballMovementReward + 0.3 * passingReward;
+      break;
+      
+    case 'shoot':
+      const shootingReward = calculateBallMovementReward(
+        ball.position,
+        ball.previousPosition,
+        ball.velocity,
+        player.team,
+        context.opponentGoal
+      );
+      
+      const distanceToGoal = calculateDistance(player.position, context.opponentGoal);
+      const positionQuality = Math.max(0, 1 - distanceToGoal / 300);
+      
+      tacticalReward = 0.2 * formationReward + 0.2 * spaceReward + 
+                      0.6 * (shootingReward + positionQuality) / 2;
+      break;
+      
+    case 'intercept':
+      const distanceToBall = calculateDistance(player.position, ball.position);
+      const interceptionQuality = Math.max(0, 1 - distanceToBall / 100);
+      
+      tacticalReward = 0.3 * formationReward + 0.3 * spaceReward + 0.4 * interceptionQuality;
+      break;
+  }
+  
+  return tacticalReward;
 };

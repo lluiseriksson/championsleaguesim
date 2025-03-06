@@ -9,7 +9,8 @@ import {
   addExperience,
   sampleExperiences,
   getCurriculumDifficulty,
-  updateCurriculumStage
+  updateCurriculumStage,
+  calculateTacticalReward
 } from './experienceReplay';
 
 // Enhanced reward parameters
@@ -28,6 +29,7 @@ const DELAYED_REWARD_DECAY = 0.9;
 const PRIORITY_SCALE = 2.0;
 const STRATEGIC_POSITION_REWARD = 0.6;
 const OPEN_SPACE_REWARD = 0.4;
+const TACTICAL_REWARD_SCALE = 0.8;
 
 // Reward positioning when the player creates space or finds open positions
 const calculatePositioningReward = (player: Player, context: TeamContext): number => {
@@ -91,6 +93,27 @@ export const updatePlayerBrain = (
     rewardFactor += calculatePositioningReward(player, context);
   }
 
+  // Add tactical rewards
+  if (brain.lastAction && ball.previousPosition) {
+    // Create ball object with velocity and previous position
+    const ballWithDetails = {
+      position: ball.position,
+      previousPosition: ball.previousPosition,
+      velocity: ball.velocity || { x: 0, y: 0 }
+    };
+    
+    // Calculate tactical reward based on player's action and situation
+    const tacticalReward = calculateTacticalReward(
+      player,
+      ballWithDetails,
+      context,
+      brain.lastAction as 'move' | 'pass' | 'shoot' | 'intercept'
+    );
+    
+    // Add weighted tactical reward to total reward
+    rewardFactor += TACTICAL_REWARD_SCALE * tacticalReward;
+  }
+
   if (isOwnGoal) {
     rewardFactor = OWN_GOAL_PLAYER_PENALTY;
     console.log(`SEVERE PENALTY: ${player.team} ${player.role} #${player.id} caused an own goal! Penalty: ${rewardFactor}`);
@@ -103,9 +126,16 @@ export const updatePlayerBrain = (
       const scaledPenalty = GOALKEEPER_MIN_PENALTY + 
         (GOALKEEPER_MAX_PENALTY - GOALKEEPER_MIN_PENALTY) * distanceRatio;
       
-      console.log(`${player.team} goalkeeper penalty: ${scaledPenalty.toFixed(2)} (distance: ${distanceToBall.toFixed(2)}px)`);
-      
-      rewardFactor = scaledPenalty;
+      // Goalkeeper intercept success reward
+      const didSaveShot = distanceToBall < 30 && brain.lastAction === 'intercept';
+      if (didSaveShot) {
+        // Provide a positive reward for successful shot saves
+        const saveReward = 1.0;
+        rewardFactor = saveReward;
+      } else {
+        console.log(`${player.team} goalkeeper penalty: ${scaledPenalty.toFixed(2)} (distance: ${distanceToBall.toFixed(2)}px)`);
+        rewardFactor = scaledPenalty;
+      }
       
       try {
         if (!isNetworkValid(brain.net)) {

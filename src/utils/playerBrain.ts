@@ -1,3 +1,4 @@
+
 import { NeuralNet, Player, TeamContext, Ball, Position } from '../types/football';
 import { calculateDistance } from './neuralCore';
 
@@ -13,6 +14,13 @@ export {
   createNeuralInput, 
   isNetworkValid 
 } from './neuralHelpers';
+export {
+  calculateFormationReward,
+  calculateSpaceCreationReward,
+  calculateBallMovementReward,
+  calculatePassingReward,
+  calculateTacticalReward
+} from './experienceReplay';
 
 // Utility function to determine if player movement is strategic
 export const isStrategicMovement = (
