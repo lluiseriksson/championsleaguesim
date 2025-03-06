@@ -1,10 +1,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Match, TournamentTeam } from '../../types/tournament';
-import { teamKitColors } from '../../types/teamKits';
 import { Score } from '../../types/football';
 import { toast } from 'sonner';
 import { clearKitSelectionCache } from '../../types/kits';
+import { teamKitColors } from '../../types/kits/teamColorsData';
 
 export const useTournament = (embeddedMode = false) => {
   const [teams, setTeams] = useState<TournamentTeam[]>([]);
