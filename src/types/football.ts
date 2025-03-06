@@ -45,20 +45,36 @@ export interface NeuralInput {
   isBetweenBallAndOwnGoal: number;
   teamElo: number;
   eloAdvantage: number;
+  gameTime: number;
+  scoreDifferential: number;
+  momentum: number;
+  formationCompactness: number;
+  formationWidth: number;
+  recentSuccessRate: number;
+  possessionDuration: number;
+  distanceFromFormationCenter: number;
+  isInFormationPosition: number;
+  teammateDensity: number;
+  opponentDensity: number;
+  shootingAngle: number;
+  shootingQuality: number;
   
-  gameTime: number;                // Normalized game time (0-1)
-  scoreDifferential: number;       // Normalized score difference (-1 to 1)
-  momentum: number;                // Team momentum indicator (0-1)
-  formationCompactness: number;    // How compact team formation is (0-1)
-  formationWidth: number;          // Width of team formation (0-1)
-  recentSuccessRate: number;       // Success rate of recent actions (0-1)
-  possessionDuration: number;      // How long team has had possession (0-1)
-  distanceFromFormationCenter: number; // How far from team's formation center (0-1)
-  isInFormationPosition: number;   // Whether player is in correct position (0-1)
-  teammateDensity: number;         // Density of teammates around player (0-1)
-  opponentDensity: number;         // Density of opponents around player (0-1)
-  shootingAngle: number;    // Best angle for shooting (0-1, normalized from 0-2π)
-  shootingQuality: number;  // Quality of best shooting opportunity (0-1)
+  zoneControl: number;           // How well the player's team controls their current zone (0-1)
+  passingLanesQuality: number;   // Quality of available passing lanes (0-1)
+  spaceCreation: number;         // How well the player is creating/using space (0-1)
+  defensiveSupport: number;      // Level of defensive coverage provided (0-1)
+  pressureIndex: number;         // Amount of pressure on the player (0-1)
+  tacticalRole: number;          // Player's current tactical role effectiveness (0-1)
+  supportPositioning: number;    // Quality of supporting position for teammates (0-1)
+  pressingEfficiency: number;    // Effectiveness of pressing actions (0-1)
+  coverShadow: number;          // How well player cuts passing lanes (0-1)
+  verticalSpacing: number;      // Team's vertical spacing quality (0-1)
+  horizontalSpacing: number;    // Team's horizontal spacing quality (0-1)
+  territorialControl: number;   // Control over current territory (0-1)
+  counterAttackPotential: number; // Potential for counter-attack success (0-1)
+  pressureResistance: number;   // Ability to resist opponent pressure (0-1)
+  recoveryPosition: number;     // Quality of position for defensive recovery (0-1)
+  transitionSpeed: number;      // Speed of tactical transitions (0-1)
 }
 
 export interface NeuralOutput {
