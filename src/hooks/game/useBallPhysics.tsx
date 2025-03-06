@@ -74,10 +74,9 @@ function handlePlayerCollisions(
   const collisionCooldown = 150; // ms
   const goalkeeperCollisionCooldown = 100; // shorter cooldown for goalkeepers
 
-  // Standard goalkeeper collision detection with fixed 5-unit reach
+  // Standard goalkeeper collision detection
   if (currentTime - lastCollisionTimeRef.current > goalkeeperCollisionCooldown) {
     for (const goalkeeper of goalkeepers) {
-      // Use standard collision detection only
       const collision = checkCollision(newPosition, goalkeeper.position, true);
       
       if (collision) {
@@ -85,16 +84,15 @@ function handlePlayerCollisions(
         lastCollisionTimeRef.current = currentTime;
         lastKickPositionRef.current = { ...newPosition };
         
-        // Calculate new velocity based on collision
         newVelocity = calculateNewVelocity(
           newPosition,
           goalkeeper.position,
           currentVelocity,
-          true // is goalkeeper
+          true
         );
         
         console.log("Goalkeeper collision detected");
-        break; // Only handle one collision per frame
+        break;
       }
     }
   }
