@@ -44,8 +44,14 @@ export const useBallMovement = ({
   // Use goal detection hook
   const { handleGoalCheck } = useBallGoalDetection({ checkGoal, tournamentMode });
 
+  // Reference to store previous ball position for tracking
+  const previousBallPositionRef = React.useRef<Position>({ ...ball.position });
+
   const updateBallPosition = React.useCallback(() => {
     setBall(currentBall => {
+      // Store current position as previous before updating
+      const previousPosition = { ...currentBall.position };
+      
       // Check current ball speed
       const currentSpeed = calculateBallSpeed(currentBall.velocity);
       
@@ -61,13 +67,21 @@ export const useBallMovement = ({
       
       // If ball is stuck, give it a random kick
       if (isStuck) {
-        return applyRandomKick(currentBall, tournamentMode);
+        const kickedBall = applyRandomKick(currentBall, tournamentMode);
+        return {
+          ...kickedBall,
+          previousPosition: previousPosition
+        };
       }
       
       // If ball has zero velocity (should only happen at game start/reset),
       // give it a small push in a random direction
       if (currentSpeed === 0) {
-        return applyRandomKick(currentBall, tournamentMode);
+        const kickedBall = applyRandomKick(currentBall, tournamentMode);
+        return {
+          ...kickedBall,
+          previousPosition: previousPosition
+        };
       }
       
       // Calculate new position based on current velocity
@@ -79,11 +93,14 @@ export const useBallMovement = ({
       // First check if a goal was scored
       const { goalScored, updatedBall } = handleGoalCheck(currentBall, newPosition);
       if (goalScored) {
-        return updatedBall;
+        return {
+          ...updatedBall,
+          previousPosition: previousPosition
+        };
       }
 
       // Handle ball collisions and movement
-      return handleBallPhysics(
+      const updatedBall = handleBallPhysics(
         currentBall,
         newPosition,
         goalkeepers,
@@ -92,6 +109,12 @@ export const useBallMovement = ({
         lastCollisionTimeRef,
         lastKickPositionRef
       );
+
+      // Add the previous position to the updated ball
+      return {
+        ...updatedBall,
+        previousPosition: previousPosition
+      };
     });
   }, [
     setBall, 

@@ -33,9 +33,6 @@ const GameLogic: React.FC<GameLogicProps> = ({
   // Reference to track the last player who touched the ball
   const lastPlayerTouchRef = React.useRef<Player | null>(null);
   
-  // Reference to track previous ball position for tactical rewards
-  const previousBallPositionRef = React.useRef<Position>(ball.position);
-  
   console.log(`GameLogic rendered with players: ${players.length}, tournamentMode: ${tournamentMode}`);
 
   // Get team context functions
@@ -96,21 +93,6 @@ const GameLogic: React.FC<GameLogicProps> = ({
     tournamentMode
   });
 
-  // Update the ball with previous position before movement
-  const updateBallWithTracking = () => {
-    // Store current position as previous before updating
-    previousBallPositionRef.current = {...ball.position};
-    
-    // Call the original update function
-    updateBallPosition();
-    
-    // Attach previous position to ball for tactical reward calculation
-    setBall(currentBall => ({
-      ...currentBall,
-      previousPosition: previousBallPositionRef.current
-    }));
-  };
-
   // Model synchronization system with tournament mode flag
   const { syncModels, incrementSyncCounter, checkLearningProgress } = useModelSyncSystem({
     players,
@@ -122,7 +104,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
   useGameLoop({
     players,
     updatePlayerPositions,
-    updateBallPosition: updateBallWithTracking,
+    updateBallPosition,
     incrementSyncCounter,
     syncModels,
     checkLearningProgress,
