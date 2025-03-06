@@ -98,7 +98,6 @@ const usePlayerMovement = ({
           }
           
           if (!player.brain || !player.brain.net || typeof player.brain.net.run !== 'function') {
-            console.warn(`Invalid brain for ${player.team} ${player.role} #${player.id}, using fallback movement`);
             const dx = ball.position.x - player.position.x;
             const dy = ball.position.y - player.position.y;
             const dist = Math.sqrt(dx*dx + dy*dy);
@@ -203,22 +202,44 @@ const usePlayerMovement = ({
           
           player.brain.lastOutput = { x: moveX, y: moveY };
 
-          let maxDistance = 50;
+          const dx = ball.position.x - player.position.x;
+          const dy = ball.position.y - player.position.y;
+          const angleTowardsBall = Math.atan2(dy, dx);
+          const angleOfMovement = Math.atan2(moveY, moveX);
+          
+          const angleDiff = Math.abs(angleTowardsBall - angleOfMovement);
+          const isMovingTowardsBall = angleDiff < Math.PI / 2;
+
+          let maxDistance;
           const distanceToBall = Math.sqrt(
             Math.pow(ball.position.x - player.position.x, 2) +
             Math.pow(ball.position.y - player.position.y, 2)
           );
 
-          switch (player.role) {
-            case 'defender':
-              maxDistance = distanceToBall < 150 ? 96 : 60;
-              break;
-            case 'midfielder':
-              maxDistance = distanceToBall < 200 ? 120 : 80;
-              break;
-            case 'forward':
-              maxDistance = distanceToBall < 250 ? 200 : 120;
-              break;
+          if (isMovingTowardsBall) {
+            switch (player.role) {
+              case 'defender':
+                maxDistance = distanceToBall < 150 ? 96 : 60;
+                break;
+              case 'midfielder':
+                maxDistance = distanceToBall < 200 ? 120 : 80;
+                break;
+              case 'forward':
+                maxDistance = distanceToBall < 250 ? 200 : 120;
+                break;
+            }
+          } else {
+            switch (player.role) {
+              case 'defender':
+                maxDistance = 200;
+                break;
+              case 'midfielder':
+                maxDistance = 300;
+                break;
+              case 'forward':
+                maxDistance = 400;
+                break;
+            }
           }
 
           const eloSpeedBonus = player.teamElo ? Math.min(0.5, Math.max(0, (player.teamElo - 1500) / 1000)) : 0;
@@ -247,7 +268,7 @@ const usePlayerMovement = ({
           newPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, newPosition.y));
 
           if (player.teamElo && player.teamElo > 2200) {
-            console.log(`High ELO player ${player.team} #${player.id} moved with precision ${executionPrecision.toFixed(2)}`);
+            console.log(`High ELO player ${player.team} #${player.id} moved with precision ${executionPrecision.toFixed(2)} ${isMovingTowardsBall ? 'towards' : 'away from'} ball`);
           }
 
           return {
