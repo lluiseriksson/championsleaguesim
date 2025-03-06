@@ -51,6 +51,7 @@ export const useGoalSystem = ({
 
     // Record shot direction in player brain for reward calculation
     if (shooter.brain) {
+      // Make sure we're adding the property safely
       shooter.brain.lastShotDirection = shotVelocity;
     }
     

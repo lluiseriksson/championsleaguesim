@@ -1,4 +1,3 @@
-
 import * as brain from 'brain.js';
 
 export interface Position {
@@ -131,10 +130,17 @@ export interface SpecializedNeuralNet {
   };
 }
 
+export interface PassOutcome {
+  success: boolean;
+  targetId: number;
+}
+
 export interface NeuralNet {
   net: brain.NeuralNetwork<NeuralInput, NeuralOutput>;
   lastOutput: { x: number; y: number };
   lastAction?: 'move' | 'shoot' | 'pass' | 'intercept';
+  lastShotDirection?: Position;        // Add this property for tracking shot direction
+  lastPassOutcome?: PassOutcome;       // Add this property for tracking pass outcomes
   // Performance tracking
   actionHistory?: {
     action: string;
