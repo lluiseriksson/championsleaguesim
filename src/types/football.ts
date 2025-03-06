@@ -152,9 +152,10 @@ export interface Player {
   team: 'red' | 'blue';
   brain: NeuralNet;
   targetPosition: Position;
-  teamName?: string;  // Actual team name like "Barcelona", "Liverpool", etc.
-  kitType?: KitType;  // Which kit the player is wearing (home/away/third)
-  teamElo?: number;   // The ELO rating of the player's team
+  teamName?: string;  
+  kitType?: KitType;  
+  teamElo?: number;   
+  radius: number;     // Add radius property for collision detection
 }
 
 export interface Ball {

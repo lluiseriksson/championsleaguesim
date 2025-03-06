@@ -1,5 +1,5 @@
 import React from 'react';
-import { Player, Ball, Position, BALL_RADIUS, PITCH_WIDTH, PITCH_HEIGHT } from '../../types/football';
+import { Player, Ball, Position, BALL_RADIUS, PITCH_WIDTH, PITCH_HEIGHT, PLAYER_RADIUS } from '../../types/football';
 import { handleFieldPlayerCollisions } from './collisionHandlers';
 import { checkCollision, calculateNewVelocity } from '../../utils/gamePhysics';
 import { handleTopBottomBoundaries, handleLeftRightBoundaries } from './boundaryCollisions';
@@ -108,7 +108,7 @@ function handlePlayerCollisions(
           const distance = Math.sqrt(dx * dx + dy * dy);
           
           // Check with enlarged radius
-          collision = distance <= (BALL_RADIUS + goalkeeper.radius * extendedRadius);
+          collision = distance <= (BALL_RADIUS + PLAYER_RADIUS * extendedRadius);
           
           if (collision) {
             console.log("Enhanced goalkeeper collision detected for angled shot");
