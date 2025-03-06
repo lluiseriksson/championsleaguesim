@@ -63,8 +63,15 @@ export const validatePlayerBrain = (player: Player): Player => {
       counterAttackPotential: 0.5,
       pressureResistance: 0.5,
       recoveryPosition: 0.5,
-      transitionSpeed: 0.5
+      transitionSpeed: 0.5,
+      ballVelocityX: 0.5,  // Adding missing property
+      ballVelocityY: 0.5   // Adding missing property
     };
+    
+    // Check if net exists and has a run function before trying to use it
+    if (!player.brain.net || typeof player.brain.net.run !== 'function') {
+      throw new Error('Invalid network: missing or run function not available');
+    }
     
     const output = player.brain.net.run(testInput);
     
@@ -75,7 +82,7 @@ export const validatePlayerBrain = (player: Player): Player => {
     
     return player;
   } catch (error) {
-    console.warn(`Invalid network detected for ${player.team} ${player.role} #${player.id}, creating new one`);
+    console.warn(`Invalid network detected for ${player.team} ${player.role} #${player.id}, creating new one: ${error}`);
     return {
       ...player,
       brain: createPlayerBrain()
@@ -87,6 +94,12 @@ export const isNetworkValid = (net: brain.NeuralNetwork<any, any> | null): boole
   if (!net) return false;
   
   try {
+    // Check if net has a run function before using it
+    if (typeof net.run !== 'function') {
+      console.warn("Neural network is missing run function");
+      return false;
+    }
+    
     const testInput = {
       ballX: 0.5,
       ballY: 0.5,
@@ -136,12 +149,15 @@ export const isNetworkValid = (net: brain.NeuralNetwork<any, any> | null): boole
       counterAttackPotential: 0.5,
       pressureResistance: 0.5,
       recoveryPosition: 0.5,
-      transitionSpeed: 0.5
+      transitionSpeed: 0.5,
+      ballVelocityX: 0.5,  // Adding missing property
+      ballVelocityY: 0.5   // Adding missing property
     };
     
     const output = net.run(testInput);
     return output && typeof output.moveX === 'number' && typeof output.moveY === 'number';
   } catch (error) {
+    console.warn("Neural network validation failed:", error);
     return false;
   }
 };

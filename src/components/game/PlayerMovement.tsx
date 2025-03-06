@@ -96,6 +96,88 @@ const usePlayerMovement = ({
     };
   };
 
+  const useNeuralNetworkForPlayer = (player: Player, ball: Ball): { x: number, y: number } | null => {
+    if (!player.brain || !player.brain.net) return null;
+    
+    try {
+      if (!isNetworkValid(player.brain.net)) {
+        return null;
+      }
+      
+      const normalizedBallX = ball.position.x / PITCH_WIDTH;
+      const normalizedBallY = ball.position.y / PITCH_HEIGHT;
+      const normalizedPlayerX = player.position.x / PITCH_WIDTH;
+      const normalizedPlayerY = player.position.y / PITCH_HEIGHT;
+      
+      const input = {
+        ballX: normalizedBallX,
+        ballY: normalizedBallY,
+        playerX: normalizedPlayerX,
+        playerY: normalizedPlayerY,
+        distanceToGoal: 0.5,
+        angleToGoal: 0,
+        nearestTeammateDistance: 0.5,
+        nearestTeammateAngle: 0,
+        nearestOpponentDistance: 0.5,
+        nearestOpponentAngle: 0,
+        isInShootingRange: 0,
+        isInPassingRange: 0,
+        isDefendingRequired: player.role === 'defender' ? 1 : 0,
+        distanceToOwnGoal: 0.5,
+        angleToOwnGoal: 0,
+        isFacingOwnGoal: 0,
+        isDangerousPosition: 0,
+        isBetweenBallAndOwnGoal: 0,
+        teamElo: player.teamElo ? player.teamElo / 3000 : 0.5,
+        eloAdvantage: 0,
+        gameTime: gameTime / 90,
+        scoreDifferential: 0,
+        momentum: 0.5,
+        formationCompactness: 0.5,
+        formationWidth: 0.5,
+        recentSuccessRate: 0.5,
+        possessionDuration: 0,
+        distanceFromFormationCenter: 0.5,
+        isInFormationPosition: 1,
+        teammateDensity: 0.5,
+        opponentDensity: 0.5,
+        shootingAngle: 0.5,
+        shootingQuality: 0.5,
+        zoneControl: 0.5,
+        passingLanesQuality: 0.5,
+        spaceCreation: 0.5,
+        defensiveSupport: 0.5,
+        pressureIndex: 0.5,
+        tacticalRole: 0.5,
+        supportPositioning: 0.5,
+        pressingEfficiency: 0.5,
+        coverShadow: 0.5,
+        verticalSpacing: 0.5,
+        horizontalSpacing: 0.5,
+        territorialControl: 0.5,
+        counterAttackPotential: 0.5,
+        pressureResistance: 0.5,
+        recoveryPosition: 0.5,
+        transitionSpeed: 0.5,
+        ballVelocityX: ball.velocity.x / 10,
+        ballVelocityY: ball.velocity.y / 10
+      };
+      
+      const output = player.brain.net.run(input);
+      
+      if (output && typeof output.moveX === 'number' && typeof output.moveY === 'number') {
+        const moveX = (output.moveX * 2 - 1) * 2.0; 
+        const moveY = (output.moveY * 2 - 1) * 2.0;
+        
+        return { x: moveX, y: moveY };
+      }
+    } catch (error) {
+      console.log(`Error using neural network for ${player.team} ${player.role} #${player.id}:`, error);
+    }
+    
+    return null;
+  };
+
   const updatePlayerPositions = React.useCallback(() => {
     if (!gameReady) return;
     
@@ -108,6 +190,7 @@ const usePlayerMovement = ({
               x: player.position.x + movement.x,
               y: player.position.y + movement.y
             };
+            
             newPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, newPosition.x));
             newPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, newPosition.y));
             
@@ -124,7 +207,39 @@ const usePlayerMovement = ({
               }
             };
           }
-
+          
+          const neuralMovement = Math.random() > 0.5 ? useNeuralNetworkForPlayer(player, ball) : null;
+          
+          if (neuralMovement) {
+            let newPosition = {
+              x: player.position.x + neuralMovement.x,
+              y: player.position.y + neuralMovement.y
+            };
+            
+            newPosition = constrainMovementToRadius(
+              player.position,
+              player.targetPosition,
+              newPosition,
+              player.role
+            );
+            
+            newPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, newPosition.x));
+            newPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, newPosition.y));
+            
+            const completeBrain = ensureCompleteBrain(player.brain);
+            
+            return {
+              ...player,
+              proposedPosition: newPosition,
+              movement: neuralMovement,
+              brain: {
+                ...completeBrain,
+                lastOutput: neuralMovement,
+                lastAction: 'move' as const
+              }
+            };
+          }
+          
           const roleOffsets = {
             defender: player.team === 'red' ? 150 : PITCH_WIDTH - 150,
             midfielder: player.team === 'red' ? 300 : PITCH_WIDTH - 300,
@@ -222,7 +337,7 @@ const usePlayerMovement = ({
       
       return processedPlayers;
     });
-  }, [ball, gameReady, setPlayers, formations, possession, gameTime, score]);
+  }, [ball, gameReady, setPlayers, gameTime, score]);
 
   return { updatePlayerPositions, formations, possession };
 };
