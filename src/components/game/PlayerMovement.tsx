@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { Player, Ball, PITCH_WIDTH, PITCH_HEIGHT } from '../../types/football';
+import { Player, Ball, PITCH_WIDTH, PITCH_HEIGHT, NeuralNet } from '../../types/football';
 import { moveGoalkeeper } from '../../utils/playerBrain';
 import { 
   trackFormation, 
@@ -55,6 +56,26 @@ const usePlayerMovement = ({
     }
   }, [ball, players, gameReady]);
 
+  // Helper function to ensure brain has lastOutput property
+  const ensureCompleteBrain = (brain: Partial<NeuralNet> | null): NeuralNet => {
+    return {
+      net: brain?.net || null,
+      lastOutput: brain?.lastOutput || { x: 0, y: 0 },
+      lastAction: brain?.lastAction || 'move',
+      actionHistory: brain?.actionHistory || [],
+      successRate: brain?.successRate || { shoot: 0, pass: 0, intercept: 0, overall: 0 },
+      experienceReplay: brain?.experienceReplay,
+      learningStage: brain?.learningStage,
+      lastReward: brain?.lastReward,
+      cumulativeReward: brain?.cumulativeReward,
+      specializedNetworks: brain?.specializedNetworks,
+      selectorNetwork: brain?.selectorNetwork,
+      metaNetwork: brain?.metaNetwork,
+      currentSpecialization: brain?.currentSpecialization,
+      lastSituationContext: brain?.lastSituationContext
+    };
+  };
+
   const updatePlayerPositions = React.useCallback(() => {
     if (!gameReady) return;
     
@@ -70,12 +91,14 @@ const usePlayerMovement = ({
             newPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, newPosition.x));
             newPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, newPosition.y));
             
+            const completeBrain = ensureCompleteBrain(player.brain);
+            
             return {
               ...player,
               proposedPosition: newPosition,
               movement,
               brain: {
-                ...player.brain,
+                ...completeBrain,
                 lastOutput: movement,
                 lastAction: 'move' as const
               }
@@ -113,6 +136,8 @@ const usePlayerMovement = ({
               player.role
             );
             
+            const completeBrain = ensureCompleteBrain(player.brain);
+            
             return {
               ...player,
               proposedPosition,
@@ -120,7 +145,7 @@ const usePlayerMovement = ({
                 x: proposedPosition.x - player.position.x,
                 y: proposedPosition.y - player.position.y
               },
-              brain: initializePlayerBrainWithHistory(player.brain || { net: null })
+              brain: completeBrain
             };
           }
 
@@ -164,7 +189,7 @@ const usePlayerMovement = ({
           moveX = Math.max(-1, Math.min(1, moveX));
           moveY = Math.max(-1, Math.min(1, moveY));
           
-          validatedPlayer.brain.lastOutput = { x: moveX, y: moveY };
+          const lastOutput = { x: moveX, y: moveY };
 
           const dx = ball.position.x - player.position.x;
           const dy = ball.position.y - player.position.y;
@@ -227,43 +252,54 @@ const usePlayerMovement = ({
             movement: { x: moveX, y: moveY },
             brain: {
               ...validatedPlayer.brain,
-              lastOutput: { x: moveX, y: moveY },
+              lastOutput,
               lastAction: 'move' as const
             }
           };
 
         } catch (error) {
           console.error(`Error updating player ${player.team} ${player.role} #${player.id}:`, error);
+          
+          const completeBrain = ensureCompleteBrain(player.brain);
+          
           return {
             ...player,
             proposedPosition: player.position,
             movement: { x: 0, y: 0 },
-            brain: player.brain ? {
-              ...player.brain,
+            brain: {
+              ...completeBrain,
               lastOutput: { x: 0, y: 0 },
               lastAction: 'move' as const
-            } : { net: null }
+            }
           };
         }
       });
       
-      return proposedPositions.map(player => {
+      // Process the final positions and remove temporary properties
+      return proposedPositions.map(p => {
         const teammates = proposedPositions.filter(
-          p => p.team === player.team && p.id !== player.id
+          teammate => teammate.team === p.team && teammate.id !== p.id
         );
         
         const collisionAdjustedPosition = calculateCollisionAvoidance(
-          player,
+          p,
           teammates,
-          player.proposedPosition || player.position
+          p.proposedPosition || p.position
         );
         
-        return {
-          ...player,
+        // Create a clean player object without the temporary properties
+        const cleanPlayer: Player = {
+          ...p,
           position: collisionAdjustedPosition,
-          proposedPosition: undefined,
-          movement: undefined
-        } as Player;
+          // Exclude temporary properties
+          brain: p.brain
+        };
+        
+        // Delete the temporary properties
+        delete (cleanPlayer as any).proposedPosition;
+        delete (cleanPlayer as any).movement;
+        
+        return cleanPlayer;
       });
     });
   }, [ball, gameReady, setPlayers, formations, possession, gameTime, score]);

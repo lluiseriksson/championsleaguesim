@@ -1,4 +1,4 @@
-import { NeuralNet, Player, Position } from '../../types/football';
+import { NeuralNet, Player, Position, NeuralInput } from '../../types/football';
 import { createPlayerBrain } from '../neuralCore';
 import * as brain from 'brain.js';
 
@@ -159,7 +159,7 @@ export const createTacticalInput = (
   isAttackingThird: boolean,
   teammateDensity: number,
   opponentDensity: number
-) => {
+): NeuralInput => {
   return {
     ballX: normalizedBallX,
     ballY: normalizedBallY,
