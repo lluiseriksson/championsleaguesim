@@ -34,17 +34,26 @@ const PitchLayout: React.FC = () => {
       {/* Penalty arcs - right side (positioned at the edge of the penalty area) */}
       <div className="absolute right-[144px] top-1/2 w-24 h-24 border-2 border-pitch-lines rounded-full transform translate-x-1/2 -translate-y-1/2" style={{ clipPath: 'inset(0 50% 0 0)' }} />
       
-      {/* Corner arcs - top left */}
-      <div className="absolute left-0 top-0 w-10 h-10 border-r-2 border-b-2 border-pitch-lines rounded-br-[10px]" />
+      {/* Corner arcs - using border-radius instead of rectangular forms */}
+      {/* Top left corner */}
+      <div className="absolute left-0 top-0 w-10 h-10">
+        <div className="absolute w-20 h-20 border-2 border-pitch-lines rounded-full" style={{ clipPath: 'inset(50% 0 0 50%)' }} />
+      </div>
       
-      {/* Corner arcs - top right */}
-      <div className="absolute right-0 top-0 w-10 h-10 border-l-2 border-b-2 border-pitch-lines rounded-bl-[10px]" />
+      {/* Top right corner */}
+      <div className="absolute right-0 top-0 w-10 h-10">
+        <div className="absolute right-0 w-20 h-20 border-2 border-pitch-lines rounded-full" style={{ clipPath: 'inset(50% 50% 0 0)' }} />
+      </div>
       
-      {/* Corner arcs - bottom left */}
-      <div className="absolute left-0 bottom-0 w-10 h-10 border-r-2 border-t-2 border-pitch-lines rounded-tr-[10px]" />
+      {/* Bottom left corner */}
+      <div className="absolute left-0 bottom-0 w-10 h-10">
+        <div className="absolute bottom-0 w-20 h-20 border-2 border-pitch-lines rounded-full" style={{ clipPath: 'inset(0 0 50% 50%)' }} />
+      </div>
       
-      {/* Corner arcs - bottom right */}
-      <div className="absolute right-0 bottom-0 w-10 h-10 border-l-2 border-t-2 border-pitch-lines rounded-tl-[10px]" />
+      {/* Bottom right corner */}
+      <div className="absolute right-0 bottom-0 w-10 h-10">
+        <div className="absolute bottom-0 right-0 w-20 h-20 border-2 border-pitch-lines rounded-full" style={{ clipPath: 'inset(0 50% 50% 0)' }} />
+      </div>
     </div>
   );
 };
