@@ -9,6 +9,7 @@ import { performFinalKitCheck, resolveKitConflict } from '../../types/kits/kitCo
 import { KitType } from '../../types/kits/kitTypes';
 import GameLogic from '../GameLogic';
 import { createPlayerBrain } from '../../utils/neuralNetwork';
+import { validatePlayerBrain } from '../../utils/neural/networkValidator';
 
 const transliterateRussianName = (name: string): string => {
   const cyrillicToLatin: Record<string, string> = {
