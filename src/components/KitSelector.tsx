@@ -1,11 +1,17 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   teamKitColors, 
   getPositionSpecificKits, 
   KitSelectionResult,
   PlayerPosition
 } from '../types/kits';
-import { performFinalKitCheck, teamHasRedPrimaryColor } from '../types/kits/kitConflictChecker';
+import { 
+  performFinalKitCheck, 
+  teamHasRedPrimaryColor, 
+  areTeamsInConflictList 
+} from '../types/kits/kitConflictChecker';
+import { Button } from './ui/button';
 
 const KitSelector: React.FC = () => {
   const [homeTeam, setHomeTeam] = useState<string>('Liverpool');
@@ -35,9 +41,25 @@ const KitSelector: React.FC = () => {
     return teamKitColors[team][kitType as keyof typeof teamKitColors[string]].primary;
   };
 
-  const checkForRedKitConflict = () => {
+  const checkForKitConflict = () => {
     if (!homeTeam || !awayTeam || !kitResult) return null;
     
+    // Check for teams in known conflict list
+    const isKnownConflict = areTeamsInConflictList(homeTeam, awayTeam);
+    
+    if (isKnownConflict) {
+      return (
+        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-800">
+          <p className="text-sm font-semibold mb-1">⚠️ Known Kit Conflict!</p>
+          <p className="text-xs">
+            {homeTeam} and {awayTeam} have similar kit colors that would cause confusion.
+            In a real match, {awayTeam} would need to use their third kit.
+          </p>
+        </div>
+      );
+    }
+    
+    // Check for red kit conflicts
     const homeIsRed = teamHasRedPrimaryColor(homeTeam, 'home');
     const awayIsRed = teamHasRedPrimaryColor(awayTeam, kitResult.awayTeamKitType);
     
@@ -67,7 +89,14 @@ const KitSelector: React.FC = () => {
       );
     }
     
-    return null;
+    return (
+      <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md text-green-800">
+        <p className="text-sm font-semibold mb-1">✓ No Kit Conflicts</p>
+        <p className="text-xs">
+          The selected kits for {homeTeam} and {awayTeam} provide sufficient contrast.
+        </p>
+      </div>
+    );
   };
 
   return (
@@ -150,7 +179,7 @@ const KitSelector: React.FC = () => {
             </div>
           </div>
           
-          {checkForRedKitConflict()}
+          {checkForKitConflict()}
           
           {kitResult.conflictDescription && (
             <div className="mt-4 bg-gray-50 p-2 rounded text-xs font-mono whitespace-pre-wrap">
