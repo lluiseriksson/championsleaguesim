@@ -1,7 +1,7 @@
 import { Player, Position, PLAYER_RADIUS } from '../../types/football';
 
-// Minimum distance players should maintain (increased by 4x)
-const MIN_PLAYER_DISTANCE = PLAYER_RADIUS * 2.5 * 4;
+// Minimum distance players should maintain (increased by 3x)
+const MIN_PLAYER_DISTANCE = PLAYER_RADIUS * 2.5 * 3;
 
 /**
  * Detects if two players are too close to each other
