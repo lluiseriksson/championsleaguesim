@@ -1,8 +1,7 @@
-
 import { Position, PLAYER_RADIUS, BALL_RADIUS, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
 
 const MAX_BALL_SPEED = 18; // Keeping higher speed for powerful shots
-const MIN_BALL_SPEED = 3.5; // Maintaining minimum speed
+const MIN_BALL_SPEED = 4.2; // Increased by 20% from 3.5 to 4.2
 
 const limitSpeed = (velocity: Position): Position => {
   const speed = Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y);

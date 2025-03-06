@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { Ball, Position } from '../../types/football';
 
@@ -31,12 +32,13 @@ export const applyRandomKick = (currentBall: Ball, tournamentMode: boolean): Bal
     console.log("Ball stuck in place or zero velocity, giving it a random kick");
   }
   
+  // Increased random kick velocity by ~20% (from 6 to 7.2 max range)
   return {
     ...currentBall,
     position: currentBall.position,
     velocity: {
-      x: (Math.random() * 6) - 3,
-      y: (Math.random() * 6) - 3
+      x: (Math.random() * 7.2) - 3.6,
+      y: (Math.random() * 7.2) - 3.6
     }
   };
 };
@@ -45,3 +47,4 @@ export const applyRandomKick = (currentBall: Ball, tournamentMode: boolean): Bal
 export const calculateBallSpeed = (velocity: Position): number => {
   return Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
 };
+

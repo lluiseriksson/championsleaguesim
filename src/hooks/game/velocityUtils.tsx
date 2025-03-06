@@ -1,6 +1,8 @@
+
 import { Position } from '../../types/football';
 
-const MIN_BALL_SPEED = 3.5;
+// Increased by 20% from 3.5 to 4.2
+const MIN_BALL_SPEED = 4.2;
 
 // Apply subtle deceleration and minimum velocity
 export function applyVelocityAdjustments(velocity: Position): Position {
