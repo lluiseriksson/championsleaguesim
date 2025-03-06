@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Player } from '../types/football';
 import { getTeamKitColor, getTeamKitColors, KitType } from '../types/kits';
 import { adjustGreenKitForPitchContrast, isColorTooCloseToField } from '../types/kits/kitTypes';
+import { parseHexColor } from '../types/kits/colorUtils';
 
 interface PlayerSpriteProps {
   player: Player;
@@ -48,27 +49,26 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
     }
   };
 
-  // Determine if we need a light or dark text color based on the player color
+  // Improved function to determine text color based on background color
   const getTextColor = (player: Player) => {
     // If the player has a teamName and kitType, check the color brightness
     if (player.teamName && player.kitType) {
       const hexColor = getTeamKitColor(player.teamName, player.kitType as KitType);
       
-      // Simple brightness formula (adjust as needed)
-      // Convert hex to RGB and calculate brightness
-      const r = parseInt(hexColor.slice(1, 3), 16);
-      const g = parseInt(hexColor.slice(3, 5), 16);
-      const b = parseInt(hexColor.slice(5, 7), 16);
+      // Parse the hex color to RGB
+      const rgb = parseHexColor(hexColor);
       
-      // Formula to determine perceived brightness
-      const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+      // Calculate the perceived brightness using the luminance formula
+      // This formula gives more weight to green as human eyes are more sensitive to it
+      const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
       
-      // Use white text on dark backgrounds, black text on light backgrounds
-      return brightness > 125 ? 'text-black' : 'text-white';
+      // Use black text on light backgrounds, white text on dark backgrounds
+      // Using a threshold of 0.5 for better contrast
+      return luminance > 0.5 ? 'text-black font-extrabold' : 'text-white font-extrabold';
     }
     
     // Default to white text for legacy gradient backgrounds
-    return 'text-white';
+    return 'text-white font-extrabold';
   };
   
   // Get the kit colors for the player's team
@@ -135,8 +135,8 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
         )}
       </div>
       
-      {/* Small letter to indicate the role */}
-      <span className={`relative z-10 text-[8px] font-bold ${getTextColor(player)}`}>
+      {/* Small letter to indicate the role with improved contrast */}
+      <span className={`relative z-10 text-[10px] ${getTextColor(player)} drop-shadow-sm`}>
         {player.role === 'goalkeeper' ? 'G' : 
          player.role === 'defender' ? 'D' : 
          player.role === 'midfielder' ? 'M' : 
