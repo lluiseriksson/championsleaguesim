@@ -71,31 +71,33 @@ const usePlayerMovement = ({
     
     // If brain has only 'net' property, add all missing properties
     if ('net' in brain && Object.keys(brain).length === 1) {
-      return {
+      const basicBrain: NeuralNet = {
         net: brain.net,
         lastOutput: { x: 0, y: 0 },
         lastAction: 'move',
         actionHistory: [],
         successRate: { shoot: 0, pass: 0, intercept: 0, overall: 0 }
       };
+      return basicBrain;
     }
     
     // For existing brains, ensure all required properties exist
+    const completeBrain = brain as Partial<NeuralNet>;
     return {
-      net: brain.net || null,
-      lastOutput: brain.lastOutput || { x: 0, y: 0 },
-      lastAction: brain.lastAction || 'move',
-      actionHistory: brain.actionHistory || [],
-      successRate: brain.successRate || { shoot: 0, pass: 0, intercept: 0, overall: 0 },
-      experienceReplay: brain.experienceReplay,
-      learningStage: brain.learningStage,
-      lastReward: brain.lastReward,
-      cumulativeReward: brain.cumulativeReward,
-      specializedNetworks: brain.specializedNetworks,
-      selectorNetwork: brain.selectorNetwork,
-      metaNetwork: brain.metaNetwork,
-      currentSpecialization: brain.currentSpecialization,
-      lastSituationContext: brain.lastSituationContext
+      net: completeBrain.net || null,
+      lastOutput: completeBrain.lastOutput || { x: 0, y: 0 },
+      lastAction: completeBrain.lastAction || 'move',
+      actionHistory: completeBrain.actionHistory || [],
+      successRate: completeBrain.successRate || { shoot: 0, pass: 0, intercept: 0, overall: 0 },
+      experienceReplay: completeBrain.experienceReplay,
+      learningStage: completeBrain.learningStage,
+      lastReward: completeBrain.lastReward,
+      cumulativeReward: completeBrain.cumulativeReward,
+      specializedNetworks: completeBrain.specializedNetworks,
+      selectorNetwork: completeBrain.selectorNetwork,
+      metaNetwork: completeBrain.metaNetwork,
+      currentSpecialization: completeBrain.currentSpecialization,
+      lastSituationContext: completeBrain.lastSituationContext
     };
   };
 
@@ -318,7 +320,7 @@ const usePlayerMovement = ({
         };
         
         // Delete the temporary properties using a typed approach
-        const playerWithTempProps = cleanPlayer as any;
+        const playerWithTempProps: any = cleanPlayer;
         delete playerWithTempProps.proposedPosition;
         delete playerWithTempProps.movement;
         
