@@ -9,6 +9,11 @@ export const normalizePosition = (pos: Position): Position => ({
   y: pos.y / PITCH_HEIGHT
 });
 
+// Normalize a value to a value between 0 and 1
+export const normalizeValue = (value: number, min: number, max: number): number => {
+  return Math.max(0, Math.min(1, (value - min) / (max - min)));
+};
+
 // Calculate angle and distance between two positions (normalized)
 export const calculateAngleAndDistance = (from: Position, to: Position) => {
   const dx = to.x - from.x;

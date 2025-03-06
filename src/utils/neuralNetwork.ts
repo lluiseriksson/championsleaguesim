@@ -1,6 +1,6 @@
 import * as brain from 'brain.js';
-import { NeuralNet, Position, NeuralInput, NeuralOutput, TeamContext, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
-import { createNeuralInput, isNetworkValid } from './neuralHelpers';
+import { NeuralNet, Position, NeuralInput, NeuralOutput, TeamContext } from '../types/football';
+import { createNeuralInput, isNetworkValid, normalizeValue } from './neuralHelpers';
 import { createExperienceReplay } from './experienceReplay';
 import { initializeSpecializedBrain } from './specializedNetworks';
 
