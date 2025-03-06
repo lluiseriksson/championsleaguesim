@@ -1,4 +1,5 @@
-import { NeuralInput, NeuralOutput, ExperienceReplay, NeuralNet, SituationContext, Position } from '../types/football';
+
+import { NeuralInput, NeuralOutput, ExperienceReplay, NeuralNet, SituationContext, Position, TeamContext } from '../types/football';
 import { selectSpecializedNetwork, updateSpecializedNetworks } from './specializedNetworks';
 import { createSituationContext } from './neuralHelpers';
 
