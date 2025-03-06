@@ -15,6 +15,7 @@ export const useTournament = (embeddedMode = false) => {
   const [playingMatch, setPlayingMatch] = useState(false);
   const [autoSimulation, setAutoSimulation] = useState(false);
 
+  // Initialize tournament on component mount
   useEffect(() => {
     if (!initialized) {
       initializeTournament();
@@ -22,28 +23,37 @@ export const useTournament = (embeddedMode = false) => {
     }
   }, [initialized]);
 
-  // First, we need to define these functions before using them in the dependency array
   const playMatch = useCallback((match: Match) => {
-    if (!match.teamA || !match.teamB) return;
+    if (!match.teamA || !match.teamB) {
+      console.log("Cannot play match: missing teams", match);
+      return;
+    }
     
+    console.log("Playing match:", match.teamA.name, "vs", match.teamB.name);
     setActiveMatch(match);
     setPlayingMatch(true);
-    console.log("Playing match:", match.teamA.name, "vs", match.teamB.name);
   }, []);
 
   const simulateSingleMatch = useCallback((match: Match) => {
-    if (!match.teamA || !match.teamB) return;
+    if (!match.teamA || !match.teamB) {
+      console.log("Cannot simulate match: missing teams", match);
+      return;
+    }
     
     console.log("Simulating match:", match.teamA.name, "vs", match.teamB.name);
     
     const updatedMatches = [...matches];
     const currentMatch = updatedMatches.find(m => m.id === match.id);
     
-    if (!currentMatch || !currentMatch.teamA || !currentMatch.teamB) return;
+    if (!currentMatch || !currentMatch.teamA || !currentMatch.teamB) {
+      console.log("Match not found in matches array", match.id);
+      return;
+    }
     
     // If in auto simulation mode, also set the active match for display
     if (autoSimulation) {
       setActiveMatch(match);
+      setPlayingMatch(true);
     }
     
     const teamAStrength = currentMatch.teamA.eloRating + Math.random() * 100;
@@ -59,8 +69,8 @@ export const useTournament = (embeddedMode = false) => {
     const loserGoals = Math.max(0, winnerGoals - goalDiff);
     
     currentMatch.score = {
-      teamA: winnerGoals,
-      teamB: loserGoals
+      teamA: winner.id === currentMatch.teamA.id ? winnerGoals : loserGoals,
+      teamB: winner.id === currentMatch.teamB.id ? winnerGoals : loserGoals
     };
     
     if (currentMatch.round < 7) {
@@ -81,7 +91,7 @@ export const useTournament = (embeddedMode = false) => {
     setMatches(updatedMatches);
   }, [matches, autoSimulation]);
 
-  // Now we can use them in the useEffect dependency array
+  // Auto simulation effect
   useEffect(() => {
     if (!autoSimulation) {
       console.log("Auto simulation not enabled, returning");
@@ -93,6 +103,8 @@ export const useTournament = (embeddedMode = false) => {
     if (currentRound > 7) {
       console.log("Tournament complete (round > 7), stopping auto simulation");
       setAutoSimulation(false);
+      setActiveMatch(null);
+      setPlayingMatch(false);
       return;
     }
     
@@ -322,7 +334,6 @@ export const useTournament = (embeddedMode = false) => {
 
   const startAutoSimulation = useCallback(() => {
     console.log("Starting auto simulation with embeddedMode:", embeddedMode);
-    setAutoSimulation(true);
     
     // Find the first unplayed match to start with
     const firstMatch = matches.find(m => 
@@ -336,7 +347,12 @@ export const useTournament = (embeddedMode = false) => {
       console.log("Found first match to start auto simulation:", firstMatch.teamA?.name, "vs", firstMatch.teamB?.name);
       setActiveMatch(firstMatch);
       setPlayingMatch(true);
+    } else {
+      console.log("No unplayed matches found to start auto simulation");
+      return; // Don't start auto simulation if there are no matches to play
     }
+    
+    setAutoSimulation(true);
     
     toast.success("Auto Simulation Started", {
       description: "Tournament will progress automatically"

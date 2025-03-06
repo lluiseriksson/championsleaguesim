@@ -17,13 +17,16 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
   onBackClick,
   onMatchComplete
 }) => {
-  if (!activeMatch || !activeMatch.teamA || !activeMatch.teamB) return null;
+  if (!activeMatch || !activeMatch.teamA || !activeMatch.teamB) {
+    console.log("ActiveMatch component received invalid match data");
+    return null;
+  }
 
   console.log("Rendering ActiveMatch component with teams:", activeMatch.teamA.name, activeMatch.teamB.name);
 
   return (
     <div className="p-4 bg-gray-50 rounded-lg shadow-md">
-      <div className="mb-2">
+      <div className="mb-4">
         <Button 
           onClick={onBackClick}
           variant="outline"
@@ -41,12 +44,14 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
         </div>
       </div>
       
-      <TournamentMatch 
-        homeTeam={activeMatch.teamA.name}
-        awayTeam={activeMatch.teamB.name}
-        onMatchComplete={onMatchComplete}
-        matchDuration={60} // 1 minute match duration
-      />
+      <div className="w-full">
+        <TournamentMatch 
+          homeTeam={activeMatch.teamA.name}
+          awayTeam={activeMatch.teamB.name}
+          onMatchComplete={onMatchComplete}
+          matchDuration={60} // 1 minute match duration
+        />
+      </div>
     </div>
   );
 };
