@@ -20,13 +20,19 @@ const PitchLayout: React.FC = () => {
       <div className="absolute left-0 top-1/2 w-36 h-72 border-2 border-pitch-lines transform -translate-y-1/2" />
       <div className="absolute right-0 top-1/2 w-36 h-72 border-2 border-pitch-lines transform -translate-y-1/2" />
       
-      {/* Goal areas (6-yard box) - no arcs here */}
+      {/* Goal areas (6-yard box) */}
       <div className="absolute left-0 top-1/2 w-16 h-36 border-2 border-pitch-lines transform -translate-y-1/2" />
       <div className="absolute right-0 top-1/2 w-16 h-36 border-2 border-pitch-lines transform -translate-y-1/2" />
       
-      {/* Penalty spots - positioned further from goal */}
+      {/* Penalty spots */}
       <div className="absolute left-[80px] top-1/2 w-2 h-2 bg-white rounded-full transform -translate-x-1/2 -translate-y-1/2" />
       <div className="absolute right-[80px] top-1/2 w-2 h-2 bg-white rounded-full transform -translate-x-1/2 -translate-y-1/2" />
+      
+      {/* Penalty arcs - left side */}
+      <div className="absolute left-[110px] top-1/2 w-24 h-24 border-2 border-pitch-lines rounded-full transform -translate-x-1/2 -translate-y-1/2" style={{ clipPath: 'inset(0 0 0 50%)' }} />
+      
+      {/* Penalty arcs - right side */}
+      <div className="absolute right-[110px] top-1/2 w-24 h-24 border-2 border-pitch-lines rounded-full transform translate-x-1/2 -translate-y-1/2" style={{ clipPath: 'inset(0 50% 0 0)' }} />
       
       {/* Corner arcs - top left */}
       <div className="absolute left-0 top-0 w-10 h-10 border-r-2 border-b-2 border-pitch-lines rounded-br-[10px]" />
