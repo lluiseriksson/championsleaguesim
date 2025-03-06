@@ -47,7 +47,7 @@ export const useGameLoop = ({
 
   // Initialize and run the game loop
   React.useEffect(() => {
-    console.log("Game loop started");
+    console.log(`Game loop started with ${players.length} players`);
     let frameId: number;
     let lastTime = performance.now();
     const TIME_STEP = 16; // 60 FPS target
@@ -72,21 +72,25 @@ export const useGameLoop = ({
       frameId = requestAnimationFrame(gameLoop);
     };
 
-    // Start the game loop immediately
-    frameId = requestAnimationFrame(gameLoop);
-    
-    // Sync models on startup only if not in tournament mode
-    if (!tournamentMode) {
-      syncModels();
+    // Start the game loop immediately if we have players
+    if (players.length > 0) {
+      frameId = requestAnimationFrame(gameLoop);
+      
+      // Sync models on startup only if not in tournament mode
+      if (!tournamentMode) {
+        syncModels();
+      }
+      
+      // Check learning progress on mount only if not in tournament mode
+      if (!tournamentMode) {
+        setTimeout(() => {
+          checkLearningProgress();
+        }, 5000); // Check after 5 seconds to allow initial loading
+      }
+    } else {
+      console.warn("Game loop not started - no players available");
     }
-    
-    // Check learning progress on mount only if not in tournament mode
-    if (!tournamentMode) {
-      setTimeout(() => {
-        checkLearningProgress();
-      }, 5000); // Check after 5 seconds to allow initial loading
-    }
-    
+
     console.log("Game loop initialized");
 
     // Debug timer to log ball state every 5 seconds (less frequent in tournament mode)
@@ -98,6 +102,7 @@ export const useGameLoop = ({
           speed: Math.sqrt(ball.velocity.x * ball.velocity.x + ball.velocity.y * ball.velocity.y)
         });
         console.log("Current score:", score);
+        console.log(`Current player count: ${players.length}`);
       }
     }, tournamentMode ? 15000 : 5000);
 
