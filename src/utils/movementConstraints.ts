@@ -1,3 +1,4 @@
+
 import { Position, Player } from '../types/football';
 import { calculateDistance } from './neuralCore';
 
@@ -8,13 +9,24 @@ const ROLE_RADIUS_LIMITS = {
   forward: 160        // Further reduced from 180 - Forwards have more constrained freedom to move
 };
 
+// Add a multiplier for early game to allow players to get into position faster
+const getEarlyGameMultiplier = (gameTime?: number): number => {
+  if (!gameTime || gameTime >= 20) return 1.0; // Normal radius after 20 minutes
+  if (gameTime < 5) return 1.5;   // 50% more movement freedom in the first 5 minutes
+  if (gameTime < 10) return 1.3;  // 30% more movement freedom from 5-10 minutes
+  return 1.15;                    // 15% more movement freedom from 10-20 minutes
+};
+
 export const constrainMovementToRadius = (
   currentPosition: Position,
   targetPosition: Position,
   proposedPosition: Position,
-  role: Player['role']
+  role: Player['role'],
+  gameTime?: number
 ): Position => {
-  const maxRadius = ROLE_RADIUS_LIMITS[role];
+  // Apply early game multiplier for faster initial positioning
+  const earlyGameMultiplier = getEarlyGameMultiplier(gameTime);
+  const maxRadius = ROLE_RADIUS_LIMITS[role] * earlyGameMultiplier;
   
   if (role === 'goalkeeper') {
     return {

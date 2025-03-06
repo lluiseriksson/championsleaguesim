@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 
 interface MatchTimerProps {
@@ -19,7 +20,11 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
   
   const getDisplayMinutes = (elapsed: number, total: number) => {
     // Speed up initial time progression to show movement earlier
-    const scaleFactor = elapsed < 10 ? 2 : 1;  // Double speed for first 10 seconds
+    // More aggressive acceleration of early game time
+    const scaleFactor = elapsed < 5 ? 6 : // First 5 seconds - 6x speed
+                       elapsed < 10 ? 4 : // Next 5 seconds - 4x speed
+                       elapsed < 20 ? 2 : // Next 10 seconds - 2x speed
+                       1;  // Normal speed after that
     const scaledMinutes = Math.floor((elapsed / total) * 90 * scaleFactor);
     return Math.min(90, scaledMinutes);  // Cap at 90 minutes
   };
@@ -54,7 +59,7 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
     if (elapsedTime < initialTime || goldenGoal) {
       timerRef.current = setInterval(() => {
         setElapsedTime(prevTime => prevTime + 1);
-      }, 500); // Update twice per second for smoother progression
+      }, 300); // Update approximately 3 times per second for smoother progression (reduced from 500ms)
     }
 
     return () => {

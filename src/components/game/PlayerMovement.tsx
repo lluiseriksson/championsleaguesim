@@ -312,7 +312,9 @@ const usePlayerMovement = ({
             };
           }
           
-          const neuralNetworkThreshold = player.role === 'defender' ? 0.6 : 0.65;
+          const gameTimeMinutes = gameTime || 0;
+          const earlyGameBonus = gameTimeMinutes < 10 ? 0.2 : 0;
+          const neuralNetworkThreshold = (player.role === 'defender' ? 0.6 : 0.65) - earlyGameBonus;
           const useNeuralNetwork = Math.random() > neuralNetworkThreshold;
           
           console.log(`${player.team} ${player.role} #${player.id} - Using neural network: ${useNeuralNetwork}`);
@@ -329,7 +331,8 @@ const usePlayerMovement = ({
               player.position,
               player.targetPosition,
               newPosition,
-              player.role
+              player.role,
+              gameTimeMinutes
             );
             
             newPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, newPosition.x));
@@ -377,9 +380,13 @@ const usePlayerMovement = ({
           const dy = targetY - player.position.y;
           const dist = Math.sqrt(dx*dx + dy*dy);
           
-          let moveSpeed = 2.2;
+          const gameTimeMinutes = gameTime || 0;
+          const earlyGameSpeedBonus = gameTimeMinutes < 5 ? 0.5 : 
+                                     gameTimeMinutes < 15 ? 0.3 : 0;
+          
+          let moveSpeed = 2.2 + earlyGameSpeedBonus;
           if (player.role === 'defender') {
-            moveSpeed = 2.4;
+            moveSpeed = 2.4 + earlyGameSpeedBonus;
           }
           
           let moveX = dist > 0 ? (dx / dist) * moveSpeed : 0;
@@ -402,7 +409,8 @@ const usePlayerMovement = ({
             player.position,
             player.targetPosition,
             proposedPosition,
-            player.role
+            player.role,
+            gameTimeMinutes
           );
           
           proposedPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, proposedPosition.x));
