@@ -1,5 +1,6 @@
+
 import { supabase } from '../../integrations/supabase/client';
-import { NeuralNet, Player, SpecializedNeuralNet } from '../../types/football';
+import { NeuralNet, Player, SpecializedNeuralNet, NeuralInput, NeuralOutput } from '../../types/football';
 import { isNetworkValid } from '../neuralHelpers';
 import { createPlayerBrain } from '../neuralNetwork';
 import { NeuralModelData } from './neuralTypes';
@@ -221,23 +222,29 @@ export const loadSpecializedNetworks = async (
     const specializedNetworks: SpecializedNeuralNet[] = [];
     
     for (const model of data) {
-      // Create a new neural network with the saved weights
-      const net = new brain.NeuralNetwork();
-      net.fromJSON(model.weights);
-      
-      if (isNetworkValid(net)) {
-        specializedNetworks.push({
-          type: model.specialization,
-          net,
-          confidence: 0.5,
-          performance: {
-            overallSuccess: model.performance_score || 0.5,
-            situationSuccess: model.performance_score || 0.5,
-            usageCount: model.usage_count || 0
-          }
-        });
+      try {
+        // Create properly typed neural network
+        const net = new brain.NeuralNetwork<NeuralInput, NeuralOutput>();
         
-        console.log(`Specialized model ${model.specialization} for ${team} ${role} loaded successfully`);
+        // Load the weights - this is where the type error was occurring
+        net.fromJSON(model.weights);
+        
+        if (isNetworkValid(net)) {
+          specializedNetworks.push({
+            type: model.specialization,
+            net,
+            confidence: 0.5,
+            performance: {
+              overallSuccess: model.performance_score || 0.5,
+              situationSuccess: model.performance_score || 0.5,
+              usageCount: model.usage_count || 0
+            }
+          });
+          
+          console.log(`Specialized model ${model.specialization} for ${team} ${role} loaded successfully`);
+        }
+      } catch (error) {
+        console.warn(`Error loading specialized model ${model.specialization}:`, error);
       }
     }
     
