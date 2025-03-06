@@ -23,44 +23,160 @@ export const createSpecializedNetwork = (
     hiddenLayers,
     activation: 'leaky-relu',
     learningRate: 0.05,
-    momentum: 0.1
+    momentum: 0.1,
+    errorThresh: 0.01
   };
   
   switch (type) {
     case 'attacking':
-      config.hiddenLayers = [20, 16, 12, 8];
+      config.hiddenLayers = [24, 20, 16, 10];
       config.learningRate = 0.06;
+      config.momentum = 0.12;
       break;
     case 'defending':
-      config.hiddenLayers = [16, 14, 10];
+      config.hiddenLayers = [20, 16, 12];
       config.learningRate = 0.04;
+      config.momentum = 0.08;
       break;
     case 'possession':
-      config.hiddenLayers = [18, 14, 10, 6];
+      config.hiddenLayers = [22, 18, 14, 10];
       config.momentum = 0.15;
+      config.learningRate = 0.05;
       break;
     case 'transition':
-      config.hiddenLayers = [16, 12, 8];
+      config.hiddenLayers = [20, 16, 12];
       config.learningRate = 0.07;
+      config.activation = 'relu';
       break;
     case 'setpiece':
-      config.hiddenLayers = [14, 10, 6];
+      config.hiddenLayers = [18, 14, 10];
       config.learningRate = 0.04;
+      config.momentum = 0.1;
       break;
     case 'selector':
-      config.hiddenLayers = [12, 8, 6];
+      config.hiddenLayers = [16, 12, 8];
       config.activation = 'sigmoid';
+      config.learningRate = 0.03;
       break;
     case 'meta':
-      config.hiddenLayers = [24, 16, 8];
+      config.hiddenLayers = [28, 20, 12];
       config.learningRate = 0.03;
       config.momentum = 0.2;
+      config.activation = 'leaky-relu';
       break;
     default:
+      config.hiddenLayers = [20, 16, 12, 8];
       break;
   }
   
   const net = new brain.NeuralNetwork<NeuralInput, NeuralOutput>(config);
+  
+  const defaultInputs: NeuralInput[] = [];
+  const defaultOutputs: NeuralOutput[] = [];
+  
+  for (let i = 0; i < 5; i++) {
+    const input: NeuralInput = {
+      ballX: 0.5,
+      ballY: 0.5,
+      playerX: 0.5,
+      playerY: 0.5,
+      ballVelocityX: 0,
+      ballVelocityY: 0,
+      distanceToGoal: 0.5,
+      angleToGoal: 0,
+      nearestTeammateDistance: 0.5,
+      nearestTeammateAngle: 0,
+      nearestOpponentDistance: 0.5,
+      nearestOpponentAngle: 0,
+      isInShootingRange: 0,
+      isInPassingRange: 0,
+      isDefendingRequired: 0,
+      distanceToOwnGoal: 0.5,
+      angleToOwnGoal: 0,
+      isFacingOwnGoal: 0,
+      isDangerousPosition: 0,
+      isBetweenBallAndOwnGoal: 0,
+      teamElo: 0.5,
+      eloAdvantage: 0,
+      gameTime: 0.5,
+      scoreDifferential: 0,
+      momentum: 0.5,
+      formationCompactness: 0.5,
+      formationWidth: 0.5,
+      recentSuccessRate: 0.5,
+      possessionDuration: 0.5,
+      distanceFromFormationCenter: 0.5,
+      isInFormationPosition: 1,
+      teammateDensity: 0.5,
+      opponentDensity: 0.5,
+      shootingAngle: 0.5,
+      shootingQuality: 0.5,
+      zoneControl: 0.5,
+      passingLanesQuality: 0.5,
+      spaceCreation: 0.5,
+      defensiveSupport: 0.5,
+      pressureIndex: 0.5,
+      tacticalRole: 0.5,
+      supportPositioning: 0.5,
+      pressingEfficiency: 0.5,
+      coverShadow: 0.5,
+      verticalSpacing: 0.5,
+      horizontalSpacing: 0.5,
+      territorialControl: 0.5,
+      counterAttackPotential: 0.5,
+      pressureResistance: 0.5,
+      recoveryPosition: 0.5,
+      transitionSpeed: 0.5
+    };
+    
+    const output: NeuralOutput = {
+      moveX: 0.5,
+      moveY: 0.5,
+      shootBall: 0,
+      passBall: 0,
+      intercept: 0
+    };
+    
+    switch (type) {
+      case 'attacking':
+        output.moveX = 0.7;
+        output.shootBall = 0.3;
+        break;
+      case 'defending':
+        output.moveX = 0.3;
+        output.intercept = 0.3;
+        break;
+      case 'possession':
+        output.passBall = 0.3;
+        break;
+      case 'transition':
+        output.moveX = Math.random() > 0.5 ? 0.7 : 0.3;
+        output.moveY = Math.random() > 0.5 ? 0.7 : 0.3;
+        break;
+      case 'selector':
+        output.moveX = 0.5;
+        output.moveY = 0.5;
+        break;
+    }
+    
+    defaultInputs.push(input);
+    defaultOutputs.push(output);
+  }
+  
+  try {
+    net.train(defaultInputs.map((input, i) => ({
+      input,
+      output: defaultOutputs[i]
+    })), {
+      iterations: 100,
+      errorThresh: 0.01,
+      log: false
+    });
+    
+    console.log(`Successfully initialized ${type} specialized network`);
+  } catch (error) {
+    console.error(`Error initializing ${type} specialized network:`, error);
+  }
   
   return {
     type,
@@ -90,15 +206,22 @@ export const initializeSpecializedBrain = (): NeuralNet => {
     createSpecializedNetwork(type)
   );
   
-  const selectorNetwork = createSpecializedNetwork('selector', [10, 8, 6]);
+  const selectorNetwork = createSpecializedNetwork('selector', [16, 12, 8]);
+  const metaNetwork = createSpecializedNetwork('meta', [28, 20, 12]);
   
-  const metaNetwork = createSpecializedNetwork('meta', [24, 16, 8]);
+  const validatedNetworks = specializedNetworks.filter(network => 
+    isNetworkValid(network.net)
+  );
+  
+  if (validatedNetworks.length < specializedNetworks.length) {
+    console.warn(`Only ${validatedNetworks.length} of ${specializedNetworks.length} specialized networks were valid`);
+  }
   
   return {
     ...brain,
-    specializedNetworks,
-    selectorNetwork,
-    metaNetwork,
+    specializedNetworks: validatedNetworks,
+    selectorNetwork: isNetworkValid(selectorNetwork.net) ? selectorNetwork : undefined,
+    metaNetwork: isNetworkValid(metaNetwork.net) ? metaNetwork : undefined,
     currentSpecialization: 'general'
   };
 };
@@ -236,10 +359,10 @@ export const selectSpecializedNetwork = (
       
       const networkChoices = [
         { type: 'general', weight: 0.2 },
-        { type: 'attacking', weight: situationContext.isAttackingThird ? 0.8 : 0.1 },
-        { type: 'defending', weight: situationContext.isDefensiveThird ? 0.8 : 0.1 },
-        { type: 'possession', weight: situationContext.hasTeamPossession ? 0.7 : 0.1 },
-        { type: 'transition', weight: situationContext.isTransitioning ? 0.8 : 0.1 },
+        { type: 'attacking', weight: (situationContext.isAttackingThird ? 0.6 : 0.1) + (situationContext.hasTeamPossession ? 0.2 : 0) },
+        { type: 'defending', weight: (situationContext.isDefensiveThird ? 0.6 : 0.1) + (!situationContext.hasTeamPossession ? 0.2 : 0) + (situationContext.defensivePressure * 0.2) },
+        { type: 'possession', weight: (situationContext.hasTeamPossession ? 0.5 : 0.1) + (situationContext.isMiddleThird ? 0.2 : 0) },
+        { type: 'transition', weight: (situationContext.isTransitioning ? 0.7 : 0.1) + (Math.abs(0.5 - situationContext.distanceToBall) * 0.2) },
         { type: 'setpiece', weight: situationContext.isSetPiece ? 0.9 : 0.05 }
       ];
       
@@ -247,15 +370,27 @@ export const selectSpecializedNetwork = (
       let bestScore = -1;
       
       for (const choice of networkChoices) {
+        const network = brain.specializedNetworks.find(n => n.type === choice.type);
+        
+        if (!network || !isNetworkValid(network.net)) {
+          continue;
+        }
+        
         const baseScore = output.moveX * choice.weight;
-        const netPerformance = brain.specializedNetworks.find(n => n.type === choice.type)?.performance.situationSuccess || 0.5;
-        const score = (baseScore * 0.7) + (netPerformance * 0.3);
+        const netPerformance = network.performance.situationSuccess || 0.5;
+        
+        const score = (baseScore * 0.5) + (choice.weight * 0.3) + (netPerformance * 0.2);
         
         if (score > bestScore) {
           bestScore = score;
           bestType = choice.type as NetworkSpecialization;
         }
       }
+      
+      console.log(`Selected ${bestType} network (score: ${bestScore.toFixed(2)}) for situation: ${
+        situationContext.isDefensiveThird ? 'defensive' : 
+        situationContext.isAttackingThird ? 'attacking' : 'midfield'
+      } third, ${situationContext.hasTeamPossession ? 'has' : 'no'} possession`);
       
       return bestType;
     } catch (error) {
@@ -287,7 +422,13 @@ export const getSpecializedNetwork = (
   }
   
   const specialized = brain.specializedNetworks.find(n => n.type === type);
-  return specialized && isNetworkValid(specialized.net) ? specialized.net : brain.net;
+  
+  if (specialized && isNetworkValid(specialized.net)) {
+    return specialized.net;
+  }
+  
+  console.warn(`Specialized network ${type} is invalid, using general network instead`);
+  return brain.net;
 };
 
 export const combineSpecializedOutputs = (

@@ -1,4 +1,3 @@
-
 import { supabase } from '../../integrations/supabase/client';
 import { NeuralNet, Player } from '../../types/football';
 import { isNetworkValid } from '../neuralHelpers';
@@ -6,13 +5,35 @@ import { createPlayerBrain } from '../neuralNetwork';
 import { NeuralModelData } from './neuralTypes';
 import { calculatePerformanceScore } from './modelStatistics';
 
-// Function to save a model to Supabase
+// Enhanced function to save a model to Supabase with better validation
 export const saveModel = async (player: Player, version: number = 1): Promise<boolean> => {
   try {
-    // Verify the model is valid before saving
+    // Skip invalid brains entirely
+    if (!player.brain || !player.brain.net) {
+      console.warn(`Cannot save model for ${player.team} ${player.role} #${player.id}: No brain or neural network`);
+      return false;
+    }
+    
+    // Perform thorough validation before saving
     if (!isNetworkValid(player.brain.net)) {
       console.warn(`Neural model ${player.team} ${player.role} #${player.id} is not valid for saving`);
-      return false;
+      
+      // Try to recover the network if possible
+      if (player.brain.specializedNetworks && player.brain.specializedNetworks.length > 0) {
+        // Find a valid specialized network to use instead
+        const validNetwork = player.brain.specializedNetworks.find(n => 
+          n && n.net && isNetworkValid(n.net)
+        );
+        
+        if (validNetwork) {
+          console.log(`Recovered valid network from ${validNetwork.type} specialization for ${player.team} ${player.role}`);
+          player.brain.net = validNetwork.net;
+        } else {
+          return false;
+        }
+      } else {
+        return false;
+      }
     }
 
     // Extract weights from the neural network
@@ -80,6 +101,37 @@ export const saveModel = async (player: Player, version: number = 1): Promise<bo
       console.log(`Model ${player.team} ${player.role} saved successfully (new model)`);
     }
 
+    // Save specialized networks if they exist and are valid
+    if (player.brain.specializedNetworks && player.brain.specializedNetworks.length > 0) {
+      for (const network of player.brain.specializedNetworks) {
+        if (network && network.net && isNetworkValid(network.net)) {
+          try {
+            const specializedWeights = network.net.toJSON();
+            
+            // Save specialized network with its type in the identifier
+            const { error: specializedError } = await supabase
+              .from('specialized_models')
+              .upsert({
+                team: player.team,
+                role: player.role,
+                specialization: network.type,
+                version,
+                weights: specializedWeights,
+                performance_score: network.performance.overallSuccess,
+                usage_count: network.performance.usageCount,
+                last_updated: new Date().toISOString()
+              }, { onConflict: 'team,role,specialization,version' });
+              
+            if (!specializedError) {
+              console.log(`Specialized network ${network.type} for ${player.team} ${player.role} saved`);
+            }
+          } catch (error) {
+            console.warn(`Could not save specialized network ${network.type}:`, error);
+          }
+        }
+      }
+    }
+
     return true;
   } catch (error) {
     console.error('Error processing model for saving:', error);
@@ -143,5 +195,58 @@ export const saveTrainingSession = async (player: Player, sessionData: any): Pro
   } catch (error) {
     console.error('Error saving training session:', error);
     return false;
+  }
+};
+
+// Added new function to load specialized networks
+export const loadSpecializedNetworks = async (
+  team: string, 
+  role: string, 
+  version: number = 1
+): Promise<SpecializedNeuralNet[] | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('specialized_models')
+      .select('*')
+      .eq('team', team)
+      .eq('role', role)
+      .eq('version', version);
+
+    if (error || !data || data.length === 0) {
+      console.warn(`No specialized models found for ${team} ${role} version ${version}`);
+      return null;
+    }
+
+    const specializedNetworks: SpecializedNeuralNet[] = [];
+    
+    for (const model of data) {
+      // Create a new neural network with the saved weights
+      const net = new brain.NeuralNetwork();
+      net.fromJSON(model.weights);
+      
+      if (isNetworkValid(net)) {
+        specializedNetworks.push({
+          type: model.specialization,
+          net,
+          confidence: 0.5,
+          performance: {
+            overallSuccess: model.performance_score || 0.5,
+            situationSuccess: model.performance_score || 0.5,
+            usageCount: model.usage_count || 0
+          }
+        });
+        
+        console.log(`Specialized model ${model.specialization} for ${team} ${role} loaded successfully`);
+      }
+    }
+    
+    if (specializedNetworks.length > 0) {
+      return specializedNetworks;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error loading specialized models:', error);
+    return null;
   }
 };

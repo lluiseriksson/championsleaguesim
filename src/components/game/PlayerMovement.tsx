@@ -8,6 +8,14 @@ import {
 } from '../../utils/gameContextTracker';
 import { initializePlayerBrainWithHistory } from '../../utils/brainTraining';
 import { isStrategicMovement, calculateReceivingPositionQuality } from '../../utils/playerBrain';
+import { isNetworkValid } from '../../utils/neuralHelpers';
+import { validatePlayerBrain } from '../../utils/neural/networkValidator';
+import { 
+  analyzeSituation, 
+  selectSpecializedNetwork, 
+  getSpecializedNetwork,
+  combineSpecializedOutputs
+} from '../../utils/specializedNetworks';
 
 interface PlayerMovementProps {
   players: Player[];
@@ -98,7 +106,9 @@ const usePlayerMovement = ({
             };
           }
           
-          if (!player.brain || !player.brain.net || typeof player.brain.net.run !== 'function') {
+          if (!player.brain || !player.brain.net || !isNetworkValid(player.brain.net)) {
+            console.warn(`Invalid brain detected for ${player.team} ${player.role}. Using fallback movement.`);
+            
             const playerTeammates = currentPlayers.filter(p => p.team === player.team && p.id !== player.id);
             const opponents = currentPlayers.filter(p => p.team !== player.team);
             
@@ -187,10 +197,16 @@ const usePlayerMovement = ({
             player
           );
           
+          const playerX = player.position.x / PITCH_WIDTH;
+          const isDefensiveThird = (player.team === 'red' && playerX < 0.33) || 
+                                  (player.team === 'blue' && playerX > 0.66);
+          const isAttackingThird = (player.team === 'red' && playerX > 0.66) || 
+                                  (player.team === 'blue' && playerX < 0.33);
+          
           const input = {
             ballX: ball.position.x / PITCH_WIDTH,
             ballY: ball.position.y / PITCH_HEIGHT,
-            playerX: player.position.x / PITCH_WIDTH,
+            playerX,
             playerY: player.position.y / PITCH_HEIGHT,
             ballVelocityX: ball.velocity.x / 20,
             ballVelocityY: ball.velocity.y / 20,
@@ -200,9 +216,9 @@ const usePlayerMovement = ({
             nearestTeammateAngle: 0,
             nearestOpponentDistance: 0.5,
             nearestOpponentAngle: 0,
-            isInShootingRange: 0,
+            isInShootingRange: isAttackingThird ? 1 : 0,
             isInPassingRange: 0,
-            isDefendingRequired: 0,
+            isDefendingRequired: isDefensiveThird ? 1 : 0,
             teamElo: player.teamElo ? player.teamElo / 3000 : 0.5,
             eloAdvantage: 0.5,
             gameTime: gameContext.gameTime,
@@ -216,10 +232,68 @@ const usePlayerMovement = ({
             distanceFromFormationCenter: 0.5,
             isInFormationPosition: 0.5,
             teammateDensity: 0.5,
-            opponentDensity: 0.5
+            opponentDensity: 0.5,
+            shootingAngle: 0.5,
+            shootingQuality: isAttackingThird ? 0.7 : 0.3,
+            
+            zoneControl: 0.5,
+            passingLanesQuality: 0.5,
+            spaceCreation: 0.5,
+            defensiveSupport: isDefensiveThird ? 0.7 : 0.3,
+            pressureIndex: 0.5,
+            tacticalRole: player.role === 'defender' ? 0.8 : player.role === 'midfielder' ? 0.6 : 0.4,
+            supportPositioning: 0.5,
+            pressingEfficiency: 0.5,
+            coverShadow: 0.5,
+            verticalSpacing: 0.5,
+            horizontalSpacing: 0.5,
+            territorialControl: gameContext.possession?.team === player.team ? 0.7 : 0.3,
+            counterAttackPotential: 0.5,
+            pressureResistance: 0.5,
+            recoveryPosition: 0.5,
+            transitionSpeed: 0.5
           };
 
-          const output = player.brain.net.run(input);
+          let output;
+          if (player.brain.specializedNetworks && player.brain.specializedNetworks.length > 0) {
+            const ownGoal = player.team === 'red' ? 
+              { x: 0, y: PITCH_HEIGHT / 2 } : 
+              { x: PITCH_WIDTH, y: PITCH_HEIGHT / 2 };
+              
+            const opponentGoal = player.team === 'red' ? 
+              { x: PITCH_WIDTH, y: PITCH_HEIGHT / 2 } : 
+              { x: 0, y: PITCH_HEIGHT / 2 };
+            
+            const hasTeamPossession = gameContext.possession?.team === player.team;
+            
+            const situation = analyzeSituation(
+              player.position,
+              ball.position,
+              ownGoal,
+              opponentGoal,
+              hasTeamPossession,
+              gameContext.teammateDensity || 0.5,
+              gameContext.opponentDensity || 0.5,
+              player.brain.actionHistory || []
+            );
+            
+            const networkType = selectSpecializedNetwork(player.brain, situation);
+            
+            if (networkType !== player.brain.currentSpecialization) {
+              console.log(`${player.team} ${player.role} #${player.id} switching from ${player.brain.currentSpecialization || 'none'} to ${networkType} network`);
+              
+              player.brain.currentSpecialization = networkType;
+            }
+            
+            try {
+              output = combineSpecializedOutputs(player.brain, situation, input);
+            } catch (error) {
+              console.warn(`Error using specialized networks: ${error.message}`);
+              output = player.brain.net.run(input);
+            }
+          } else {
+            output = player.brain.net.run(input);
+          }
           
           const executionPrecision = calculateExecutionPrecision(player.teamElo);
           
