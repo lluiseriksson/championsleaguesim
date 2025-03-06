@@ -3,6 +3,8 @@ import React from 'react';
 import TournamentMatch from '../../components/game/TournamentMatch';
 import { Match } from '../../types/tournament';
 import { Score } from '../../types/football';
+import { Button } from '../ui/button';
+import { ArrowLeft } from 'lucide-react';
 
 interface ActiveMatchProps {
   activeMatch: Match;
@@ -17,15 +19,20 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
 }) => {
   if (!activeMatch || !activeMatch.teamA || !activeMatch.teamB) return null;
 
+  console.log("Rendering ActiveMatch component with teams:", activeMatch.teamA.name, activeMatch.teamB.name);
+
   return (
     <div className="p-4 bg-gray-50 rounded-lg shadow-md">
       <div className="mb-2">
-        <button 
+        <Button 
           onClick={onBackClick}
-          className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm"
+          variant="outline"
+          size="sm"
+          className="flex items-center gap-2"
         >
-          ← Back to Tournament
-        </button>
+          <ArrowLeft className="h-4 w-4" />
+          Back to Tournament
+        </Button>
       </div>
       
       <div className="flex justify-between items-center mb-4">

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import TournamentBracket from '../components/TournamentBracket';
 import TournamentHeader from '../components/tournament/TournamentHeader';
@@ -28,13 +29,14 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
 
   const [showBracket, setShowBracket] = useState(true);
 
+  // Always show both the bracket and active match during auto simulation
   React.useEffect(() => {
-    if (playingMatch && activeMatch && !embeddedMode) {
+    if (playingMatch && activeMatch && !embeddedMode && !autoSimulation) {
       setShowBracket(false);
     } else {
       setShowBracket(true);
     }
-  }, [playingMatch, activeMatch, embeddedMode]);
+  }, [playingMatch, activeMatch, embeddedMode, autoSimulation]);
 
   return (
     <div className="container mx-auto px-4 py-8">
