@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Match, TournamentTeam } from '../../types/tournament';
 import { teamKitColors } from '../../types/teamKits';
@@ -14,6 +13,8 @@ export const useTournament = (embeddedMode = false) => {
   const [activeMatch, setActiveMatch] = useState<Match | null>(null);
   const [playingMatch, setPlayingMatch] = useState(false);
   const [autoSimulation, setAutoSimulation] = useState(false);
+  const [simulationPaused, setSimulationPaused] = useState(false);
+  const [matchesPlayed, setMatchesPlayed] = useState(0);
 
   useEffect(() => {
     if (!initialized) {
@@ -23,7 +24,7 @@ export const useTournament = (embeddedMode = false) => {
   }, [initialized]);
 
   useEffect(() => {
-    if (!autoSimulation || playingMatch || currentRound > 7) return;
+    if (!autoSimulation || playingMatch || currentRound > 7 || simulationPaused) return;
     
     let timeoutId: NodeJS.Timeout;
     
@@ -57,7 +58,13 @@ export const useTournament = (embeddedMode = false) => {
           });
           
           setCurrentRound(prevRound => prevRound + 1);
-          timeoutId = setTimeout(simulateNextMatch, 1500);
+          
+          // Add a pause between rounds to let memory cleanup happen and prevent crashes
+          setSimulationPaused(true);
+          timeoutId = setTimeout(() => {
+            setSimulationPaused(false);
+            simulateNextMatch();
+          }, 3000);
         } else if (currentRound === 7 && allRoundMatchesPlayed) {
           const winner = matches.find(m => m.round === 7)?.winner;
           toast.success(`Tournament Complete!`, {
@@ -69,12 +76,16 @@ export const useTournament = (embeddedMode = false) => {
       }
     };
     
-    timeoutId = setTimeout(simulateNextMatch, 800);
+    // Add increasing delays based on how many matches have been played to prevent overload
+    const baseDelay = 800;
+    const additionalDelay = Math.min(1500, matchesPlayed * 30); // Increases delay as tournament progresses
+    
+    timeoutId = setTimeout(simulateNextMatch, baseDelay + additionalDelay);
     
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [autoSimulation, playingMatch, currentRound, matches]);
+  }, [autoSimulation, playingMatch, currentRound, matches, simulationPaused, matchesPlayed]);
 
   const initializeTournament = useCallback(() => {
     const tournamentTeams: TournamentTeam[] = Object.entries(teamKitColors).map(([name, colors], index) => ({
@@ -241,25 +252,26 @@ export const useTournament = (embeddedMode = false) => {
     setMatches(updatedMatches);
     setActiveMatch(null);
     setPlayingMatch(false);
+    setMatchesPlayed(prev => prev + 1);
     
-    const roundMatches = updatedMatches.filter(m => m.round === currentRound);
-    const allRoundMatchesPlayed = roundMatches.every(m => m.played);
-    
-    if (allRoundMatchesPlayed) {
-      setCurrentRound(prevRound => prevRound + 1);
-    }
-    
+    // Force a small delay after each match to prevent memory issues
     if (autoSimulation) {
+      setSimulationPaused(true);
+      
+      // Delay increases with more matches played
+      const pauseTime = Math.min(2000, 1000 + matchesPlayed * 20);
+      
       setTimeout(() => {
+        setSimulationPaused(false);
         const nextMatch = updatedMatches.find(
           m => m.round === currentRound && !m.played && m.teamA && m.teamB
         );
         if (nextMatch) {
           playMatch(nextMatch);
         }
-      }, 1000);
+      }, pauseTime);
     }
-  }, [activeMatch, matches, currentRound, autoSimulation, playMatch]);
+  }, [activeMatch, matches, currentRound, autoSimulation, matchesPlayed]);
 
   const startAutoSimulation = useCallback(() => {
     setAutoSimulation(true);
@@ -279,6 +291,8 @@ export const useTournament = (embeddedMode = false) => {
     activeMatch,
     playingMatch,
     autoSimulation,
+    simulationPaused,
+    matchesPlayed,
     initializeTournament,
     resetTournament,
     playMatch,

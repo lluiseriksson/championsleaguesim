@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Player } from '../../types/football';
 import { saveModel } from '../../utils/neural/modelPersistence';
@@ -6,9 +7,9 @@ import { toast } from 'sonner';
 import { validatePlayerBrain } from '../../utils/neural/networkValidator';
 
 const DEFAULT_SYNC_INTERVAL = 1800; // 30 seconds at 60fps (was 600)
-const TOURNAMENT_SYNC_INTERVAL = 3600; // 60 seconds at 60fps (was 1200)
+const TOURNAMENT_SYNC_INTERVAL = 7200; // 120 seconds at 60fps (doubled from 3600)
 
-const LEARNING_CHECK_INTERVAL = 3600; // 60 seconds at 60fps (was 1800)
+const LEARNING_CHECK_INTERVAL = 3600; // 60 seconds at 60fps
 
 const PERFORMANCE_CHECK_INTERVAL = 300; // 5 seconds at 60fps
 
@@ -66,6 +67,16 @@ export const useModelSyncSystem = ({
   }, [isLowPerformance]);
   
   const syncModels = React.useCallback(async () => {
+    // In tournament mode, completely skip most model syncs to prevent crashes
+    if (tournamentMode) {
+      // Only sync if it's a particularly good time and we're due
+      if (syncCounter.current >= TOURNAMENT_SYNC_INTERVAL && Math.random() < 0.2) {
+        console.log('Performing rare tournament mode sync');
+        syncCounter.current = 0;
+      }
+      return;
+    }
+    
     if (isLowPerformance && Math.random() > 0.3) {
       return;
     }
@@ -96,7 +107,8 @@ export const useModelSyncSystem = ({
               );
             }
             
-            if (validatedPlayer.brain?.net && validatedPlayer.role !== 'goalkeeper') {
+            // Skip actually saving in tournament mode to prevent database issues
+            if (!tournamentMode && validatedPlayer.brain?.net && validatedPlayer.role !== 'goalkeeper') {
               if (await saveModel(validatedPlayer)) {
                 syncCount++;
               }

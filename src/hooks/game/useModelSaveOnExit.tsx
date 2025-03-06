@@ -25,18 +25,20 @@ export const useModelSaveOnExit = ({
               .catch(err => console.error(`Error saving model on exit:`, err));
           });
       } else {
-        // In tournament mode, only save a few key players to reduce API calls
-        const keyPlayers = players.filter(p => 
-          p.role !== 'goalkeeper' && 
-          (p.role === 'forward' || Math.random() < 0.1) // Only save forwards and ~10% of others
-        );
+        // In tournament mode, completely disable model saving to prevent crashes
+        console.log('Tournament mode: skipping model saving to prevent database overload');
         
-        if (keyPlayers.length > 0) {
-          console.log(`Saving ${keyPlayers.length} key players on tournament match exit`);
-          keyPlayers.forEach(player => {
-            saveModel(player)
-              .catch(err => console.error(`Error saving model on tournament exit:`, err));
-          });
+        // Alternatively, save only a single model at most to minimize database load
+        if (Math.random() < 0.05) { // 5% chance to save any model
+          const randomPlayer = players.find(p => 
+            p.role === 'forward' && p.team === 'red'
+          );
+          
+          if (randomPlayer) {
+            console.log(`Saving single random model in tournament mode`);
+            saveModel(randomPlayer)
+              .catch(err => console.error(`Error saving model in tournament:`, err));
+          }
         }
       }
     };

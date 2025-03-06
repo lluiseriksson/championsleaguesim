@@ -17,6 +17,7 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
     activeMatch,
     playingMatch,
     autoSimulation,
+    simulationPaused,
     resetTournament,
     playMatch,
     simulateSingleMatch,
@@ -39,6 +40,7 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
           <TournamentControls
             currentRound={currentRound}
             autoSimulation={autoSimulation}
+            simulationPaused={simulationPaused}
             resetTournament={resetTournament}
             startAutoSimulation={startAutoSimulation}
           />
@@ -46,6 +48,7 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
           <TournamentControls
             currentRound={currentRound}
             autoSimulation={autoSimulation}
+            simulationPaused={simulationPaused}
             resetTournament={resetTournament}
             startAutoSimulation={startAutoSimulation}
           />
