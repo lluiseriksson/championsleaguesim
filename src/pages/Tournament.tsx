@@ -29,6 +29,8 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
 
   const [showBracket, setShowBracket] = useState(true);
 
+  console.log("Tournament: autoSimulation =", autoSimulation, "currentRound =", currentRound);
+
   // Always show both the bracket and active match during auto simulation
   useEffect(() => {
     if (playingMatch && activeMatch && !embeddedMode && !autoSimulation) {
