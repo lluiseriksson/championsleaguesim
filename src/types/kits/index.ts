@@ -1,9 +1,30 @@
 
-// Export all kit-related types and functions
-export * from './kitTypes';
-export * from './kitAccessors';
-export * from './kitSelection';
-export * from './colorUtils';
+// Export all types, utilities, and functions from this barrel file
 
-// Re-export the clearKitSelectionCache function
-export { clearKitSelectionCache } from './kitSelection';
+// Type definitions
+export * from './kitTypes';
+
+// Team colors data
+export { teamKitColors } from './teamColorsData';
+
+// Color utilities
+export { 
+  parseHexColor, 
+  getColorDistance,
+  categorizeColor,
+  ColorCategory,
+  areColorsConflicting
+} from './colorUtils';
+
+// Kit selection functions
+export { 
+  getAwayTeamKit,
+  clearKitSelectionCache
+} from './kitSelection';
+
+// Kit accessors
+export { 
+  getTeamKitColor,
+  getTeamKitColors,
+  getTeamAccentColors
+} from './kitAccessors';

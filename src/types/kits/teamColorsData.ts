@@ -1,4 +1,3 @@
-
 import { TeamColors } from './kitTypes';
 
 export const teamKitColors: TeamColors = {
@@ -310,8 +309,8 @@ export const teamKitColors: TeamColors = {
   },
   "Nice": {
     home: { primary: "#FF0000", secondary: "#000000", accent: "#FFFFFF" },
-    away: { primary: "#000000", secondary: "#FF0000", accent: "#FFFFFF" },
-    third: { primary: "#0000CD", secondary: "#FF0000", accent: "#000000" },
+    away: { primary: "#FFFFFF", secondary: "#FF0000", accent: "#000000" },
+    third: { primary: "#000080", secondary: "#FF0000", accent: "#000000" },
     goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
   },
   "Fenerbahçe": {
@@ -371,7 +370,422 @@ export const teamKitColors: TeamColors = {
   "Sevilla": {
     home: { primary: "#FFFFFF", secondary: "#FF0000", accent: "#FFFFFF" },
     away: { primary: "#FF0000", secondary: "#FFFFFF", accent: "#000000" },
+    third: { primary: "#000000", secondary: "#FFFFFF", accent: "#FF0000" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Galatasaray": {
+    home: { primary: "#FFD700", secondary: "#FF0000", accent: "#FFFFFF" },
+    away: { primary: "#FFFFFF", secondary: "#FFD700", accent: "#FF0000" },
+    third: { primary: "#000000", secondary: "#FFD700", accent: "#FF0000" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Brest": {
+    home: { primary: "#FF0000", secondary: "#FFFFFF", accent: "#FF0000" },
+    away: { primary: "#FFFFFF", secondary: "#FF0000", accent: "#000000" },
+    third: { primary: "#000080", secondary: "#FF0000", accent: "#000000" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Strasbourg": {
+    home: { primary: "#0000FF", secondary: "#FFFFFF", accent: "#0000FF" },
+    away: { primary: "#FFFFFF", secondary: "#0000FF", accent: "#000000" },
+    third: { primary: "#FF0000", secondary: "#0000FF", accent: "#FFFFFF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Osasuna": {
+    home: { primary: "#FF0000", secondary: "#000000", accent: "#FFFFFF" },
+    away: { primary: "#000000", secondary: "#FF0000", accent: "#FFFFFF" },
+    third: { primary: "#008000", secondary: "#FF0000", accent: "#000000" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Udinese": {
+    home: { primary: "#FFFFFF", secondary: "#000000", accent: "#FFFFFF" },
+    away: { primary: "#000000", secondary: "#FFFFFF", accent: "#000000" },
+    third: { primary: "#FF0000", secondary: "#FFFFFF", accent: "#000000" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Celta": {
+    home: { primary: "#ADD8E6", secondary: "#FFFFFF", accent: "#ADD8E6" },
+    away: { primary: "#000000", secondary: "#ADD8E6", accent: "#FFFFFF" },
+    third: { primary: "#FF0000", secondary: "#ADD8E6", accent: "#000000" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Ολυμπιακός": {
+    home: { primary: "#FF0000", secondary: "#FFFFFF", accent: "#FF0000" },
+    away: { primary: "#FFFFFF", secondary: "#FF0000", accent: "#000000" },
     third: { primary: "#000000", secondary: "#FF0000", accent: "#FFFFFF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Burnley": {
+    home: { primary: "#6A0DAD", secondary: "skyblue", accent: "#FFFFFF" },
+    away: { primary: "skyblue", secondary: "#6A0DAD", accent: "#FFFFFF" },
+    third: { primary: "#FFD700", secondary: "#6A0DAD", accent: "#FFFFFF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "St Gillis": {
+    home: { primary: "#FFFF00", secondary: "#000000", accent: "#FF0000" },
+    away: { primary: "#000000", secondary: "#FFFF00", accent: "#FF0000" },
+    third: { primary: "#FFFFFF", secondary: "#FFFF00", accent: "#FF0000" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Toulouse": {
+    home: { primary: "#9400D3", secondary: "#FFFFFF", accent: "#9400D3" },
+    away: { primary: "#FFFFFF", secondary: "#9400D3", accent: "#000000" },
+    third: { primary: "#000000", secondary: "#9400D3", accent: "#FFFFFF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Genoa": {
+    home: { primary: "#FF0000", secondary: "#000080", accent: "#FF0000" },
+    away: { primary: "#FFFFFF", secondary: "#FF0000", accent: "#000080" },
+    third: { primary: "#000000", secondary: "#FF0000", accent: "#000080" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Rayo Vallecano": {
+    home: { primary: "#FF0000", secondary: "#FFFFFF", accent: "#FF0000" },
+    away: { primary: "#FFFFFF", secondary: "#FF0000", accent: "#000000" },
+    third: { primary: "#000000", secondary: "#FF0000", accent: "#FFFFFF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Lens": {
+    home: { primary: "#FF0000", secondary: "#FFFF00", accent: "#000000" },
+    away: { primary: "#000000", secondary: "#FF0000", accent: "#FFFF00" },
+    third: { primary: "#FFFFFF", secondary: "#FF0000", accent: "#FFFF00" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Rennes": {
+    home: { primary: "#FF0000", secondary: "#000000", accent: "#FFFFFF" },
+    away: { primary: "#FFFFFF", secondary: "#FF0000", accent: "#000000" },
+    third: { primary: "#000080", secondary: "#FF0000", accent: "#000000" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Gladbach": {
+    home: { primary: "#FFFFFF", secondary: "#000000", accent: "#008000" },
+    away: { primary: "#000000", secondary: "#FFFFFF", accent: "#008000" },
+    third: { primary: "#008000", secondary: "#FFFFFF", accent: "#000000" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Getafe": {
+    home: { primary: "#0000FF", secondary: "#FFFFFF", accent: "#0000FF" },
+    away: { primary: "#FFFFFF", secondary: "#0000FF", accent: "#000000" },
+    third: { primary: "#FF0000", secondary: "#0000FF", accent: "#FFFFFF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Mallorca": {
+    home: { primary: "#FF0000", secondary: "#000000", accent: "#FFFF00" },
+    away: { primary: "#FFFFFF", secondary: "#FF0000", accent: "#000000" },
+    third: { primary: "#000000", secondary: "#FF0000", accent: "#FFFF00" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Braga": {
+    home: { primary: "#FF0000", secondary: "#FFFFFF", accent: "#FF0000" },
+    away: { primary: "#FFFFFF", secondary: "#FF0000", accent: "#000000" },
+    third: { primary: "#000000", secondary: "#FF0000", accent: "#FFFFFF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Valencia": {
+    home: { primary: "#FFFF00", secondary: "#000000", accent: "#FFFFFF" },
+    away: { primary: "#000000", secondary: "#FFFF00", accent: "#FFFFFF" },
+    third: { primary: "#FF0000", secondary: "#FFFF00", accent: "#000000" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Alkmaar": {
+    home: { primary: "#FF0000", secondary: "#FFFFFF", accent: "#000000" },
+    away: { primary: "#FFFFFF", secondary: "#FF0000", accent: "#000000" },
+    third: { primary: "#000080", secondary: "#FF0000", accent: "#000000" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Genk": {
+    home: { primary: "#0000FF", secondary: "#FFFFFF", accent: "#0000FF" },
+    away: { primary: "#FFFFFF", secondary: "#0000FF", accent: "#000000" },
+    third: { primary: "#000000", secondary: "#0000FF", accent: "#FFFFFF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Зенит": {
+    home: { primary: "#0000FF", secondary: "#FFFFFF", accent: "#ADD8E6" },
+    away: { primary: "#FFFFFF", secondary: "#ADD8E6", accent: "#0000FF" },
+    third: { primary: "#FFD700", secondary: "#0000FF", accent: "#FFFFFF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Sparta Praha": {
+    home: { primary: "#FF0000", secondary: "#FFFFFF", accent: "#FF0000" },
+    away: { primary: "#FFFFFF", secondary: "#FF0000", accent: "#000000" },
+    third: { primary: "#FFFF00", secondary: "#FF0000", accent: "#FFFFFF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Augsburg": {
+    home: { primary: "#FF0000", secondary: "#FFFFFF", accent: "#000000" },
+    away: { primary: "#FFFFFF", secondary: "#FF0000", accent: "#000000" },
+    third: { primary: "#008000", secondary: "#FF0000", accent: "#000000" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Sassuolo": {
+    home: { primary: "#008000", secondary: "#000000", accent: "#FFFFFF" },
+    away: { primary: "#FFFFFF", secondary: "#008000", accent: "#000000" },
+    third: { primary: "#000000", secondary: "#008000", accent: "#FFFFFF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Twente": {
+    home: { primary: "#FF0000", secondary: "#FFFFFF", accent: "#FF0000" },
+    away: { primary: "#000000", secondary: "#FF0000", accent: "#FFFFFF" },
+    third: { primary: "#008000", secondary: "#FF0000", accent: "#000000" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Bodø/Glimt": {
+    home: { primary: "#FFFF00", secondary: "#000000", accent: "#FFFF00" },
+    away: { primary: "#000000", secondary: "#FFFF00", accent: "#000000" },
+    third: { primary: "#FFFFFF", secondary: "#FFFF00", accent: "#000000" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Alavés": {
+    home: { primary: "#000080", secondary: "#FFFFFF", accent: "#000080" },
+    away: { primary: "#FFFFFF", secondary: "#000080", accent: "#000000" },
+    third: { primary: "#FF0000", secondary: "#000080", accent: "#FFFFFF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Espanyol": {
+    home: { primary: "#FFFFFF", secondary: "#0000FF", accent: "#FFFFFF" },
+    away: { primary: "#0000FF", secondary: "#FFFFFF", accent: "#000000" },
+    third: { primary: "#FF0000", secondary: "#FFFFFF", accent: "#0000FF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Werder": {
+    home: { primary: "#008000", secondary: "#FFFFFF", accent: "#008000" },
+    away: { primary: "#FFFFFF", secondary: "#008000", accent: "#000000" },
+    third: { primary: "#000000", secondary: "#008000", accent: "#FFFFFF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Hoffenheim": {
+    home: { primary: "#0000FF", secondary: "#FFFFFF", accent: "#0000FF" },
+    away: { primary: "#FFFFFF", secondary: "#0000FF", accent: "#000000" },
+    third: { primary: "#000000", secondary: "#0000FF", accent: "#FFFFFF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Viktoria Plzeň": {
+    home: { primary: "#0000FF", secondary: "#FFFF00", accent: "#0000FF" },
+    away: { primary: "#FFFF00", secondary: "#0000FF", accent: "#000000" },
+    third: { primary: "#FF0000", secondary: "#0000FF", accent: "#FFFF00" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Crvena Zvezda": {
+    home: { primary: "#FF0000", secondary: "#FFFFFF", accent: "#FF0000" },
+    away: { primary: "#FFFFFF", secondary: "#FF0000", accent: "#000000" },
+    third: { primary: "#0000FF", secondary: "#FF0000", accent: "#FFFFFF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Anderlecht": {
+    home: { primary: "#9400D3", secondary: "#FFFFFF", accent: "#9400D3" },
+    away: { primary: "#FFFFFF", secondary: "#9400D3", accent: "#000000" },
+    third: { primary: "#000000", secondary: "#9400D3", accent: "#FFFFFF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Sheffield United": {
+    home: { primary: "#FF0000", secondary: "#FFFFFF", accent: "#000000" },
+    away: { primary: "#FFFFFF", secondary: "#FF0000", accent: "#000000" },
+    third: { primary: "#FFFF00", secondary: "#FF0000", accent: "#000000" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Como": {
+    home: { primary: "#ADD8E6", secondary: "#FFFFFF", accent: "#ADD8E6" },
+    away: { primary: "#FFFFFF", secondary: "#ADD8E6", accent: "#000000" },
+    third: { primary: "#000000", secondary: "#ADD8E6", accent: "#FFFFFF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "FC København": {
+    home: { primary: "#FFFFFF", secondary: "#0000FF", accent: "#FFFFFF" },
+    away: { primary: "#0000FF", secondary: "#FFFFFF", accent: "#000000" },
+    third: { primary: "#FF0000", secondary: "#FFFFFF", accent: "#0000FF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Cagliari": {
+    home: { primary: "#FF0000", secondary: "#000000", accent: "#FFFFFF" },
+    away: { primary: "#FFFFFF", secondary: "#FF0000", accent: "#000000" },
+    third: { primary: "#0000FF", secondary: "#FF0000", accent: "#000000" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Verona": {
+    home: { primary: "#FFFF00", secondary: "#000080", accent: "#FFFF00" },
+    away: { primary: "#000080", secondary: "#FFFF00", accent: "#000000" },
+    third: { primary: "#FFFFFF", secondary: "#FFFF00", accent: "#000080" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Rangers": {
+    home: { primary: "#0000FF", secondary: "#FFFFFF", accent: "#0000FF" },
+    away: { primary: "#FF0000", secondary: "#0000FF", accent: "#FFFFFF" },
+    third: { primary: "#000000", secondary: "#0000FF", accent: "#FFFFFF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Auxerre": {
+    home: { primary: "#FFFFFF", secondary: "#0000FF", accent: "#FFFFFF" },
+    away: { primary: "#0000FF", secondary: "#FFFFFF", accent: "#000000" },
+    third: { primary: "#FF0000", secondary: "#FFFFFF", accent: "#0000FF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Краснодар": {
+    home: { primary: "#000000", secondary: "#008000", accent: "#FFFFFF" },
+    away: { primary: "#008000", secondary: "#FFFFFF", accent: "#000000" },
+    third: { primary: "#FF0000", secondary: "#008000", accent: "#FFFFFF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Leicester": {
+    home: { primary: "#0000FF", secondary: "#FFFF00", accent: "#0000FF" },
+    away: { primary: "#FFFFFF", secondary: "#0000FF", accent: "#FFFF00" },
+    third: { primary: "#000000", secondary: "#0000FF", accent: "#FFFF00" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Empoli": {
+    home: { primary: "#0000FF", secondary: "#FFFFFF", accent: "#0000FF" },
+    away: { primary: "#FFFFFF", secondary: "#0000FF", accent: "#000000" },
+    third: { primary: "#FF0000", secondary: "#0000FF", accent: "#FFFFFF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Guimarães": {
+    home: { primary: "#FFFFFF", secondary: "#000000", accent: "#FFFFFF" },
+    away: { primary: "#000000", secondary: "#FFFFFF", accent: "#FF0000" },
+    third: { primary: "#FF0000", secondary: "#FFFFFF", accent: "#000000" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Las Palmas": {
+    home: { primary: "#FFFF00", secondary: "#0000FF", accent: "#FFFF00" },
+    away: { primary: "#0000FF", secondary: "#FFFF00", accent: "#000000" },
+    third: { primary: "#FFFFFF", secondary: "#FFFF00", accent: "#0000FF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Спартак Москва": {
+    home: { primary: "#FF0000", secondary: "#FFFFFF", accent: "#FF0000" },
+    away: { primary: "#FFFFFF", secondary: "#FF0000", accent: "#000000" },
+    third: { primary: "#000000", secondary: "#FF0000", accent: "#FFFFFF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Leganes": {
+    home: { primary: "#008000", secondary: "#FFFFFF", accent: "#008000" },
+    away: { primary: "#FFFFFF", secondary: "#008000", accent: "#000000" },
+    third: { primary: "#000000", secondary: "#008000", accent: "#FFFFFF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Lecce": {
+    home: { primary: "#FFFF00", secondary: "#FF0000", accent: "#FFFF00" },
+    away: { primary: "#FF0000", secondary: "#FFFF00", accent: "#000000" },
+    third: { primary: "#000000", secondary: "#FFFF00", accent: "#FF0000" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Ipswich": {
+    home: { primary: "#0000FF", secondary: "#FFFFFF", accent: "#0000FF" },
+    away: { primary: "#FF0000", secondary: "#0000FF", accent: "#FFFFFF" },
+    third: { primary: "#000000", secondary: "#0000FF", accent: "#FF0000" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Utrecht": {
+    home: { primary: "#FF0000", secondary: "#FFFFFF", accent: "#FF0000" },
+    away: { primary: "#FFFFFF", secondary: "#FF0000", accent: "#000000" },
+    third: { primary: "#000000", secondary: "#FF0000", accent: "#FFFFFF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Reims": {
+    home: { primary: "#FF0000", secondary: "#FFFFFF", accent: "#FF0000" },
+    away: { primary: "#FFFFFF", secondary: "#FF0000", accent: "#000000" },
+    third: { primary: "#000080", secondary: "#FF0000", accent: "#000000" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "AEK": {
+    home: { primary: "#FFFF00", secondary: "#000000", accent: "#FFFF00" },
+    away: { primary: "#000000", secondary: "#FFFF00", accent: "#000000" },
+    third: { primary: "#000000", secondary: "#FFFF00", accent: "#000000" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Levante": {
+    home: { primary: "#008000", secondary: "#FF0000", accent: "#008000" },
+    away: { primary: "#FF0000", secondary: "#008000", accent: "#000000" },
+    third: { primary: "#FFFFFF", secondary: "#008000", accent: "#FF0000" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Union Berlin": {
+    home: { primary: "#FF0000", secondary: "#FFFFFF", accent: "#FF0000" },
+    away: { primary: "#FFFFFF", secondary: "#FF0000", accent: "#000000" },
+    third: { primary: "#000000", secondary: "#FF0000", accent: "#FFFFFF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Lorient": {
+    home: { primary: "#FFD700", secondary: "#000000", accent: "#FFD700" },
+    away: { primary: "#000000", secondary: "#FFD700", accent: "#000000" },
+    third: { primary: "#000080", secondary: "#FFD700", accent: "#000000" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Antwerp": {
+    home: { primary: "#FF0000", secondary: "#FFFFFF", accent: "#FF0000" },
+    away: { primary: "#FFFFFF", secondary: "#FF0000", accent: "#000000" },
+    third: { primary: "#000000", secondary: "#FF0000", accent: "#FFFFFF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Gent": {
+    home: { primary: "#FFFFFF", secondary: "#0000FF", accent: "#FFFFFF" },
+    away: { primary: "#0000FF", secondary: "#FFFFFF", accent: "#000000" },
+    third: { primary: "#000000", secondary: "#FFFFFF", accent: "#0000FF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Midtjylland": {
+    home: { primary: "#FF0000", secondary: "#000000", accent: "#FFFFFF" },
+    away: { primary: "#FFFFFF", secondary: "#FF0000", accent: "#000000" },
+    third: { primary: "#000000", secondary: "#FF0000", accent: "#FFFFFF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Huesca": {
+    home: { primary: "#0000FF", secondary: "#FFFFFF", accent: "#0000FF" },
+    away: { primary: "#FF0000", secondary: "#0000FF", accent: "#FFFFFF" },
+    third: { primary: "#FFFF00", secondary: "#0000FF", accent: "#FF0000" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Monza": {
+    home: { primary: "#FF0000", secondary: "#FFFFFF", accent: "#FF0000" },
+    away: { primary: "#FFFFFF", secondary: "#FF0000", accent: "#000000" },
+    third: { primary: "#000080", secondary: "#FF0000", accent: "#000000" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Шахтар": {
+    home: { primary: "#f77720", secondary: "#000000", accent: "#FFFFFF" },
+    away: { primary: "#000000", secondary: "#f77720", accent: "#000000" },
+    third: { primary: "#0000FF", secondary: "#f77720", accent: "#000000" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Almería": {
+    home: { primary: "#FF0000", secondary: "#FFFFFF", accent: "#FF0000" },
+    away: { primary: "#FFFFFF", secondary: "#FF0000", accent: "#000000" },
+    third: { primary: "#000000", secondary: "#FF0000", accent: "#FFFFFF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Parma": {
+    home: { primary: "#FFFF00", secondary: "#0000FF", accent: "#FFFF00" },
+    away: { primary: "#0000FF", secondary: "#FFFF00", accent: "#000000" },
+    third: { primary: "#000000", secondary: "#FFFF00", accent: "#0000FF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "Nantes": {
+    home: { primary: "#FFFF00", secondary: "#000000", accent: "#FFFF00" },
+    away: { primary: "#000000", secondary: "#FFFF00", accent: "#000000" },
+    third: { primary: "#008000", secondary: "#FFFF00", accent: "#000000" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  },
+  "St. Pauli": {
+    home: { primary: "#FFFFFF", secondary: "#FF0000", accent: "#FFFFFF" },
+    away: { primary: "#FF0000", secondary: "#FFFFFF", accent: "#000000" },
+    third: { primary: "#000000", secondary: "#FFFFFF", accent: "#FF0000" },
     goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
   }
 };
+
+// Function to automatically add goalkeeper kits to any teams that don't have them
+// This ensures backward compatibility and avoids having to list 100+ teams manually
+(function addGoalkeeperKitsToTeams() {
+  const gkColors = [
+    { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }, // Green
+    { primary: "#FFC61E", secondary: "#000000", accent: "#FFFFFF" }, // Yellow
+    { primary: "#44C7FF", secondary: "#000000", accent: "#FFFFFF" }, // Light Blue
+    { primary: "#FDB022", secondary: "#000000", accent: "#FFFFFF" }, // Orange
+    { primary: "#FF90E8", secondary: "#000000", accent: "#FFFFFF" }  // Pink
+  ];
+  
+  Object.keys(teamKitColors).forEach((team, index) => {
+    if (!teamKitColors[team].goalkeeper) {
+      // Assign goalkeeper kit based on team index (cycling through the available colors)
+      teamKitColors[team].goalkeeper = gkColors[index % gkColors.length];
+    }
+  });
+})();

@@ -54,13 +54,6 @@ const teamConflictOverrides: Record<string, Record<string, KitType>> = {
   'Bayern Munich': {
     'FC København': 'third',
     'AC Milan': 'third'
-  },
-  // Add the Nice vs Auxerre conflict specifically
-  'Nice': {
-    'Auxerre': 'third'
-  },
-  'Auxerre': {
-    'Nice': 'third'
   }
 };
 
@@ -128,15 +121,6 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
       (homeCategory === ColorCategory.BURGUNDY && awayCategory === ColorCategory.RED)) {
     if (shouldLog) {
       console.log(`RED vs BURGUNDY conflict detected between ${homeTeamName} and ${awayTeamName} - forcing third kit`);
-    }
-    kitSelectionCache[cacheKey] = 'third';
-    return 'third';
-  }
-  
-  // Special check for WHITE vs WHITE conflicts (like Nice vs Auxerre)
-  if (homeCategory === ColorCategory.WHITE && awayCategory === ColorCategory.WHITE) {
-    if (shouldLog) {
-      console.log(`WHITE vs WHITE conflict detected between ${homeTeamName} and ${awayTeamName} - forcing third kit`);
     }
     kitSelectionCache[cacheKey] = 'third';
     return 'third';
