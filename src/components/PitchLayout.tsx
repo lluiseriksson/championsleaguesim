@@ -20,9 +20,9 @@ const PitchLayout: React.FC = () => {
       <div className="absolute left-0 top-1/2 w-36 h-72 border-2 border-pitch-lines transform -translate-y-1/2" />
       <div className="absolute right-0 top-1/2 w-36 h-72 border-2 border-pitch-lines transform -translate-y-1/2" />
       
-      {/* Goal areas (6-yard box) */}
-      <div className="absolute left-0 top-1/2 w-16 h-36 border-2 border-pitch-lines transform -translate-y-1/2" />
-      <div className="absolute right-0 top-1/2 w-16 h-36 border-2 border-pitch-lines transform -translate-y-1/2" />
+      {/* Goal areas (6-yard box) - Made larger than the actual goals */}
+      <div className="absolute left-0 top-1/2 w-16 h-[200px] border-2 border-pitch-lines transform -translate-y-1/2" />
+      <div className="absolute right-0 top-1/2 w-16 h-[200px] border-2 border-pitch-lines transform -translate-y-1/2" />
       
       {/* Penalty spots */}
       <div className="absolute left-[80px] top-1/2 w-2 h-2 bg-white rounded-full transform -translate-x-1/2 -translate-y-1/2" />
