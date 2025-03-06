@@ -36,7 +36,7 @@ export const checkCollision = (ballPos: Position, playerPos: Position, isGoalkee
   
   // Restore more reasonable collision radius for goalkeepers to balance scoring
   const collisionRadius = isGoalkeeper ? 
-    PLAYER_RADIUS * 1.08 + BALL_RADIUS : // Decreased from 1.35 to 1.08 (20% reduction)
+    PLAYER_RADIUS * 1.04 + BALL_RADIUS : // Decreased from 1.08 to 1.04 (50% reduction in the extended part)
     PLAYER_RADIUS + BALL_RADIUS;
   
   // Add a small buffer to prevent the ball from getting stuck
