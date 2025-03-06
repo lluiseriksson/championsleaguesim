@@ -85,12 +85,12 @@ const usePlayerMovement = ({
     setPlayers(currentPlayers => {
       const proposedPositions = currentPlayers.map(player => {
         try {
+          const opposingTeamElo = currentPlayers
+            .filter(p => p.team !== player.team)
+            .reduce((sum, p) => sum + (p.teamElo || 2000), 0) / 
+            currentPlayers.filter(p => p.team !== player.team).length;
+            
           if (player.role === 'goalkeeper') {
-            const opposingTeamElo = currentPlayers
-              .filter(p => p.team !== player.team)
-              .reduce((sum, p) => sum + (p.teamElo || 2000), 0) / 
-              currentPlayers.filter(p => p.team !== player.team).length;
-              
             const movement = moveGoalkeeper(player, ball, opposingTeamElo);
             const newPosition = {
               x: player.position.x + movement.x,
@@ -112,42 +112,61 @@ const usePlayerMovement = ({
           }
           
           if (!player.brain || !player.brain.net || !isNetworkValid(player.brain.net)) {
-            console.warn(`Invalid brain detected for ${player.team} ${player.role}. Using formation-based movement.`);
+            console.warn(`Invalid brain detected for ${player.team} ${player.role}. Using fallback movement.`);
             
-            const targetPosition = player.targetPosition;
+            const playerTeammates = currentPlayers.filter(p => p.team === player.team && p.id !== player.id);
+            const opponents = currentPlayers.filter(p => p.team !== player.team);
             
-            const dx = targetPosition.x - player.position.x;
-            const dy = targetPosition.y - player.position.y;
-            const distToTarget = Math.sqrt(dx*dx + dy*dy);
+            let strategicX = player.targetPosition.x;
+            let strategicY = player.targetPosition.y;
             
-            const moveSpeed = distToTarget > 50 ? 1.5 : 0.7;
-            const moveX = distToTarget > 5 ? (dx / distToTarget) * moveSpeed : 0;
-            const moveY = distToTarget > 5 ? (dy / distToTarget) * moveSpeed : 0;
+            const positionQuality = calculateReceivingPositionQuality(
+              player.position,
+              ball.position,
+              playerTeammates.map(t => t.position),
+              opponents.map(o => o.position),
+              player.team === 'red' ? { x: 0, y: PITCH_HEIGHT/2 } : { x: PITCH_WIDTH, y: PITCH_HEIGHT/2 },
+              player.team === 'red' ? { x: PITCH_WIDTH, y: PITCH_HEIGHT/2 } : { x: 0, y: PITCH_HEIGHT/2 }
+            );
             
-            const dxBall = ball.position.x - player.position.x;
-            const dyBall = ball.position.y - player.position.y;
-            const distToBall = Math.sqrt(dxBall*dxBall + dyBall*dyBall);
-            
-            const shouldChaseBall = distToBall < 80;
-            
-            let finalMoveX = moveX;
-            let finalMoveY = moveY;
-            
-            if (shouldChaseBall) {
-              const ballChasingWeight = Math.max(0, 1 - distToBall/100);
-              finalMoveX = moveX * (1 - ballChasingWeight) + (dxBall / distToBall) * ballChasingWeight * 2;
-              finalMoveY = moveY * (1 - ballChasingWeight) + (dyBall / distToBall) * ballChasingWeight * 2;
+            if (positionQuality < 0.4) {
+              const roleOffsets = {
+                defender: player.team === 'red' ? 150 : PITCH_WIDTH - 150,
+                midfielder: player.team === 'red' ? 300 : PITCH_WIDTH - 300,
+                forward: player.team === 'red' ? 500 : PITCH_WIDTH - 500
+              };
               
-              const combinedMagnitude = Math.sqrt(finalMoveX*finalMoveX + finalMoveY*finalMoveY);
-              if (combinedMagnitude > 1.5) {
-                finalMoveX = (finalMoveX / combinedMagnitude) * 1.5;
-                finalMoveY = (finalMoveY / combinedMagnitude) * 1.5;
-              }
+              strategicX = roleOffsets[player.role] || player.targetPosition.x;
+              strategicY = Math.max(100, Math.min(PITCH_HEIGHT - 100, ball.position.y));
+            }
+            
+            const dx = ball.position.x - player.position.x;
+            const dy = ball.position.y - player.position.y;
+            const distToBall = Math.sqrt(dx*dx + dy*dy);
+            
+            const shouldChaseBall = distToBall < 100 && !isStrategicMovement(
+              player.position,
+              ball.position,
+              { x: dx, y: dy }
+            );
+            
+            let moveX, moveY;
+            if (shouldChaseBall) {
+              const moveSpeed = 1.5;
+              moveX = distToBall > 0 ? (dx / distToBall) * moveSpeed : 0;
+              moveY = distToBall > 0 ? (dy / distToBall) * moveSpeed : 0;
+            } else {
+              const dxStrategic = strategicX - player.position.x;
+              const dyStrategic = strategicY - player.position.y;
+              const distStrategic = Math.sqrt(dxStrategic*dxStrategic + dyStrategic*dyStrategic);
+              const moveSpeed = 1.2;
+              moveX = distStrategic > 0 ? (dxStrategic / distStrategic) * moveSpeed : 0;
+              moveY = distStrategic > 0 ? (dyStrategic / distStrategic) * moveSpeed : 0;
             }
             
             let proposedPosition = {
-              x: player.position.x + finalMoveX,
-              y: player.position.y + finalMoveY
+              x: player.position.x + moveX,
+              y: player.position.y + moveY
             };
             
             proposedPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, proposedPosition.x));
@@ -156,10 +175,10 @@ const usePlayerMovement = ({
             return {
               ...player,
               proposedPosition,
-              movement: { x: finalMoveX, y: finalMoveY },
+              movement: { x: moveX, y: moveY },
               brain: {
                 ...player.brain,
-                lastOutput: { x: finalMoveX, y: finalMoveY },
+                lastOutput: { x: moveX, y: moveY },
                 lastAction: 'move' as const
               }
             };
@@ -191,22 +210,6 @@ const usePlayerMovement = ({
             gameContext.teammateDensity || 0.5,
             gameContext.opponentDensity || 0.5
           );
-          
-          const targetPosition = player.targetPosition;
-          const distanceToFormationPosition = Math.sqrt(
-            Math.pow(player.position.x - targetPosition.x, 2) +
-            Math.pow(player.position.y - targetPosition.y, 2)
-          );
-          
-          input.isInFormationPosition = Math.max(0, 1 - distanceToFormationPosition / 200);
-          input.distanceFromFormationCenter = Math.min(1, distanceToFormationPosition / 300);
-          
-          const angleToFormationPosition = Math.atan2(
-            targetPosition.y - player.position.y,
-            targetPosition.x - player.position.x
-          ) / Math.PI;
-          
-          const formationWeight = Math.min(1, distanceToFormationPosition / 100);
           
           input.gameTime = gameContext.gameTime;
           input.scoreDifferential = gameContext.scoreDifferential;
@@ -264,19 +267,6 @@ const usePlayerMovement = ({
           
           moveX = applyExecutionNoise(moveX, executionPrecision);
           moveY = applyExecutionNoise(moveY, executionPrecision);
-          
-          const formationDirX = targetPosition.x - player.position.x;
-          const formationDirY = targetPosition.y - player.position.y;
-          const formationDist = Math.sqrt(formationDirX*formationDirX + formationDirY*formationDirY);
-          
-          if (formationDist > 30) {
-            const formationInfluence = Math.min(0.5, formationDist / 200);
-            const normalizedFormationDirX = formationDist > 0 ? (formationDirX / formationDist) : 0;
-            const normalizedFormationDirY = formationDist > 0 ? (formationDirY / formationDist) : 0;
-            
-            moveX = moveX * (1 - formationInfluence) + normalizedFormationDirX * formationInfluence;
-            moveY = moveY * (1 - formationInfluence) + normalizedFormationDirY * formationInfluence;
-          }
           
           moveX = Math.max(-1, Math.min(1, moveX));
           moveY = Math.max(-1, Math.min(1, moveY));

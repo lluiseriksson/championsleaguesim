@@ -59,70 +59,20 @@ export const useTeamContext = ({ players, score, gameTime }: UseTeamContextProps
     const distanceFromCenter = calculateDistance(player.position, formationCenter);
     const normalizedDistanceFromCenter = Math.min(1, distanceFromCenter / 200);
     
-    // Calculate player's distance from their assigned formation position
-    const targetPosition = player.targetPosition;
-    const distanceFromTarget = calculateDistance(player.position, targetPosition);
+    // Determine if player is in their expected position based on role
+    let isInPosition = true;
+    const targetX = player.targetPosition.x;
+    const targetY = player.targetPosition.y;
+    const distanceFromTarget = calculateDistance(player.position, player.targetPosition);
     
-    // Position tolerance depends on role and team context
+    // Position tolerance depends on role
     let positionTolerance = 100;
     if (player.role === 'goalkeeper') positionTolerance = 50;
     else if (player.role === 'defender') positionTolerance = 80;
     else if (player.role === 'midfielder') positionTolerance = 120;
     else if (player.role === 'forward') positionTolerance = 150;
     
-    // Increase tolerance when team has possession or player is in attacking third
-    const teamHasPossession = teammates.some(teammate => 
-      calculateDistance(teammate.position, { x: teammate.position.x, y: teammate.position.y }) < 30
-    );
-    
-    const isInAttackingThird = (player.team === 'red' && player.position.x > 500) || 
-                             (player.team === 'blue' && player.position.x < 300);
-                             
-    if (teamHasPossession) positionTolerance *= 1.5;
-    if (isInAttackingThird) positionTolerance *= 1.8;
-    
-    const isInPosition = distanceFromTarget <= positionTolerance;
-    
-    // Calculate formation-based vertical and horizontal spacing
-    // Find all players in the same horizontal line (same role)
-    const sameRolePlayers = teammates.filter(t => t.role === player.role);
-    let horizontalSpacing = 0;
-    let verticalSpacing = 0;
-    
-    if (sameRolePlayers.length > 0) {
-      const ySorted = [player, ...sameRolePlayers].sort((a, b) => a.position.y - b.position.y);
-      
-      // Calculate average y-distance between players in the same role
-      let totalYDist = 0;
-      for (let i = 1; i < ySorted.length; i++) {
-        totalYDist += ySorted[i].position.y - ySorted[i-1].position.y;
-      }
-      horizontalSpacing = totalYDist / (ySorted.length - 1);
-    }
-    
-    // Calculate vertical spacing between lines
-    const roleOrder = ['goalkeeper', 'defender', 'midfielder', 'forward'];
-    const playerRoleIndex = roleOrder.indexOf(player.role);
-    
-    if (playerRoleIndex > 0 && playerRoleIndex < roleOrder.length - 1) {
-      const prevRolePlayers = teammates.filter(t => t.role === roleOrder[playerRoleIndex - 1]);
-      const nextRolePlayers = teammates.filter(t => t.role === roleOrder[playerRoleIndex + 1]);
-      
-      if (prevRolePlayers.length > 0 && nextRolePlayers.length > 0) {
-        const prevLineX = prevRolePlayers.reduce((sum, p) => sum + p.position.x, 0) / prevRolePlayers.length;
-        const nextLineX = nextRolePlayers.reduce((sum, p) => sum + p.position.x, 0) / nextRolePlayers.length;
-        const currentLineX = sameRolePlayers.reduce((sum, p) => sum + p.position.x, player.position.x) / (sameRolePlayers.length + 1);
-        
-        verticalSpacing = Math.min(
-          Math.abs(currentLineX - prevLineX),
-          Math.abs(nextLineX - currentLineX)
-        );
-      }
-    }
-    
-    // Normalize spacing values
-    horizontalSpacing = Math.min(1, horizontalSpacing / 150);
-    verticalSpacing = Math.min(1, verticalSpacing / 200);
+    isInPosition = distanceFromTarget <= positionTolerance;
     
     // Calculate density of players in the area
     let teammateDensity = 0;
@@ -174,9 +124,7 @@ export const useTeamContext = ({ players, score, gameTime }: UseTeamContextProps
       opponentDensity,
       possessionDuration,
       gameTime: normalizedGameTime,
-      scoreDiff: Math.min(1, Math.max(-1, scoreDiff / 3)),  // Normalize score differential
-      horizontalSpacing,
-      verticalSpacing
+      scoreDiff: Math.min(1, Math.max(-1, scoreDiff / 3))  // Normalize score differential
     };
   }, [players, score, gameTime]);
   
