@@ -2,16 +2,16 @@
 import { Position, Player } from '../types/football';
 import { calculateDistance } from './neuralCore';
 
-// Updated role radius limits with extra 20 units added to each
+// Reduced radius limits to constrain player movement
 const ROLE_RADIUS_LIMITS = {
-  goalkeeper: 90,    // Kept the same as before
-  defender: 210,     // Increased from 190 (+20)
-  midfielder: 200,   // Increased from 180 (+20)
-  forward: 270       // Increased from 250 (+20)
+  goalkeeper: 70,    // Reduced from 90
+  defender: 150,     // Reduced from 210
+  midfielder: 140,   // Reduced from 200
+  forward: 180       // Reduced from 270
 };
 
-// Extra flexibility radius for neural network fine-tuning
-const NEURAL_ADJUSTMENT_RADIUS = 20;
+// Significantly reduced neural adjustment radius
+const NEURAL_ADJUSTMENT_RADIUS = 8; // Reduced from 20
 
 export const constrainMovementToRadius = (
   currentPosition: Position,
@@ -20,21 +20,21 @@ export const constrainMovementToRadius = (
   role: Player['role'],
   isNeuralNetworkAdjustment: boolean = false
 ): Position => {
-  // Add randomization to radius limits for more varied movement
+  // Add small randomization to radius limits (reduced from previous implementation)
   const baseMaxRadius = ROLE_RADIUS_LIMITS[role];
-  const randomFactor = 1 + (Math.random() * 0.2 - 0.1); // ±10% randomization
+  const randomFactor = 1 + (Math.random() * 0.1 - 0.05); // ±5% randomization, reduced from ±10%
   
-  // Give forwards even more freedom when they are in attacking position
+  // Less freedom for forwards in attacking position
   const isForwardInAttackingPosition = role === 'forward' && 
     ((currentPosition.x > 500 && proposedPosition.x > 450) || 
      (currentPosition.x < 300 && proposedPosition.x < 350));
   
-  // Allow extra radius for neural network fine tuning
+  // Minimal extra radius for neural network adjustments
   const extraRadius = isNeuralNetworkAdjustment ? NEURAL_ADJUSTMENT_RADIUS : 0;
   
-  // Increase radius for forwards making attacking runs or neural network adjustments
+  // Tighter radius constraints overall
   const maxRadius = isForwardInAttackingPosition 
-    ? (baseMaxRadius * 1.3 * randomFactor) + extraRadius
+    ? (baseMaxRadius * 1.15 * randomFactor) + extraRadius // Reduced from 1.3
     : (baseMaxRadius * randomFactor) + extraRadius;
   
   // Calculate distance from tactical position

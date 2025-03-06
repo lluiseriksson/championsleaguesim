@@ -364,7 +364,7 @@ const usePlayerMovement = ({
       const neuralOutput = useNeuralNetworkForPlayer(player, ball);
       if (!neuralOutput) return basePosition;
       
-      const fineAdjustmentFactor = 0.2;
+      const fineAdjustmentFactor = 0.05;
       const fineX = neuralOutput.x * fineAdjustmentFactor;
       const fineY = neuralOutput.y * fineAdjustmentFactor;
       
@@ -416,16 +416,21 @@ const usePlayerMovement = ({
             };
           }
           
-          const baseThreshold = isLowPerformance ? 0.5 : 0.3;
+          const baseThreshold = isLowPerformance ? 0.7 : 0.6;
           const neuralNetworkThreshold = player.role === 'defender' ? baseThreshold - 0.05 : baseThreshold;
           
           const useNeuralNetwork = Math.random() > neuralNetworkThreshold;
           const neuralMovement = useNeuralNetwork ? useNeuralNetworkForPlayer(player, ball) : null;
           
           if (neuralMovement) {
+            let scaledMovement = {
+              x: neuralMovement.x * 0.3,
+              y: neuralMovement.y * 0.3
+            };
+            
             let newPosition = {
-              x: player.position.x + neuralMovement.x,
-              y: player.position.y + neuralMovement.y
+              x: player.position.x + scaledMovement.x,
+              y: player.position.y + scaledMovement.y
             };
             
             newPosition = constrainMovementToRadius(
@@ -443,7 +448,7 @@ const usePlayerMovement = ({
             return {
               ...player,
               proposedPosition: newPosition,
-              movement: neuralMovement,
+              movement: scaledMovement,
               brain: {
                 ...completeBrain,
                 lastOutput: neuralMovement,
