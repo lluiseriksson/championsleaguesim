@@ -33,10 +33,10 @@ export const checkCollision = (ballPos: Position, playerPos: Position, isGoalkee
   const dy = ballPos.y - playerPos.y;
   const distance = Math.sqrt(dx * dx + dy * dy);
   
-  // Field players now have 15 units of reach for interacting with the ball
-  // For goalkeepers, use 5 units plus 0.5x extension for angled shots
+  // Field players have 15 units of reach for interacting with the ball
+  // For goalkeepers, use 15 units for non-angled shots, plus 0.5x extension for angled shots
   const fieldPlayerReach = 15 - BALL_RADIUS; // 15 units total minus ball radius
-  const goalkeeperBaseReach = 5 - BALL_RADIUS; // Base 5 units minus ball radius
+  const goalkeeperBaseReach = 15 - BALL_RADIUS; // Now 15 units minus ball radius for non-angled shots
   
   // For goalkeepers, check if it's an angled shot moving toward goal
   if (isGoalkeeper) {
@@ -44,7 +44,7 @@ export const checkCollision = (ballPos: Position, playerPos: Position, isGoalkee
     const ballAngle = Math.atan2(dy, dx);
     const isAngledShot = Math.abs(ballAngle) > Math.PI/8;
     
-    // Basic reach for straight shots
+    // Base reach for non-angled shots is now 15 units
     let reach = goalkeeperBaseReach;
     
     // Add 0.5x extension for angled shots moving toward goal
