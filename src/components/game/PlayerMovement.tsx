@@ -166,8 +166,16 @@ const usePlayerMovement = ({
       const output = player.brain.net.run(input);
       
       if (output && typeof output.moveX === 'number' && typeof output.moveY === 'number') {
-        const moveX = (output.moveX * 2 - 1) * 3.0; 
-        const moveY = (output.moveY * 2 - 1) * 3.0;
+        let moveXMultiplier = 3.0;
+        let moveYMultiplier = 3.0;
+        
+        if (player.role === 'defender') {
+          moveXMultiplier = 3.5;
+          moveYMultiplier = 3.2;
+        }
+        
+        const moveX = (output.moveX * 2 - 1) * moveXMultiplier; 
+        const moveY = (output.moveY * 2 - 1) * moveYMultiplier;
         
         return { x: moveX, y: moveY };
       }
@@ -208,7 +216,8 @@ const usePlayerMovement = ({
             };
           }
           
-          const neuralMovement = Math.random() > 0.3 ? useNeuralNetworkForPlayer(player, ball) : null;
+          const neuralNetworkThreshold = player.role === 'defender' ? 0.25 : 0.3;
+          const neuralMovement = Math.random() > neuralNetworkThreshold ? useNeuralNetworkForPlayer(player, ball) : null;
           
           if (neuralMovement) {
             let newPosition = {
@@ -246,18 +255,40 @@ const usePlayerMovement = ({
             forward: player.team === 'red' ? 500 : PITCH_WIDTH - 500
           };
           
-          const targetX = roleOffsets[player.role] || player.targetPosition.x;
-          const targetY = Math.max(100, Math.min(PITCH_HEIGHT - 100, ball.position.y));
+          let targetX = roleOffsets[player.role] || player.targetPosition.x;
+          let targetY = Math.max(100, Math.min(PITCH_HEIGHT - 100, ball.position.y));
+          
+          const defensiveThirdWidth = PITCH_WIDTH / 3;
+          const isInDefensiveThird = (player.team === 'red' && ball.position.x < defensiveThirdWidth) || 
+                                    (player.team === 'blue' && ball.position.x > PITCH_WIDTH - defensiveThirdWidth);
+          
+          if (isInDefensiveThird) {
+            const forwardOffset = player.team === 'red' ? 50 : -50;
+            targetX += forwardOffset;
+            
+            const ballYRelativeToCenter = (ball.position.y - PITCH_HEIGHT/2) / 2;
+            targetY = ball.position.y - ballYRelativeToCenter;
+          } else {
+            targetX += (Math.random() - 0.5) * 40;
+            targetY += (Math.random() - 0.5) * 60;
+          }
           
           const dx = targetX - player.position.x;
           const dy = targetY - player.position.y;
           const dist = Math.sqrt(dx*dx + dy*dy);
-          const moveSpeed = 1.8;
+          
+          let moveSpeed = 1.8;
+          if (player.role === 'defender') {
+            moveSpeed = 2.0;
+          }
           
           let moveX = dist > 0 ? (dx / dist) * moveSpeed : 0;
           let moveY = dist > 0 ? (dy / dist) * moveSpeed : 0;
           
-          if (Math.random() > 0.8) {
+          if (player.role === 'defender' && Math.random() > 0.7) {
+            moveX += (Math.random() - 0.5) * 0.8;
+            moveY += (Math.random() - 0.5) * 0.8;
+          } else if (Math.random() > 0.8) {
             moveX += (Math.random() - 0.5) * 0.5;
             moveY += (Math.random() - 0.5) * 0.5;
           }
