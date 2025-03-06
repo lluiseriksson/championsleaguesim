@@ -129,17 +129,17 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
   // Calculate horizontal movement - allow more movement freedom
   let moveX = 0;
   
-  // Increase goalkeeper aggressiveness by extending the forward range
+  // REDUCED: Reduce the range goalkeeper will move forward from goal
   const shouldMoveForward = 
-    (isLeftSide && ball.position.x < 180 && ballMovingTowardGoal) || // Increased from 150 to 180
-    (!isLeftSide && ball.position.x > PITCH_WIDTH - 180 && ballMovingTowardGoal); // Increased from 150 to 180
+    (isLeftSide && ball.position.x < 120 && ballMovingTowardGoal) || // Reduced from 180 to 120
+    (!isLeftSide && ball.position.x > PITCH_WIDTH - 120 && ballMovingTowardGoal); // Reduced from 180 to 120
   
   if (shouldMoveForward) {
-    // Allow goalkeeper to move further from goal line
-    const maxAdvance = isLeftSide ? 150 : PITCH_WIDTH - 150; // Increased from 120 to 150
+    // REDUCED: Maximum distance from goal line keeper will advance
+    const maxAdvance = isLeftSide ? 80 : PITCH_WIDTH - 80; // Reduced from 150 to 80
     
-    // Add randomness to max advance distance - increased range
-    const randomizedMaxAdvance = maxAdvance + (Math.random() * 60 - 30); // Increased from ±20 to ±30
+    // Add randomness to max advance distance - reduced range
+    const randomizedMaxAdvance = maxAdvance + (Math.random() * 30 - 15); // Reduced from ±30 to ±15
     
     const targetX = isLeftSide 
       ? Math.min(ball.position.x - 25, randomizedMaxAdvance)
@@ -149,14 +149,14 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
     const directShot = Math.abs(ball.position.y - PITCH_HEIGHT/2) < GOAL_HEIGHT/2;
     const randomFactor = 0.8 + Math.random() * 0.4; // Reduced randomness from 0.8 to 0.4
     
-    // SIGNIFICANTLY REDUCED speed multipliers for frontal shots
-    const baseSpeedMultiplier = directShot ? 0.8 * randomFactor : 1.1 * randomFactor; // Reduced from 1.7/1.4 to 0.8/1.1
+    // Further reduced speed multipliers
+    const baseSpeedMultiplier = directShot ? 0.6 * randomFactor : 0.8 * randomFactor; // Reduced from 0.8/1.1 to 0.6/0.8
     const adjustedSpeedMultiplier = baseSpeedMultiplier * eloSpeedMultiplier;
     
     moveX = Math.sign(targetX - player.position.x) * adjustedSpeedMultiplier;
   } else {
     // Return to goal line with more random positioning
-    const randomGoalLineOffset = (Math.random() * 45 - 22.5); // Increased from ±17.5 to ±22.5
+    const randomGoalLineOffset = (Math.random() * 20 - 10); // Reduced from ±22.5 to ±10
     const targetGoalLine = goalLine + randomGoalLineOffset;
     
     const distanceToGoalLine = Math.abs(player.position.x - targetGoalLine);
@@ -174,17 +174,17 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
   const predictionError = Math.random() * 40 - 20; // Changed from ±25 to ±20 for a balance of accuracy and error
   const targetY = isBallMovingFast ? expectedBallY + predictionError : ball.position.y;
   
-  // Expanded goalkeeper vertical movement range
-  const randomYOffset = (Math.random() * 50 - 25); // Increased from ±20 to ±25 pixels of randomness
+  // REDUCED: Keeper vertical movement range - stay closer to goal center
+  const randomYOffset = (Math.random() * 30 - 15); // Reduced from ±25 to ±15
   const limitedTargetY = Math.max(
-    PITCH_HEIGHT/2 - GOAL_HEIGHT/2 - 60 + randomYOffset, // Increased range from 45 to 60
-    Math.min(PITCH_HEIGHT/2 + GOAL_HEIGHT/2 + 60 + randomYOffset, targetY) // Increased range from 45 to 60
+    PITCH_HEIGHT/2 - GOAL_HEIGHT/2 - 35 + randomYOffset, // Reduced from 60 to 35
+    Math.min(PITCH_HEIGHT/2 + GOAL_HEIGHT/2 + 35 + randomYOffset, targetY) // Reduced from 60 to 35
   );
   
   // Calculate vertical movement with increased responsiveness
   const yDifference = limitedTargetY - player.position.y;
   
-  // REDUCED vertical movement speed for shots coming directly at goal
+  // REDUCED: vertical movement speed for shots coming directly at goal
   let verticalSpeedMultiplier = 1.0;
   if (ballMovingTowardGoal && Math.abs(ball.position.y - PITCH_HEIGHT/2) < GOAL_HEIGHT/2) {
     // Reduce speed for direct shots
