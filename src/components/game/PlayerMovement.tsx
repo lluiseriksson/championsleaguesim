@@ -229,17 +229,7 @@ const usePlayerMovement = ({
                 break;
             }
           } else {
-            switch (player.role) {
-              case 'defender':
-                maxDistance = 200;
-                break;
-              case 'midfielder':
-                maxDistance = 300;
-                break;
-              case 'forward':
-                maxDistance = 400;
-                break;
-            }
+            maxDistance = 600;
           }
 
           const eloSpeedBonus = player.teamElo ? Math.min(0.5, Math.max(0, (player.teamElo - 1500) / 1000)) : 0;
