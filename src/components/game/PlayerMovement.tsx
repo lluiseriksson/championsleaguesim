@@ -109,14 +109,20 @@ const usePlayerMovement = ({
   const useNeuralNetworkForPlayer = (player: Player, ball: Ball): { x: number, y: number } | null => {
     if (!player.brain || !player.brain.net) {
       console.log(`Missing brain for ${player.team} ${player.role} #${player.id}, creating new one`);
-      player.brain = createPlayerBrain();
+      const newBrain = createPlayerBrain();
+      setPlayers(currentPlayers => 
+        currentPlayers.map(p => p.id === player.id ? {...p, brain: newBrain} : p)
+      );
       return null;
     }
     
     try {
       if (!isNetworkValid(player.brain.net)) {
         console.log(`Invalid network for ${player.team} ${player.role} #${player.id}, recreating`);
-        player.brain = createPlayerBrain();
+        const newBrain = createPlayerBrain();
+        setPlayers(currentPlayers => 
+          currentPlayers.map(p => p.id === player.id ? {...p, brain: newBrain} : p)
+        );
         return null;
       }
       
@@ -208,6 +214,13 @@ const usePlayerMovement = ({
     setPlayers(currentPlayers => {
       const proposedPositions = currentPlayers.map(player => {
         try {
+          if (!player.brain || !player.brain.net) {
+            player = {
+              ...player,
+              brain: createPlayerBrain()
+            };
+          }
+          
           if (player.role === 'goalkeeper') {
             const movement = moveGoalkeeper(player, ball);
             const newPosition = {

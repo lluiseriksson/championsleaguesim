@@ -180,12 +180,15 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       const pos = redTeamPositions[i];
       const role = pos.role as Player['role'];
       
+      const playerBrain = createPlayerBrain();
+      console.log(`Created brain for red team ${role} #${i+1}, valid: ${isNetworkValid(playerBrain.net)}`);
+      
       newPlayers.push({
         id: i + 1,
         position: { x: pos.x, y: pos.y },
         role: role,
         team: 'red',
-        brain: createPlayerBrain(),
+        brain: playerBrain,
         targetPosition: { x: pos.x, y: pos.y },
         teamName: homeTeam,
         kitType: 'home',
@@ -211,12 +214,15 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       const pos = blueTeamPositions[i];
       const role = pos.role as Player['role'];
       
+      const playerBrain = createPlayerBrain();
+      console.log(`Created brain for blue team ${role} #${i+1}, valid: ${isNetworkValid(playerBrain.net)}`);
+      
       newPlayers.push({
         id: i + 12,
         position: { x: pos.x, y: pos.y },
         role: role,
         team: 'blue',
-        brain: createPlayerBrain(),
+        brain: playerBrain,
         targetPosition: { x: pos.x, y: pos.y },
         teamName: awayTeam,
         kitType: awayTeamKitType,
