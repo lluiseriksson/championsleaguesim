@@ -1,3 +1,4 @@
+
 import { Player, Ball, PITCH_WIDTH, PITCH_HEIGHT, GOAL_HEIGHT, NeuralNet } from '../types/football';
 import { isNetworkValid } from './neuralHelpers';
 
@@ -77,9 +78,10 @@ const useNeuralNetworkForGoalkeeper = (
     
     // Use the neural network output if available
     if (output && typeof output.moveX === 'number' && typeof output.moveY === 'number') {
-      // Convert from 0-1 range to direction - increased movement multipliers for more freedom
-      const moveX = (output.moveX * 2 - 1) * 2.2; // Increased from 1.8 to 2.2
-      const moveY = (output.moveY * 2 - 1) * 2.5; // Increased from 2.0 to 2.5
+      // Convert from 0-1 range to direction, but constrain to small adjustments (20 unit radius)
+      // This allows the neural network to make small positioning adjustments but not run away
+      const moveX = (output.moveX * 2 - 1) * 0.8; // Reduced multiplier for micro-adjustments
+      const moveY = (output.moveY * 2 - 1) * 1.0; // Slightly more freedom vertically
       
       return { x: moveX, y: moveY };
     }
@@ -92,8 +94,8 @@ const useNeuralNetworkForGoalkeeper = (
 
 // Specialized movement logic for goalkeepers
 export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: number): { x: number, y: number } => {
-  // First try to use neural network if available - increased probability to 80%
-  if (player.brain && Math.random() > 0.2) { // More neural network usage (0.2 instead of 0.3)
+  // First try to use neural network much more frequently (80% chance)
+  if (player.brain && Math.random() > 0.2) { 
     const neuralMovement = useNeuralNetworkForGoalkeeper(player, ball, player.brain);
     if (neuralMovement) {
       // Add randomness to neural network output
