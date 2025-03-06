@@ -1,3 +1,4 @@
+
 import * as brain from 'brain.js';
 import { NeuralNet, Position, NeuralInput, NeuralOutput, TeamContext, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
 import { createNeuralInput, isNetworkValid } from './neuralHelpers';
@@ -353,8 +354,10 @@ export const createPlayerBrain = (): NeuralNet => {
       lastReward: 0,
       cumulativeReward: 0,
       successRate: {
-        overall: 0.5,
-        recent: []
+        shoot: 0.5,
+        pass: 0.5,
+        intercept: 0.5,
+        overall: 0.5
       }
     };
   } catch (error) {
@@ -419,8 +422,10 @@ const createFallbackBrain = (): NeuralNet => {
     lastReward: 0,
     cumulativeReward: 0,
     successRate: {
-      overall: 0.5,
-      recent: []
+      shoot: 0.5,
+      pass: 0.5,
+      intercept: 0.5,
+      overall: 0.5
     }
   };
 };

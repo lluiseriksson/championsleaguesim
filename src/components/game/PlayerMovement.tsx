@@ -164,13 +164,15 @@ const usePlayerMovement = ({
             newPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, newPosition.x));
             newPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, newPosition.y));
             
+            const lastAction: 'move' | 'pass' | 'shoot' | 'intercept' = 'move';
+            
             return {
               ...player,
               position: newPosition,
               brain: {
                 ...player.brain,
                 lastOutput: { x: moveX, y: moveY },
-                lastAction: shouldChaseBall ? 'chase' : 'position'
+                lastAction
               }
             };
           }
