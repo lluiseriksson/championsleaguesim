@@ -34,24 +34,24 @@ const PitchLayout: React.FC = () => {
       {/* Penalty arcs - right side (positioned at the edge of the penalty area) */}
       <div className="absolute right-[144px] top-1/2 w-24 h-24 border-2 border-pitch-lines rounded-full transform translate-x-1/2 -translate-y-1/2" style={{ clipPath: 'inset(0 50% 0 0)' }} />
       
-      {/* Corner arcs - using border-radius instead of rectangular forms */}
+      {/* Corner arcs - using perfect quarter circles that reach the corners exactly */}
       {/* Top left corner */}
-      <div className="absolute left-0 top-0 w-10 h-10">
-        <div className="absolute w-20 h-20 border-2 border-pitch-lines rounded-full" style={{ clipPath: 'inset(50% 0 0 50%)' }} />
+      <div className="absolute left-0 top-0">
+        <div className="absolute top-0 left-0 w-20 h-20 border-2 border-pitch-lines rounded-full" style={{ clipPath: 'inset(50% 0 0 50%)' }} />
       </div>
       
       {/* Top right corner */}
-      <div className="absolute right-0 top-0 w-10 h-10">
-        <div className="absolute right-0 w-20 h-20 border-2 border-pitch-lines rounded-full" style={{ clipPath: 'inset(50% 50% 0 0)' }} />
+      <div className="absolute right-0 top-0">
+        <div className="absolute top-0 right-0 w-20 h-20 border-2 border-pitch-lines rounded-full" style={{ clipPath: 'inset(50% 50% 0 0)' }} />
       </div>
       
       {/* Bottom left corner */}
-      <div className="absolute left-0 bottom-0 w-10 h-10">
-        <div className="absolute bottom-0 w-20 h-20 border-2 border-pitch-lines rounded-full" style={{ clipPath: 'inset(0 0 50% 50%)' }} />
+      <div className="absolute left-0 bottom-0">
+        <div className="absolute bottom-0 left-0 w-20 h-20 border-2 border-pitch-lines rounded-full" style={{ clipPath: 'inset(0 0 50% 50%)' }} />
       </div>
       
       {/* Bottom right corner */}
-      <div className="absolute right-0 bottom-0 w-10 h-10">
+      <div className="absolute right-0 bottom-0">
         <div className="absolute bottom-0 right-0 w-20 h-20 border-2 border-pitch-lines rounded-full" style={{ clipPath: 'inset(0 50% 50% 0)' }} />
       </div>
     </div>
