@@ -52,8 +52,12 @@ function isDarkColor(hexColor: string): boolean {
   return brightness < 128;
 }
 
-// Add the transliteration function that's used in TournamentMatch
+// Add the transliteration function with enhanced special cases
 const transliterateRussianName = (name: string): string => {
+  // Special cases for non-Russian but special character teams
+  if (name === 'Ολυμπιακός') return 'Olympiakos';
+  if (name === 'FC København') return 'FC Copenhagen';
+  
   const cyrillicToLatin: Record<string, string> = {
     'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G', 'Д': 'D', 'Е': 'E', 'Ё': 'Yo', 
     'Ж': 'Zh', 'З': 'Z', 'И': 'I', 'Й': 'Y', 'К': 'K', 'Л': 'L', 'М': 'M', 
@@ -66,9 +70,6 @@ const transliterateRussianName = (name: string): string => {
     'ф': 'f', 'х': 'kh', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'shch', 
     'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
   };
-
-  // Special case for Greek team
-  if (name === 'Ολυμπιακός') return 'Olympiakos';
 
   const hasCyrillic = /[А-Яа-яЁё]/.test(name);
   

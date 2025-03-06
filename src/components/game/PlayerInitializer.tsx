@@ -13,6 +13,7 @@ interface PlayerInitializerProps {
 
 const transliterateRussianName = (name: string): string => {
   if (name === 'Ολυμπιακός') return 'Olympiakos';
+  if (name === 'FC København') return 'FC Copenhagen';
   
   const cyrillicToLatin: Record<string, string> = {
     'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G', 'Д': 'D', 'Е': 'E', 'Ё': 'Yo', 

@@ -1,3 +1,4 @@
+
 import { KitType, TeamKit } from './kitTypes';
 import { teamKitColors } from './teamColorsData';
 import { 
@@ -31,6 +32,28 @@ const teamConflictOverrides: Record<string, Record<string, KitType>> = {
   },
   'Real Madrid': {
     'Ajax': 'away'
+  },
+  // Add the Milan vs FC København conflict
+  'AC Milan': {
+    'FC København': 'third'
+  },
+  'FC København': {
+    'AC Milan': 'away'
+  },
+  // Add more red team conflicts
+  'Liverpool': {
+    'Manchester United': 'third',
+    'FC København': 'third',
+    'AC Milan': 'third'
+  },
+  'Manchester United': {
+    'Liverpool': 'third',
+    'FC København': 'third',
+    'AC Milan': 'third'
+  },
+  'Bayern Munich': {
+    'FC København': 'third',
+    'AC Milan': 'third'
   }
 };
 
@@ -77,6 +100,30 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
     console.log(`Home GK primary: ${homeGkPrimary} (${categorizeColor(homeGkPrimary)})`);
     console.log(`Away kit primary: ${awayPrimary} (${categorizeColor(awayPrimary)})`);
     console.log(`Third kit primary: ${thirdPrimary} (${categorizeColor(thirdPrimary)})`);
+  }
+
+  // ENHANCED: More strict color conflict detection for RED teams
+  const homeCategory = categorizeColor(homeOutfieldPrimary);
+  const awayCategory = categorizeColor(awayPrimary);
+  const thirdCategory = categorizeColor(thirdPrimary);
+  
+  // Special handling for RED teams - use third kit immediately if both are red
+  if (homeCategory === ColorCategory.RED && awayCategory === ColorCategory.RED) {
+    if (shouldLog) {
+      console.log(`RED vs RED conflict detected between ${homeTeamName} and ${awayTeamName} - forcing third kit`);
+    }
+    kitSelectionCache[cacheKey] = 'third';
+    return 'third';
+  }
+  
+  // Also check BURGUNDY which can look like RED
+  if ((homeCategory === ColorCategory.RED && awayCategory === ColorCategory.BURGUNDY) ||
+      (homeCategory === ColorCategory.BURGUNDY && awayCategory === ColorCategory.RED)) {
+    if (shouldLog) {
+      console.log(`RED vs BURGUNDY conflict detected between ${homeTeamName} and ${awayTeamName} - forcing third kit`);
+    }
+    kitSelectionCache[cacheKey] = 'third';
+    return 'third';
   }
 
   // Check outfield player conflicts
