@@ -1,3 +1,4 @@
+
 import { NeuralNet, Player, TeamContext, Ball, Position } from '../types/football';
 import { calculateDistance } from './neuralCore';
 import { isPassingLaneOpen } from './movementConstraints';
@@ -131,7 +132,7 @@ export const calculateReceivingPositionQuality = (
   return 0.4 * distanceScore + 0.4 * spaceScore + 0.2 * goalProximityScore;
 };
 
-// NEW: Determine if the player should request a pass
+// Improved: Determine if the player should request a pass
 export const shouldRequestPass = (
   player: Player,
   ballPosition: Position,
@@ -181,7 +182,7 @@ export const shouldRequestPass = (
   return isInSpace && isAdvancedPosition;
 };
 
-// NEW: Find optimal position to receive a pass
+// Improved: Find optimal position to receive a pass
 export const findOptimalPassReceivingPosition = (
   player: Player,
   ballPosition: Position,
@@ -189,6 +190,8 @@ export const findOptimalPassReceivingPosition = (
   opponents: Position[],
   opponentGoal: Position
 ): Position => {
+  console.log(`Finding optimal pass receiving position for ${player.team} ${player.role} #${player.id}`);
+  
   const currentQuality = calculateReceivingPositionQuality(
     player.position,
     ballPosition,
@@ -207,8 +210,8 @@ export const findOptimalPassReceivingPosition = (
   }
   
   // Sample potential positions around the player
-  const sampleRadius = 80;
-  const sampleCount = 8;
+  const sampleRadius = 100; // Increased from 80
+  const sampleCount = 12;   // Increased from 8
   let bestPosition = player.position;
   let bestQuality = currentQuality;
   
@@ -234,14 +237,14 @@ export const findOptimalPassReceivingPosition = (
     }
   }
   
-  // Move toward better position
+  // Move toward better position (increased movement factor)
   return {
-    x: player.position.x + (bestPosition.x - player.position.x) * 0.5,
-    y: player.position.y + (bestPosition.y - player.position.y) * 0.5
+    x: player.position.x + (bestPosition.x - player.position.x) * 0.7,
+    y: player.position.y + (bestPosition.y - player.position.y) * 0.7
   };
 };
 
-// NEW: Determine if this is a good shooting opportunity
+// Improved: Determine if this is a good shooting opportunity
 export const isGoodShotOpportunity = (
   player: Player,
   ballPosition: Position,
@@ -250,11 +253,16 @@ export const isGoodShotOpportunity = (
 ): boolean => {
   // Must be close to ball
   const distanceToBall = calculateDistance(player.position, ballPosition);
-  if (distanceToBall > 30) return false;
+  if (distanceToBall > 40) { // Changed from 30 to 40
+    return false;
+  }
   
   // Check distance to goal
   const distanceToGoal = calculateDistance(player.position, opponentGoal);
-  if (distanceToGoal > 200) return false;
+  if (distanceToGoal > 250) { // Changed from 200 to 250
+    console.log(`${player.team} ${player.role} #${player.id} too far from goal: ${distanceToGoal}`);
+    return false;
+  }
   
   // Calculate shooting lane quality
   const shootingVector = {
@@ -284,5 +292,122 @@ export const isGoodShotOpportunity = (
     }
   }
   
-  return laneQuality > 0.6;
+  const shouldShoot = laneQuality > 0.5; // Changed from 0.6 to 0.5
+  
+  if (shouldShoot) {
+    console.log(`${player.team} ${player.role} #${player.id} has good shot opportunity! Lane quality: ${laneQuality.toFixed(2)}`);
+  }
+  
+  return shouldShoot;
+};
+
+// NEW: Log diagnostic info about passing
+export const logPassingInfo = (
+  passer: Player,
+  receiver: Player,
+  ballPosition: Position,
+  passQuality: number
+): void => {
+  console.log(`PASS: ${passer.team} ${passer.role} #${passer.id} → ${receiver.team} ${receiver.role} #${receiver.id}`);
+  console.log(`Pass distance: ${calculateDistance(passer.position, receiver.position).toFixed(1)}`);
+  console.log(`Pass quality: ${passQuality.toFixed(2)}`);
+  console.log(`Ball distance from passer: ${calculateDistance(passer.position, ballPosition).toFixed(1)}`);
+  console.log(`Ball distance from receiver: ${calculateDistance(receiver.position, ballPosition).toFixed(1)}`);
+};
+
+// NEW: Calculate passing success probability
+export const calculatePassingSuccess = (
+  passer: Player,
+  receiver: Player,
+  ballPosition: Position,
+  opponentPositions: Position[]
+): number => {
+  // Check if passer is close to ball
+  const distanceToBall = calculateDistance(passer.position, ballPosition);
+  if (distanceToBall > 30) {
+    return 0;
+  }
+  
+  // Base success rate depends on distance
+  const passDistance = calculateDistance(passer.position, receiver.position);
+  let successRate = Math.max(0, 1 - passDistance / 500);
+  
+  // Calculate if pass lane is open
+  const passQuality = isPassingLaneOpen(
+    passer.position,
+    receiver.position,
+    opponentPositions
+  );
+  
+  // Combine factors
+  successRate *= passQuality;
+  
+  // Adjust for player roles
+  if (passer.role === 'midfielder') {
+    successRate *= 1.2; // Midfielders are better at passing
+  }
+  
+  // Apply team ELO bonus if available
+  if (passer.teamElo) {
+    const eloFactor = Math.min(1.5, Math.max(0.5, passer.teamElo / 2000));
+    successRate *= eloFactor;
+  }
+  
+  return Math.min(1, successRate);
+};
+
+// NEW: Find best passing target
+export const findBestPassingTarget = (
+  passer: Player,
+  teammates: Player[],
+  ballPosition: Position,
+  opponentPositions: Position[],
+  opponentGoal: Position
+): { target: Player | null, quality: number } => {
+  let bestTarget = null;
+  let bestQuality = 0;
+  
+  if (teammates.length === 0) {
+    return { target: null, quality: 0 };
+  }
+  
+  for (const teammate of teammates) {
+    if (teammate.id === passer.id) continue;
+    
+    // Calculate basic passing success
+    const passSuccess = calculatePassingSuccess(
+      passer,
+      teammate,
+      ballPosition,
+      opponentPositions
+    );
+    
+    // Evaluate strategic quality of the recipient's position
+    const positionQuality = calculateReceivingPositionQuality(
+      teammate.position,
+      ballPosition,
+      teammates.map(t => t.position),
+      opponentPositions,
+      { x: 0, y: 0 }, // Dummy value
+      opponentGoal
+    );
+    
+    // Prioritize forwards in advanced positions
+    const roleFactor = teammate.role === 'forward' ? 1.2 : 
+                      teammate.role === 'midfielder' ? 1.1 : 1.0;
+    
+    // Combine all factors
+    const totalQuality = passSuccess * positionQuality * roleFactor;
+    
+    if (totalQuality > bestQuality) {
+      bestQuality = totalQuality;
+      bestTarget = teammate;
+    }
+  }
+  
+  if (bestTarget && bestQuality > 0) {
+    console.log(`Best pass target: ${bestTarget.team} ${bestTarget.role} #${bestTarget.id}, quality: ${bestQuality.toFixed(2)}`);
+  }
+  
+  return { target: bestTarget, quality: bestQuality };
 };

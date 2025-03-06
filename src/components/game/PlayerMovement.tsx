@@ -31,14 +31,25 @@ const usePlayerMovement = ({
 }: PlayerMovementProps) => {
   const [formations, setFormations] = useState({ redFormation: [], blueFormation: [] });
   const [possession, setPossession] = useState({ team: null, player: null, duration: 0 });
+  const [lastMovementTime, setLastMovementTime] = useState(Date.now());
 
   useEffect(() => {
     if (gameReady && players.length > 0) {
+      console.log("Initializing player brains for all players...");
       setPlayers(currentPlayers => 
-        currentPlayers.map(player => ({
-          ...player,
-          brain: initializePlayerBrainWithHistory(player.brain)
-        }))
+        currentPlayers.map(player => {
+          let playerWithBrain = player;
+          
+          if (!player.brain || !player.brain.net) {
+            console.log(`Creating new brain for ${player.team} ${player.role} #${player.id}`);
+            playerWithBrain = validatePlayerBrain(player);
+          }
+          
+          return {
+            ...playerWithBrain,
+            brain: initializePlayerBrainWithHistory(playerWithBrain.brain)
+          };
+        })
       );
     }
   }, [gameReady, setPlayers]);
@@ -57,6 +68,7 @@ const usePlayerMovement = ({
 
   const ensureCompleteBrain = (brain: Partial<NeuralNet> | null | { net: any }): NeuralNet => {
     if (!brain) {
+      console.log("Creating default brain for player with no brain");
       return {
         net: null,
         lastOutput: { x: 0, y: 0 },
@@ -67,6 +79,7 @@ const usePlayerMovement = ({
     }
     
     if ('net' in brain && Object.keys(brain).length === 1) {
+      console.log("Expanding basic brain to full structure");
       const basicBrain: NeuralNet = {
         net: brain.net,
         lastOutput: { x: 0, y: 0 },
@@ -97,12 +110,18 @@ const usePlayerMovement = ({
   };
 
   const useNeuralNetworkForPlayer = (player: Player, ball: Ball): { x: number, y: number } | null => {
-    if (!player.brain || !player.brain.net) return null;
+    if (!player.brain || !player.brain.net) {
+      console.log(`No neural network for ${player.team} ${player.role} #${player.id}`);
+      return null;
+    }
     
     try {
       if (!isNetworkValid(player.brain.net)) {
+        console.warn(`Invalid network for ${player.team} ${player.role} #${player.id}`);
         return null;
       }
+      
+      console.log(`Using neural network for ${player.team} ${player.role} #${player.id}`);
       
       const normalizedBallX = ball.position.x / PITCH_WIDTH;
       const normalizedBallY = ball.position.y / PITCH_HEIGHT;
@@ -114,6 +133,8 @@ const usePlayerMovement = ({
         ballY: normalizedBallY,
         playerX: normalizedPlayerX,
         playerY: normalizedPlayerY,
+        ballVelocityX: ball.velocity.x / 10,
+        ballVelocityY: ball.velocity.y / 10,
         distanceToGoal: 0.5,
         angleToGoal: 0,
         nearestTeammateDistance: 0.5,
@@ -158,9 +179,7 @@ const usePlayerMovement = ({
         counterAttackPotential: 0.5,
         pressureResistance: 0.5,
         recoveryPosition: 0.5,
-        transitionSpeed: 0.5,
-        ballVelocityX: ball.velocity.x / 10,
-        ballVelocityY: ball.velocity.y / 10
+        transitionSpeed: 0.5
       };
       
       const output = player.brain.net.run(input);
@@ -174,25 +193,41 @@ const usePlayerMovement = ({
           moveYMultiplier = 3.2;
         }
         
+        const currentTime = Date.now();
+        if (currentTime - lastMovementTime > 3000) {
+          console.log("Players seem stuck, increasing movement multiplier");
+          moveXMultiplier *= 1.5;
+          moveYMultiplier *= 1.5;
+          setLastMovementTime(currentTime);
+        }
+        
         const moveX = (output.moveX * 2 - 1) * moveXMultiplier; 
         const moveY = (output.moveY * 2 - 1) * moveYMultiplier;
         
         return { x: moveX, y: moveY };
+      } else {
+        console.warn(`Invalid output from neural network for ${player.team} ${player.role} #${player.id}: ${JSON.stringify(output)}`);
       }
     } catch (error) {
-      console.log(`Error using neural network for ${player.team} ${player.role} #${player.id}:`, error);
+      console.error(`Error using neural network for ${player.team} ${player.role} #${player.id}:`, error);
     }
     
     return null;
   };
 
   const updatePlayerPositions = React.useCallback(() => {
-    if (!gameReady) return;
+    if (!gameReady) {
+      console.log("Game not ready, skipping player position updates");
+      return;
+    }
+    
+    console.log("Updating player positions...");
     
     setPlayers(currentPlayers => {
       const proposedPositions = currentPlayers.map(player => {
         try {
           if (player.role === 'goalkeeper') {
+            console.log(`Moving goalkeeper ${player.team} #${player.id}`);
             const movement = moveGoalkeeper(player, ball);
             const newPosition = {
               x: player.position.x + movement.x,
@@ -216,8 +251,12 @@ const usePlayerMovement = ({
             };
           }
           
-          const neuralNetworkThreshold = player.role === 'defender' ? 0.25 : 0.3;
-          const neuralMovement = Math.random() > neuralNetworkThreshold ? useNeuralNetworkForPlayer(player, ball) : null;
+          const neuralNetworkThreshold = player.role === 'defender' ? 0.35 : 0.4;
+          const useNeuralNetwork = Math.random() > neuralNetworkThreshold;
+          
+          console.log(`${player.team} ${player.role} #${player.id} - Using neural network: ${useNeuralNetwork}`);
+          
+          const neuralMovement = useNeuralNetwork ? useNeuralNetworkForPlayer(player, ball) : null;
           
           if (neuralMovement) {
             let newPosition = {
@@ -277,20 +316,20 @@ const usePlayerMovement = ({
           const dy = targetY - player.position.y;
           const dist = Math.sqrt(dx*dx + dy*dy);
           
-          let moveSpeed = 1.8;
+          let moveSpeed = 2.2;
           if (player.role === 'defender') {
-            moveSpeed = 2.0;
+            moveSpeed = 2.5;
           }
           
           let moveX = dist > 0 ? (dx / dist) * moveSpeed : 0;
           let moveY = dist > 0 ? (dy / dist) * moveSpeed : 0;
           
           if (player.role === 'defender' && Math.random() > 0.7) {
+            moveX += (Math.random() - 0.5) * 1.0;
+            moveY += (Math.random() - 0.5) * 1.0;
+          } else if (Math.random() > 0.8) {
             moveX += (Math.random() - 0.5) * 0.8;
             moveY += (Math.random() - 0.5) * 0.8;
-          } else if (Math.random() > 0.8) {
-            moveX += (Math.random() - 0.5) * 0.5;
-            moveY += (Math.random() - 0.5) * 0.5;
           }
           
           let proposedPosition = {
@@ -368,7 +407,7 @@ const usePlayerMovement = ({
       
       return processedPlayers;
     });
-  }, [ball, gameReady, setPlayers, gameTime, score]);
+  }, [ball, gameReady, setPlayers, gameTime, score, lastMovementTime]);
 
   return { updatePlayerPositions, formations, possession };
 };
