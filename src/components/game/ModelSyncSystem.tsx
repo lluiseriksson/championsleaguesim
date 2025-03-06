@@ -46,8 +46,24 @@ export const useModelSyncSystem = ({
       if (timeSinceLastSync >= 5000) {
         console.log('Synchronizing neural models...');
         
+        // First, ensure all players have valid brains
+        let playersNeedingUpdate = false;
+        const validatedPlayers = players.map(player => {
+          const validatedPlayer = validatePlayerBrain(player);
+          if (validatedPlayer !== player) {
+            playersNeedingUpdate = true;
+          }
+          return validatedPlayer;
+        });
+        
+        // Update players if any brains were fixed
+        if (playersNeedingUpdate) {
+          console.log('Updating players with fixed neural networks');
+          setPlayers(validatedPlayers);
+        }
+        
         // Select a subset of players to save (to avoid too many DB operations)
-        const playersToSync = players.filter((_, index) => index % 3 === syncCounter.current % 3);
+        const playersToSync = validatedPlayers.filter((_, index) => index % 3 === syncCounter.current % 3);
         
         let syncCount = 0;
         for (const player of playersToSync) {
@@ -94,22 +110,25 @@ export const useModelSyncSystem = ({
       
       setPlayers(currentPlayers => 
         currentPlayers.map(player => {
+          // First ensure the player has a valid brain
+          const validPlayer = validatePlayerBrain(player);
+          
           // Skip players that already have proper experience replay setup
-          if (player.brain?.experienceReplay?.capacity > 0) {
-            return player;
+          if (validPlayer.brain?.experienceReplay?.capacity > 0) {
+            return validPlayer;
           }
           
           enhancedPlayers++;
           
           // Set up experience replay for players that don't have it
           return {
-            ...player,
+            ...validPlayer,
             brain: {
-              ...player.brain,
-              experienceReplay: player.brain?.experienceReplay || createExperienceReplay(100),
-              learningStage: player.brain?.learningStage || 0.1,
-              lastReward: player.brain?.lastReward || 0,
-              cumulativeReward: player.brain?.cumulativeReward || 0
+              ...validPlayer.brain,
+              experienceReplay: validPlayer.brain?.experienceReplay || createExperienceReplay(100),
+              learningStage: validPlayer.brain?.learningStage || 0.1,
+              lastReward: validPlayer.brain?.lastReward || 0,
+              cumulativeReward: validPlayer.brain?.cumulativeReward || 0
             }
           };
         })

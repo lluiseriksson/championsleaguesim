@@ -8,6 +8,7 @@ import { useGameLoop } from '../hooks/game/useGameLoop';
 import { useGoalNotification } from '../hooks/game/useGoalNotification';
 import { useModelSaveOnExit } from '../hooks/game/useModelSaveOnExit';
 import { useTeamContext } from '../hooks/game/useTeamContext';
+import { validatePlayerBrain } from '../utils/neural/networkValidator';
 
 interface GameLogicProps {
   players: Player[];
@@ -34,6 +35,23 @@ const GameLogic: React.FC<GameLogicProps> = ({
   const lastPlayerTouchRef = React.useRef<Player | null>(null);
   
   console.log(`GameLogic rendered with players: ${players.length}, tournamentMode: ${tournamentMode}`);
+
+  // Validate player brains on initial mount and when players change
+  React.useEffect(() => {
+    if (players.length > 0) {
+      const validatedPlayers = players.map(player => validatePlayerBrain(player));
+      
+      // Only update if something changed
+      const hasChanged = validatedPlayers.some((player, index) => 
+        player.brain !== players[index].brain
+      );
+      
+      if (hasChanged) {
+        console.log('Updating players with validated brains');
+        setPlayers(validatedPlayers);
+      }
+    }
+  }, [players, setPlayers]);
 
   // Get team context functions
   const { getTeamContext } = useTeamContext({ players });

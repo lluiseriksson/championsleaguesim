@@ -3,6 +3,7 @@ import * as brain from 'brain.js';
 import { NeuralNet, NeuralInput, NeuralOutput, Player } from '../../types/football';
 import { isNetworkValid } from '../neuralHelpers';
 import { createSpecializedNetwork } from '../specializedNetworks';
+import { createPlayerBrain } from '../neuralNetwork';
 
 /**
  * Validates and ensures a player's neural network is functional.
@@ -10,11 +11,21 @@ import { createSpecializedNetwork } from '../specializedNetworks';
  * or creates a new one.
  */
 export const validatePlayerBrain = (player: Player): Player => {
-  if (!player.brain || !player.brain.net || !isNetworkValid(player.brain.net)) {
+  // First check if the player has a brain at all
+  if (!player.brain) {
+    console.log(`No brain detected for ${player.team} ${player.role} #${player.id}, creating new brain`);
+    return {
+      ...player,
+      brain: createPlayerBrain()
+    };
+  }
+  
+  // Then check if the neural network exists and is valid
+  if (!player.brain.net || !isNetworkValid(player.brain.net)) {
     console.warn(`Invalid brain detected for ${player.team} ${player.role} #${player.id}, attempting recovery`);
     
     // Try to recover from specialized networks
-    if (player.brain?.specializedNetworks && player.brain.specializedNetworks.length > 0) {
+    if (player.brain.specializedNetworks && player.brain.specializedNetworks.length > 0) {
       const validNetwork = player.brain.specializedNetworks.find(network => 
         network && network.net && isNetworkValid(network.net)
       );
@@ -33,20 +44,21 @@ export const validatePlayerBrain = (player: Player): Player => {
     }
     
     // If no valid specialized network, create a new one for general purposes
-    const generalNetwork = createSpecializedNetwork('general');
+    console.log(`Creating new brain for ${player.team} ${player.role}`);
+    const newBrain = createPlayerBrain();
     
-    if (isNetworkValid(generalNetwork.net)) {
-      console.log(`Created new brain for ${player.team} ${player.role}`);
-      return {
-        ...player,
-        brain: {
-          ...player.brain,
-          net: generalNetwork.net,
-          lastOutput: player.brain.lastOutput || { x: 0, y: 0 },
-          lastAction: 'move'
-        }
-      };
-    }
+    return {
+      ...player,
+      brain: {
+        ...(player.brain || {}),
+        net: newBrain.net,
+        lastOutput: newBrain.lastOutput,
+        lastAction: newBrain.lastAction,
+        successRate: newBrain.successRate,
+        experienceReplay: newBrain.experienceReplay,
+        learningStage: newBrain.learningStage
+      }
+    };
   }
   
   return player;
