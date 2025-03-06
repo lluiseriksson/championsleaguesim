@@ -1,8 +1,6 @@
 import { NeuralNet, Player, TeamContext, Ball, Position } from '../types/football';
 import { calculateDistance } from './neuralCore';
 import { isPassingLaneOpen } from './movementConstraints';
-import * as brain from 'brain.js';
-import { createExperienceReplay } from './experienceReplay';
 
 // Re-export all functions from their respective files
 export { createPlayerBrain, normalizeValue } from './neuralCore';
@@ -133,7 +131,7 @@ export const calculateReceivingPositionQuality = (
   return 0.4 * distanceScore + 0.4 * spaceScore + 0.2 * goalProximityScore;
 };
 
-// Improved: Determine if the player should request a pass
+// NEW: Determine if the player should request a pass
 export const shouldRequestPass = (
   player: Player,
   ballPosition: Position,
@@ -183,7 +181,7 @@ export const shouldRequestPass = (
   return isInSpace && isAdvancedPosition;
 };
 
-// Improved: Find optimal position to receive a pass
+// NEW: Find optimal position to receive a pass
 export const findOptimalPassReceivingPosition = (
   player: Player,
   ballPosition: Position,
@@ -191,8 +189,6 @@ export const findOptimalPassReceivingPosition = (
   opponents: Position[],
   opponentGoal: Position
 ): Position => {
-  console.log(`Finding optimal pass receiving position for ${player.team} ${player.role} #${player.id}`);
-  
   const currentQuality = calculateReceivingPositionQuality(
     player.position,
     ballPosition,
@@ -211,8 +207,8 @@ export const findOptimalPassReceivingPosition = (
   }
   
   // Sample potential positions around the player
-  const sampleRadius = 100; // Increased from 80
-  const sampleCount = 12;   // Increased from 8
+  const sampleRadius = 80;
+  const sampleCount = 8;
   let bestPosition = player.position;
   let bestQuality = currentQuality;
   
@@ -228,7 +224,7 @@ export const findOptimalPassReceivingPosition = (
       ballPosition,
       teammates,
       opponents,
-      { x: 0, y: 0 }, // Dummy value
+      { x: 0, y: 0 }, // Dummy value, not used in the function
       opponentGoal
     );
     
@@ -238,14 +234,14 @@ export const findOptimalPassReceivingPosition = (
     }
   }
   
-  // Move toward better position (increased movement factor)
+  // Move toward better position
   return {
-    x: player.position.x + (bestPosition.x - player.position.x) * 0.7,
-    y: player.position.y + (bestPosition.y - player.position.y) * 0.7
+    x: player.position.x + (bestPosition.x - player.position.x) * 0.5,
+    y: player.position.y + (bestPosition.y - player.position.y) * 0.5
   };
 };
 
-// Improved: Determine if this is a good shooting opportunity
+// NEW: Determine if this is a good shooting opportunity
 export const isGoodShotOpportunity = (
   player: Player,
   ballPosition: Position,
@@ -254,16 +250,11 @@ export const isGoodShotOpportunity = (
 ): boolean => {
   // Must be close to ball
   const distanceToBall = calculateDistance(player.position, ballPosition);
-  if (distanceToBall > 40) { // Changed from 30 to 40
-    return false;
-  }
+  if (distanceToBall > 30) return false;
   
   // Check distance to goal
   const distanceToGoal = calculateDistance(player.position, opponentGoal);
-  if (distanceToGoal > 250) { // Changed from 200 to 250
-    console.log(`${player.team} ${player.role} #${player.id} too far from goal: ${distanceToGoal}`);
-    return false;
-  }
+  if (distanceToGoal > 200) return false;
   
   // Calculate shooting lane quality
   const shootingVector = {
@@ -293,228 +284,5 @@ export const isGoodShotOpportunity = (
     }
   }
   
-  const shouldShoot = laneQuality > 0.5; // Changed from 0.6 to 0.5
-  
-  if (shouldShoot) {
-    console.log(`${player.team} ${player.role} #${player.id} has good shot opportunity! Lane quality: ${laneQuality.toFixed(2)}`);
-  }
-  
-  return shouldShoot;
-};
-
-// NEW: Log diagnostic info about passing
-export const logPassingInfo = (
-  passer: Player,
-  receiver: Player,
-  ballPosition: Position,
-  passQuality: number
-): void => {
-  console.log(`PASS: ${passer.team} ${passer.role} #${passer.id} → ${receiver.team} ${receiver.role} #${receiver.id}`);
-  console.log(`Pass distance: ${calculateDistance(passer.position, receiver.position).toFixed(1)}`);
-  console.log(`Pass quality: ${passQuality.toFixed(2)}`);
-  console.log(`Ball distance from passer: ${calculateDistance(passer.position, ballPosition).toFixed(1)}`);
-  console.log(`Ball distance from receiver: ${calculateDistance(receiver.position, ballPosition).toFixed(1)}`);
-};
-
-// NEW: Calculate passing success probability
-export const calculatePassingSuccess = (
-  passer: Player,
-  receiver: Player,
-  ballPosition: Position,
-  opponentPositions: Position[]
-): number => {
-  // Check if passer is close to ball
-  const distanceToBall = calculateDistance(passer.position, ballPosition);
-  if (distanceToBall > 30) {
-    return 0;
-  }
-  
-  // Base success rate depends on distance
-  const passDistance = calculateDistance(passer.position, receiver.position);
-  let successRate = Math.max(0, 1 - passDistance / 500);
-  
-  // Calculate if pass lane is open
-  const dummyOpponents = opponentPositions.map((pos, index) => ({
-    id: -index - 1, // Negative IDs to avoid conflicts
-    position: pos,
-    role: 'defender' as const,
-    team: (passer.team === 'red' ? 'blue' : 'red') as 'red' | 'blue', // Fix: explicitly cast to 'red' | 'blue'
-    brain: { net: null, lastOutput: { x: 0, y: 0 } },
-    targetPosition: pos,
-    radius: 12 // Default player radius
-  }));
-  
-  const passQuality = isPassingLaneOpen(
-    passer.position,
-    receiver.position,
-    dummyOpponents
-  );
-  
-  // Combine factors
-  successRate *= passQuality;
-  
-  // Adjust for player roles
-  if (passer.role === 'midfielder') {
-    successRate *= 1.2; // Midfielders are better at passing
-  }
-  
-  // Apply team ELO bonus if available
-  if (passer.teamElo) {
-    const eloFactor = Math.min(1.5, Math.max(0.5, passer.teamElo / 2000));
-    successRate *= eloFactor;
-  }
-  
-  return Math.min(1, successRate);
-};
-
-// NEW: Find best passing target
-export const findBestPassingTarget = (
-  passer: Player,
-  teammates: Player[],
-  ballPosition: Position,
-  opponentPositions: Position[],
-  opponentGoal: Position
-): { target: Player | null, quality: number } => {
-  let bestTarget = null;
-  let bestQuality = 0;
-  
-  if (teammates.length === 0) {
-    return { target: null, quality: 0 };
-  }
-  
-  for (const teammate of teammates) {
-    if (teammate.id === passer.id) continue;
-    
-    // Calculate basic passing success
-    const passSuccess = calculatePassingSuccess(
-      passer,
-      teammate,
-      ballPosition,
-      opponentPositions
-    );
-    
-    // Evaluate strategic quality of the recipient's position
-    const positionQuality = calculateReceivingPositionQuality(
-      teammate.position,
-      ballPosition,
-      teammates.map(t => t.position),
-      opponentPositions,
-      { x: 0, y: 0 }, // Dummy value
-      opponentGoal
-    );
-    
-    // Prioritize forwards in advanced positions
-    const roleFactor = teammate.role === 'forward' ? 1.2 : 
-                      teammate.role === 'midfielder' ? 1.1 : 1.0;
-    
-    // Combine all factors
-    const totalQuality = passSuccess * positionQuality * roleFactor;
-    
-    if (totalQuality > bestQuality) {
-      bestQuality = totalQuality;
-      bestTarget = teammate;
-    }
-  }
-  
-  if (bestTarget && bestQuality > 0) {
-    console.log(`Best pass target: ${bestTarget.team} ${bestTarget.role} #${bestTarget.id}, quality: ${bestQuality.toFixed(2)}`);
-  }
-  
-  return { target: bestTarget, quality: bestQuality };
-};
-
-// Implement a new createPlayerBrain function directly in this file for easier access
-export const createPlayerBrain = (): NeuralNet => {
-  try {
-    console.log("Creating new neural network...");
-    
-    const net = new brain.NeuralNetwork({
-      hiddenLayers: [24, 20, 16, 8],
-      activation: 'leaky-relu',
-      learningRate: 0.05,
-      momentum: 0.1,
-      binaryThresh: 0.5,
-      errorThresh: 0.005
-    });
-
-    // Create a simple initial training set
-    const trainingData = [
-      {
-        input: {
-          ballX: 0.5, ballY: 0.5,
-          playerX: 0.5, playerY: 0.5,
-          ballVelocityX: 0, ballVelocityY: 0,
-          distanceToGoal: 0.5, angleToGoal: 0,
-          nearestTeammateDistance: 0.5, nearestTeammateAngle: 0,
-          nearestOpponentDistance: 0.5, nearestOpponentAngle: 0,
-          isInShootingRange: 0, isInPassingRange: 0, isDefendingRequired: 0,
-          distanceToOwnGoal: 0.5, angleToOwnGoal: 0,
-          isFacingOwnGoal: 0, isDangerousPosition: 0,
-          isBetweenBallAndOwnGoal: 0,
-          teamElo: 0.5, eloAdvantage: 0,
-          gameTime: 0.5, scoreDifferential: 0,
-          momentum: 0.5, formationCompactness: 0.5,
-          formationWidth: 0.5, recentSuccessRate: 0.5,
-          possessionDuration: 0, distanceFromFormationCenter: 0.5,
-          isInFormationPosition: 1, teammateDensity: 0.5,
-          opponentDensity: 0.5, shootingAngle: 0.5,
-          shootingQuality: 0.5, zoneControl: 0.5,
-          passingLanesQuality: 0.5, spaceCreation: 0.5,
-          defensiveSupport: 0.5, pressureIndex: 0.5,
-          tacticalRole: 0.5, supportPositioning: 0.5,
-          pressingEfficiency: 0.5, coverShadow: 0.5,
-          verticalSpacing: 0.5, horizontalSpacing: 0.5,
-          territorialControl: 0.5, counterAttackPotential: 0.5,
-          pressureResistance: 0.5, recoveryPosition: 0.5,
-          transitionSpeed: 0.5
-        },
-        output: {
-          moveX: 0.5, moveY: 0.5, shootBall: 0.1, passBall: 0.1, intercept: 0.1
-        }
-      }
-    ];
-
-    // Train with minimal data just to initialize the network
-    net.train(trainingData, {
-      iterations: 100,
-      errorThresh: 0.01,
-    });
-
-    console.log("Neural network created and trained successfully");
-    
-    return {
-      net,
-      lastOutput: { x: 0, y: 0 },
-      lastAction: 'move',
-      actionHistory: [],
-      experienceReplay: createExperienceReplay(100),
-      learningStage: 0.1,
-      lastReward: 0,
-      cumulativeReward: 0,
-      successRate: {
-        shoot: 0.5,
-        pass: 0.5,
-        intercept: 0.5,
-        overall: 0.5
-      }
-    };
-  } catch (error) {
-    console.error("Error creating neural network:", error);
-    return {
-      net: null,
-      lastOutput: { x: 0, y: 0 },
-      lastAction: 'move',
-      actionHistory: [],
-      experienceReplay: createExperienceReplay(50),
-      learningStage: 0.1,
-      lastReward: 0,
-      cumulativeReward: 0,
-      successRate: {
-        shoot: 0.5,
-        pass: 0.5,
-        intercept: 0.5,
-        overall: 0.5
-      }
-    };
-  }
+  return laneQuality > 0.6;
 };

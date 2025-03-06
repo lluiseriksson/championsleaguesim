@@ -5,7 +5,7 @@ import * as brain from 'brain.js';
 
 export const validatePlayerBrain = (player: Player): Player => {
   if (!player.brain || !player.brain.net) {
-    console.log(`Creating new brain for ${player.team} ${player.role} #${player.id}`);
+    console.warn(`Creating new brain for ${player.team} ${player.role} #${player.id}`);
     return {
       ...player,
       brain: createPlayerBrain()
@@ -67,30 +67,16 @@ export const validatePlayerBrain = (player: Player): Player => {
       ballVelocityY: 0.5
     };
     
-    // More strict validation of the network
-    if (!player.brain.net) {
-      throw new Error('Neural network is null');
-    }
-    
-    if (typeof player.brain.net.run !== 'function') {
-      console.error(`Invalid network for ${player.team} ${player.role} #${player.id}: run is not a function`);
-      throw new Error('Invalid network: missing run function');
+    if (!player.brain.net || typeof player.brain.net.run !== 'function') {
+      throw new Error('Invalid network: missing or run function not available');
     }
     
     const output = player.brain.net.run(testInput);
     
-    if (!output) {
-      console.error(`Invalid output for ${player.team} ${player.role} #${player.id}: output is null`);
-      throw new Error('Network returned null output');
-    }
-    
-    if (typeof output.moveX !== 'number' || typeof output.moveY !== 'number') {
-      console.error(`Invalid output structure for ${player.team} ${player.role} #${player.id}: ${JSON.stringify(output)}`);
+    if (!output || typeof output.moveX !== 'number' || typeof output.moveY !== 'number') {
       throw new Error('Invalid network output structure');
     }
     
-    // Log successful validation
-    console.log(`Neural network validated successfully for ${player.team} ${player.role} #${player.id}`);
     return player;
   } catch (error) {
     console.warn(`Invalid network detected for ${player.team} ${player.role} #${player.id}, creating new one: ${error}`);
@@ -102,10 +88,7 @@ export const validatePlayerBrain = (player: Player): Player => {
 };
 
 export const isNetworkValid = (net: brain.NeuralNetwork<any, any> | null): boolean => {
-  if (!net) {
-    console.warn("Neural network is null");
-    return false;
-  }
+  if (!net) return false;
   
   try {
     if (typeof net.run !== 'function') {
@@ -168,18 +151,7 @@ export const isNetworkValid = (net: brain.NeuralNetwork<any, any> | null): boole
     };
     
     const output = net.run(testInput);
-    
-    if (!output) {
-      console.warn("Neural network returned null output");
-      return false;
-    }
-    
-    if (typeof output.moveX !== 'number' || typeof output.moveY !== 'number') {
-      console.warn(`Invalid output structure: ${JSON.stringify(output)}`);
-      return false;
-    }
-    
-    return true;
+    return output && typeof output.moveX === 'number' && typeof output.moveY === 'number';
   } catch (error) {
     console.warn("Neural network validation failed:", error);
     return false;
