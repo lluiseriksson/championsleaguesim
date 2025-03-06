@@ -1,3 +1,4 @@
+
 import { TeamColors } from './kitTypes';
 
 export const teamKitColors: TeamColors = {
@@ -370,4 +371,7 @@ export const teamKitColors: TeamColors = {
   "Sevilla": {
     home: { primary: "#FFFFFF", secondary: "#FF0000", accent: "#FFFFFF" },
     away: { primary: "#FF0000", secondary: "#FFFFFF", accent: "#000000" },
-    third: { primary: "#000000",
+    third: { primary: "#000000", secondary: "#FF0000", accent: "#FFFFFF" },
+    goalkeeper: { primary: "#3AAA35", secondary: "#000000", accent: "#FFFFFF" }
+  }
+};
