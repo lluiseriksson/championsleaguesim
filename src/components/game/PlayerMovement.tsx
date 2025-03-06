@@ -223,12 +223,21 @@ const usePlayerMovement = ({
           
           if (player.role === 'goalkeeper') {
             const movement = moveGoalkeeper(player, ball);
-            const newPosition = {
+            let newPosition = {
               x: player.position.x + movement.x,
               y: player.position.y + movement.y
             };
             
-            newPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, newPosition.x));
+            if (player.team === 'red') {
+              newPosition.x = Math.max(12, Math.min(120, newPosition.x));
+            } else {
+              newPosition.x = Math.max(PITCH_WIDTH - 120, Math.min(PITCH_WIDTH - 12, newPosition.x));
+            }
+            
+            const goalHeight = 200;
+            const centerY = PITCH_HEIGHT / 2;
+            newPosition.y = Math.max(centerY - goalHeight, Math.min(centerY + goalHeight, newPosition.y));
+            
             newPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, newPosition.y));
             
             const completeBrain = ensureCompleteBrain(player.brain);

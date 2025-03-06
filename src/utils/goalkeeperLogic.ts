@@ -96,10 +96,26 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
   if (player.brain && Math.random() > 0.2) { // More neural network usage (0.2 instead of 0.3)
     const neuralMovement = useNeuralNetworkForGoalkeeper(player, ball, player.brain);
     if (neuralMovement) {
-      // Add randomness to neural network output
+      // Add randomness to neural network output and respect boundaries
+      const rawX = addPositioningNoise(neuralMovement.x, player.teamElo);
+      const rawY = addPositioningNoise(neuralMovement.y, player.teamElo);
+      
+      // Apply additional movement constraints to ensure goalkeepers stay in position
+      const isLeftSide = player.team === 'red';
+      const maxForwardX = isLeftSide ? 120 : PITCH_WIDTH - 240;
+      const minBackwardX = isLeftSide ? 30 : PITCH_WIDTH - 40;
+      
+      // Limit horizontal movement based on team side
+      const constrainedX = isLeftSide
+        ? Math.min(Math.max(rawX, -2), 2) // More conservative for red team
+        : Math.min(Math.max(rawX, -2), 2); // More conservative for blue team
+      
+      // Limit vertical movement
+      const constrainedY = Math.min(Math.max(rawY, -2.5), 2.5);
+      
       return {
-        x: addPositioningNoise(neuralMovement.x, player.teamElo),
-        y: addPositioningNoise(neuralMovement.y, player.teamElo)
+        x: constrainedX,
+        y: constrainedY
       };
     }
   }
@@ -125,20 +141,20 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
   // Apply ELO-based speed multiplier
   const eloSpeedMultiplier = calculateGoalkeeperSpeedMultiplier(player.teamElo, opposingTeamElo);
   
-  // Calculate horizontal movement - allow more movement freedom
+  // Calculate horizontal movement - with tighter constraints
   let moveX = 0;
   
-  // Increase goalkeeper aggressiveness by extending the forward range
+  // More restricted goalkeeper movement range
   const shouldMoveForward = 
-    (isLeftSide && ball.position.x < 180 && ballMovingTowardGoal) || // Increased from 150 to 180
-    (!isLeftSide && ball.position.x > PITCH_WIDTH - 180 && ballMovingTowardGoal); // Increased from 150 to 180
+    (isLeftSide && ball.position.x < 150 && ballMovingTowardGoal) || // Reduced from 180 to 150
+    (!isLeftSide && ball.position.x > PITCH_WIDTH - 150 && ballMovingTowardGoal); // Reduced from 180 to 150
   
   if (shouldMoveForward) {
-    // Allow goalkeeper to move further from goal line
-    const maxAdvance = isLeftSide ? 150 : PITCH_WIDTH - 150; // Increased from 120 to 150
+    // Allow goalkeeper to move further from goal line but more restricted
+    const maxAdvance = isLeftSide ? 120 : PITCH_WIDTH - 120; // Reduced from 150 to 120
     
-    // Add randomness to max advance distance - increased range
-    const randomizedMaxAdvance = maxAdvance + (Math.random() * 60 - 30); // Increased from ±20 to ±30
+    // Add less randomness to max advance distance
+    const randomizedMaxAdvance = maxAdvance + (Math.random() * 40 - 20); // Reduced from ±30 to ±20
     
     const targetX = isLeftSide 
       ? Math.min(ball.position.x - 25, randomizedMaxAdvance)
@@ -146,22 +162,22 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
     
     // Move faster when ball is coming directly at goal but add more randomness
     const directShot = Math.abs(ball.position.y - PITCH_HEIGHT/2) < GOAL_HEIGHT/2;
-    const randomFactor = 0.8 + Math.random() * 0.8; // Increased randomness from 0.6 to 0.8
+    const randomFactor = 0.8 + Math.random() * 0.6; // Reduced randomness from 0.8 to 0.6
     
-    // Increased speed multipliers
-    const baseSpeedMultiplier = directShot ? 1.7 * randomFactor : 1.4 * randomFactor; // Increased from 1.5/1.2 to 1.7/1.4
+    // Reduced speed multipliers
+    const baseSpeedMultiplier = directShot ? 1.5 * randomFactor : 1.2 * randomFactor; // Reduced from 1.7/1.4 to 1.5/1.2
     const adjustedSpeedMultiplier = baseSpeedMultiplier * eloSpeedMultiplier;
     
     moveX = Math.sign(targetX - player.position.x) * adjustedSpeedMultiplier;
   } else {
-    // Return to goal line with more random positioning
-    const randomGoalLineOffset = (Math.random() * 45 - 22.5); // Increased from ±17.5 to ±22.5
+    // Return to goal line with less random positioning
+    const randomGoalLineOffset = (Math.random() * 30 - 15); // Reduced from ±22.5 to ±15
     const targetGoalLine = goalLine + randomGoalLineOffset;
     
     const distanceToGoalLine = Math.abs(player.position.x - targetGoalLine);
     
-    // Increased speed for returning to position
-    moveX = Math.sign(targetGoalLine - player.position.x) * Math.min(distanceToGoalLine * 0.12, 1.4) * eloSpeedMultiplier; // Increased from 0.1/1.2 to 0.12/1.4
+    // Increased speed for returning to position to ensure keepers get back in position faster
+    moveX = Math.sign(targetGoalLine - player.position.x) * Math.min(distanceToGoalLine * 0.15, 1.5) * eloSpeedMultiplier; // Adjusted from 0.12/1.4 to 0.15/1.5
   }
   
   // Calculate vertical movement to track the ball or expected ball position
@@ -193,9 +209,9 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
     moveY = moveY * verticalPriorityMultiplier * eloSpeedMultiplier;
   }
   
-  // Add final noise to movement
-  moveX = addPositioningNoise(moveX, player.teamElo);
-  moveY = addPositioningNoise(moveY, player.teamElo);
+  // Add final noise to movement with reduced randomness
+  moveX = addPositioningNoise(moveX, player.teamElo) * 0.85; // Added 0.85 multiplier to reduce overall movement
+  moveY = addPositioningNoise(moveY, player.teamElo) * 0.9; // Added 0.9 multiplier to reduce overall movement
   
   // Reduced hesitation chance and increased movement during hesitation
   if (Math.random() < 0.08) { // 8% chance of goalkeeper hesitation (reduced from 10%)
@@ -203,6 +219,19 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
     moveY *= 0.6; // Increased from 0.5 to 0.6
     console.log(`GK ${player.team}: HESITATION`);
   }
+  
+  // Apply hard constraints to prevent goalkeepers from wandering too far
+  if (isLeftSide) {
+    if (player.position.x < 10) moveX = Math.max(0.5, moveX); // Force movement away from edge
+    if (player.position.x > 120) moveX = Math.min(-0.5, moveX); // Force movement back to position
+  } else {
+    if (player.position.x > PITCH_WIDTH - 10) moveX = Math.min(-0.5, moveX); // Force movement away from edge
+    if (player.position.x < PITCH_WIDTH - 120) moveX = Math.max(0.5, moveX); // Force movement back to position
+  }
+  
+  // Apply vertical constraints
+  if (player.position.y < 100) moveY = Math.max(0.3, moveY); // Force movement down if too high
+  if (player.position.y > PITCH_HEIGHT - 100) moveY = Math.min(-0.3, moveY); // Force movement up if too low
   
   console.log(`GK ${player.team}: movement (${moveX.toFixed(1)},${moveY.toFixed(1)}), ball dist: ${distanceToBall.toFixed(0)}, ELO mult: ${eloSpeedMultiplier.toFixed(2)}`);
   
