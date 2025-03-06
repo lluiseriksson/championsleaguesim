@@ -1,4 +1,3 @@
-
 import { NeuralNet, Player, TeamContext, Ball } from '../types/football';
 import { saveModel } from './neuralModelService';
 import { calculateNetworkInputs } from './neuralInputs';
@@ -27,6 +26,47 @@ const OWN_GOAL_PLAYER_PENALTY = -5.0;
 const WRONG_DIRECTION_SHOT_PENALTY = -4.0;
 const DELAYED_REWARD_DECAY = 0.9;
 const PRIORITY_SCALE = 2.0;
+const STRATEGIC_POSITION_REWARD = 0.6;
+const OPEN_SPACE_REWARD = 0.4;
+
+// Reward positioning when the player creates space or finds open positions
+const calculatePositioningReward = (player: Player, context: TeamContext): number => {
+  let reward = 0;
+  
+  // Calculate average distance to teammates
+  let avgTeammateDistance = 0;
+  if (context.teammates.length > 0) {
+    let totalDistance = 0;
+    for (const teammate of context.teammates) {
+      totalDistance += calculateDistance(player.position, teammate);
+    }
+    avgTeammateDistance = totalDistance / context.teammates.length;
+  }
+  
+  // Reward players who maintain good spacing with teammates (not too close)
+  if (avgTeammateDistance > 100) {
+    reward += OPEN_SPACE_REWARD * Math.min(1, (avgTeammateDistance - 100) / 200);
+  }
+  
+  // Extra reward for attackers who find space in advanced positions
+  if (player.role === 'forward' && player.team === 'red' && player.position.x > 500) {
+    reward += STRATEGIC_POSITION_REWARD * 0.5;
+  } else if (player.role === 'forward' && player.team === 'blue' && player.position.x < 300) {
+    reward += STRATEGIC_POSITION_REWARD * 0.5;
+  }
+  
+  // Reward midfielders for supporting positions
+  if (player.role === 'midfielder') {
+    // For red team moving forward, for blue team moving backward
+    const isInSupportPosition = (player.team === 'red' && player.position.x > 400) || 
+                               (player.team === 'blue' && player.position.x < 400);
+    if (isInSupportPosition) {
+      reward += STRATEGIC_POSITION_REWARD * 0.3;
+    }
+  }
+  
+  return reward;
+};
 
 export const updatePlayerBrain = (
   brain: NeuralNet, 
@@ -45,6 +85,11 @@ export const updatePlayerBrain = (
   }
 
   let rewardFactor = scored ? GOAL_REWARD : MISS_PENALTY;
+
+  // Add positional rewards
+  if (!scored && !isOwnGoal) {
+    rewardFactor += calculatePositioningReward(player, context);
+  }
 
   if (isOwnGoal) {
     rewardFactor = OWN_GOAL_PLAYER_PENALTY;

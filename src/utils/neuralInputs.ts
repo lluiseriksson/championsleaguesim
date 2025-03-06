@@ -3,13 +3,13 @@ import { Ball, Player, TeamContext, NeuralInput } from '../types/football';
 import { calculateDistance, normalizeValue } from './neuralCore';
 
 export const calculateNetworkInputs = (ball: Ball, player: Player, context: TeamContext): NeuralInput => {
-  // Normalize values for the neural network (between 0 and 1)
+  // Basic normalization of positions
   const normalizedBallX = normalizeValue(ball.position.x, 0, 800);
   const normalizedBallY = normalizeValue(ball.position.y, 0, 600);
   const normalizedPlayerX = normalizeValue(player.position.x, 0, 800);
   const normalizedPlayerY = normalizeValue(player.position.y, 0, 600);
   
-  // Calculate distances and angles to OPPONENT goal - crucial for shooting direction
+  // Calculate distances and angles to OPPONENT goal
   const distanceToGoal = calculateDistance(player.position, context.opponentGoal);
   const normalizedDistanceToGoal = normalizeValue(distanceToGoal, 0, 1000);
   
@@ -19,7 +19,7 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
   );
   const normalizedAngleToGoal = normalizeValue(angleToGoal, -Math.PI, Math.PI);
   
-  // Calculate distance and angle to OWN goal to help avoid own goals
+  // Calculate distance and angle to OWN goal 
   const distanceToOwnGoal = calculateDistance(player.position, context.ownGoal);
   const normalizedDistanceToOwnGoal = normalizeValue(distanceToOwnGoal, 0, 1000);
   
@@ -29,8 +29,7 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
   );
   const normalizedAngleToOwnGoal = normalizeValue(angleToOwnGoal, -Math.PI, Math.PI);
   
-  // ENHANCED: More precise detection of dangerous own goal situations
-  // Check if player is between ball and own goal (extremely dangerous for own goals)
+  // Detection of dangerous own goal situations
   const isBetweenBallAndOwnGoal = ((player.team === 'red' && 
                                    player.position.x < ball.position.x && 
                                    player.position.x > context.ownGoal.x) || 
@@ -38,8 +37,7 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
                                    player.position.x > ball.position.x && 
                                    player.position.x < context.ownGoal.x)) ? 1 : 0;
   
-  // Check if player is facing own goal (dangerous for own goals)
-  // IMPROVED: More accurate check based on ball and player positions
+  // Check if player is facing own goal
   const isFacingOwnGoal = ((player.team === 'red' && 
                           ((ball.position.x < player.position.x) || 
                            (Math.abs(angleToOwnGoal) < Math.PI/4))) || 
@@ -47,13 +45,17 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
                           ((ball.position.x > player.position.x) || 
                            (Math.abs(angleToOwnGoal) < Math.PI/4)))) ? 1 : 0;
   
-  // Find nearest teammate
+  // Find nearest teammate and calculate space quality
   let nearestTeammateDistance = 1000;
   let nearestTeammateAngle = 0;
+  let totalTeammateProximity = 0;
+  let totalOpenPositionScore = 0;
   
   if (context.teammates.length > 0) {
     for (const teammate of context.teammates) {
       const distance = calculateDistance(player.position, teammate);
+      totalTeammateProximity += 1 / (distance + 10); // Avoid division by zero
+      
       if (distance < nearestTeammateDistance) {
         nearestTeammateDistance = distance;
         nearestTeammateAngle = Math.atan2(
@@ -61,19 +63,35 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
           teammate.x - player.position.x
         );
       }
+      
+      // Calculate open space around player
+      const spaceVector = {
+        x: player.position.x - teammate.x,
+        y: player.position.y - teammate.y
+      };
+      
+      // Higher score for positions farther from teammates
+      const spaceScore = Math.min(1, distance / 200);
+      totalOpenPositionScore += spaceScore;
     }
+    
+    // Normalize the openness score based on number of teammates
+    totalOpenPositionScore = totalOpenPositionScore / context.teammates.length;
   }
   
   const normalizedTeammateDistance = normalizeValue(nearestTeammateDistance, 0, 1000);
   const normalizedTeammateAngle = normalizeValue(nearestTeammateAngle, -Math.PI, Math.PI);
   
-  // Find nearest opponent
+  // Find nearest opponent and calculate pressure
   let nearestOpponentDistance = 1000;
   let nearestOpponentAngle = 0;
+  let totalOpponentProximity = 0;
   
   if (context.opponents.length > 0) {
     for (const opponent of context.opponents) {
       const distance = calculateDistance(player.position, opponent);
+      totalOpponentProximity += 1 / (distance + 10); // Avoid division by zero
+      
       if (distance < nearestOpponentDistance) {
         nearestOpponentDistance = distance;
         nearestOpponentAngle = Math.atan2(
@@ -87,54 +105,105 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
   const normalizedOpponentDistance = normalizeValue(nearestOpponentDistance, 0, 1000);
   const normalizedOpponentAngle = normalizeValue(nearestOpponentAngle, -Math.PI, Math.PI);
   
-  // ENHANCED: Better flags for special situations and direction
+  // Calculate space quality - combination of teammate and opponent proximity
+  const teammateDensity = normalizeValue(totalTeammateProximity, 0, 0.1);
+  const opponentDensity = normalizeValue(totalOpponentProximity, 0, 0.1);
+  
+  // Space quality is higher when there are fewer players around
+  const spaceQuality = 1 - ((teammateDensity + opponentDensity) / 2);
+  
+  // Analyze the passing lane quality
+  let passingLaneQuality = 1.0;
   const distanceToBall = calculateDistance(player.position, ball.position);
   
-  // Improve shooting range detection with directional component
+  if (distanceToBall < 250) {
+    // Calculate a score for passing lane openness
+    const ballToPlayerVector = {
+      x: player.position.x - ball.position.x,
+      y: player.position.y - ball.position.y
+    };
+    const ballToPlayerDistance = distanceToBall;
+    
+    // Check if opponents are blocking the passing lane
+    if (context.opponents.length > 0) {
+      for (const opponent of context.opponents) {
+        const opponentToBallDistance = calculateDistance(ball.position, opponent);
+        const opponentToPlayerDistance = calculateDistance(player.position, opponent);
+        
+        // Only consider opponents who are roughly between ball and player
+        if (opponentToBallDistance < ballToPlayerDistance && 
+            opponentToPlayerDistance < ballToPlayerDistance) {
+          
+          // Project opponent position onto ball-to-player line
+          const ballToOpponentVector = {
+            x: opponent.x - ball.position.x,
+            y: opponent.y - ball.position.y
+          };
+          
+          // Calculate dot product
+          const dotProduct = 
+            (ballToPlayerVector.x * ballToOpponentVector.x + 
+             ballToPlayerVector.y * ballToOpponentVector.y) / 
+            (ballToPlayerDistance * opponentToBallDistance);
+          
+          // Calculate distance from opponent to passing lane line
+          const crossProduct = 
+            Math.abs(ballToPlayerVector.x * ballToOpponentVector.y - 
+                    ballToPlayerVector.y * ballToOpponentVector.x) / 
+            ballToPlayerDistance;
+          
+          // If opponent is close to passing lane and between ball and player
+          if (crossProduct < 50 && dotProduct > 0.7) {
+            // Reduce passing lane quality based on how close opponent is to the lane
+            passingLaneQuality *= (crossProduct / 50);
+          }
+        }
+      }
+    }
+  }
+  
+  // Enhanced flags for special situations
   let isInShootingRange = 0;
   if (distanceToBall < 100 && distanceToGoal < 300) {
-    // Add directional awareness: only consider in shooting range if player is on correct side
+    // Directional awareness for shooting
     if ((player.team === 'red' && player.position.x > 400) || 
         (player.team === 'blue' && player.position.x < 400)) {
       isInShootingRange = 1;
     } else {
-      // Far from correct shooting position, reduce shooting probability
+      // Far from correct shooting position
       isInShootingRange = 0.2;
     }
   }
   
-  const isInPassingRange = distanceToBall < 80 && nearestTeammateDistance < 200 ? 1 : 0;
+  // Calculate passing opportunity based on open teammates and passing lane quality
+  const isInPassingRange = distanceToBall < 80 && 
+                          nearestTeammateDistance < 200 && 
+                          passingLaneQuality > 0.5 ? 1 : 0;
   
-  // ENHANCED: Better detection of dangerous shooting positions
   const isDangerousPosition = (distanceToBall < 100 && distanceToOwnGoal < 200) || 
                              (isBetweenBallAndOwnGoal && distanceToBall < 120) ? 1 : 0;
   
-  // Check if defense is required (opponent near our goal with the ball)
+  // Check if defense is required
   const ballToOwnGoalDistance = calculateDistance(ball.position, context.ownGoal);
   const isDefendingRequired = ballToOwnGoalDistance < 300 ? 1 : 0;
   
-  // Add team ELO as an input
-  // Normalize team ELO to be between 0 and 1, assuming ELO ranges from 1000 to 3000
+  // Normalize team ELO
   const normalizedTeamElo = player.teamElo ? normalizeValue(player.teamElo, 1000, 3000) : 0.5;
   
-  // Calculate ELO advantage compared to average opponent ELO (2000 as default)
-  const averageElo = 2000; // Default average ELO if none provided
+  // Calculate ELO advantage 
+  const averageElo = 2000;
   const eloAdvantage = player.teamElo ? normalizeValue(player.teamElo - averageElo, -1000, 1000) : 0.5;
   
-  // Calculate additional contextual inputs with safe fallbacks
+  // Contextual inputs with safe fallbacks
   const gameTime = context.gameTime || 0.5;
   const scoreDifferential = context.scoreDiff || 0;
   const momentum = player.brain.successRate?.overall || 0.5;
   
-  // Formation-based calculations with default values
+  // Formation-based calculations
   const formationCompactness = context.formationCompactness || 0.5;
   const formationWidth = context.formationWidth || 0.5;
   const distanceFromFormationCenter = context.distanceFromCenter || 0.5;
   const isInFormationPosition = context.isInPosition ? 1 : 0;
-  
-  // Density calculations with default values
-  const teammateDensity = context.teammateDensity || 0.5;
-  const opponentDensity = context.opponentDensity || 0.5;
 
   return {
     ballX: normalizedBallX,
@@ -152,17 +221,13 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
     isInShootingRange,
     isInPassingRange,
     isDefendingRequired,
-    // Add new inputs for own goal prevention
     distanceToOwnGoal: normalizedDistanceToOwnGoal,
     angleToOwnGoal: normalizedAngleToOwnGoal,
     isFacingOwnGoal,
     isDangerousPosition,
     isBetweenBallAndOwnGoal,
-    // Add team ELO inputs
     teamElo: normalizedTeamElo,
     eloAdvantage: eloAdvantage,
-    
-    // Add new contextual features with default values
     gameTime,
     scoreDifferential,
     momentum,

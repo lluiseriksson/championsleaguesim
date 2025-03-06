@@ -209,6 +209,104 @@ export const createPlayerBrain = (): NeuralNet => {
       trainingData.push({ input, output });
     }
 
+    for (let i = 0; i < 15; i++) {
+      const input: NeuralInput = {
+        ballX: 0.2 + Math.random() * 0.6,
+        ballY: Math.random(),
+        playerX: 0.2 + Math.random() * 0.6,
+        playerY: Math.random(),
+        ballVelocityX: (Math.random() * 2 - 1) / 20,
+        ballVelocityY: (Math.random() * 2 - 1) / 20,
+        distanceToGoal: Math.random(),
+        angleToGoal: Math.random() * 2 - 1,
+        nearestTeammateDistance: 0.1 + Math.random() * 0.3,
+        nearestTeammateAngle: Math.random() * 2 - 1,
+        nearestOpponentDistance: 0.1 + Math.random() * 0.3,
+        nearestOpponentAngle: Math.random() * 2 - 1,
+        isInShootingRange: 0,
+        isInPassingRange: 0,
+        isDefendingRequired: 0,
+        distanceToOwnGoal: Math.random(),
+        angleToOwnGoal: Math.random() * 2 - 1,
+        isFacingOwnGoal: 0,
+        isDangerousPosition: 0,
+        isBetweenBallAndOwnGoal: 0,
+        teamElo: 0.5 + Math.random() * 0.3,
+        eloAdvantage: Math.random() * 0.6 - 0.3,
+        gameTime: Math.random(),
+        scoreDifferential: Math.random() * 2 - 1,
+        momentum: Math.random(),
+        formationCompactness: Math.random(),
+        formationWidth: Math.random(),
+        recentSuccessRate: Math.random(),
+        possessionDuration: Math.random(),
+        distanceFromFormationCenter: Math.random(),
+        isInFormationPosition: Math.random(),
+        teammateDensity: 0.7 + Math.random() * 0.3,
+        opponentDensity: 0.7 + Math.random() * 0.3
+      };
+
+      const moveAwayAngle = Math.random() * 2 * Math.PI;
+      const output: NeuralOutput = {
+        moveX: 0.5 + 0.4 * Math.cos(moveAwayAngle),
+        moveY: 0.5 + 0.4 * Math.sin(moveAwayAngle),
+        shootBall: 0,
+        passBall: 0,
+        intercept: 0
+      };
+
+      trainingData.push({ input, output });
+    }
+
+    for (let i = 0; i < 15; i++) {
+      const input: NeuralInput = {
+        ballX: 0.3 + Math.random() * 0.4,
+        ballY: Math.random(),
+        playerX: 0.4 + Math.random() * 0.4,
+        playerY: Math.random(),
+        ballVelocityX: Math.random() * 0.05,
+        ballVelocityY: (Math.random() * 2 - 1) / 20,
+        distanceToGoal: 0.3 + Math.random() * 0.4,
+        angleToGoal: Math.random() * 0.6 - 0.3,
+        nearestTeammateDistance: 0.3 + Math.random() * 0.2,
+        nearestTeammateAngle: Math.random() * 2 - 1,
+        nearestOpponentDistance: 0.3 + Math.random() * 0.3,
+        nearestOpponentAngle: Math.random() * 2 - 1,
+        isInShootingRange: 0,
+        isInPassingRange: 0,
+        isDefendingRequired: 0,
+        distanceToOwnGoal: 0.6 + Math.random() * 0.3,
+        angleToOwnGoal: Math.random() * 2 - 1,
+        isFacingOwnGoal: 0,
+        isDangerousPosition: 0,
+        isBetweenBallAndOwnGoal: 0,
+        teamElo: 0.5 + Math.random() * 0.4,
+        eloAdvantage: 0.1 + Math.random() * 0.3,
+        gameTime: Math.random(),
+        scoreDifferential: Math.random() * 2 - 1,
+        momentum: 0.5 + Math.random() * 0.3,
+        formationCompactness: 0.4 + Math.random() * 0.3,
+        formationWidth: 0.5 + Math.random() * 0.3,
+        recentSuccessRate: 0.5 + Math.random() * 0.3,
+        possessionDuration: 0.3 + Math.random() * 0.3,
+        distanceFromFormationCenter: 0.4 + Math.random() * 0.3,
+        isInFormationPosition: Math.random() > 0.7 ? 1 : 0,
+        teammateDensity: 0.3 + Math.random() * 0.3,
+        opponentDensity: 0.3 + Math.random() * 0.3
+      };
+
+      const moveTowardGoal = Math.random() > 0.4;
+      const output: NeuralOutput = {
+        moveX: moveTowardGoal ? 0.7 + Math.random() * 0.3 : 0.3 + Math.random() * 0.4,
+        moveY: 0.5 + (Math.random() - 0.5) * 0.7,
+        shootBall: 0,
+        passBall: 0,
+        intercept: 0
+      };
+
+      trainingData.push({ input, output });
+    }
+
     net.train(trainingData, {
       iterations: 2000,
       errorThresh: 0.005,
