@@ -10,15 +10,8 @@ import { initializePlayerBrainWithHistory } from '../../utils/brainTraining';
 import { isStrategicMovement, calculateReceivingPositionQuality } from '../../utils/playerBrain';
 import { isNetworkValid } from '../../utils/neuralHelpers';
 import { validatePlayerBrain, createTacticalInput } from '../../utils/neural/networkValidator';
-import { 
-  analyzeSituation, 
-  selectSpecializedNetwork, 
-  getSpecializedNetwork,
-  combineSpecializedOutputs
-} from '../../utils/specializedNetworks';
+import { constrainMovementToRadius } from '../../utils/movementConstraints';
 import { calculateCollisionAvoidance } from '../../hooks/game/useTeamCollisions';
-import * as brain from 'brain.js';
-import { NeuralInput, NeuralOutput, SituationContext } from '../../types/football';
 
 interface PlayerMovementProps {
   players: Player[];
@@ -28,22 +21,6 @@ interface PlayerMovementProps {
   gameTime?: number;
   score?: { red: number, blue: number };
 }
-
-const calculateExecutionPrecision = (teamElo?: number): number => {
-  if (!teamElo) return 1.0;
-  
-  const basePrecision = 0.7;
-  const eloPrecisionBonus = Math.max(0, (teamElo - 1500) / 100) * 0.02;
-  const precision = Math.min(0.98, basePrecision + eloPrecisionBonus);
-  
-  return precision;
-};
-
-const applyExecutionNoise = (value: number, precision: number): number => {
-  const noiseAmplitude = 1 - precision;
-  const noise = (Math.random() * 2 - 1) * noiseAmplitude;
-  return value + noise;
-};
 
 const usePlayerMovement = ({ 
   players, 
@@ -55,7 +32,7 @@ const usePlayerMovement = ({
 }: PlayerMovementProps) => {
   const [formations, setFormations] = useState({ redFormation: [], blueFormation: [] });
   const [possession, setPossession] = useState({ team: null, player: null, duration: 0 });
-  
+
   useEffect(() => {
     if (gameReady && players.length > 0) {
       setPlayers(currentPlayers => 
@@ -66,13 +43,13 @@ const usePlayerMovement = ({
       );
     }
   }, [gameReady, setPlayers]);
-  
+
   useEffect(() => {
     if (gameReady && players.length > 0) {
       setFormations(trackFormation(players));
     }
   }, [players, gameReady]);
-  
+
   useEffect(() => {
     if (gameReady) {
       setPossession(prev => trackPossession(ball, players, prev));
@@ -85,13 +62,8 @@ const usePlayerMovement = ({
     setPlayers(currentPlayers => {
       const proposedPositions = currentPlayers.map(player => {
         try {
-          const opposingTeamElo = currentPlayers
-            .filter(p => p.team !== player.team)
-            .reduce((sum, p) => sum + (p.teamElo || 2000), 0) / 
-            currentPlayers.filter(p => p.team !== player.team).length;
-            
           if (player.role === 'goalkeeper') {
-            const movement = moveGoalkeeper(player, ball, opposingTeamElo);
+            const movement = moveGoalkeeper(player, ball);
             const newPosition = {
               x: player.position.x + movement.x,
               y: player.position.y + movement.y
@@ -110,80 +82,47 @@ const usePlayerMovement = ({
               }
             };
           }
-          
-          if (!player.brain || !player.brain.net || !isNetworkValid(player.brain.net)) {
+
+          if (!player.brain || !isNetworkValid(player.brain.net)) {
             console.warn(`Invalid brain detected for ${player.team} ${player.role}. Using fallback movement.`);
             
-            const playerTeammates = currentPlayers.filter(p => p.team === player.team && p.id !== player.id);
-            const opponents = currentPlayers.filter(p => p.team !== player.team);
-            
-            let strategicX = player.targetPosition.x;
-            let strategicY = player.targetPosition.y;
-            
-            const positionQuality = calculateReceivingPositionQuality(
-              player.position,
-              ball.position,
-              playerTeammates.map(t => t.position),
-              opponents.map(o => o.position),
-              player.team === 'red' ? { x: 0, y: PITCH_HEIGHT/2 } : { x: PITCH_WIDTH, y: PITCH_HEIGHT/2 },
-              player.team === 'red' ? { x: PITCH_WIDTH, y: PITCH_HEIGHT/2 } : { x: 0, y: PITCH_HEIGHT/2 }
-            );
-            
-            if (positionQuality < 0.4) {
-              const roleOffsets = {
-                defender: player.team === 'red' ? 150 : PITCH_WIDTH - 150,
-                midfielder: player.team === 'red' ? 300 : PITCH_WIDTH - 300,
-                forward: player.team === 'red' ? 500 : PITCH_WIDTH - 500
-              };
-              
-              strategicX = roleOffsets[player.role] || player.targetPosition.x;
-              strategicY = Math.max(100, Math.min(PITCH_HEIGHT - 100, ball.position.y));
-            }
-            
-            const dx = ball.position.x - player.position.x;
-            const dy = ball.position.y - player.position.y;
-            const distToBall = Math.sqrt(dx*dx + dy*dy);
-            
-            const shouldChaseBall = distToBall < 100 && !isStrategicMovement(
-              player.position,
-              ball.position,
-              { x: dx, y: dy }
-            );
-            
-            let moveX, moveY;
-            if (shouldChaseBall) {
-              const moveSpeed = 1.5;
-              moveX = distToBall > 0 ? (dx / distToBall) * moveSpeed : 0;
-              moveY = distToBall > 0 ? (dy / distToBall) * moveSpeed : 0;
-            } else {
-              const dxStrategic = strategicX - player.position.x;
-              const dyStrategic = strategicY - player.position.y;
-              const distStrategic = Math.sqrt(dxStrategic*dxStrategic + dyStrategic*dyStrategic);
-              const moveSpeed = 1.2;
-              moveX = distStrategic > 0 ? (dxStrategic / distStrategic) * moveSpeed : 0;
-              moveY = distStrategic > 0 ? (dyStrategic / distStrategic) * moveSpeed : 0;
-            }
-            
-            let proposedPosition = {
-              x: player.position.x + moveX,
-              y: player.position.y + moveY
+            const roleOffsets = {
+              defender: player.team === 'red' ? 150 : PITCH_WIDTH - 150,
+              midfielder: player.team === 'red' ? 300 : PITCH_WIDTH - 300,
+              forward: player.team === 'red' ? 500 : PITCH_WIDTH - 500
             };
             
-            proposedPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, proposedPosition.x));
-            proposedPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, proposedPosition.y));
+            const targetX = roleOffsets[player.role] || player.targetPosition.x;
+            const targetY = Math.max(100, Math.min(PITCH_HEIGHT - 100, ball.position.y));
+            
+            const dx = targetX - player.position.x;
+            const dy = targetY - player.position.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            const moveSpeed = 1.2;
+            
+            let proposedPosition = {
+              x: player.position.x + (dist > 0 ? (dx / dist) * moveSpeed : 0),
+              y: player.position.y + (dist > 0 ? (dy / dist) * moveSpeed : 0)
+            };
+            
+            proposedPosition = constrainMovementToRadius(
+              player.position,
+              player.targetPosition,
+              proposedPosition,
+              player.role
+            );
             
             return {
               ...player,
               proposedPosition,
-              movement: { x: moveX, y: moveY },
-              brain: {
-                ...player.brain,
-                lastOutput: { x: moveX, y: moveY },
-                lastAction: 'move' as const
-              }
+              movement: { 
+                x: proposedPosition.x - player.position.x,
+                y: proposedPosition.y - player.position.y
+              },
+              brain: initializePlayerBrainWithHistory(player.brain || { net: null })
             };
           }
-          
+
           const gameContext = createGameContext(
             gameTime,
             3600,
@@ -193,7 +132,7 @@ const usePlayerMovement = ({
             formations,
             player
           );
-          
+
           const playerX = player.position.x / PITCH_WIDTH;
           const isDefensiveThird = (player.team === 'red' && playerX < 0.33) || 
                                   (player.team === 'blue' && playerX > 0.66);
@@ -365,7 +304,7 @@ const usePlayerMovement = ({
         const collisionAdjustedPosition = calculateCollisionAvoidance(
           player,
           teammates,
-          player.proposedPosition
+          player.proposedPosition || player.position
         );
         
         return {
@@ -379,6 +318,22 @@ const usePlayerMovement = ({
   }, [ball, gameReady, setPlayers, formations, possession, gameTime, score]);
 
   return { updatePlayerPositions, formations, possession };
+};
+
+const calculateExecutionPrecision = (teamElo?: number): number => {
+  if (!teamElo) return 1.0;
+  
+  const basePrecision = 0.7;
+  const eloPrecisionBonus = Math.max(0, (teamElo - 1500) / 100) * 0.02;
+  const precision = Math.min(0.98, basePrecision + eloPrecisionBonus);
+  
+  return precision;
+};
+
+const applyExecutionNoise = (value: number, precision: number): number => {
+  const noiseAmplitude = 1 - precision;
+  const noise = (Math.random() * 2 - 1) * noiseAmplitude;
+  return value + noise;
 };
 
 const normalizeValue = (value: number, min: number, max: number): number => {
