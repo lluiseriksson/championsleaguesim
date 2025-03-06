@@ -37,6 +37,30 @@ export function getColorDistance(
   );
 }
 
+// Enhanced distance calculation with brightness and hue consideration
+export function getEnhancedColorDistance(
+  color1: { r: number, g: number, b: number }, 
+  color2: { r: number, g: number, b: number }
+): number {
+  // Calculate traditional weighted distance
+  const baseDistance = getColorDistance(color1, color2);
+  
+  // Calculate brightness for each color
+  const brightness1 = (color1.r * 299 + color1.g * 587 + color1.b * 114) / 1000;
+  const brightness2 = (color2.r * 299 + color2.g * 587 + color2.b * 114) / 1000;
+  
+  // Calculate brightness difference (important for visibility)
+  const brightnessDiff = Math.abs(brightness1 - brightness2);
+  
+  // Calculate hue difference (simplified)
+  const hue1 = Math.atan2(color1.g - color1.b, color1.r - color1.b);
+  const hue2 = Math.atan2(color2.g - color2.b, color2.r - color2.b);
+  const hueDiff = Math.abs(hue1 - hue2);
+  
+  // Combine all factors (base distance, brightness and hue differences)
+  return baseDistance * 0.5 + brightnessDiff * 40 + hueDiff * 30;
+}
+
 // Color category system
 export enum ColorCategory {
   RED = "RED",
@@ -110,7 +134,7 @@ export function categorizeColor(hexColor: string): ColorCategory {
   return ColorCategory.GRAY;
 }
 
-// Function to check if two colors are in the same category or conflicting categories
+// Improved function to check if two colors are in the same category or conflicting categories
 export function areColorsConflicting(color1: string, color2: string): boolean {
   const category1 = categorizeColor(color1);
   const category2 = categorizeColor(color2);
@@ -137,4 +161,20 @@ export function areColorsConflicting(color1: string, color2: string): boolean {
   
   // Check if the categories conflict
   return conflictMap[category1]?.includes(category2) || false;
+}
+
+// New function to check if colors are sufficiently different (combining both approaches)
+export function areColorsSufficientlyDifferent(color1: string, color2: string): boolean {
+  // First check categorical conflicts
+  const categoricalConflict = areColorsConflicting(color1, color2);
+  
+  // Then check numerical distance
+  const rgb1 = parseHexColor(color1);
+  const rgb2 = parseHexColor(color2);
+  const enhancedDistance = getEnhancedColorDistance(rgb1, rgb2);
+  
+  // We want colors that don't conflict categorically AND have sufficient distance
+  const isDistantEnough = enhancedDistance > 150; // Higher threshold for better contrast
+  
+  return !categoricalConflict && isDistantEnough;
 }

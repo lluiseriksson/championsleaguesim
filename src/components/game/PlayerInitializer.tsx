@@ -3,7 +3,8 @@ import React from 'react';
 import { Player, PITCH_WIDTH, PITCH_HEIGHT, KitType } from '../../types/football';
 import { createPlayerBrain } from '../../utils/playerBrain';
 import { initializePlayerBrain } from '../../utils/modelLoader';
-import { getAwayTeamKit, teamKitColors } from '../../types/kits';
+import { getAwayTeamKit } from '../../types/kits';
+import { teamKitColors } from '../../types/kits/teamColorsData';
 
 interface PlayerInitializerProps {
   setPlayers: React.Dispatch<React.SetStateAction<Player[]>>;
