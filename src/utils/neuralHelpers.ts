@@ -1,5 +1,6 @@
 import { Position, NeuralInput, NeuralOutput, TeamContext, PITCH_WIDTH, PITCH_HEIGHT, SituationContext } from '../types/football';
 import * as brain from 'brain.js';
+import { calculateShotQuality } from './playerBrain';
 
 // Normalize a position to a value between 0 and 1
 export const normalizePosition = (pos: Position): Position => ({
@@ -40,7 +41,7 @@ export const createNeuralInput = (
   ball: { position: Position, velocity: Position },
   player: Position,
   context: TeamContext,
-  teamElo: number = 2000, // Default ELO if none provided
+  teamElo: number = 2000,
   gameContext: {
     gameTime?: number,
     scoreDifferential?: number,
@@ -75,6 +76,30 @@ export const createNeuralInput = (
   
   // Calculate recent performance metrics
   const performanceMetrics = calculatePerformanceMetrics(gameContext.actionHistory || []);
+
+  // Calculate best shooting opportunity
+  let bestShootingAngle = 0;
+  let bestShootingQuality = 0;
+  
+  // Check shooting opportunities in 8 directions
+  for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 4) {
+    const targetPosition = {
+      x: player.x + Math.cos(angle) * 100,
+      y: player.y + Math.sin(angle) * 100
+    };
+    
+    const shotQuality = calculateShotQuality(
+      player,
+      targetPosition,
+      context.teammates || [],
+      context.opponents || []
+    );
+    
+    if (shotQuality > bestShootingQuality) {
+      bestShootingQuality = shotQuality;
+      bestShootingAngle = angle;
+    }
+  }
 
   // Return the neural input object with normalized values
   return {
@@ -113,7 +138,9 @@ export const createNeuralInput = (
     distanceFromFormationCenter: formationMetrics.distanceFromCenter,
     isInFormationPosition: formationMetrics.isInPosition,
     teammateDensity: calculateDensity(player, teammates, 150),
-    opponentDensity: calculateDensity(player, opponents, 150)
+    opponentDensity: calculateDensity(player, opponents, 150),
+    shootingAngle: bestShootingAngle / (Math.PI * 2), // Normalize to 0-1
+    shootingQuality: bestShootingQuality
   };
 };
 
@@ -289,7 +316,9 @@ export const isNetworkValid = (net: brain.NeuralNetwork<NeuralInput, NeuralOutpu
       distanceFromFormationCenter: 0.5,
       isInFormationPosition: 1,
       teammateDensity: 0.5,
-      opponentDensity: 0.5
+      opponentDensity: 0.5,
+      shootingAngle: 0.5,
+      shootingQuality: 0.5
     };
 
     // Run the network with test input and check if output is valid

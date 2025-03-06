@@ -51,7 +51,9 @@ export const createPlayerBrain = (): NeuralNet => {
         distanceFromFormationCenter: Math.random(),
         isInFormationPosition: Math.random(),
         teammateDensity: Math.random(),
-        opponentDensity: Math.random()
+        opponentDensity: Math.random(),
+        shootingAngle: Math.random(),
+        shootingQuality: Math.random()
       };
 
       const output: NeuralOutput = {
@@ -99,7 +101,9 @@ export const createPlayerBrain = (): NeuralNet => {
         distanceFromFormationCenter: 0.6 + Math.random() * 0.4,
         isInFormationPosition: 0.7 + Math.random() * 0.3,
         teammateDensity: 0.3 + Math.random() * 0.4,
-        opponentDensity: 0.2 + Math.random() * 0.3
+        opponentDensity: 0.2 + Math.random() * 0.3,
+        shootingAngle: Math.random(),
+        shootingQuality: Math.random()
       };
 
       const output: NeuralOutput = {
@@ -147,7 +151,9 @@ export const createPlayerBrain = (): NeuralNet => {
         distanceFromFormationCenter: 0.6 + Math.random() * 0.4,
         isInFormationPosition: 0.7 + Math.random() * 0.3,
         teammateDensity: 0.3 + Math.random() * 0.4,
-        opponentDensity: 0.2 + Math.random() * 0.3
+        opponentDensity: 0.2 + Math.random() * 0.3,
+        shootingAngle: Math.random(),
+        shootingQuality: Math.random()
       };
 
       const output: NeuralOutput = {
@@ -195,7 +201,9 @@ export const createPlayerBrain = (): NeuralNet => {
         distanceFromFormationCenter: 0.1 + Math.random() * 0.3,
         isInFormationPosition: 0.7 + Math.random() * 0.3,
         teammateDensity: 0.6 + Math.random() * 0.4,
-        opponentDensity: 0.6 + Math.random() * 0.4
+        opponentDensity: 0.6 + Math.random() * 0.4,
+        shootingAngle: Math.random(),
+        shootingQuality: Math.random()
       };
 
       const output: NeuralOutput = {
@@ -243,7 +251,9 @@ export const createPlayerBrain = (): NeuralNet => {
         distanceFromFormationCenter: Math.random(),
         isInFormationPosition: Math.random(),
         teammateDensity: 0.7 + Math.random() * 0.3,
-        opponentDensity: 0.7 + Math.random() * 0.3
+        opponentDensity: 0.7 + Math.random() * 0.3,
+        shootingAngle: Math.random(),
+        shootingQuality: Math.random()
       };
 
       const moveAwayAngle = Math.random() * 2 * Math.PI;
@@ -292,7 +302,9 @@ export const createPlayerBrain = (): NeuralNet => {
         distanceFromFormationCenter: 0.4 + Math.random() * 0.3,
         isInFormationPosition: Math.random() > 0.7 ? 1 : 0,
         teammateDensity: 0.3 + Math.random() * 0.3,
-        opponentDensity: 0.3 + Math.random() * 0.3
+        opponentDensity: 0.3 + Math.random() * 0.3,
+        shootingAngle: Math.random(),
+        shootingQuality: Math.random()
       };
 
       const moveTowardGoal = Math.random() > 0.4;
@@ -374,7 +386,9 @@ const createFallbackBrain = (): NeuralNet => {
     distanceFromFormationCenter: 0.5,
     isInFormationPosition: 1,
     teammateDensity: 0.5,
-    opponentDensity: 0.5
+    opponentDensity: 0.5,
+    shootingAngle: 0.5,
+    shootingQuality: 0.5
   };
 
   const output: NeuralOutput = {

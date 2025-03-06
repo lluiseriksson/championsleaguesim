@@ -1,4 +1,3 @@
-
 import * as brain from 'brain.js';
 import { 
   NeuralNet, 
@@ -14,14 +13,12 @@ import {
 import { createPlayerBrain } from './neuralNetwork';
 import { isNetworkValid } from './neuralHelpers';
 
-// Create a specialized neural network
 export const createSpecializedNetwork = (
   type: NetworkSpecialization,
   hiddenLayers: number[] = [16, 12, 8]
 ): SpecializedNeuralNet => {
   console.log(`Creating specialized network for: ${type}`);
   
-  // Configure network based on specialization
   const config: any = {
     hiddenLayers,
     activation: 'leaky-relu',
@@ -29,7 +26,6 @@ export const createSpecializedNetwork = (
     momentum: 0.1
   };
   
-  // Different configurations based on specialization
   switch (type) {
     case 'attacking':
       config.hiddenLayers = [20, 16, 12, 8];
@@ -60,8 +56,7 @@ export const createSpecializedNetwork = (
       config.learningRate = 0.03;
       config.momentum = 0.2;
       break;
-    default: // general
-      // Use default configuration
+    default:
       break;
   }
   
@@ -79,12 +74,9 @@ export const createSpecializedNetwork = (
   };
 };
 
-// Initialize a brain with specialized networks
 export const initializeSpecializedBrain = (): NeuralNet => {
-  // Start with a standard neural network
   const brain = createPlayerBrain();
   
-  // Add specialized networks
   const specializations: NetworkSpecialization[] = [
     'general',
     'attacking',
@@ -94,18 +86,14 @@ export const initializeSpecializedBrain = (): NeuralNet => {
     'setpiece'
   ];
   
-  // Create specialized networks
   const specializedNetworks = specializations.map(type => 
     createSpecializedNetwork(type)
   );
   
-  // Create selector network (decides which specialized network to use)
   const selectorNetwork = createSpecializedNetwork('selector', [10, 8, 6]);
   
-  // Create meta network (combines outputs from specialized networks)
   const metaNetwork = createSpecializedNetwork('meta', [24, 16, 8]);
   
-  // Add these to the main brain
   return {
     ...brain,
     specializedNetworks,
@@ -115,7 +103,6 @@ export const initializeSpecializedBrain = (): NeuralNet => {
   };
 };
 
-// Determine the current situation based on player and game context
 export const analyzeSituation = (
   playerPosition: Position,
   ballPosition: Position,
@@ -126,15 +113,12 @@ export const analyzeSituation = (
   opponentDensity: number = 0.5,
   recentActions: Array<{ action: string; success: boolean; }> = []
 ): SituationContext => {
-  // Normalize positions
   const playerX = playerPosition.x / PITCH_WIDTH;
   
-  // Determine thirds of the field
   const isDefensiveThird = playerX < 0.33;
   const isMiddleThird = playerX >= 0.33 && playerX <= 0.66;
   const isAttackingThird = playerX > 0.66;
   
-  // Calculate distances
   const distanceToBall = Math.sqrt(
     Math.pow(playerPosition.x - ballPosition.x, 2) + 
     Math.pow(playerPosition.y - ballPosition.y, 2)
@@ -150,13 +134,11 @@ export const analyzeSituation = (
     Math.pow(playerPosition.y - opponentGoal.y, 2)
   ) / Math.sqrt(PITCH_WIDTH * PITCH_WIDTH + PITCH_HEIGHT * PITCH_HEIGHT);
   
-  // Determine if transitioning based on recent actions
   const isTransitioning = recentActions.length >= 2 && 
     recentActions.slice(-2).some(action => 
       action.action === 'intercept' || action.action === 'pass'
     );
   
-  // Determine defensive pressure based on opponent density and distance to own goal
   const defensivePressure = (opponentDensity * 0.7) + 
     ((1 - distanceToOwnGoal) * 0.3);
   
@@ -165,7 +147,7 @@ export const analyzeSituation = (
     isMiddleThird,
     isAttackingThird,
     hasTeamPossession,
-    isSetPiece: false, // Would need additional game state info
+    isSetPiece: false,
     isTransitioning,
     distanceToBall,
     distanceToOwnGoal,
@@ -174,7 +156,6 @@ export const analyzeSituation = (
   };
 };
 
-// Select the most appropriate specialized network based on situation
 export const selectSpecializedNetwork = (
   brain: NeuralNet,
   situationContext: SituationContext
@@ -183,12 +164,9 @@ export const selectSpecializedNetwork = (
     return 'general';
   }
   
-  // If we have a selector network, use it
   if (brain.selectorNetwork && isNetworkValid(brain.selectorNetwork.net)) {
     try {
-      // Map situation context to neural input
       const input: NeuralInput = {
-        // Use standard fields with placeholder values
         ballX: 0.5,
         ballY: 0.5,
         playerX: 0.5,
@@ -221,10 +199,11 @@ export const selectSpecializedNetwork = (
         distanceFromFormationCenter: 0.5,
         isInFormationPosition: 1,
         teammateDensity: 0.5,
-        opponentDensity: 0.5
+        opponentDensity: 0.5,
+        shootingAngle: 0.5,
+        shootingQuality: situationContext.isAttackingThird ? 0.7 : 0.3
       };
       
-      // Add situation specific data
       const situationData = {
         isDefensiveThird: situationContext.isDefensiveThird ? 1 : 0,
         isMiddleThird: situationContext.isMiddleThird ? 1 : 0,
@@ -234,14 +213,11 @@ export const selectSpecializedNetwork = (
         defensivePressure: situationContext.defensivePressure
       };
       
-      // Run selector network
       const output = brain.selectorNetwork.net.run({
         ...input,
         ...situationData
       } as any);
       
-      // Convert output to network selection
-      // Assuming outputs map to network types
       const networkChoices = [
         { type: 'general', weight: 0.2 },
         { type: 'attacking', weight: situationContext.isAttackingThird ? 0.8 : 0.1 },
@@ -251,12 +227,11 @@ export const selectSpecializedNetwork = (
         { type: 'setpiece', weight: situationContext.isSetPiece ? 0.9 : 0.05 }
       ];
       
-      // Apply situational bias and find best network
       let bestType: NetworkSpecialization = 'general';
       let bestScore = -1;
       
       for (const choice of networkChoices) {
-        const baseScore = output.moveX * choice.weight; // Simplified scoring
+        const baseScore = output.moveX * choice.weight;
         const netPerformance = brain.specializedNetworks.find(n => n.type === choice.type)?.performance.situationSuccess || 0.5;
         const score = (baseScore * 0.7) + (netPerformance * 0.3);
         
@@ -269,11 +244,9 @@ export const selectSpecializedNetwork = (
       return bestType;
     } catch (error) {
       console.warn('Error using selector network:', error);
-      // Fallback to rules-based selection
     }
   }
   
-  // Rules-based fallback selection
   if (situationContext.isDefensiveThird && !situationContext.hasTeamPossession) {
     return 'defending';
   } else if (situationContext.isAttackingThird && situationContext.hasTeamPossession) {
@@ -289,7 +262,6 @@ export const selectSpecializedNetwork = (
   return 'general';
 };
 
-// Get a specific specialized network from the brain
 export const getSpecializedNetwork = (
   brain: NeuralNet,
   type: NetworkSpecialization
@@ -302,31 +274,25 @@ export const getSpecializedNetwork = (
   return specialized && isNetworkValid(specialized.net) ? specialized.net : brain.net;
 };
 
-// Combine outputs from multiple specialized networks
 export const combineSpecializedOutputs = (
   brain: NeuralNet,
   situationContext: SituationContext,
   inputs: NeuralInput
 ): NeuralOutput => {
   if (!brain.specializedNetworks || !brain.metaNetwork) {
-    // If no specialized networks, use the main network
     return brain.net.run(inputs);
   }
   
   try {
-    // Get outputs from all specialized networks
     const outputs = brain.specializedNetworks.map(network => ({
       type: network.type,
       output: network.net.run(inputs),
       confidence: calculateNetworkConfidence(network, situationContext)
     }));
     
-    // If meta-network is available and valid, use it to combine outputs
     if (brain.metaNetwork && isNetworkValid(brain.metaNetwork.net)) {
-      // Transform outputs to inputs for meta-network
       const metaInputs = {
         ...inputs,
-        // Add situation context and network confidences as inputs
         isDefensiveThird: situationContext.isDefensiveThird ? 1 : 0,
         isAttackingThird: situationContext.isAttackingThird ? 1 : 0,
         hasTeamPossession: situationContext.hasTeamPossession ? 1 : 0,
@@ -337,14 +303,11 @@ export const combineSpecializedOutputs = (
         transitionConfidence: outputs.find(o => o.type === 'transition')?.confidence || 0.5
       } as any;
       
-      // Use meta-network to get final output
       return brain.metaNetwork.net.run(metaInputs);
     }
     
-    // Fallback: weighted average based on network confidence
     const totalConfidence = outputs.reduce((sum, o) => sum + o.confidence, 0);
     
-    // Initialize result with zeros
     const result: NeuralOutput = {
       moveX: 0,
       moveY: 0,
@@ -353,7 +316,6 @@ export const combineSpecializedOutputs = (
       intercept: 0
     };
     
-    // Calculate weighted average
     outputs.forEach(({ output, confidence }) => {
       const weight = confidence / totalConfidence;
       result.moveX += output.moveX * weight;
@@ -366,19 +328,16 @@ export const combineSpecializedOutputs = (
     return result;
   } catch (error) {
     console.warn('Error combining specialized outputs:', error);
-    // Fallback to main network
     return brain.net.run(inputs);
   }
 };
 
-// Calculate how confident a specialized network should be in the current situation
 const calculateNetworkConfidence = (
   network: SpecializedNeuralNet, 
   situation: SituationContext
 ): number => {
   let baseConfidence = network.performance.situationSuccess;
   
-  // Adjust confidence based on situation match
   switch (network.type) {
     case 'attacking':
       baseConfidence *= situation.isAttackingThird ? 1.5 : 0.5;
@@ -398,16 +357,13 @@ const calculateNetworkConfidence = (
     case 'setpiece':
       baseConfidence *= situation.isSetPiece ? 2.0 : 0.3;
       break;
-    // General is always moderately confident
     default:
       baseConfidence *= 0.8;
   }
   
-  // Normalize to 0-1 range
   return Math.max(0.1, Math.min(1.0, baseConfidence));
 };
 
-// Update the specialized network system based on action results
 export const updateSpecializedNetworks = (
   brain: NeuralNet,
   action: string,
@@ -418,9 +374,7 @@ export const updateSpecializedNetworks = (
     return brain;
   }
   
-  // Create a new copy of specialized networks to update
   const updatedNetworks = brain.specializedNetworks.map(network => {
-    // Only update the network that was used or affected by this action
     if (network.type === brain.currentSpecialization) {
       const usageCount = network.performance.usageCount + 1;
       const overallSuccess = (
@@ -432,7 +386,7 @@ export const updateSpecializedNetworks = (
         ...network,
         performance: {
           overallSuccess,
-          situationSuccess: overallSuccess, // Simplified; could be more nuanced
+          situationSuccess: overallSuccess,
           usageCount
         }
       };
