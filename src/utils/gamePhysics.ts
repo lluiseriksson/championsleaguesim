@@ -1,6 +1,6 @@
 import { Position, PLAYER_RADIUS, BALL_RADIUS, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
 
-const MAX_BALL_SPEED = 15;
+const MAX_BALL_SPEED = 18; // Increased from 15 for more powerful shots
 const MIN_BALL_SPEED = 3.5; // Significantly increased minimum speed
 
 const limitSpeed = (velocity: Position): Position => {
@@ -33,9 +33,9 @@ export const checkCollision = (ballPos: Position, playerPos: Position, isGoalkee
   const dy = ballPos.y - playerPos.y;
   const distance = Math.sqrt(dx * dx + dy * dy);
   
-  // Use a larger collision radius for goalkeepers to improve their effectiveness
+  // Use a slightly reduced collision radius for goalkeepers to make scoring easier
   const collisionRadius = isGoalkeeper ? 
-    PLAYER_RADIUS * 1.4 + BALL_RADIUS : // 40% larger radius for goalkeepers (increased from 20%)
+    PLAYER_RADIUS * 1.25 + BALL_RADIUS : // Reduced from 1.4 to 1.25 for goalkeepers
     PLAYER_RADIUS + BALL_RADIUS;
   
   // Add a small buffer to prevent the ball from getting stuck
@@ -80,41 +80,51 @@ export const calculateNewVelocity = (
                                  (!isLeftGoalkeeper && currentVelocity.x > 0);
     
     if (ballMovingTowardsGoal) {
-      // Apply extra power for angled shots
-      const angledShotMultiplier = isAngledShot ? 1.4 : 1.0;
+      // Apply extra power for angled shots but less effective goalkeeper response
+      const angledShotMultiplier = isAngledShot ? 1.2 : 1.0; // Reduced from 1.4
       
       // Calculate horizontal deflection direction (away from the goal)
-      const deflectionX = isLeftGoalkeeper ? 5.0 * angledShotMultiplier : -5.0 * angledShotMultiplier; 
+      const deflectionX = isLeftGoalkeeper ? 4.0 * angledShotMultiplier : -4.0 * angledShotMultiplier; // Reduced from 5.0
       
       // Calculate vertical deflection to push ball away from goal center
       const verticalOffset = ballPosition.y - centerY;
-      const verticalFactor = Math.sign(verticalOffset) * (1.2 + Math.min(Math.abs(verticalOffset) / 80, 1.2));
+      const verticalFactor = Math.sign(verticalOffset) * (1.0 + Math.min(Math.abs(verticalOffset) / 100, 1.0)); // Reduced from 1.2
       
-      // Higher base speed for goalkeeper saves, with bonus for angled shots
-      const baseSpeed = isAngledShot ? 15 : 14;
+      // Goalkeeper saves have less power
+      const baseSpeed = isAngledShot ? 12 : 11; // Reduced from 15/14
+      
+      // Add randomness to saves - sometimes goalkeeper misjudges
+      const misjudgeFactor = Math.random();
+      if (misjudgeFactor < 0.2) { // 20% chance of misjudging
+        console.log(`Goalkeeper MISJUDGE by ${isLeftGoalkeeper ? 'red' : 'blue'} team!`);
+        return limitSpeed({
+          x: deflectionX * baseSpeed * 0.7,
+          y: verticalFactor * baseSpeed * 0.7
+        });
+      }
       
       console.log(`Goalkeeper SAVE by ${isLeftGoalkeeper ? 'red' : 'blue'} team! ${isAngledShot ? '(angled shot)' : ''}`);
       
       return limitSpeed({
         x: deflectionX * baseSpeed,
-        y: verticalFactor * baseSpeed * 1.5
+        y: verticalFactor * baseSpeed
       });
     }
     
     // When not directly saving, still direct the ball towards the correct side of the field
-    // to prevent own goals by the goalkeeper
+    // but with reduced power
     const teamDirection = isLeftGoalkeeper ? 1 : -1; // 1 for red (left goalkeeper), -1 for blue (right goalkeeper)
     
     return limitSpeed({
-      x: Math.abs(currentVelocity.x) * teamDirection * 1.8, // Increased from 1.5
+      x: Math.abs(currentVelocity.x) * teamDirection * 1.5, // Reduced from 1.8
       y: currentVelocity.y
     });
   }
 
-  // ENHANCED directional shooting for field players
+  // ENHANCED directional shooting for field players with MORE POWER
   // Add team-specific logic to make the ball tend to go in the right direction
   const team = playerPosition.x < PITCH_WIDTH / 2 ? 'red' : 'blue';
-  const directionalBias = team === 'red' ? 0.2 : -0.2; // Positive for red team, negative for blue team
+  const directionalBias = team === 'red' ? 0.25 : -0.25; // Increased from 0.2 to 0.25
   
   // For other players or when the ball isn't going toward goal
   const normalizedDx = dx / distance;
@@ -126,17 +136,17 @@ export const calculateNewVelocity = (
     currentVelocity.y * currentVelocity.y
   );
   
-  // Higher base speed for all balls - never let it get too slow
-  const adjustedSpeed = Math.max(7, speed * 1.3);  // Ensure speed is at least 7
+  // Higher base speed for all balls - increased for more powerful shots
+  const adjustedSpeed = Math.max(9, speed * 1.4);  // Increased from 7 to 9 and from 1.3 to 1.4
   
   // Add directional bias to reflection angle
   const reflectionAngle = angle + (angle - incidentAngle) + directionalBias;
   
-  // Add slight random variation to the reflection (reduced for more predictable behavior)
-  const randomVariation = (Math.random() - 0.5) * 0.2; // Reduced from 0.3
+  // Add slight random variation to the reflection
+  const randomVariation = (Math.random() - 0.5) * 0.3; // Increased from 0.2 to 0.3
   
-  // Higher multiplier for goalkeeper collisions for stronger clearances
-  const speedMultiplier = isGoalkeeper ? 2.0 : 1.5;
+  // Higher multiplier for player kicks
+  const speedMultiplier = isGoalkeeper ? 1.8 : 1.7; // Reduced for GK from 2.0 to 1.8, increased for players from 1.5 to 1.7
   
   // Calculate new velocity with all factors combined
   let newVelocity = {
