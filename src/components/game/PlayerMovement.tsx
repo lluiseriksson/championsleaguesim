@@ -264,7 +264,7 @@ const usePlayerMovement = ({
             };
           }
           
-          const neuralNetworkThreshold = player.role === 'defender' ? 0.35 : 0.4;
+          const neuralNetworkThreshold = player.role === 'defender' ? 0.45 : 0.5;
           const useNeuralNetwork = Math.random() > neuralNetworkThreshold;
           
           console.log(`${player.team} ${player.role} #${player.id} - Using neural network: ${useNeuralNetwork}`);
@@ -321,28 +321,28 @@ const usePlayerMovement = ({
             const ballYRelativeToCenter = (ball.position.y - PITCH_HEIGHT/2) / 2;
             targetY = ball.position.y - ballYRelativeToCenter;
           } else {
-            targetX += (Math.random() - 0.5) * 40;
-            targetY += (Math.random() - 0.5) * 60;
+            targetX += (Math.random() - 0.5) * 25;
+            targetY += (Math.random() - 0.5) * 35;
           }
           
           const dx = targetX - player.position.x;
           const dy = targetY - player.position.y;
           const dist = Math.sqrt(dx*dx + dy*dy);
           
-          let moveSpeed = 2.2;
+          let moveSpeed = 2.4;
           if (player.role === 'defender') {
-            moveSpeed = 2.5;
+            moveSpeed = 2.6;
           }
           
           let moveX = dist > 0 ? (dx / dist) * moveSpeed : 0;
           let moveY = dist > 0 ? (dy / dist) * moveSpeed : 0;
           
-          if (player.role === 'defender' && Math.random() > 0.7) {
-            moveX += (Math.random() - 0.5) * 1.0;
-            moveY += (Math.random() - 0.5) * 1.0;
-          } else if (Math.random() > 0.8) {
-            moveX += (Math.random() - 0.5) * 0.8;
-            moveY += (Math.random() - 0.5) * 0.8;
+          if (player.role === 'defender' && Math.random() > 0.8) {
+            moveX += (Math.random() - 0.5) * 0.6;
+            moveY += (Math.random() - 0.5) * 0.6;
+          } else if (Math.random() > 0.85) {
+            moveX += (Math.random() - 0.5) * 0.5;
+            moveY += (Math.random() - 0.5) * 0.5;
           }
           
           let proposedPosition = {

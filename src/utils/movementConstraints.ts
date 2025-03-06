@@ -3,9 +3,9 @@ import { calculateDistance } from './neuralCore';
 
 const ROLE_RADIUS_LIMITS = {
   goalkeeper: 70,     // Goalkeepers stay close to goal
-  defender: 150,      // Defenders maintain defensive structure
-  midfielder: 180,    // Midfielders have good movement range
-  forward: 220        // Forwards have most freedom to move
+  defender: 120,      // Reduced from 150 - Defenders maintain tighter defensive structure
+  midfielder: 150,    // Reduced from 180 - Midfielders have more restricted movement range
+  forward: 180        // Reduced from 220 - Forwards have more constrained freedom to move
 };
 
 export const constrainMovementToRadius = (
@@ -14,18 +14,18 @@ export const constrainMovementToRadius = (
   proposedPosition: Position,
   role: Player['role']
 ): Position => {
-  // Add randomization to radius limits for more varied movement
+  // Reduced randomization to radius limits for more deterministic movement
   const baseMaxRadius = ROLE_RADIUS_LIMITS[role];
-  const randomFactor = 1 + (Math.random() * 0.2 - 0.1); // ±10% randomization
+  const randomFactor = 1 + (Math.random() * 0.1 - 0.05); // ±5% randomization (reduced from ±10%)
   
-  // Give forwards even more freedom when they are in attacking position
+  // Give forwards slight more freedom when they are in attacking position
   const isForwardInAttackingPosition = role === 'forward' && 
     ((currentPosition.x > 500 && proposedPosition.x > 450) || 
      (currentPosition.x < 300 && proposedPosition.x < 350));
   
-  // Increase radius for forwards making attacking runs
+  // Slightly increased radius for attacking forwards, but still more constrained than before
   const maxRadius = isForwardInAttackingPosition 
-    ? baseMaxRadius * 1.3 * randomFactor
+    ? baseMaxRadius * 1.2 * randomFactor // Reduced from 1.3
     : baseMaxRadius * randomFactor;
   
   // Calculate distance from tactical position
@@ -35,7 +35,7 @@ export const constrainMovementToRadius = (
     return proposedPosition;
   }
   
-  // If outside radius, constrain to the radius boundary
+  // If outside radius, constrain to the radius boundary more strictly
   const angle = Math.atan2(
     proposedPosition.y - targetPosition.y,
     proposedPosition.x - targetPosition.x
