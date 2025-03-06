@@ -3,10 +3,10 @@ import { Position, Player } from '../types/football';
 import { calculateDistance } from './neuralCore';
 
 const ROLE_RADIUS_LIMITS = {
-  goalkeeper: 50,
-  defender: 100,
-  midfielder: 120,
-  forward: 150
+  goalkeeper: 70,    // Increased from 50
+  defender: 150,     // Increased from 100
+  midfielder: 180,   // Increased from 120
+  forward: 220       // Increased from 150
 };
 
 export const constrainMovementToRadius = (

@@ -166,8 +166,8 @@ const usePlayerMovement = ({
       const output = player.brain.net.run(input);
       
       if (output && typeof output.moveX === 'number' && typeof output.moveY === 'number') {
-        const moveX = (output.moveX * 2 - 1) * 2.0; 
-        const moveY = (output.moveY * 2 - 1) * 2.0;
+        const moveX = (output.moveX * 2 - 1) * 3.0; 
+        const moveY = (output.moveY * 2 - 1) * 3.0;
         
         return { x: moveX, y: moveY };
       }
@@ -208,7 +208,7 @@ const usePlayerMovement = ({
             };
           }
           
-          const neuralMovement = Math.random() > 0.5 ? useNeuralNetworkForPlayer(player, ball) : null;
+          const neuralMovement = Math.random() > 0.3 ? useNeuralNetworkForPlayer(player, ball) : null;
           
           if (neuralMovement) {
             let newPosition = {
