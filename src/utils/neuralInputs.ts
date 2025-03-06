@@ -146,6 +146,19 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
     isBetweenBallAndOwnGoal,
     // Add team ELO inputs
     teamElo: normalizedTeamElo,
-    eloAdvantage: eloAdvantage
+    eloAdvantage: eloAdvantage,
+    
+    // Add new contextual features with default values
+    gameTime: 0.5,                        // Normalized game time (default middle)
+    scoreDifferential: 0,                 // Default no score difference
+    momentum: 0.5,                        // Default neutral momentum
+    formationCompactness: 0.5,            // Default medium compactness
+    formationWidth: 0.5,                  // Default medium formation width
+    recentSuccessRate: 0.5,               // Default neutral success rate
+    possessionDuration: 0,                // Default no possession
+    distanceFromFormationCenter: 0.5,     // Default medium distance
+    isInFormationPosition: 1,             // Default in position
+    teammateDensity: 0.5,                 // Default medium density
+    opponentDensity: 0.5                  // Default medium density
   };
 };

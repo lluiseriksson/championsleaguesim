@@ -39,7 +39,20 @@ export const createPlayerBrain = (): NeuralNet => {
         isDangerousPosition: Math.random() > 0.8 ? 1 : 0,
         isBetweenBallAndOwnGoal: Math.random() > 0.8 ? 1 : 0,
         teamElo: 0.5 + Math.random() * 0.3, // Random ELO, skewed toward higher values
-        eloAdvantage: Math.random() * 0.6 - 0.3 // Random advantage between -0.3 and 0.3
+        eloAdvantage: Math.random() * 0.6 - 0.3, // Random advantage between -0.3 and 0.3
+        
+        // Add the new contextual features with random values
+        gameTime: Math.random(),
+        scoreDifferential: Math.random() * 2 - 1,
+        momentum: Math.random(),
+        formationCompactness: Math.random(),
+        formationWidth: Math.random(),
+        recentSuccessRate: Math.random(),
+        possessionDuration: Math.random(),
+        distanceFromFormationCenter: Math.random(),
+        isInFormationPosition: Math.random(),
+        teammateDensity: Math.random(),
+        opponentDensity: Math.random()
       };
       
       // Simple random output values
@@ -78,7 +91,20 @@ export const createPlayerBrain = (): NeuralNet => {
         isDangerousPosition: 0, // Not dangerous
         isBetweenBallAndOwnGoal: 0, // Not between ball and own goal
         teamElo: 0.6 + Math.random() * 0.3, // Higher ELO for better shooting
-        eloAdvantage: 0.1 + Math.random() * 0.3 // Positive advantage
+        eloAdvantage: 0.1 + Math.random() * 0.3, // Positive advantage
+        
+        // Add contextual features for shooting scenario
+        gameTime: 0.5 + Math.random() * 0.5, // Second half of the game
+        scoreDifferential: -0.2 + Math.random() * 0.4, // Slightly behind or tied
+        momentum: 0.6 + Math.random() * 0.4, // Good momentum
+        formationCompactness: 0.3 + Math.random() * 0.4, // Medium to spread out formation
+        formationWidth: 0.6 + Math.random() * 0.4, // Wider formation
+        recentSuccessRate: 0.6 + Math.random() * 0.4, // Good success rate
+        possessionDuration: 0.3 + Math.random() * 0.7, // Varied possession time
+        distanceFromFormationCenter: 0.6 + Math.random() * 0.4, // Forward positioned
+        isInFormationPosition: 0.7 + Math.random() * 0.3, // Mostly in position
+        teammateDensity: 0.3 + Math.random() * 0.4, // Medium teammate density
+        opponentDensity: 0.2 + Math.random() * 0.3 // Lower opponent density
       };
       
       // Output: shoot RIGHT (for red team)
@@ -117,7 +143,20 @@ export const createPlayerBrain = (): NeuralNet => {
         isDangerousPosition: 0, // Not dangerous
         isBetweenBallAndOwnGoal: 0, // Not between ball and own goal
         teamElo: 0.6 + Math.random() * 0.3, // Higher ELO for better shooting
-        eloAdvantage: 0.1 + Math.random() * 0.3 // Positive advantage
+        eloAdvantage: 0.1 + Math.random() * 0.3, // Positive advantage
+        
+        // Add contextual features for shooting scenario
+        gameTime: 0.5 + Math.random() * 0.5, // Second half of the game
+        scoreDifferential: -0.2 + Math.random() * 0.4, // Slightly behind or tied
+        momentum: 0.6 + Math.random() * 0.4, // Good momentum
+        formationCompactness: 0.3 + Math.random() * 0.4, // Medium to spread out formation
+        formationWidth: 0.6 + Math.random() * 0.4, // Wider formation
+        recentSuccessRate: 0.6 + Math.random() * 0.4, // Good success rate
+        possessionDuration: 0.3 + Math.random() * 0.7, // Varied possession time
+        distanceFromFormationCenter: 0.6 + Math.random() * 0.4, // Forward positioned
+        isInFormationPosition: 0.7 + Math.random() * 0.3, // Mostly in position
+        teammateDensity: 0.3 + Math.random() * 0.4, // Medium teammate density
+        opponentDensity: 0.2 + Math.random() * 0.3 // Lower opponent density
       };
       
       // Output: shoot LEFT (for blue team)
@@ -157,7 +196,20 @@ export const createPlayerBrain = (): NeuralNet => {
         isDangerousPosition: 1, // In dangerous position
         isBetweenBallAndOwnGoal: 1, // Between ball and own goal
         teamElo: Math.random() * 0.8, // Random ELO
-        eloAdvantage: -0.2 - Math.random() * 0.3 // Negative advantage (under pressure)
+        eloAdvantage: -0.2 - Math.random() * 0.3, // Negative advantage (under pressure)
+        
+        // Add contextual features for dangerous defensive scenario
+        gameTime: Math.random(), // Any game time
+        scoreDifferential: 0.1 + Math.random() * 0.5, // Slightly ahead (more cautious)
+        momentum: 0.2 + Math.random() * 0.3, // Low momentum
+        formationCompactness: 0.7 + Math.random() * 0.3, // Compact formation (defensive)
+        formationWidth: 0.3 + Math.random() * 0.3, // Narrow formation (defensive)
+        recentSuccessRate: 0.2 + Math.random() * 0.3, // Lower success rate
+        possessionDuration: 0, // No possession
+        distanceFromFormationCenter: 0.1 + Math.random() * 0.3, // Close to formation center
+        isInFormationPosition: 0.7 + Math.random() * 0.3, // Mostly in position
+        teammateDensity: 0.6 + Math.random() * 0.4, // Higher teammate density
+        opponentDensity: 0.6 + Math.random() * 0.4 // Higher opponent density
       };
       
       // Teach to NEVER shoot in these scenarios, prefer passing and moving away
@@ -219,7 +271,20 @@ const createFallbackBrain = (): NeuralNet => {
     isFacingOwnGoal: 0, isDangerousPosition: 0,
     isBetweenBallAndOwnGoal: 0,
     teamElo: 0.5, // Default middle ELO
-    eloAdvantage: 0 // No advantage
+    eloAdvantage: 0, // No advantage
+    
+    // Add the new contextual features with neutral default values
+    gameTime: 0.5,
+    scoreDifferential: 0,
+    momentum: 0.5,
+    formationCompactness: 0.5,
+    formationWidth: 0.5,
+    recentSuccessRate: 0.5,
+    possessionDuration: 0,
+    distanceFromFormationCenter: 0.5,
+    isInFormationPosition: 1,
+    teammateDensity: 0.5,
+    opponentDensity: 0.5
   };
   
   const output: NeuralOutput = {
