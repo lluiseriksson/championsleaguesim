@@ -8,6 +8,7 @@ import { getAwayTeamKit } from '../../types/kits';
 import { performFinalKitCheck, resolveKitConflict } from '../../types/kits/kitConflictChecker';
 import GameLogic from '../GameLogic';
 import { createPlayerBrain } from '../../utils/neuralNetwork';
+import { isNetworkValid } from '../../utils/neural/networkValidator';
 
 const transliterateRussianName = (name: string): string => {
   const cyrillicToLatin: Record<string, string> = {
