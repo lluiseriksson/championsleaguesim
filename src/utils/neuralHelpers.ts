@@ -1,3 +1,4 @@
+
 import { Position, NeuralInput, NeuralOutput, TeamContext, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
 import * as brain from 'brain.js';
 
@@ -39,7 +40,8 @@ export const getNearestEntity = (position: Position, entities: Position[]) => {
 export const createNeuralInput = (
   ball: { position: Position, velocity: Position },
   player: Position,
-  context: TeamContext
+  context: TeamContext,
+  teamElo: number = 2000 // Default ELO if none provided
 ): NeuralInput => {
   const normalizedBall = normalizePosition(ball.position);
   const normalizedPlayer = normalizePosition(player);
@@ -56,6 +58,11 @@ export const createNeuralInput = (
   const isInShootingRange = goalAngle.distance < 0.3 ? 1 : 0;
   const isInPassingRange = nearestTeammate.distance < 0.2 ? 1 : 0;
   const isDefendingRequired = nearestOpponent.distance < 0.15 ? 1 : 0;
+
+  // Add ELO related properties
+  const normalizedTeamElo = teamElo ? teamElo / 3000 : 0.5; // Normalize to 0-1 range assuming max ELO 3000
+  const averageElo = 2000;
+  const eloAdvantage = (teamElo - averageElo) / 1000; // Normalize to roughly -1 to 1 range
 
   // Return the neural input object with normalized values
   return {
@@ -78,7 +85,9 @@ export const createNeuralInput = (
     angleToOwnGoal: 0,
     isFacingOwnGoal: 0,
     isDangerousPosition: 0,
-    isBetweenBallAndOwnGoal: 0
+    isBetweenBallAndOwnGoal: 0,
+    teamElo: normalizedTeamElo,
+    eloAdvantage: eloAdvantage
   };
 };
 
@@ -111,7 +120,9 @@ export const isNetworkValid = (net: brain.NeuralNetwork<NeuralInput, NeuralOutpu
       angleToOwnGoal: 0,
       isFacingOwnGoal: 0,
       isDangerousPosition: 0,
-      isBetweenBallAndOwnGoal: 0
+      isBetweenBallAndOwnGoal: 0,
+      teamElo: 0.5,
+      eloAdvantage: 0
     };
 
     // Run the network with test input and check if output is valid

@@ -37,7 +37,9 @@ export const createPlayerBrain = (): NeuralNet => {
         angleToOwnGoal: Math.random() * 2 - 1,
         isFacingOwnGoal: Math.random() > 0.8 ? 1 : 0,
         isDangerousPosition: Math.random() > 0.8 ? 1 : 0,
-        isBetweenBallAndOwnGoal: Math.random() > 0.8 ? 1 : 0
+        isBetweenBallAndOwnGoal: Math.random() > 0.8 ? 1 : 0,
+        teamElo: 0.5 + Math.random() * 0.3, // Random ELO, skewed toward higher values
+        eloAdvantage: Math.random() * 0.6 - 0.3 // Random advantage between -0.3 and 0.3
       };
       
       // Simple random output values
@@ -74,7 +76,9 @@ export const createPlayerBrain = (): NeuralNet => {
         angleToOwnGoal: Math.random() * 2 - 1,
         isFacingOwnGoal: 0, // Not facing own goal
         isDangerousPosition: 0, // Not dangerous
-        isBetweenBallAndOwnGoal: 0 // Not between ball and own goal
+        isBetweenBallAndOwnGoal: 0, // Not between ball and own goal
+        teamElo: 0.6 + Math.random() * 0.3, // Higher ELO for better shooting
+        eloAdvantage: 0.1 + Math.random() * 0.3 // Positive advantage
       };
       
       // Output: shoot RIGHT (for red team)
@@ -111,7 +115,9 @@ export const createPlayerBrain = (): NeuralNet => {
         angleToOwnGoal: Math.random() * 2 - 1,
         isFacingOwnGoal: 0, // Not facing own goal
         isDangerousPosition: 0, // Not dangerous
-        isBetweenBallAndOwnGoal: 0 // Not between ball and own goal
+        isBetweenBallAndOwnGoal: 0, // Not between ball and own goal
+        teamElo: 0.6 + Math.random() * 0.3, // Higher ELO for better shooting
+        eloAdvantage: 0.1 + Math.random() * 0.3 // Positive advantage
       };
       
       // Output: shoot LEFT (for blue team)
@@ -149,7 +155,9 @@ export const createPlayerBrain = (): NeuralNet => {
         angleToOwnGoal: Math.random() * 2 - 1,
         isFacingOwnGoal: 1, // Facing own goal
         isDangerousPosition: 1, // In dangerous position
-        isBetweenBallAndOwnGoal: 1 // Between ball and own goal
+        isBetweenBallAndOwnGoal: 1, // Between ball and own goal
+        teamElo: Math.random() * 0.8, // Random ELO
+        eloAdvantage: -0.2 - Math.random() * 0.3 // Negative advantage (under pressure)
       };
       
       // Teach to NEVER shoot in these scenarios, prefer passing and moving away
@@ -209,7 +217,9 @@ const createFallbackBrain = (): NeuralNet => {
     isInShootingRange: 0, isInPassingRange: 0, isDefendingRequired: 0,
     distanceToOwnGoal: 0.5, angleToOwnGoal: 0,
     isFacingOwnGoal: 0, isDangerousPosition: 0,
-    isBetweenBallAndOwnGoal: 0
+    isBetweenBallAndOwnGoal: 0,
+    teamElo: 0.5, // Default middle ELO
+    eloAdvantage: 0 // No advantage
   };
   
   const output: NeuralOutput = {
