@@ -118,7 +118,7 @@ export const createNeuralInput = (
     spaceCreation = Math.max(0, 1 - (teammateDensity + opponentDensity) / 2);
   }
 
-  // Return the neural input object with normalized values and tactical metrics
+  // Return the comprehensive neural input object with all required properties
   return {
     ballX: normalizedBall.x,
     ballY: normalizedBall.y,
@@ -172,10 +172,10 @@ export const createNeuralInput = (
     verticalSpacing: calculateVerticalSpacing(teammates),
     horizontalSpacing: calculateHorizontalSpacing(teammates),
     territorialControl: zoneControl * (1 - calculatePressureIndex(player, opponents)),
-    counterAttackPotential: 0.5, // Default value, would be more complex in real implementation
+    counterAttackPotential: 0.5, // Default value
     pressureResistance: 1 - calculatePressureIndex(player, opponents),
-    recoveryPosition: 0.5, // Default value, would be more complex in real implementation
-    transitionSpeed: 0.5 // Default value, would be more complex in real implementation
+    recoveryPosition: 0.5, // Default value
+    transitionSpeed: 0.5 // Default value
   };
 };
 
@@ -471,7 +471,7 @@ export const isNetworkValid = (net: brain.NeuralNetwork<NeuralInput, NeuralOutpu
       isBetweenBallAndOwnGoal: 0,
       teamElo: 0.5,
       eloAdvantage: 0,
-      // New contextual features with default values
+      // Game context features
       gameTime: 0.5,
       scoreDifferential: 0,
       momentum: 0.5,
@@ -484,7 +484,24 @@ export const isNetworkValid = (net: brain.NeuralNetwork<NeuralInput, NeuralOutpu
       teammateDensity: 0.5,
       opponentDensity: 0.5,
       shootingAngle: 0.5,
-      shootingQuality: 0.5
+      shootingQuality: 0.5,
+      // New tactical metrics
+      zoneControl: 0.5,
+      passingLanesQuality: 0.5,
+      spaceCreation: 0.5,
+      defensiveSupport: 0.5,
+      pressureIndex: 0.5,
+      tacticalRole: 0.5,
+      supportPositioning: 0.5,
+      pressingEfficiency: 0.5,
+      coverShadow: 0.5,
+      verticalSpacing: 0.5,
+      horizontalSpacing: 0.5,
+      territorialControl: 0.5,
+      counterAttackPotential: 0.5,
+      pressureResistance: 0.5,
+      recoveryPosition: 0.5,
+      transitionSpeed: 0.5
     };
 
     // Run the network with test input and check if output is valid

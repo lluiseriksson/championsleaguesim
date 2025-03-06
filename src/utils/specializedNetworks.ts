@@ -201,9 +201,25 @@ export const selectSpecializedNetwork = (
         teammateDensity: 0.5,
         opponentDensity: 0.5,
         shootingAngle: 0.5,
-        shootingQuality: situationContext.isAttackingThird ? 0.7 : 0.3
+        shootingQuality: situationContext.isAttackingThird ? 0.7 : 0.3,
+        zoneControl: 0.5,
+        passingLanesQuality: 0.5,
+        spaceCreation: 0.5,
+        defensiveSupport: 0.5,
+        pressureIndex: 0.5,
+        tacticalRole: 0.5,
+        supportPositioning: 0.5,
+        pressingEfficiency: 0.5,
+        coverShadow: 0.5,
+        verticalSpacing: 0.5,
+        horizontalSpacing: 0.5,
+        territorialControl: 0.5,
+        counterAttackPotential: 0.5,
+        pressureResistance: 0.5,
+        recoveryPosition: 0.5,
+        transitionSpeed: 0.5
       };
-      
+
       const situationData = {
         isDefensiveThird: situationContext.isDefensiveThird ? 1 : 0,
         isMiddleThird: situationContext.isMiddleThird ? 1 : 0,
