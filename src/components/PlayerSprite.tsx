@@ -107,12 +107,21 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
     
     // For goalkeepers, use the dynamic kit selection function
     if (player.role === 'goalkeeper') {
-      // Determine the opposing team
-      const opposingTeamName = player.team === 'red' ? 
-        // If this is the home team (red), find an away player to get the away team name
-        document.querySelector('[data-team="blue"]')?.getAttribute('data-team-name') : 
-        // If this is the away team (blue), find a home player to get the home team name
-        document.querySelector('[data-team="red"]')?.getAttribute('data-team-name');
+      // Determine the opposing team name
+      let opposingTeamName;
+      
+      // Get a reference to all players
+      const allPlayers = document.querySelectorAll('[data-team]');
+      
+      // Find a player from the opposing team
+      for (let i = 0; i < allPlayers.length; i++) {
+        const playerElement = allPlayers[i];
+        const teamAttr = playerElement.getAttribute('data-team');
+        if (teamAttr && teamAttr !== player.team) {
+          opposingTeamName = playerElement.getAttribute('data-team-name');
+          break;
+        }
+      }
       
       // Get opposing team primary color if available
       const opposingTeamPrimaryColor = opposingTeamName ? 
@@ -120,9 +129,10 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
         undefined;
         
       // Select the best goalkeeper kit based on contrast with both teams
+      // and ensuring home and away goalkeepers have different kits
       kitColors = selectGoalkeeperKit(
         player.teamName,
-        opposingTeamName,
+        opposingTeamName || undefined,
         kitColors.primary,
         kitColors.secondary,
         opposingTeamPrimaryColor,
