@@ -1,4 +1,3 @@
-
 import { Position, PLAYER_RADIUS, BALL_RADIUS, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
 
 const MAX_BALL_SPEED = 18; // Keeping higher speed for powerful shots
@@ -34,12 +33,16 @@ export const checkCollision = (ballPos: Position, playerPos: Position, isGoalkee
   const dy = ballPos.y - playerPos.y;
   const distance = Math.sqrt(dx * dx + dy * dy);
   
-  // Standardize the reach to 5 units total for both field players and goalkeepers
-  // Base reach is calculated as 5 units minus the existing BALL_RADIUS
-  const standardReach = 5 - BALL_RADIUS; 
+  // Field players now have 10 units of reach for interacting with the ball
+  // For goalkeepers, keep the existing logic (5 units)
+  const fieldPlayerReach = 10 - BALL_RADIUS; // 10 units total minus ball radius
+  const goalkeeperReach = 5 - BALL_RADIUS; // Original 5 units total minus ball radius
+  
+  // Determine which reach to use based on player type
+  const reach = isGoalkeeper ? goalkeeperReach : fieldPlayerReach;
   
   // Calculate final collision radius
-  const collisionRadius = BALL_RADIUS + standardReach;
+  const collisionRadius = BALL_RADIUS + reach;
   
   // Add a small buffer to prevent the ball from getting stuck
   return distance <= collisionRadius + 0.5;
