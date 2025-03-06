@@ -1,17 +1,18 @@
-
-import React from 'react';
+import { useRef, useEffect, useCallback } from 'react';
 import { Player, Ball, Score } from '../../types/football';
 
-interface GameLoopProps {
+interface UseGameLoopProps {
   players: Player[];
   updatePlayerPositions: () => void;
   updateBallPosition: () => void;
   incrementSyncCounter: () => void;
   syncModels: () => void;
   checkLearningProgress: () => void;
+  checkPerformance?: () => void;
   ball: Ball;
   score: Score;
   tournamentMode?: boolean;
+  isLowPerformance?: boolean;
 }
 
 export const useGameLoop = ({
@@ -21,111 +22,86 @@ export const useGameLoop = ({
   incrementSyncCounter,
   syncModels,
   checkLearningProgress,
+  checkPerformance,
   ball,
   score,
-  tournamentMode = false
-}: GameLoopProps) => {
-  // Track if game is running
-  const isRunningRef = React.useRef(true);
+  tournamentMode = false,
+  isLowPerformance = false
+}: UseGameLoopProps) => {
+  const requestRef = useRef<number | null>(null);
+  const previousTimeRef = useRef<number | null>(null);
+  const totalGoalsRef = useRef<number>(0);
   
-  // For debugging
-  const lastScoreRef = React.useRef({ red: 0, blue: 0 });
-  const totalGoalsRef = React.useRef(0);
-
-  // Check for score changes to track goals
-  React.useEffect(() => {
-    const newTotalGoals = score.red + score.blue;
-    const prevTotalGoals = lastScoreRef.current.red + lastScoreRef.current.blue;
-    
-    if (newTotalGoals > prevTotalGoals) {
-      // Update total goals reference with actual score data
-      totalGoalsRef.current = newTotalGoals;
+  const frameCountRef = useRef<number>(0);
+  
+  const lastPerformanceCheckRef = useRef<number>(0);
+  
+  const gameLoop = useCallback((time: number) => {
+    if (previousTimeRef.current === null) {
+      previousTimeRef.current = time;
+      requestRef.current = requestAnimationFrame(gameLoop);
+      return;
     }
     
-    lastScoreRef.current = { ...score };
-  }, [score]);
-
-  // Initialize and run the game loop
-  React.useEffect(() => {
-    console.log("Game loop started");
-    let frameId: number;
-    let lastTime = performance.now();
-    const TIME_STEP = 16; // 60 FPS target
+    const deltaTime = time - previousTimeRef.current;
+    previousTimeRef.current = time;
     
-    const gameLoop = () => {
-      const currentTime = performance.now();
-      const deltaTime = currentTime - lastTime;
-      
-      if (deltaTime >= TIME_STEP) {
-        // Update player positions
-        updatePlayerPositions();
-
-        // Update ball position and handle collisions
-        updateBallPosition();
-
-        // Increment sync counter
-        incrementSyncCounter();
-        
-        lastTime = currentTime;
+    frameCountRef.current += 1;
+    
+    updatePlayerPositions();
+    updateBallPosition();
+    incrementSyncCounter();
+    
+    if (frameCountRef.current % 30 === 0 && checkPerformance) {
+      checkPerformance();
+    }
+    
+    const syncInterval = isLowPerformance ? 120 : 60;
+    const learningInterval = isLowPerformance ? 300 : 180;
+    
+    if (frameCountRef.current % syncInterval === 0) {
+      try {
+        syncModels();
+      } catch (error) {
+        console.error("Error in syncModels:", error);
       }
-      
-      frameId = requestAnimationFrame(gameLoop);
-    };
-
-    // Start the game loop immediately
-    frameId = requestAnimationFrame(gameLoop);
-    
-    // Sync models on startup only if not in tournament mode
-    if (!tournamentMode) {
-      syncModels();
     }
     
-    // Check learning progress on mount only if not in tournament mode
-    if (!tournamentMode) {
-      setTimeout(() => {
+    if (frameCountRef.current % learningInterval === 0) {
+      try {
         checkLearningProgress();
-      }, 5000); // Check after 5 seconds to allow initial loading
+      } catch (error) {
+        console.error("Error in checkLearningProgress:", error);
+      }
     }
     
-    console.log("Game loop initialized");
-
-    // Debug timer to log ball state every 5 seconds (less frequent in tournament mode)
-    const debugInterval = setInterval(() => {
-      if (isRunningRef.current && !tournamentMode) {
-        console.log("Ball state:", {
-          position: ball.position,
-          velocity: ball.velocity,
-          speed: Math.sqrt(ball.velocity.x * ball.velocity.x + ball.velocity.y * ball.velocity.y)
-        });
-        console.log("Current score:", score);
-      }
-    }, tournamentMode ? 15000 : 5000);
-
-    // Setup periodic learning progress check (disabled in tournament mode)
-    const learningCheckInterval = setInterval(() => {
-      if (isRunningRef.current && !tournamentMode) {
-        checkLearningProgress();
-      }
-    }, 120000); // Check every 2 minutes
-
-    return () => {
-      console.log("Game loop cleanup");
-      cancelAnimationFrame(frameId);
-      clearInterval(debugInterval);
-      clearInterval(learningCheckInterval);
-      isRunningRef.current = false;
-    };
+    if (frameCountRef.current >= 600) {
+      frameCountRef.current = 0;
+    }
+    
+    requestRef.current = requestAnimationFrame(gameLoop);
   }, [
-    players, 
     updatePlayerPositions, 
     updateBallPosition, 
     incrementSyncCounter, 
     syncModels, 
-    checkLearningProgress, 
-    ball, 
-    score, 
-    tournamentMode
+    checkLearningProgress,
+    checkPerformance,
+    isLowPerformance
   ]);
-
+  
+  useEffect(() => {
+    console.log('Game loop started');
+    requestRef.current = requestAnimationFrame(gameLoop);
+    console.log('Game loop initialized');
+    
+    return () => {
+      console.log('Game loop cleanup');
+      if (requestRef.current !== null) {
+        cancelAnimationFrame(requestRef.current);
+      }
+    };
+  }, [gameLoop]);
+  
   return { totalGoalsRef };
 };

@@ -19,6 +19,7 @@ interface PlayerMovementProps {
   gameReady: boolean;
   gameTime?: number;
   score?: { red: number, blue: number };
+  isLowPerformance?: boolean;
 }
 
 const usePlayerMovement = ({ 
@@ -27,10 +28,12 @@ const usePlayerMovement = ({
   ball, 
   gameReady,
   gameTime = 0,
-  score = { red: 0, blue: 0 }
+  score = { red: 0, blue: 0 },
+  isLowPerformance = false
 }: PlayerMovementProps) => {
   const [formations, setFormations] = useState({ redFormation: [], blueFormation: [] });
   const [possession, setPossession] = useState({ team: null, player: null, duration: 0 });
+  const neuralNetworkCacheRef = React.useRef<Map<number, { timestamp: number, result: { x: number, y: number } | null }>>(new Map());
 
   useEffect(() => {
     if (gameReady && players.length > 0) {
@@ -54,6 +57,29 @@ const usePlayerMovement = ({
       setPossession(prev => trackPossession(ball, players, prev));
     }
   }, [ball, players, gameReady]);
+
+  useEffect(() => {
+    const cleanupInterval = setInterval(() => {
+      const now = Date.now();
+      const cacheSize = neuralNetworkCacheRef.current.size;
+      
+      if (cacheSize > 50) {
+        let deletedCount = 0;
+        neuralNetworkCacheRef.current.forEach((value, key) => {
+          if (now - value.timestamp > 2000) {
+            neuralNetworkCacheRef.current.delete(key);
+            deletedCount++;
+          }
+        });
+        
+        if (deletedCount > 0) {
+          console.log(`Cleaned up ${deletedCount} neural network cache entries`);
+        }
+      }
+    }, 5000);
+    
+    return () => clearInterval(cleanupInterval);
+  }, []);
 
   const ensureCompleteBrain = (brain: Partial<NeuralNet> | null | { net: any }): NeuralNet => {
     if (!brain) {
@@ -97,6 +123,17 @@ const usePlayerMovement = ({
   };
 
   const useNeuralNetworkForPlayer = (player: Player, ball: Ball): { x: number, y: number } | null => {
+    const cacheKey = player.id;
+    const cachedResult = neuralNetworkCacheRef.current.get(cacheKey);
+    
+    if (cachedResult && Date.now() - cachedResult.timestamp < 500) {
+      return cachedResult.result;
+    }
+    
+    if (isLowPerformance && Math.random() > 0.4) {
+      return null;
+    }
+    
     if (!player.brain || !player.brain.net) return null;
     
     try {
@@ -170,18 +207,33 @@ const usePlayerMovement = ({
         let moveYMultiplier = 3.0;
         
         if (player.role === 'defender') {
+          moveXMultiplier = 3.2;
+          moveYMultiplier = 3.0;
+        } else if (player.role === 'forward') {
           moveXMultiplier = 3.5;
-          moveYMultiplier = 3.2;
+          moveYMultiplier = 3.3;
         }
         
         const moveX = (output.moveX * 2 - 1) * moveXMultiplier; 
         const moveY = (output.moveY * 2 - 1) * moveYMultiplier;
         
-        return { x: moveX, y: moveY };
+        const result = { x: moveX, y: moveY };
+        
+        neuralNetworkCacheRef.current.set(cacheKey, {
+          timestamp: Date.now(),
+          result
+        });
+        
+        return result;
       }
     } catch (error) {
       console.log(`Error using neural network for ${player.team} ${player.role} #${player.id}:`, error);
     }
+    
+    neuralNetworkCacheRef.current.set(cacheKey, {
+      timestamp: Date.now(),
+      result: null
+    });
     
     return null;
   };
@@ -216,8 +268,11 @@ const usePlayerMovement = ({
             };
           }
           
-          const neuralNetworkThreshold = player.role === 'defender' ? 0.25 : 0.3;
-          const neuralMovement = Math.random() > neuralNetworkThreshold ? useNeuralNetworkForPlayer(player, ball) : null;
+          const baseThreshold = isLowPerformance ? 0.5 : 0.3;
+          const neuralNetworkThreshold = player.role === 'defender' ? baseThreshold - 0.05 : baseThreshold;
+          
+          const useNeuralNetwork = Math.random() > neuralNetworkThreshold;
+          const neuralMovement = useNeuralNetwork ? useNeuralNetworkForPlayer(player, ball) : null;
           
           if (neuralMovement) {
             let newPosition = {
@@ -280,6 +335,8 @@ const usePlayerMovement = ({
           let moveSpeed = 1.8;
           if (player.role === 'defender') {
             moveSpeed = 2.0;
+          } else if (player.role === 'forward') {
+            moveSpeed = 2.2;
           }
           
           let moveX = dist > 0 ? (dx / dist) * moveSpeed : 0;
@@ -368,7 +425,7 @@ const usePlayerMovement = ({
       
       return processedPlayers;
     });
-  }, [ball, gameReady, setPlayers, gameTime, score]);
+  }, [ball, gameReady, setPlayers, gameTime, score, isLowPerformance]);
 
   return { updatePlayerPositions, formations, possession };
 };

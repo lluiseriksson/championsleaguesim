@@ -49,17 +49,32 @@ const GameLogic: React.FC<GameLogicProps> = ({
     tournamentMode
   });
 
+  // Model synchronization system with tournament mode flag and performance monitoring
+  const { 
+    syncModels, 
+    incrementSyncCounter, 
+    checkLearningProgress,
+    checkPerformance,
+    isLowPerformance
+  } = useModelSyncSystem({
+    players,
+    setPlayers,
+    tournamentMode
+  });
+
   // Goal notification system
   const { totalGoalsRef } = useGameLoop({
     players,
-    updatePlayerPositions,
+    updatePlayerPositions: () => updatePlayerPositions(),
     updateBallPosition: () => {}, // Will be overridden below
-    incrementSyncCounter: () => {}, // Will be overridden below
-    syncModels: () => {}, // Will be overridden below
-    checkLearningProgress: () => {}, // Will be overridden below
+    incrementSyncCounter,
+    syncModels,
+    checkLearningProgress,
+    checkPerformance,
     ball,
     score,
-    tournamentMode
+    tournamentMode,
+    isLowPerformance
   });
 
   // Goal notification hook
@@ -93,14 +108,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
     tournamentMode
   });
 
-  // Model synchronization system with tournament mode flag
-  const { syncModels, incrementSyncCounter, checkLearningProgress } = useModelSyncSystem({
-    players,
-    setPlayers,
-    tournamentMode
-  });
-
-  // Run game loop with actual functions
+  // Run game loop with actual functions and performance monitoring
   useGameLoop({
     players,
     updatePlayerPositions,
@@ -108,9 +116,11 @@ const GameLogic: React.FC<GameLogicProps> = ({
     incrementSyncCounter,
     syncModels,
     checkLearningProgress,
+    checkPerformance,
     ball,
     score,
-    tournamentMode
+    tournamentMode,
+    isLowPerformance
   });
 
   // Save models on component unmount

@@ -1,14 +1,27 @@
-
 import { NeuralNet, Player, Position, NeuralInput } from '../../types/football';
 import { createPlayerBrain } from '../neuralCore';
 import * as brain from 'brain.js';
 
 export const validatePlayerBrain = (player: Player): Player => {
-  if (!player.brain || !player.brain.net) {
-    console.warn(`Creating new brain for ${player.team} ${player.role} #${player.id}`);
+  if (!player.brain) {
+    console.log(`Creating new brain for ${player.team} ${player.role} #${player.id}`);
     return {
       ...player,
       brain: createPlayerBrain()
+    };
+  }
+
+  if (!player.brain.net) {
+    console.log(`Creating network for existing brain ${player.team} ${player.role} #${player.id}`);
+    const newBrain = createPlayerBrain();
+    return {
+      ...player,
+      brain: {
+        ...player.brain,
+        net: newBrain.net,
+        lastOutput: player.brain.lastOutput || { x: 0, y: 0 },
+        lastAction: player.brain.lastAction || 'move'
+      }
     };
   }
 
@@ -27,44 +40,9 @@ export const validatePlayerBrain = (player: Player): Player => {
       isInShootingRange: 0.5,
       isInPassingRange: 0.5,
       isDefendingRequired: 0.5,
-      distanceToOwnGoal: 0.5,
-      angleToOwnGoal: 0.5,
-      isFacingOwnGoal: 0.5,
-      isDangerousPosition: 0.5,
-      isBetweenBallAndOwnGoal: 0.5,
       teamElo: 0.5,
-      eloAdvantage: 0.5,
-      gameTime: 0.5,
-      scoreDifferential: 0.5,
-      momentum: 0.5,
-      formationCompactness: 0.5,
-      formationWidth: 0.5,
-      recentSuccessRate: 0.5,
-      possessionDuration: 0.5,
-      distanceFromFormationCenter: 0.5,
-      isInFormationPosition: 0.5,
-      teammateDensity: 0.5,
-      opponentDensity: 0.5,
-      shootingAngle: 0.5,
-      shootingQuality: 0.5,
-      zoneControl: 0.5,
-      passingLanesQuality: 0.5,
-      spaceCreation: 0.5,
-      defensiveSupport: 0.5,
-      pressureIndex: 0.5,
-      tacticalRole: 0.5,
-      supportPositioning: 0.5,
-      pressingEfficiency: 0.5,
-      coverShadow: 0.5,
-      verticalSpacing: 0.5,
-      horizontalSpacing: 0.5,
-      territorialControl: 0.5,
-      counterAttackPotential: 0.5,
-      pressureResistance: 0.5,
-      recoveryPosition: 0.5,
-      transitionSpeed: 0.5,
-      ballVelocityX: 0.5,
-      ballVelocityY: 0.5
+      ballVelocityX: 0,
+      ballVelocityY: 0
     };
     
     if (!player.brain.net || typeof player.brain.net.run !== 'function') {
@@ -80,9 +58,16 @@ export const validatePlayerBrain = (player: Player): Player => {
     return player;
   } catch (error) {
     console.warn(`Invalid network detected for ${player.team} ${player.role} #${player.id}, creating new one: ${error}`);
+    
+    const newBrain = createPlayerBrain();
     return {
       ...player,
-      brain: createPlayerBrain()
+      brain: {
+        ...player.brain,
+        net: newBrain.net,
+        lastOutput: player.brain.lastOutput || newBrain.lastOutput,
+        lastAction: player.brain.lastAction || newBrain.lastAction
+      }
     };
   }
 };
@@ -110,44 +95,9 @@ export const isNetworkValid = (net: brain.NeuralNetwork<any, any> | null): boole
       isInShootingRange: 0.5,
       isInPassingRange: 0.5,
       isDefendingRequired: 0.5,
-      distanceToOwnGoal: 0.5,
-      angleToOwnGoal: 0.5,
-      isFacingOwnGoal: 0.5,
-      isDangerousPosition: 0.5,
-      isBetweenBallAndOwnGoal: 0.5,
       teamElo: 0.5,
-      eloAdvantage: 0.5,
-      gameTime: 0.5,
-      scoreDifferential: 0.5,
-      momentum: 0.5,
-      formationCompactness: 0.5,
-      formationWidth: 0.5,
-      recentSuccessRate: 0.5,
-      possessionDuration: 0.5,
-      distanceFromFormationCenter: 0.5,
-      isInFormationPosition: 0.5,
-      teammateDensity: 0.5,
-      opponentDensity: 0.5,
-      shootingAngle: 0.5,
-      shootingQuality: 0.5,
-      zoneControl: 0.5,
-      passingLanesQuality: 0.5,
-      spaceCreation: 0.5,
-      defensiveSupport: 0.5,
-      pressureIndex: 0.5,
-      tacticalRole: 0.5,
-      supportPositioning: 0.5,
-      pressingEfficiency: 0.5,
-      coverShadow: 0.5,
-      verticalSpacing: 0.5,
-      horizontalSpacing: 0.5,
-      territorialControl: 0.5,
-      counterAttackPotential: 0.5,
-      pressureResistance: 0.5,
-      recoveryPosition: 0.5,
-      transitionSpeed: 0.5,
-      ballVelocityX: 0.5,
-      ballVelocityY: 0.5
+      ballVelocityX: 0,
+      ballVelocityY: 0
     };
     
     const output = net.run(testInput);
@@ -242,51 +192,44 @@ export const createTacticalInput = (
     input.verticalSpacing = 0.6;
     input.horizontalSpacing = 0.7;
     
-    // NEW: Dynamic defender behavior based on game situation
     if (hasTeamPossession) {
-      input.recoveryPosition = 0.4; // Less defensive when team has possession
-      input.pressureIndex = 0.3;    // Less pressing when team has possession
-      input.transitionSpeed = 0.8;  // Faster transitions for counters
+      input.recoveryPosition = 0.4;
+      input.pressureIndex = 0.3;
+      input.transitionSpeed = 0.8;
     } else if (isDefensiveThird) {
-      input.recoveryPosition = 0.9; // Very defensive in own third
-      input.pressureIndex = 0.8;    // High pressing when defending own third
-      input.transitionSpeed = 0.5;  // Slower, more cautious transitions
+      input.recoveryPosition = 0.9;
+      input.pressureIndex = 0.8;
+      input.transitionSpeed = 0.5;
     }
   } else if (player.role === 'forward') {
-    // NEW: Enhanced forward behaviors
-    input.spaceCreation = 0.8;              // Forwards prioritize finding space
-    input.passingLanesQuality = 0.7;        // Better passing awareness
-    input.shootingQuality = isAttackingThird ? 0.9 : 0.5; // Better shooting in attacking third
-    input.counterAttackPotential = 0.8;     // High counter attack awareness
-    input.pressureResistance = 0.7;         // Better under pressure
+    input.spaceCreation = 0.8;
+    input.passingLanesQuality = 0.7;
+    input.shootingQuality = isAttackingThird ? 0.9 : 0.5;
+    input.counterAttackPotential = 0.8;
+    input.pressureResistance = 0.7;
     
     if (isAttackingThird) {
-      input.territorialControl = 0.7;       // Control space in attacking third
-      input.supportPositioning = 0.8;       // Better positioning for receiving passes
+      input.territorialControl = 0.7;
+      input.supportPositioning = 0.8;
     }
   }
   
   return input;
 };
 
-// NEW: Determine if a player should make a passing run
 export const shouldMakePassingRun = (
   player: Player,
   ballPosition: Position,
   hasTeamPossession: boolean,
   isAttackingThird: boolean
 ): boolean => {
-  // Only make runs in appropriate situations
   if (!hasTeamPossession) return false;
   
   if (player.role === 'forward') {
-    // Forwards make runs more often
     return Math.random() > 0.6;
   } else if (player.role === 'midfielder' && isAttackingThird) {
-    // Midfielders make runs in attacking third
     return Math.random() > 0.75;
   } else if (player.role === 'defender' && hasTeamPossession) {
-    // Defenders occasionally make supporting runs when team has possession
     return Math.random() > 0.9;
   }
   

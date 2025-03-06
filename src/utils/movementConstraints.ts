@@ -1,3 +1,4 @@
+
 import { Position, Player } from '../types/football';
 import { calculateDistance } from './neuralCore';
 
@@ -47,7 +48,7 @@ export const constrainMovementToRadius = (
   };
 };
 
-// This function is the one we need to make sure is properly exported
+// Calculate the quality of a passing lane between two positions
 export const isPassingLaneOpen = (
   requester: Position,
   passer: Position,
@@ -59,15 +60,25 @@ export const isPassingLaneOpen = (
   };
   
   const distance = calculateDistance(requester, passer);
+  
+  // Skip if positions are the same to prevent division by zero
+  if (distance < 1) return 0;
+  
   const passingAngle = Math.atan2(passingVector.y, passingVector.x);
   
   // Calculate a passing lane quality score (0-1)
   let laneQuality = 1.0;
   
   // Check for obstacles in the passing lane
-  allPlayers.forEach(player => {
-    if (player.position.x === passer.x && player.position.y === passer.y) return; // Skip the passer
-    if (player.position.x === requester.x && player.position.y === requester.y) return; // Skip the requester
+  for (const player of allPlayers) {
+    // Skip if player position is not defined
+    if (!player.position) continue;
+    
+    // Skip the passer
+    if (player.position.x === passer.x && player.position.y === passer.y) continue;
+    
+    // Skip the requester
+    if (player.position.x === requester.x && player.position.y === requester.y) continue;
     
     // Calculate vector from passer to this player
     const toPlayerVector = {
@@ -78,7 +89,7 @@ export const isPassingLaneOpen = (
     const playerDistance = calculateDistance(passer, player.position);
     
     // If this player is further than the requester, they aren't in the way
-    if (playerDistance > distance) return;
+    if (playerDistance > distance) continue;
     
     // Calculate angle to this player
     const playerAngle = Math.atan2(toPlayerVector.y, toPlayerVector.x);
@@ -96,7 +107,7 @@ export const isPassingLaneOpen = (
       // Players directly in path reduce quality more
       laneQuality *= (distanceRatio + (1 - blockFactor) * (1 - distanceRatio));
     }
-  });
+  }
   
   return laneQuality;
 };
