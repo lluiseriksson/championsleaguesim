@@ -58,7 +58,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   const [players, setPlayers] = useState<Player[]>([]);
   const [ball, setBall] = useState<Ball>({
     position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
-    velocity: { x: Math.random() > 0.5 ? 3 : -3, y: (Math.random() - 0.5) * 3 },
+    velocity: { x: Math.random() > 0.5 ? 8 : -8, y: (Math.random() - 0.5) * 8 },
     bounceDetection: {
       consecutiveBounces: 0,
       lastBounceTime: 0,
@@ -114,6 +114,15 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
     if (homeTeam && awayTeam) {
       console.log("Initializing players for match:", displayHomeTeam, "vs", displayAwayTeam);
       initializePlayers();
+      
+      // Force ball movement on match start
+      setBall(currentBall => ({
+        ...currentBall,
+        velocity: {
+          x: Math.random() > 0.5 ? 8 : -8, 
+          y: (Math.random() - 0.5) * 8
+        }
+      }));
     }
     
     return () => {

@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import { Ball, Position } from '../../types/football';
 
@@ -17,7 +16,8 @@ export const checkBallStuckInPlace = (
   
   if (positionDelta < 0.1) {
     noMovementTimeRef.current += 1;
-    return noMovementTimeRef.current > 20;
+    // Reduced threshold from 20 to 10 to detect stuck balls faster
+    return noMovementTimeRef.current > 10;
   } else {
     // Reset counter if the ball is moving
     noMovementTimeRef.current = 0;
@@ -32,13 +32,13 @@ export const applyRandomKick = (currentBall: Ball, tournamentMode: boolean): Bal
     console.log("Ball stuck in place or zero velocity, giving it a random kick");
   }
   
-  // Increased random kick velocity by ~20% (from 6 to 7.2 max range)
+  // Increased random kick velocity by ~40% for more dynamic movement
   return {
     ...currentBall,
     position: currentBall.position,
     velocity: {
-      x: (Math.random() * 7.2) - 3.6,
-      y: (Math.random() * 7.2) - 3.6
+      x: (Math.random() * 10) - 5,
+      y: (Math.random() * 10) - 5
     }
   };
 };
@@ -47,4 +47,3 @@ export const applyRandomKick = (currentBall: Ball, tournamentMode: boolean): Bal
 export const calculateBallSpeed = (velocity: Position): number => {
   return Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
 };
-

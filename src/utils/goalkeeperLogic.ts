@@ -90,6 +90,35 @@ const useNeuralNetworkForGoalkeeper = (
   return null;
 };
 
+// Function to constrain goalkeeper to their allowed area
+const constrainGoalkeeper = (
+  position: { x: number, y: number },
+  team: string
+): { x: number, y: number } => {
+  const isLeftSide = team === 'red';
+  
+  // Set boundaries based on team
+  const minX = isLeftSide ? 12 : PITCH_WIDTH - 120;
+  const maxX = isLeftSide ? 120 : PITCH_WIDTH - 12;
+  
+  // Enforce goalkeeper position limits
+  const constrainedX = Math.max(minX, Math.min(maxX, position.x));
+  
+  // Vertical limits
+  const centerY = PITCH_HEIGHT / 2;
+  const goalHeight = 200;
+  const minY = Math.max(12, centerY - goalHeight);
+  const maxY = Math.min(PITCH_HEIGHT - 12, centerY + goalHeight);
+  
+  // Enforce vertical position limits
+  const constrainedY = Math.max(minY, Math.min(maxY, position.y));
+  
+  return {
+    x: constrainedX,
+    y: constrainedY
+  };
+};
+
 // Specialized movement logic for goalkeepers
 export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: number): { x: number, y: number } => {
   // First try to use neural network if available - increased probability to 80%
@@ -113,9 +142,17 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
       // Limit vertical movement
       const constrainedY = Math.min(Math.max(rawY, -2.5), 2.5);
       
+      const newPosition = {
+        x: player.position.x + constrainedX,
+        y: player.position.y + constrainedY
+      };
+      
+      // Apply position constraints
+      const safePosition = constrainGoalkeeper(newPosition, player.team);
+      
       return {
-        x: constrainedX,
-        y: constrainedY
+        x: constrainedX * (safePosition.x === newPosition.x ? 1 : 0.5),
+        y: constrainedY * (safePosition.y === newPosition.y ? 1 : 0.5)
       };
     }
   }
@@ -232,6 +269,24 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
   // Apply vertical constraints
   if (player.position.y < 100) moveY = Math.max(0.3, moveY); // Force movement down if too high
   if (player.position.y > PITCH_HEIGHT - 100) moveY = Math.min(-0.3, moveY); // Force movement up if too low
+  
+  // Check if resulting position would be valid
+  const newPosition = {
+    x: player.position.x + moveX,
+    y: player.position.y + moveY
+  };
+  
+  // Apply position constraints
+  const safePosition = constrainGoalkeeper(newPosition, player.team);
+  
+  // If the constrained position is different, adjust movement to respect boundaries
+  if (safePosition.x !== newPosition.x) {
+    moveX = safePosition.x - player.position.x;
+  }
+  
+  if (safePosition.y !== newPosition.y) {
+    moveY = safePosition.y - player.position.y;
+  }
   
   console.log(`GK ${player.team}: movement (${moveX.toFixed(1)},${moveY.toFixed(1)}), ball dist: ${distanceToBall.toFixed(0)}, ELO mult: ${eloSpeedMultiplier.toFixed(2)}`);
   
