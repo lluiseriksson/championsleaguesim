@@ -1,4 +1,3 @@
-
 import { Player, Position } from '../../types/football';
 import { checkCollision, calculateNewVelocity } from '../../utils/gamePhysics';
 
@@ -72,4 +71,11 @@ export function handleFieldPlayerCollisions(
   }
   
   return newVelocity;
+}
+
+// New function to check if player-to-player collisions are occurring
+export function handleTeamCollisions(players: Player[]): Player[] {
+  // This function is now handled directly in the PlayerMovement.tsx component
+  // with the useTeamCollisions hook for better integration with the movement system
+  return players;
 }

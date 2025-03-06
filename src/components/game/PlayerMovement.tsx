@@ -16,6 +16,7 @@ import {
   getSpecializedNetwork,
   combineSpecializedOutputs
 } from '../../utils/specializedNetworks';
+import { calculateCollisionAvoidance } from '../../hooks/game/useTeamCollisions';
 
 interface PlayerMovementProps {
   players: Player[];
@@ -79,8 +80,8 @@ const usePlayerMovement = ({
   const updatePlayerPositions = React.useCallback(() => {
     if (!gameReady) return;
     
-    setPlayers(currentPlayers => 
-      currentPlayers.map(player => {
+    setPlayers(currentPlayers => {
+      const proposedPositions = currentPlayers.map(player => {
         try {
           const opposingTeamElo = currentPlayers
             .filter(p => p.team !== player.team)
@@ -95,9 +96,11 @@ const usePlayerMovement = ({
             };
             newPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, newPosition.x));
             newPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, newPosition.y));
+            
             return {
               ...player,
-              position: newPosition,
+              proposedPosition: newPosition,
+              movement,
               brain: {
                 ...player.brain,
                 lastOutput: movement,
@@ -159,30 +162,22 @@ const usePlayerMovement = ({
               moveY = distStrategic > 0 ? (dyStrategic / distStrategic) * moveSpeed : 0;
             }
             
-            const newPosition = {
+            let proposedPosition = {
               x: player.position.x + moveX,
               y: player.position.y + moveY
             };
             
-            let maxDistance = 50;
-            switch (player.role) {
-              case 'defender': maxDistance = 70; break;
-              case 'midfielder': maxDistance = 100; break;
-              case 'forward': maxDistance = 120; break;
-            }
-            
-            newPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, newPosition.x));
-            newPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, newPosition.y));
-            
-            const lastAction: 'move' | 'pass' | 'shoot' | 'intercept' = 'move';
+            proposedPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, proposedPosition.x));
+            proposedPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, proposedPosition.y));
             
             return {
               ...player,
-              position: newPosition,
+              proposedPosition,
+              movement: { x: moveX, y: moveY },
               brain: {
                 ...player.brain,
                 lastOutput: { x: moveX, y: moveY },
-                lastAction
+                lastAction: 'move'
               }
             };
           }
@@ -309,27 +304,27 @@ const usePlayerMovement = ({
           const eloSpeedBonus = player.teamElo ? Math.min(0.5, Math.max(0, (player.teamElo - 1500) / 1000)) : 0;
           const moveSpeed = 2 + eloSpeedBonus;
 
-          const newPosition = {
+          const proposedPosition = {
             x: player.position.x + moveX * moveSpeed,
             y: player.position.y + moveY * moveSpeed,
           };
 
           const distanceFromStart = Math.sqrt(
-            Math.pow(newPosition.x - player.targetPosition.x, 2) +
-            Math.pow(newPosition.y - player.targetPosition.y, 2)
+            Math.pow(proposedPosition.x - player.targetPosition.x, 2) +
+            Math.pow(proposedPosition.y - player.targetPosition.y, 2)
           );
 
           if (distanceFromStart > maxDistance) {
             const angle = Math.atan2(
-              player.targetPosition.y - newPosition.y,
-              player.targetPosition.x - newPosition.x
+              player.targetPosition.y - proposedPosition.y,
+              player.targetPosition.x - proposedPosition.x
             );
-            newPosition.x = player.targetPosition.x + Math.cos(angle) * maxDistance;
-            newPosition.y = player.targetPosition.y + Math.sin(angle) * maxDistance;
+            proposedPosition.x = player.targetPosition.x + Math.cos(angle) * maxDistance;
+            proposedPosition.y = player.targetPosition.y + Math.sin(angle) * maxDistance;
           }
 
-          newPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, newPosition.x));
-          newPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, newPosition.y));
+          proposedPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, proposedPosition.x));
+          proposedPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, proposedPosition.y));
 
           if (player.teamElo && player.teamElo > 2200) {
             console.log(`High ELO player ${player.team} #${player.id} moved with precision ${executionPrecision.toFixed(2)} ${isMovingTowardsBall ? 'towards' : 'away from'} ball`);
@@ -337,14 +332,42 @@ const usePlayerMovement = ({
 
           return {
             ...player,
-            position: newPosition,
+            proposedPosition,
+            movement: { x: moveX, y: moveY },
+            brain: {
+              ...player.brain,
+              lastOutput: { x: moveX, y: moveY }
+            }
           };
         } catch (error) {
           console.error(`Error updating player ${player.team} ${player.role} #${player.id}:`, error);
-          return player;
+          return {
+            ...player,
+            proposedPosition: player.position,
+            movement: { x: 0, y: 0 }
+          };
         }
-      })
-    );
+      });
+      
+      return proposedPositions.map(player => {
+        const teammates = proposedPositions.filter(
+          p => p.team === player.team && p.id !== player.id
+        );
+        
+        const collisionAdjustedPosition = calculateCollisionAvoidance(
+          player,
+          teammates,
+          player.proposedPosition
+        );
+        
+        return {
+          ...player,
+          position: collisionAdjustedPosition,
+          proposedPosition: undefined,
+          movement: undefined
+        };
+      });
+    });
   }, [ball, gameReady, setPlayers, formations, possession, gameTime, score]);
 
   return { updatePlayerPositions, formations, possession };
