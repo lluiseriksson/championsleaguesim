@@ -11,7 +11,8 @@ import { isNetworkValid } from '../../utils/neuralHelpers';
 import { validatePlayerBrain, createTacticalInput } from '../../utils/neural/networkValidator';
 import { constrainMovementToRadius } from '../../utils/movementConstraints';
 import { calculateCollisionAvoidance } from '../../hooks/game/useTeamCollisions';
-import { createPlayerBrain } from '../../utils/playerBrain';
+import { createPlayerBrain } from '../../utils/neuralNetwork';
+import { createExperienceReplay } from '../../utils/experienceReplay';
 
 interface PlayerMovementProps {
   players: Player[];

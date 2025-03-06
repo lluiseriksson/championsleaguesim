@@ -5,7 +5,7 @@ import * as brain from 'brain.js';
 import { createExperienceReplay } from './experienceReplay';
 
 // Re-export all functions from their respective files
-export { createPlayerBrain, normalizeValue } from './neuralCore';
+export { createPlayerBrain, normalizeValue } from './neuralNetwork';
 export { moveGoalkeeper } from './goalkeeperLogic';
 export { calculateNetworkInputs } from './neuralInputs';
 export { updatePlayerBrain } from './brainTraining';
