@@ -1,5 +1,6 @@
 import { NeuralNet, Player, TeamContext, Ball, Position } from '../types/football';
 import { calculateDistance } from './neuralCore';
+import { isPassingLaneOpen, constrainMovementToRadius } from './movementConstraints';
 
 // Re-export all functions from their respective files
 export { createPlayerBrain, normalizeValue } from './neuralCore';
@@ -130,7 +131,7 @@ export const calculateReceivingPositionQuality = (
   return 0.4 * distanceScore + 0.4 * spaceScore + 0.2 * goalProximityScore;
 };
 
-// NEW: Determine if the player should request a pass
+// Determine if the player should request a pass
 export const shouldRequestPass = (
   player: Player,
   ballPosition: Position,

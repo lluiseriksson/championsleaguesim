@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { getAwayTeamKit } from '../../types/kits';
 import { performFinalKitCheck, resolveKitConflict } from '../../types/kits/kitConflictChecker';
 import GameLogic from '../GameLogic';
+import { createPlayerBrain } from '../../utils/neuralNetwork';
 
 const transliterateRussianName = (name: string): string => {
   const cyrillicToLatin: Record<string, string> = {
@@ -184,11 +185,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         position: { x: pos.x, y: pos.y },
         role: role,
         team: 'red',
-        brain: {
-          net: null as any,
-          lastOutput: { x: 0, y: 0 },
-          lastAction: 'move'
-        },
+        brain: createPlayerBrain(),
         targetPosition: { x: pos.x, y: pos.y },
         teamName: homeTeam,
         kitType: 'home',
@@ -219,11 +216,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         position: { x: pos.x, y: pos.y },
         role: role,
         team: 'blue',
-        brain: {
-          net: null as any,
-          lastOutput: { x: 0, y: 0 },
-          lastAction: 'move'
-        },
+        brain: createPlayerBrain(),
         targetPosition: { x: pos.x, y: pos.y },
         teamName: awayTeam,
         kitType: awayTeamKitType,
@@ -231,6 +224,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       });
     }
     
+    console.log(`Initialized ${newPlayers.length} players with neural networks`);
     setPlayers(newPlayers);
   };
   

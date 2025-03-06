@@ -1,4 +1,3 @@
-
 import { Position, Player } from '../types/football';
 import { calculateDistance } from './neuralCore';
 
@@ -48,7 +47,7 @@ export const constrainMovementToRadius = (
   };
 };
 
-// New function to determine if a player is requesting a pass
+// This function is the one we need to make sure is properly exported
 export const isPassingLaneOpen = (
   requester: Position,
   passer: Position,
