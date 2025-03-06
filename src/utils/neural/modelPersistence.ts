@@ -71,7 +71,7 @@ export const saveModel = async (player: Player, version: number = 1): Promise<bo
           weights, 
           training_sessions: (existingModel.training_sessions || 1) + 1,
           performance_score: newPerformanceScore,
-          last_updated: new Date().toISOString()
+          updated_at: new Date().toISOString()
         })
         .eq('id', existingModel.id);
 
@@ -92,7 +92,7 @@ export const saveModel = async (player: Player, version: number = 1): Promise<bo
           weights,
           training_sessions: 1,
           performance_score: performanceScore,
-          last_updated: new Date().toISOString()
+          updated_at: new Date().toISOString()
         });
 
       if (insertError) {
@@ -121,7 +121,7 @@ export const saveModel = async (player: Player, version: number = 1): Promise<bo
                 weights: specializedWeights,
                 performance_score: network.performance.overallSuccess,
                 usage_count: network.performance.usageCount,
-                last_updated: new Date().toISOString()
+                updated_at: new Date().toISOString()
               }, { onConflict: 'team,role,specialization,version' });
               
             if (!specializedError) {
@@ -173,6 +173,60 @@ export const loadModel = async (team: string, role: string, version: number = 1)
   } catch (error) {
     console.error('Error loading model:', error);
     return null;
+  }
+};
+
+// New function to batch load models for multiple players
+export const batchLoadModels = async (roles: string[], team: string, version: number = 1): Promise<Record<string, NeuralNet | null>> => {
+  try {
+    console.log(`Batch loading models for ${team} team...`);
+    
+    const { data, error } = await supabase
+      .from('neural_models')
+      .select('role, weights')
+      .eq('team', team)
+      .in('role', roles)
+      .eq('version', version);
+
+    if (error) {
+      console.error('Error batch loading models:', error);
+      return {};
+    }
+
+    const results: Record<string, NeuralNet | null> = {};
+    
+    // Initialize with null values for all requested roles
+    for (const role of roles) {
+      results[role] = null;
+    }
+    
+    // Process successfully loaded models
+    if (data && data.length > 0) {
+      console.log(`Found ${data.length} models for ${team}`);
+      
+      for (const model of data) {
+        try {
+          const playerBrain = createPlayerBrain();
+          playerBrain.net.fromJSON(model.weights);
+          
+          if (isNetworkValid(playerBrain.net)) {
+            results[model.role] = playerBrain;
+            console.log(`Model for ${team} ${model.role} loaded successfully`);
+          } else {
+            console.warn(`Loaded model for ${team} ${model.role} is not valid`);
+          }
+        } catch (error) {
+          console.error(`Error processing model for ${team} ${model.role}:`, error);
+        }
+      }
+    } else {
+      console.log(`No models found for ${team}`);
+    }
+    
+    return results;
+  } catch (error) {
+    console.error('Error in batch loading models:', error);
+    return {};
   }
 };
 

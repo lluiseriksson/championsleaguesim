@@ -14,13 +14,139 @@ export const useTournament = (embeddedMode = false) => {
   const [activeMatch, setActiveMatch] = useState<Match | null>(null);
   const [playingMatch, setPlayingMatch] = useState(false);
   const [autoSimulation, setAutoSimulation] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
+  // Lazy initialization approach
   useEffect(() => {
-    if (!initialized) {
-      initializeTournament();
+    if (!initialized && !isLoading) {
+      // Only initialize teams - we'll create matches on demand
+      initializeTeams();
       setInitialized(true);
     }
-  }, [initialized]);
+  }, [initialized, isLoading]);
+
+  // Initialize teams first (fast)
+  const initializeTeams = useCallback(() => {
+    console.log("Initializing tournament teams");
+    setIsLoading(true);
+    
+    // Create tournament teams from team kit colors
+    const tournamentTeams: TournamentTeam[] = Object.entries(teamKitColors)
+      .map(([name, colors], index) => ({
+        id: index + 1,
+        name,
+        seed: index + 1,
+        eloRating: 2000 - index * 4,
+        kitColors: colors
+      }))
+      .slice(0, 128);
+
+    setTeams(tournamentTeams);
+    setIsLoading(false);
+    
+    toast.success("Tournament teams ready", {
+      description: "128 teams ready for the competition"
+    });
+  }, []);
+
+  // Lazy create matches for the current round
+  const createMatchesForRound = useCallback((round: number) => {
+    console.log(`Creating matches for round ${round}`);
+    
+    if (round === 1) {
+      setIsLoading(true);
+      
+      // For first round, create all 64 matches and assign teams
+      const initialMatches: Match[] = [];
+      const totalRounds = 7;
+      
+      let matchId = 1;
+      // Create match structure for all rounds
+      for (let r = 1; r <= totalRounds; r++) {
+        const matchesInRound = Math.pow(2, totalRounds - r);
+        
+        for (let position = 1; position <= matchesInRound; position++) {
+          initialMatches.push({
+            id: matchId++,
+            round: r,
+            position,
+            played: false
+          });
+        }
+      }
+      
+      // Randomly shuffle the home teams (strongest 64 teams)
+      const homeTeams = [...teams.slice(0, 64)];
+      for (let i = homeTeams.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [homeTeams[i], homeTeams[j]] = [homeTeams[j], homeTeams[i]];
+      }
+      
+      // Also randomly shuffle the away teams
+      const awayTeams = [...teams.slice(64)];
+      for (let i = awayTeams.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [awayTeams[i], awayTeams[j]] = [awayTeams[j], awayTeams[i]];
+      }
+      
+      // Assign teams to first-round matches
+      for (let i = 0; i < 64; i++) {
+        const match = initialMatches.find(m => m.round === 1 && m.position === i + 1);
+        if (match) {
+          match.teamA = homeTeams[i];
+          match.teamB = awayTeams[i];
+        }
+      }
+      
+      setMatches(initialMatches);
+      setCurrentRound(1);
+      setIsLoading(false);
+    } else {
+      // For subsequent rounds, update upcoming matches based on previous round results
+      setMatches(prevMatches => {
+        const updatedMatches = [...prevMatches];
+        
+        // Get matches from previous round
+        const previousRoundMatches = updatedMatches.filter(m => m.round === round - 1);
+        
+        // For each pair of previous round matches, set winners as teams for next round
+        for (let i = 0; i < previousRoundMatches.length; i += 2) {
+          if (i + 1 < previousRoundMatches.length) {
+            const match1 = previousRoundMatches[i];
+            const match2 = previousRoundMatches[i + 1];
+            
+            if (match1.played && match2.played && match1.winner && match2.winner) {
+              const nextPosition = Math.ceil(match1.position / 2);
+              const nextMatch = updatedMatches.find(
+                m => m.round === round && m.position === nextPosition
+              );
+              
+              if (nextMatch) {
+                nextMatch.teamA = match1.winner;
+                nextMatch.teamB = match2.winner;
+              }
+            }
+          }
+        }
+        
+        return updatedMatches;
+      });
+    }
+  }, [teams]);
+
+  // When current round changes, create matches for that round
+  useEffect(() => {
+    if (initialized && teams.length > 0 && !isLoading) {
+      // Check if we need to create matches for the current round
+      const roundMatches = matches.filter(m => m.round === currentRound);
+      const needToCreateMatches = roundMatches.length === 0 || 
+                                (currentRound > 1 && roundMatches.some(m => !m.teamA || !m.teamB));
+      
+      if (needToCreateMatches) {
+        createMatchesForRound(currentRound);
+      }
+    }
+  }, [currentRound, initialized, teams, matches, isLoading, createMatchesForRound]);
 
   useEffect(() => {
     if (!autoSimulation || playingMatch || currentRound > 7) return;
@@ -77,63 +203,25 @@ export const useTournament = (embeddedMode = false) => {
   }, [autoSimulation, playingMatch, currentRound, matches]);
 
   const initializeTournament = useCallback(() => {
-    const tournamentTeams: TournamentTeam[] = Object.entries(teamKitColors).map(([name, colors], index) => ({
-      id: index + 1,
-      name,
-      seed: index + 1,
-      eloRating: 2000 - index * 4,
-      kitColors: colors
-    })).slice(0, 128);
-
-    setTeams(tournamentTeams);
-
-    const initialMatches: Match[] = [];
-    const totalRounds = 7;
-
-    let matchId = 1;
-    for (let round = 1; round <= totalRounds; round++) {
-      const matchesInRound = Math.pow(2, totalRounds - round);
-      
-      for (let position = 1; position <= matchesInRound; position++) {
-        initialMatches.push({
-          id: matchId++,
-          round,
-          position,
-          played: false
-        });
-      }
-    }
-
-    // Randomly shuffle the home teams (strongest 64 teams)
-    const homeTeams = [...tournamentTeams.slice(0, 64)];
-    for (let i = homeTeams.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [homeTeams[i], homeTeams[j]] = [homeTeams[j], homeTeams[i]];
-    }
-
-    // Also randomly shuffle the away teams
-    const awayTeams = [...tournamentTeams.slice(64)];
-    for (let i = awayTeams.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [awayTeams[i], awayTeams[j]] = [awayTeams[j], awayTeams[i]];
-    }
-
-    // Assign teams to first-round matches using the shuffled arrays
-    for (let i = 0; i < 64; i++) {
-      const match = initialMatches.find(m => m.round === 1 && m.position === i + 1);
-      if (match) {
-        match.teamA = homeTeams[i];
-        match.teamB = awayTeams[i];
-      }
-    }
-
-    setMatches(initialMatches);
+    // Reset states
+    setIsLoading(true);
+    setMatches([]);
     setCurrentRound(1);
+    setInitialized(false);
+    setAutoSimulation(false);
+    setActiveMatch(null);
+    setPlayingMatch(false);
+    clearKitSelectionCache();
     
+    // Re-initialize
+    initializeTeams();
+    setInitialized(true);
+    setIsLoading(false);
+
     toast.success("Tournament initialized", {
       description: "128 teams ready for the competition"
     });
-  }, []);
+  }, [initializeTeams]);
 
   const resetTournament = useCallback(() => {
     setActiveMatch(null);
@@ -279,6 +367,7 @@ export const useTournament = (embeddedMode = false) => {
     activeMatch,
     playingMatch,
     autoSimulation,
+    isLoading,
     initializeTournament,
     resetTournament,
     playMatch,

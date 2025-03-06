@@ -1,17 +1,11 @@
 
-import React, { useState, useRef } from 'react';
-import { Player, Position } from '../../types/football';
-import { saveModel } from '../../utils/neural/modelPersistence';
-import { createExperienceReplay } from '../../utils/experienceReplay';
+import React from 'react';
+import { Player } from '../../types/football';
+import { loadModel, batchLoadModels, loadSpecializedNetworks } from '../../utils/neural/modelPersistence';
+import { isNetworkValid } from '../../utils/neuralHelpers';
+import { createPlayerBrain } from '../../utils/neuralNetwork';
 import { toast } from 'sonner';
-import { validatePlayerBrain, enhanceTacticalNetworks } from '../../utils/neural/networkValidator';
-
-// Interval between model synchronization (in frames)
-const DEFAULT_SYNC_INTERVAL = 600; // 10 seconds at 60fps
-const TOURNAMENT_SYNC_INTERVAL = 1200; // 20 seconds at 60fps
-
-// Learning check interval (in frames)
-const LEARNING_CHECK_INTERVAL = 1800; // 30 seconds at 60fps
+import { validatePlayerBrain } from '../../utils/neural/networkValidator';
 
 interface ModelSyncSystemProps {
   players: Player[];
@@ -24,126 +18,207 @@ export const useModelSyncSystem = ({
   setPlayers,
   tournamentMode = false
 }: ModelSyncSystemProps) => {
-  const syncCounter = useRef(0);
-  const learningCheckCounter = useRef(0);
-  const [lastSyncTime, setLastSyncTime] = useState(Date.now());
+  // Counter for sync operations
+  const syncCounterRef = React.useRef(0);
+  const [modelsLoaded, setModelsLoaded] = React.useState(false);
   
-  // Increment frame counter for model synchronization
-  const incrementSyncCounter = () => {
-    syncCounter.current += 1;
-    learningCheckCounter.current += 1;
-  };
+  // Track the timestamp of the last model load operation
+  const lastModelLoadTimestampRef = React.useRef(0);
+  // Throttle model loading to avoid excessive operations
+  const MODEL_LOAD_THROTTLE_MS = 15000; // 15 seconds
   
-  // Save models to database and ensure network integrity
-  const syncModels = React.useCallback(async () => {
-    const syncInterval = tournamentMode ? TOURNAMENT_SYNC_INTERVAL : DEFAULT_SYNC_INTERVAL;
-    
-    if (syncCounter.current >= syncInterval) {
-      const currentTime = Date.now();
-      const timeSinceLastSync = currentTime - lastSyncTime;
-      
-      // Only sync if at least 5 seconds have passed (prevents rapid saving in case of frame spikes)
-      if (timeSinceLastSync >= 5000) {
-        console.log('Synchronizing neural models...');
-        
-        // First, ensure all players have valid brains
-        let playersNeedingUpdate = false;
-        const validatedPlayers = players.map(player => {
-          const validatedPlayer = validatePlayerBrain(player);
-          if (validatedPlayer !== player) {
-            playersNeedingUpdate = true;
-          }
-          return validatedPlayer;
-        });
-        
-        // Update players if any brains were fixed
-        if (playersNeedingUpdate) {
-          console.log('Updating players with fixed neural networks');
-          setPlayers(validatedPlayers);
-        }
-        
-        // Select a subset of players to save (to avoid too many DB operations)
-        const playersToSync = validatedPlayers.filter((_, index) => index % 3 === syncCounter.current % 3);
-        
-        let syncCount = 0;
-        for (const player of playersToSync) {
-          try {
-            // First validate and enhance the player's brain
-            const enhancedPlayer = enhanceTacticalNetworks(validatePlayerBrain(player));
-            
-            // If the player was updated, update it in the state
-            if (enhancedPlayer !== player) {
-              setPlayers(currentPlayers => 
-                currentPlayers.map(p => p.id === player.id ? enhancedPlayer : p)
-              );
-            }
-            
-            // Then save the model
-            if (await saveModel(enhancedPlayer)) {
-              syncCount++;
-            }
-          } catch (error) {
-            console.error(`Error syncing model for ${player.team} ${player.role}:`, error);
-          }
-        }
-        
-        if (syncCount > 0 && !tournamentMode) {
-          toast.success(`Synced ${syncCount} neural models`, {
-            duration: 2000,
-            position: 'bottom-right'
-          });
-        }
-        
-        setLastSyncTime(currentTime);
-      }
-      
-      syncCounter.current = 0;
+  // Learning progress interval (in ms)
+  const LEARNING_CHECK_INTERVAL = 30000; // 30 seconds
+  
+  React.useEffect(() => {
+    if (!modelsLoaded && players.length > 0) {
+      // Load models on initial mount
+      syncModels();
     }
-  }, [players, setPlayers, tournamentMode, lastSyncTime]);
+  }, [players, modelsLoaded]);
   
-  // Check and enhance learning capabilities
-  const checkLearningProgress = React.useCallback(() => {
-    if (learningCheckCounter.current >= LEARNING_CHECK_INTERVAL) {
-      console.log('Checking neural network learning progress...');
+  // Function to increment the sync counter
+  const incrementSyncCounter = React.useCallback(() => {
+    // Increment counter
+    syncCounterRef.current++;
+  }, []);
+  
+  // Check if there are any invalid neural networks in the players array
+  const hasInvalidNetworks = React.useCallback(() => {
+    return players.some(player => 
+      !player.brain || 
+      !player.brain.net || 
+      !isNetworkValid(player.brain.net)
+    );
+  }, [players]);
+  
+  // Function to sync neural models from database
+  const syncModels = React.useCallback(async () => {
+    if (players.length === 0) {
+      console.log('No players to sync models for');
+      return;
+    }
+    
+    const currentTime = Date.now();
+    
+    // Check if we should throttle model loading
+    if (currentTime - lastModelLoadTimestampRef.current < MODEL_LOAD_THROTTLE_MS) {
+      console.log('Model loading throttled, skipping this sync operation');
+      return;
+    }
+    
+    // Update timestamp
+    lastModelLoadTimestampRef.current = currentTime;
+    
+    console.log('Syncing neural models...');
+    
+    try {
+      // Optimization: Batch load models by team
+      const redTeamRoles = players
+        .filter(p => p.team === 'red')
+        .map(p => p.role)
+        .filter((role, index, self) => self.indexOf(role) === index); // Unique roles
       
-      let enhancedPlayers = 0;
+      const blueTeamRoles = players
+        .filter(p => p.team === 'blue')
+        .map(p => p.role)
+        .filter((role, index, self) => self.indexOf(role) === index); // Unique roles
       
-      setPlayers(currentPlayers => 
-        currentPlayers.map(player => {
-          // First ensure the player has a valid brain
-          const validPlayer = validatePlayerBrain(player);
-          
-          // Skip players that already have proper experience replay setup
-          if (validPlayer.brain?.experienceReplay?.capacity > 0) {
-            return validPlayer;
+      // Load models in batch by team
+      const redModels = await batchLoadModels(redTeamRoles, 'red');
+      const blueModels = await batchLoadModels(blueTeamRoles, 'blue');
+      
+      // Update players with the loaded models
+      setPlayers(currentPlayers => {
+        return currentPlayers.map(player => {
+          // Skip players that already have valid networks
+          if (player.brain && player.brain.net && isNetworkValid(player.brain.net)) {
+            return player;
           }
           
-          enhancedPlayers++;
+          // Get the appropriate model based on team and role
+          const modelMap = player.team === 'red' ? redModels : blueModels;
+          const loadedBrain = modelMap[player.role];
           
-          // Set up experience replay for players that don't have it
+          if (loadedBrain) {
+            // Only use the model if it's valid
+            if (loadedBrain.net && isNetworkValid(loadedBrain.net)) {
+              // Load specialized networks in the background (don't await)
+              loadSpecializedNetworks(player.team, player.role)
+                .then(specializedNetworks => {
+                  if (specializedNetworks && specializedNetworks.length > 0) {
+                    // Update player with specialized networks asynchronously
+                    setPlayers(prevPlayers => 
+                      prevPlayers.map(p => {
+                        if (p.id === player.id) {
+                          return {
+                            ...p,
+                            brain: {
+                              ...p.brain,
+                              specializedNetworks
+                            }
+                          };
+                        }
+                        return p;
+                      })
+                    );
+                  }
+                })
+                .catch(error => {
+                  console.error(`Error loading specialized networks for ${player.team} ${player.role}:`, error);
+                });
+              
+              // Use the loaded brain
+              return {
+                ...player,
+                brain: {
+                  ...loadedBrain,
+                  lastOutput: { x: 0, y: 0 },
+                  lastAction: 'move'
+                }
+              };
+            }
+          }
+          
+          // If no valid model was loaded, create a new brain
+          const newBrain = createPlayerBrain();
           return {
-            ...validPlayer,
+            ...player,
             brain: {
-              ...validPlayer.brain,
-              experienceReplay: validPlayer.brain?.experienceReplay || createExperienceReplay(100),
-              learningStage: validPlayer.brain?.learningStage || 0.1,
-              lastReward: validPlayer.brain?.lastReward || 0,
-              cumulativeReward: validPlayer.brain?.cumulativeReward || 0
+              ...newBrain,
+              lastOutput: { x: 0, y: 0 },
+              lastAction: 'move'
             }
           };
-        })
-      );
+        });
+      });
       
-      if (enhancedPlayers > 0 && !tournamentMode) {
-        toast.info(`Enhanced learning for ${enhancedPlayers} players`, {
-          duration: 3000,
-          position: 'bottom-right'
+      console.log('Neural models sync completed');
+      setModelsLoaded(true);
+      
+      if (!tournamentMode) {
+        toast.success("Neural models loaded", {
+          description: "AI players are ready to play"
         });
       }
+    } catch (error) {
+      console.error('Error syncing models:', error);
       
-      learningCheckCounter.current = 0;
+      // Fallback: ensure all players have valid brains
+      setPlayers(currentPlayers => {
+        return currentPlayers.map(player => {
+          if (!player.brain || !player.brain.net || !isNetworkValid(player.brain.net)) {
+            const newBrain = createPlayerBrain();
+            return {
+              ...player,
+              brain: {
+                ...newBrain,
+                lastOutput: { x: 0, y: 0 },
+                lastAction: 'move'
+              }
+            };
+          }
+          return player;
+        });
+      });
+      
+      if (!tournamentMode) {
+        toast.error("Error loading neural models", {
+          description: "Using fallback AI behaviors"
+        });
+      }
     }
-  }, [setPlayers, tournamentMode]);
+  }, [players, setPlayers, tournamentMode]);
   
-  return { syncModels, incrementSyncCounter, checkLearningProgress };
+  // Function to check learning progress and validate player brains
+  const checkLearningProgress = React.useCallback(() => {
+    // Skip checks in tournament mode
+    if (tournamentMode) return;
+    
+    console.log('Checking learning progress...');
+    
+    // Validate all player brains
+    const updatedPlayers = players.map(player => validatePlayerBrain(player));
+    
+    // Only update if there were changes
+    const hasChanges = updatedPlayers.some((player, index) => player !== players[index]);
+    if (hasChanges) {
+      console.log('Updating players with validated brains');
+      setPlayers(updatedPlayers);
+    }
+    
+    // Check if any players still have invalid networks
+    if (hasInvalidNetworks()) {
+      console.warn('Some players still have invalid neural networks');
+      syncModels();
+    } else {
+      console.log('All players have valid neural networks');
+    }
+  }, [players, setPlayers, hasInvalidNetworks, syncModels, tournamentMode]);
+  
+  return { 
+    syncModels, 
+    incrementSyncCounter,
+    checkLearningProgress
+  };
 };
