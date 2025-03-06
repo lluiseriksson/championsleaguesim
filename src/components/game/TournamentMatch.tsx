@@ -74,6 +74,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   const [goldenGoalScored, setGoldenGoalScored] = useState(false);
   const [initializing, setInitializing] = useState(true);
   const [ballStartedMoving, setBallStartedMoving] = useState(false);
+  const [ballMovingDetected, setBallMovingDetected] = useState(false);
   
   const resultDeterminedRef = useRef(false);
   
@@ -264,6 +265,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   
   const handleBallFirstMove = () => {
     console.log("Ball started moving, starting match timer");
+    setBallMovingDetected(true);
     setBallStartedMoving(true);
   };
   

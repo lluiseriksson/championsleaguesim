@@ -50,12 +50,16 @@ export const useGameLoop = ({
   // Check if all players have initialized neural networks
   React.useEffect(() => {
     if (players.length > 0 && !neuralNetworksInitializedRef.current) {
-      const allInitialized = players.every(player => 
+      // We'll consider networks initialized when at least 70% of players have valid networks
+      // This is a compromise to prevent waiting too long but also ensure enough players are ready
+      const validNetworksCount = players.filter(player => 
         player.brain && player.brain.net && typeof player.brain.net.run === 'function'
-      );
+      ).length;
       
-      if (allInitialized) {
-        console.log("All neural networks initialized and ready");
+      const initializationPercentage = (validNetworksCount / players.length) * 100;
+      
+      if (initializationPercentage >= 70) {
+        console.log(`Neural networks initialization threshold reached (${validNetworksCount}/${players.length} - ${initializationPercentage.toFixed(1)}%)`);
         neuralNetworksInitializedRef.current = true;
       }
     }
@@ -84,11 +88,13 @@ export const useGameLoop = ({
         }
         
         if (initialDelayCompleted) {
-          // Update player positions first so they're ready when ball moves
+          // Always update player positions since we want positioning to happen
+          // even if the ball is not moving yet
           updatePlayerPositions();
           
-          // Only update ball after a brief delay to ensure players are positioned
-          if (frameCounter >= 30 || neuralNetworksInitializedRef.current) {
+          // Only update ball if neural networks are sufficiently initialized
+          // or if we've been waiting too long (safety fallback)
+          if (neuralNetworksInitializedRef.current || frameCounter > 300) {
             updateBallPosition();
           }
           

@@ -17,7 +17,7 @@ interface BallMovementProps {
   checkGoal: (position: Position) => 'red' | 'blue' | null;
   onBallTouch: (player: Player) => void;
   tournamentMode?: boolean;
-  onBallFirstMove?: () => void; // Add callback for when ball first moves
+  onBallFirstMove?: () => void; // Callback for when ball first moves
 }
 
 export const useBallMovement = ({ 
@@ -46,11 +46,10 @@ export const useBallMovement = ({
   // Use goal detection hook
   const { handleGoalCheck } = useBallGoalDetection({ checkGoal, tournamentMode });
 
-  // Reference to store previous ball position for tracking
-  const previousBallPositionRef = React.useRef<Position>({ ...ball.position });
-  
   // Track if we've detected the first ball movement
   const ballFirstMoveDetectedRef = React.useRef(false);
+  // Prevent multiple calls to onBallFirstMove
+  const onBallFirstMoveCalledRef = React.useRef(false);
 
   const updateBallPosition = React.useCallback(() => {
     setBall(currentBall => {
@@ -61,8 +60,10 @@ export const useBallMovement = ({
       const currentSpeed = calculateBallSpeed(currentBall.velocity);
       
       // If this is the first significant ball movement, trigger the callback
-      if (!ballFirstMoveDetectedRef.current && currentSpeed > 0.5 && onBallFirstMove) {
+      if (!ballFirstMoveDetectedRef.current && currentSpeed > 0.5 && onBallFirstMove && !onBallFirstMoveCalledRef.current) {
+        console.log("First ball movement detected, starting match timer");
         ballFirstMoveDetectedRef.current = true;
+        onBallFirstMoveCalledRef.current = true;
         onBallFirstMove();
       }
       
@@ -81,8 +82,10 @@ export const useBallMovement = ({
         const kickedBall = applyRandomKick(currentBall, tournamentMode);
         
         // If this is the first significant ball movement, trigger the callback
-        if (!ballFirstMoveDetectedRef.current && onBallFirstMove) {
+        if (!ballFirstMoveDetectedRef.current && !onBallFirstMoveCalledRef.current && onBallFirstMove) {
+          console.log("Random kick detected as first ball movement, starting match timer");
           ballFirstMoveDetectedRef.current = true;
+          onBallFirstMoveCalledRef.current = true;
           onBallFirstMove();
         }
         

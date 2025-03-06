@@ -48,7 +48,7 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
   }, [goldenGoal, elapsedTime]);
 
   useEffect(() => {
-    // Only start the timer if startTimer is true
+    // Only start the timer if startTimer is true or we're in golden goal mode
     if (!startTimer && !goldenGoal) {
       if (timerRef.current) {
         clearInterval(timerRef.current);
@@ -62,15 +62,17 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
       timerRef.current = null;
     }
     
+    // If we've reached the end of regular time
     if (elapsedTime >= initialTime && !goldenGoal && !timeEndCalledRef.current) {
       timeEndCalledRef.current = true;
       onTimeEnd();
     }
 
+    // Only run the timer if we haven't reached the end yet or we're in golden goal
     if (elapsedTime < initialTime || goldenGoal) {
       timerRef.current = setInterval(() => {
         setElapsedTime(prevTime => prevTime + 1);
-      }, 300); // Update approximately 3 times per second for smoother progression (reduced from 500ms)
+      }, 300); // Update approximately 3 times per second for smoother progression
     }
 
     return () => {
