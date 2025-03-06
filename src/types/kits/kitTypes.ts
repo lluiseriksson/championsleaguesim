@@ -1,4 +1,5 @@
 
+
 export type KitType = 'home' | 'away' | 'third';
 
 export type TeamKitColors = {
@@ -73,3 +74,4 @@ export function isColorTooCloseToField(color: string): boolean {
   // Return true if the color is too close to the pitch color
   return distance < 60;
 }
+

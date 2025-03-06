@@ -105,13 +105,24 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
       kitColors.secondary = adjustGreenKitForPitchContrast(kitColors.secondary);
     }
     
-    // For goalkeepers, invert primary and secondary colors
+    // For goalkeepers, use completely different colors
     if (player.role === 'goalkeeper') {
-      kitColors = {
-        primary: kitColors.secondary, // Use the secondary color as primary
-        secondary: kitColors.primary, // Use the primary color as secondary
-        accent: kitColors.accent      // Keep accent color the same
-      };
+      // Home team goalkeepers use a consistent purple palette
+      if (player.team === 'red') {
+        kitColors = {
+          primary: '#8B5CF6', // Vivid purple
+          secondary: '#D946EF', // Magenta pink
+          accent: kitColors.accent // Keep original accent
+        };
+      } 
+      // Away team goalkeepers use a consistent orange palette
+      else {
+        kitColors = {
+          primary: '#F97316', // Bright orange
+          secondary: '#0EA5E9', // Ocean blue
+          accent: kitColors.accent // Keep original accent
+        };
+      }
     }
     
     // Create a dynamic style with the kit colors
