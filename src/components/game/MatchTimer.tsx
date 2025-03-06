@@ -17,13 +17,13 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const initializedRef = useRef(false);
   const timeEndCalledRef = useRef(false);
+  const goldenGoalStartTimeRef = useRef(0);
   
   // Calculate what time should show on the chronometer (scaling to 90 minutes)
   const getDisplayMinutes = (elapsed: number, total: number) => {
     // Scale the elapsed time to a 90-minute match
     const scaledMinutes = Math.floor((elapsed / total) * 90);
-    // In golden goal mode, we need to show 90+ minutes
-    return goldenGoal ? Math.max(90, scaledMinutes) : scaledMinutes;
+    return scaledMinutes;
   };
   
   console.log('MatchTimer rendered with initialTime:', initialTime, 'elapsedTime:', elapsedTime, 'goldenGoal:', goldenGoal);
@@ -36,6 +36,16 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
       initializedRef.current = true;
     }
   }, [initialTime]);
+
+  // Store the time when golden goal starts
+  useEffect(() => {
+    if (goldenGoal && goldenGoalStartTimeRef.current === 0) {
+      goldenGoalStartTimeRef.current = elapsedTime;
+      console.log('Golden goal started at elapsed time:', goldenGoalStartTimeRef.current);
+    } else if (!goldenGoal) {
+      goldenGoalStartTimeRef.current = 0;
+    }
+  }, [goldenGoal, elapsedTime]);
 
   useEffect(() => {
     console.log('Setting up timer with elapsedTime:', elapsedTime, 'initialTime:', initialTime, 'goldenGoal:', goldenGoal);
@@ -87,14 +97,13 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
   const displayMinutes = getDisplayMinutes(elapsedTime, initialTime);
   const displaySeconds = Math.floor((elapsedTime / initialTime) * 90 * 60) % 60;
   
-  // In golden goal mode, calculate the extra time in minutes and seconds properly
+  // In golden goal mode, calculate the extra time properly based on simulated match time
   let formattedTime;
-  if (goldenGoal && elapsedTime >= initialTime) {
-    // Calculate extra time in seconds
-    const extraTimeSeconds = elapsedTime - initialTime;
-    // Convert to minutes and seconds
-    const extraMinutes = Math.floor(extraTimeSeconds / 60);
-    const extraSeconds = extraTimeSeconds % 60;
+  if (goldenGoal) {
+    const extraTimeElapsed = elapsedTime - goldenGoalStartTimeRef.current;
+    const extraTimeScaled = Math.floor((extraTimeElapsed / initialTime) * 90);
+    const extraMinutes = Math.floor(extraTimeScaled / 60);
+    const extraSeconds = extraTimeScaled % 60;
     
     formattedTime = `90+${extraMinutes}:${extraSeconds < 10 ? '0' : ''}${extraSeconds}`;
   } else {

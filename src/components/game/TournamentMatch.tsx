@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
@@ -49,7 +48,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   homeTeam, 
   awayTeam, 
   onMatchComplete,
-  matchDuration = 120 // 2 minutes default (changed from 180)
+  matchDuration = 60 // 1 minute default (changed from 120)
 }) => {
   const displayHomeTeam = transliterateRussianName(homeTeam);
   const displayAwayTeam = transliterateRussianName(awayTeam);
@@ -74,7 +73,6 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   
   const [goldenGoalScored, setGoldenGoalScored] = useState(false);
   
-  // New ref to track if the match result has been determined
   const resultDeterminedRef = useRef(false);
   
   useEffect(() => {
@@ -100,7 +98,6 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
           description: `Final score: ${displayHomeTeam} ${score.red} - ${score.blue} ${displayAwayTeam}`,
         });
         
-        // Mark that result has been determined
         resultDeterminedRef.current = true;
         
         setTimeout(() => {
@@ -136,7 +133,6 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
           description: `Final score: ${displayHomeTeam} ${score.red} - ${score.blue} ${displayAwayTeam}`,
         });
         
-        // Mark that result has been determined
         resultDeterminedRef.current = true;
         
         setTimeout(() => {
@@ -231,7 +227,6 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
     gameReady: true 
   });
   
-  // Handler function for goal scoring, to be passed to GameBoard
   const handleGoalScored = (team: 'red' | 'blue') => {
     console.log(`Goal scored by ${team} team, golden goal mode: ${goldenGoal}`);
     setLastScorer(team);
@@ -267,7 +262,6 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         setBall={setBall}
         score={score}
         setScore={(newScore) => {
-          // Prevent score changes if the match result has already been determined
           if (resultDeterminedRef.current) {
             console.log("Ignoring late goal - match result already determined");
             return;
@@ -277,7 +271,6 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
             ? (newScore as (prev: Score) => Score)(score)
             : newScore;
             
-          // Check if a goal was scored
           if (currentScore.red > score.red) {
             handleGoalScored('red');
           } else if (currentScore.blue > score.blue) {
