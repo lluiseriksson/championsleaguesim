@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Player } from '../types/football';
 import { getTeamKitColor, getTeamKitColors, KitType } from '../types/kits';
-import { adjustGreenKitForPitchContrast, isColorTooCloseToField } from '../types/kits/kitTypes';
+import { adjustGreenKitForPitchContrast, isColorTooCloseToField, selectGoalkeeperKit } from '../types/kits/kitTypes';
 import { parseHexColor } from '../types/kits/colorUtils';
 
 interface PlayerSpriteProps {
@@ -105,24 +105,28 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
       kitColors.secondary = adjustGreenKitForPitchContrast(kitColors.secondary);
     }
     
-    // For goalkeepers, use completely different colors
+    // For goalkeepers, use the dynamic kit selection function
     if (player.role === 'goalkeeper') {
-      // Home team goalkeepers use a consistent purple palette
-      if (player.team === 'red') {
-        kitColors = {
-          primary: '#8B5CF6', // Vivid purple
-          secondary: '#D946EF', // Magenta pink
-          accent: kitColors.accent // Keep original accent
-        };
-      } 
-      // Away team goalkeepers use a consistent orange palette
-      else {
-        kitColors = {
-          primary: '#F97316', // Bright orange
-          secondary: '#0EA5E9', // Ocean blue
-          accent: kitColors.accent // Keep original accent
-        };
-      }
+      // Determine the opposing team
+      const opposingTeamName = player.team === 'red' ? 
+        // If this is the home team (red), find an away player to get the away team name
+        document.querySelector('[data-team="blue"]')?.getAttribute('data-team-name') : 
+        // If this is the away team (blue), find a home player to get the home team name
+        document.querySelector('[data-team="red"]')?.getAttribute('data-team-name');
+      
+      // Get opposing team primary color if available
+      const opposingTeamPrimaryColor = opposingTeamName ? 
+        getTeamKitColor(opposingTeamName, player.team === 'red' ? 'away' : 'home') : 
+        undefined;
+        
+      // Select the best goalkeeper kit based on contrast with both teams
+      kitColors = selectGoalkeeperKit(
+        player.teamName,
+        opposingTeamName,
+        kitColors.primary,
+        kitColors.secondary,
+        opposingTeamPrimaryColor
+      );
     }
     
     // Create a dynamic style with the kit colors
@@ -150,6 +154,8 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
       }}
       initial={false}
       style={getPlayerKitStyles(player)}
+      data-team={player.team}
+      data-team-name={player.teamName}
     >
       {/* Team design showing the three kit colors with primary color taking 75% */}
       <div className="absolute inset-0 w-full h-full opacity-80">
