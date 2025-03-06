@@ -75,20 +75,41 @@ export const useTournament = (embeddedMode = false) => {
 
   // Now we can use them in the useEffect dependency array
   useEffect(() => {
-    if (!autoSimulation || currentRound > 7) return;
+    if (!autoSimulation) {
+      console.log("Auto simulation not enabled, returning");
+      return;
+    }
     
-    // In embedded mode, don't set playingMatch to true to prevent hiding the tournament bracket
-    if (playingMatch && !embeddedMode) return;
+    if (currentRound > 7) {
+      console.log("Tournament complete (round > 7), returning");
+      return;
+    }
+    
+    // In embedded mode, don't worry about playingMatch
+    if (playingMatch && !embeddedMode) {
+      console.log("Playing match active and not in embedded mode, skipping simulation");
+      return;
+    }
+    
+    console.log("Auto simulation running, currentRound:", currentRound);
     
     let timeoutId: NodeJS.Timeout;
     
     const findNextUnplayedMatch = () => {
-      return matches.find(m => 
+      const nextMatch = matches.find(m => 
         m.round === currentRound && 
         !m.played && 
         m.teamA && 
         m.teamB
       );
+      
+      if (nextMatch) {
+        console.log("Found next match to play:", nextMatch.teamA?.name, "vs", nextMatch.teamB?.name);
+      } else {
+        console.log("No more unplayed matches found in round", currentRound);
+      }
+      
+      return nextMatch;
     };
     
     const simulateNextMatch = () => {
@@ -98,6 +119,9 @@ export const useTournament = (embeddedMode = false) => {
         console.log("Simulating match:", nextMatch.teamA?.name, "vs", nextMatch.teamB?.name);
         if (embeddedMode) {
           simulateSingleMatch(nextMatch);
+          
+          // When in embedded mode, schedule the next match simulation immediately
+          timeoutId = setTimeout(simulateNextMatch, 800);
         } else {
           playMatch(nextMatch);
         }
@@ -116,7 +140,10 @@ export const useTournament = (embeddedMode = false) => {
             }`
           });
           
+          console.log("All matches in round", currentRound, "completed, advancing to next round");
           setCurrentRound(prevRound => prevRound + 1);
+          
+          // Schedule the next round after a short delay
           timeoutId = setTimeout(simulateNextMatch, 1500);
         } else if (currentRound === 7 && allRoundMatchesPlayed) {
           const winner = matches.find(m => m.round === 7)?.winner;
@@ -124,11 +151,14 @@ export const useTournament = (embeddedMode = false) => {
             description: `Champion: ${winner?.name || "Unknown"}`,
           });
           
+          console.log("Tournament complete! Winner:", winner?.name);
           setAutoSimulation(false);
         }
       }
     };
     
+    // Start the simulation process
+    console.log("Starting simulation process...");
     timeoutId = setTimeout(simulateNextMatch, 800);
     
     return () => {
@@ -258,6 +288,7 @@ export const useTournament = (embeddedMode = false) => {
     
     if (autoSimulation) {
       setTimeout(() => {
+        console.log("Auto simulation continuing after match completion");
         const nextMatch = updatedMatches.find(
           m => m.round === currentRound && !m.played && m.teamA && m.teamB
         );
@@ -269,12 +300,12 @@ export const useTournament = (embeddedMode = false) => {
   }, [activeMatch, matches, currentRound, autoSimulation, playMatch]);
 
   const startAutoSimulation = useCallback(() => {
-    console.log("Starting auto simulation...");
+    console.log("Starting auto simulation with embeddedMode:", embeddedMode);
     setAutoSimulation(true);
     toast.success("Auto Simulation Started", {
       description: "Tournament will progress automatically"
     });
-  }, []);
+  }, [embeddedMode]);
 
   const getWinner = useCallback(() => {
     return matches.find(m => m.round === 7)?.winner;
