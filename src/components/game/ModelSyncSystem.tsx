@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Player } from '../../types/football';
 import { saveModel } from '../../utils/neural/modelPersistence';
@@ -5,17 +6,13 @@ import { createExperienceReplay } from '../../utils/experienceReplay';
 import { toast } from 'sonner';
 import { validatePlayerBrain } from '../../utils/neural/networkValidator';
 import { createPlayerBrain } from '../../utils/playerBrain';
-import { clearModelCache, monitorMemoryUsage } from '../../utils/neuralModelService';
 
 // Interval between model synchronization (in frames)
-const DEFAULT_SYNC_INTERVAL = 1200; // 20 seconds at 60fps
-const TOURNAMENT_SYNC_INTERVAL = 2400; // 40 seconds at 60fps
+const DEFAULT_SYNC_INTERVAL = 600; // 10 seconds at 60fps
+const TOURNAMENT_SYNC_INTERVAL = 1200; // 20 seconds at 60fps
 
 // Learning check interval (in frames)
-const LEARNING_CHECK_INTERVAL = 3600; // 60 seconds at 60fps
-
-// Performance monitoring
-const PERFORMANCE_CHECK_INTERVAL = 1800; // 30 seconds at 60fps
+const LEARNING_CHECK_INTERVAL = 1800; // 30 seconds at 60fps
 
 interface ModelSyncSystemProps {
   players: Player[];
@@ -30,46 +27,19 @@ export const useModelSyncSystem = ({
 }: ModelSyncSystemProps) => {
   const syncCounter = useRef(0);
   const learningCheckCounter = useRef(0);
-  const performanceCheckCounter = useRef(0);
   const [lastSyncTime, setLastSyncTime] = useState(Date.now());
   const [initialCheckDone, setInitialCheckDone] = useState(false);
-  const validationInProgressRef = useRef(false);
-  const lastFrameTimeRef = useRef(performance.now());
-  const lowFpsDetectedRef = useRef(false);
-  
-  // Performance monitoring to detect low FPS and reduce load
-  const checkPerformance = React.useCallback(() => {
-    const now = performance.now();
-    const frameDuration = now - lastFrameTimeRef.current;
-    lastFrameTimeRef.current = now;
-    
-    // If frame duration is consistently high (low FPS), reduce neural network usage
-    if (frameDuration > 50) { // More than 20ms per frame (less than 50 FPS)
-      if (!lowFpsDetectedRef.current) {
-        console.log("Performance issue detected: reducing neural network load");
-        lowFpsDetectedRef.current = true;
-        clearModelCache(); // Clear cache to free memory
-      }
-    } else if (lowFpsDetectedRef.current && frameDuration < 25) {
-      // Performance has recovered
-      lowFpsDetectedRef.current = false;
-    }
-    
-    performanceCheckCounter.current = 0;
-  }, []);
   
   // Perform initial neural network check when component loads
   useEffect(() => {
-    if (!initialCheckDone && players.length > 0 && !validationInProgressRef.current) {
+    if (!initialCheckDone && players.length > 0) {
       console.log("Performing initial neural network check...");
-      validationInProgressRef.current = true;
       
       // Count valid neural networks
       let validCount = 0;
       let invalidCount = 0;
       let missingCount = 0;
       
-      // Analyze the state of neural networks
       players.forEach(player => {
         if (player.brain && player.brain.net) {
           try {
@@ -96,52 +66,27 @@ export const useModelSyncSystem = ({
       if (invalidCount > 0 || missingCount > 0) {
         console.log("Validating and fixing neural networks...");
         
-        // We'll update players one by one to avoid overwhelming the system
-        const fixPlayerNetworks = (index: number) => {
-          if (index >= players.length) {
-            // All players processed
-            setInitialCheckDone(true);
-            validationInProgressRef.current = false;
-            
-            toast.info(`Fixed ${invalidCount + missingCount} neural networks`, {
-              duration: 3000,
-              position: 'bottom-right'
-            });
-            return;
-          }
-          
-          const player = players[index];
-          let updatedPlayer = player;
-          
-          // If player has no brain or invalid brain, create a new one
-          if (!player.brain || !player.brain.net || typeof player.brain.net.run !== 'function') {
-            console.log(`Creating new brain for ${player.team} ${player.role} #${player.id}`);
-            updatedPlayer = {
-              ...player,
-              brain: createPlayerBrain()
-            };
-          } else {
-            updatedPlayer = validatePlayerBrain(player);
-          }
-          
-          // Only update if the player was actually modified
-          if (updatedPlayer !== player) {
-            setPlayers(currentPlayers => 
-              currentPlayers.map(p => p.id === player.id ? updatedPlayer : p)
-            );
-          }
-          
-          // Process the next player after a small delay (increased to reduce CPU pressure)
-          setTimeout(() => fixPlayerNetworks(index + 1), 100);
-        };
+        setPlayers(currentPlayers => 
+          currentPlayers.map(player => {
+            // If player has no brain or invalid brain, create a new one
+            if (!player.brain || !player.brain.net || typeof player.brain.net.run !== 'function') {
+              console.log(`Creating new brain for ${player.team} ${player.role} #${player.id}`);
+              return {
+                ...player,
+                brain: createPlayerBrain()
+              };
+            }
+            return validatePlayerBrain(player);
+          })
+        );
         
-        // Start processing players one by one
-        fixPlayerNetworks(0);
-      } else {
-        // If all networks are valid, we're done
-        setInitialCheckDone(true);
-        validationInProgressRef.current = false;
+        toast.info(`Fixed ${invalidCount + missingCount} neural networks`, {
+          duration: 3000,
+          position: 'bottom-right'
+        });
       }
+      
+      setInitialCheckDone(true);
     }
   }, [players, setPlayers, initialCheckDone]);
   
@@ -149,61 +94,52 @@ export const useModelSyncSystem = ({
   const incrementSyncCounter = () => {
     syncCounter.current += 1;
     learningCheckCounter.current += 1;
-    performanceCheckCounter.current += 1;
-    
-    // Check performance periodically
-    if (performanceCheckCounter.current >= PERFORMANCE_CHECK_INTERVAL) {
-      checkPerformance();
-    }
-    
-    // Monitor memory usage
-    if (syncCounter.current % 600 === 0) { // Every 10 seconds at 60fps
-      monitorMemoryUsage();
-    }
   };
   
   const syncModels = React.useCallback(async () => {
-    // Skip sync if performance issues detected
-    if (lowFpsDetectedRef.current) {
-      syncCounter.current = 0;
-      return;
-    }
-    
     const syncInterval = tournamentMode ? TOURNAMENT_SYNC_INTERVAL : DEFAULT_SYNC_INTERVAL;
     
-    if (syncCounter.current >= syncInterval && !validationInProgressRef.current) {
+    if (syncCounter.current >= syncInterval) {
       const currentTime = Date.now();
       const timeSinceLastSync = currentTime - lastSyncTime;
       
-      if (timeSinceLastSync >= 10000) { // Increased minimum time between syncs
+      if (timeSinceLastSync >= 5000) {
         console.log('Synchronizing neural models...');
         
-        // Instead of processing multiple players at once, just pick one
-        const randomIndex = Math.floor(Math.random() * players.length);
-        const playerToSync = players[randomIndex];
+        const playersToSync = players.filter((_, index) => index % 3 === syncCounter.current % 3);
         
-        try {
-          const validatedPlayer = validatePlayerBrain(playerToSync);
-          
-          if (validatedPlayer !== playerToSync) {
-            console.log(`Validated and fixed player ${playerToSync.team} ${playerToSync.role} #${playerToSync.id}`);
-            setPlayers(currentPlayers => 
-              currentPlayers.map(p => p.id === playerToSync.id ? validatedPlayer : p)
-            );
-          }
-          
-          // Only save models for non-goalkeeper players to reduce load
-          if (playerToSync.role !== 'goalkeeper') {
-            const success = await saveModel(validatedPlayer);
-            if (success && !tournamentMode) {
-              toast.success(`Synced neural model for player #${playerToSync.id}`, {
-                duration: 2000,
-                position: 'bottom-right'
-              });
+        let syncCount = 0;
+        let errorCount = 0;
+        
+        for (const player of playersToSync) {
+          try {
+            const validatedPlayer = validatePlayerBrain(player);
+            
+            if (validatedPlayer !== player) {
+              console.log(`Validated and fixed player ${player.team} ${player.role} #${player.id}`);
+              setPlayers(currentPlayers => 
+                currentPlayers.map(p => p.id === player.id ? validatedPlayer : p)
+              );
             }
+            
+            if (await saveModel(validatedPlayer)) {
+              syncCount++;
+            }
+          } catch (error) {
+            errorCount++;
+            console.error(`Error syncing model for ${player.team} ${player.role}:`, error);
           }
-        } catch (error) {
-          console.error(`Error syncing model for ${playerToSync.team} ${playerToSync.role}:`, error);
+        }
+        
+        if (syncCount > 0 && !tournamentMode) {
+          toast.success(`Synced ${syncCount} neural models`, {
+            duration: 2000,
+            position: 'bottom-right'
+          });
+        }
+        
+        if (errorCount > 0) {
+          console.warn(`Encountered ${errorCount} errors while syncing models`);
         }
         
         setLastSyncTime(currentTime);
@@ -214,65 +150,62 @@ export const useModelSyncSystem = ({
   }, [players, setPlayers, tournamentMode, lastSyncTime]);
   
   const checkLearningProgress = React.useCallback(() => {
-    // Skip if performance issues detected
-    if (lowFpsDetectedRef.current) {
-      learningCheckCounter.current = 0;
-      return;
-    }
-    
-    if (learningCheckCounter.current >= LEARNING_CHECK_INTERVAL && !validationInProgressRef.current) {
+    if (learningCheckCounter.current >= LEARNING_CHECK_INTERVAL) {
       console.log('Checking neural network learning progress...');
       
-      // Pick one random player to enhance rather than processing all at once
-      const randomIndex = Math.floor(Math.random() * players.length);
-      const playerToCheck = players[randomIndex];
-      let updatedPlayer = playerToCheck;
+      let enhancedPlayers = 0;
+      let fixedPlayers = 0;
       
-      // Create experience replay if missing
-      if (!playerToCheck.brain?.experienceReplay?.capacity) {
-        updatedPlayer = {
-          ...playerToCheck,
-          brain: {
-            ...playerToCheck.brain,
-            experienceReplay: playerToCheck.brain?.experienceReplay || createExperienceReplay(100),
-            learningStage: playerToCheck.brain?.learningStage || 0.1,
-            lastReward: playerToCheck.brain?.lastReward || 0,
-            cumulativeReward: playerToCheck.brain?.cumulativeReward || 0
+      setPlayers(currentPlayers => 
+        currentPlayers.map(player => {
+          // Create experience replay if missing
+          if (!player.brain?.experienceReplay?.capacity) {
+            enhancedPlayers++;
+            
+            return {
+              ...player,
+              brain: {
+                ...player.brain,
+                experienceReplay: player.brain?.experienceReplay || createExperienceReplay(100),
+                learningStage: player.brain?.learningStage || 0.1,
+                lastReward: player.brain?.lastReward || 0,
+                cumulativeReward: player.brain?.cumulativeReward || 0
+              }
+            };
           }
-        };
-        
-        if (!tournamentMode) {
-          toast.info(`Enhanced learning for player #${playerToCheck.id}`, {
-            duration: 3000,
-            position: 'bottom-right'
-          });
-        }
-      }
+          
+          // Fix invalid neural networks
+          if (!player.brain || !player.brain.net || typeof player.brain.net.run !== 'function') {
+            fixedPlayers++;
+            console.log(`Creating new neural network for ${player.team} ${player.role} #${player.id}`);
+            return {
+              ...player,
+              brain: createPlayerBrain()
+            };
+          }
+          
+          return player;
+        })
+      );
       
-      // Fix invalid neural networks
-      if (!playerToCheck.brain || !playerToCheck.brain.net || typeof playerToCheck.brain.net.run !== 'function') {
-        console.log(`Creating new neural network for ${playerToCheck.team} ${playerToCheck.role} #${playerToCheck.id}`);
-        updatedPlayer = {
-          ...playerToCheck,
-          brain: createPlayerBrain()
-        };
-        
-        toast.success(`Fixed neural network for player #${playerToCheck.id}`, {
+      if (enhancedPlayers > 0 && !tournamentMode) {
+        toast.info(`Enhanced learning for ${enhancedPlayers} players`, {
           duration: 3000,
           position: 'bottom-right'
         });
       }
       
-      // Update the player if changes were made
-      if (updatedPlayer !== playerToCheck) {
-        setPlayers(currentPlayers => 
-          currentPlayers.map(p => p.id === playerToCheck.id ? updatedPlayer : p)
-        );
+      if (fixedPlayers > 0) {
+        console.log(`Fixed ${fixedPlayers} invalid neural networks`);
+        toast.success(`Fixed ${fixedPlayers} neural networks`, {
+          duration: 3000,
+          position: 'bottom-right'
+        });
       }
       
       learningCheckCounter.current = 0;
     }
-  }, [setPlayers, tournamentMode, players]);
+  }, [setPlayers, tournamentMode]);
   
   return { syncModels, incrementSyncCounter, checkLearningProgress };
 };

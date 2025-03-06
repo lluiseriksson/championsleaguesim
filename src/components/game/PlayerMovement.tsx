@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Player, Ball, PITCH_WIDTH, PITCH_HEIGHT, NeuralNet } from '../../types/football';
-import { moveGoalkeeper } from '../../utils/goalkeeperLogic';
+import { moveGoalkeeper } from '../../utils/playerBrain';
 import { 
   trackFormation, 
   trackPossession, 
@@ -11,8 +11,7 @@ import { isNetworkValid } from '../../utils/neuralHelpers';
 import { validatePlayerBrain, createTacticalInput } from '../../utils/neural/networkValidator';
 import { constrainMovementToRadius } from '../../utils/movementConstraints';
 import { calculateCollisionAvoidance } from '../../hooks/game/useTeamCollisions';
-import { createPlayerBrain } from '../../utils/neuralNetwork';
-import { createExperienceReplay } from '../../utils/experienceReplay';
+import { createPlayerBrain } from '../../utils/playerBrain';
 
 interface PlayerMovementProps {
   players: Player[];
@@ -21,7 +20,6 @@ interface PlayerMovementProps {
   gameReady: boolean;
   gameTime?: number;
   score?: { red: number, blue: number };
-  batchSize?: number;
 }
 
 const usePlayerMovement = ({ 
@@ -30,82 +28,41 @@ const usePlayerMovement = ({
   ball, 
   gameReady,
   gameTime = 0,
-  score = { red: 0, blue: 0 },
-  batchSize = 11
+  score = { red: 0, blue: 0 }
 }: PlayerMovementProps) => {
   const [formations, setFormations] = useState({ redFormation: [], blueFormation: [] });
   const [possession, setPossession] = useState({ team: null, player: null, duration: 0 });
   const [lastMovementTime, setLastMovementTime] = useState(Date.now());
   const [brainInitialized, setBrainInitialized] = useState(false);
-  const [initializationProgress, setInitializationProgress] = useState(0);
-  const [processedPlayers, setProcessedPlayers] = useState(0);
-  const totalPlayers = players.length;
 
   useEffect(() => {
     if (gameReady && players.length > 0 && !brainInitialized) {
-      console.log(`Starting player initialization with batch size: ${batchSize}`);
+      console.log("Initializing player brains for all players...");
       
-      let playersCopy = [...players];
+      setPlayers(currentPlayers => 
+        currentPlayers.map(player => {
+          let playerWithBrain = player;
+          
+          if (!player.brain || !player.brain.net || typeof player.brain.net.run !== 'function') {
+            console.log(`Creating new brain for ${player.team} ${player.role} #${player.id}`);
+            playerWithBrain = {
+              ...player,
+              brain: createPlayerBrain()
+            };
+          } else {
+            playerWithBrain = validatePlayerBrain(player);
+          }
+          
+          return {
+            ...playerWithBrain,
+            brain: initializePlayerBrainWithHistory(playerWithBrain.brain)
+          };
+        })
+      );
       
-      let currentBatch = 0;
-      const totalBatches = Math.ceil(players.length / batchSize);
-      
-      setProcessedPlayers(0);
-      setInitializationProgress(0);
-      
-      const initializeBatch = () => {
-        const startIdx = currentBatch * batchSize;
-        const endIdx = Math.min(startIdx + batchSize, players.length);
-        
-        console.log(`Initializing batch ${currentBatch + 1}/${totalBatches} (players ${startIdx + 1}-${endIdx}/${players.length})`);
-        
-        requestAnimationFrame(() => {
-          Promise.all(
-            playersCopy.slice(startIdx, endIdx).map(async (player, localIdx) => {
-              const playerIdx = startIdx + localIdx;
-              
-              if (!player.brain || !player.brain.net || typeof player.brain.net.run !== 'function') {
-                console.log(`Creating new brain for ${player.team} ${player.role} #${player.id}`);
-                player = {
-                  ...player,
-                  brain: createPlayerBrain()
-                };
-              } else {
-                player = validatePlayerBrain(player);
-              }
-              
-              playersCopy[playerIdx] = {
-                ...player,
-                brain: initializePlayerBrainWithHistory(player.brain)
-              };
-              
-              return true;
-            })
-          ).then(() => {
-            const newProcessedCount = Math.min((currentBatch + 1) * batchSize, players.length);
-            setProcessedPlayers(newProcessedCount);
-            const exactProgress = (newProcessedCount / totalPlayers) * 100;
-            setInitializationProgress(exactProgress);
-            
-            currentBatch++;
-            
-            if (currentBatch < totalBatches) {
-              setTimeout(() => {
-                requestAnimationFrame(initializeBatch);
-              }, 500);
-            } else {
-              setPlayers(playersCopy);
-              setBrainInitialized(true);
-              setInitializationProgress(100);
-              console.log("All player brains initialized successfully");
-            }
-          });
-        });
-      };
-      
-      setTimeout(initializeBatch, 100);
+      setBrainInitialized(true);
     }
-  }, [gameReady, setPlayers, players, brainInitialized, totalPlayers, batchSize]);
+  }, [gameReady, setPlayers, players, brainInitialized]);
 
   useEffect(() => {
     if (gameReady && players.length > 0) {
@@ -271,11 +228,6 @@ const usePlayerMovement = ({
       return;
     }
     
-    if (!brainInitialized) {
-      console.log("Player brains not fully initialized yet, skipping movement");
-      return;
-    }
-    
     console.log("Updating player positions...");
     
     setPlayers(currentPlayers => {
@@ -283,12 +235,7 @@ const usePlayerMovement = ({
         try {
           if (player.role === 'goalkeeper') {
             console.log(`Moving goalkeeper ${player.team} #${player.id}`);
-            
-            const opposingTeam = player.team === 'red' ? 'blue' : 'red';
-            const opposingTeamPlayer = currentPlayers.find(p => p.team === opposingTeam);
-            const opposingTeamElo = opposingTeamPlayer?.teamElo;
-            
-            const movement = moveGoalkeeper(player, ball, opposingTeamElo);
+            const movement = moveGoalkeeper(player, ball);
             const newPosition = {
               x: player.position.x + movement.x,
               y: player.position.y + movement.y
@@ -311,8 +258,7 @@ const usePlayerMovement = ({
             };
           }
           
-          const earlyGameBonus = gameTime < 10 ? 0.2 : 0;
-          const neuralNetworkThreshold = (player.role === 'defender' ? 0.6 : 0.65) - earlyGameBonus;
+          const neuralNetworkThreshold = player.role === 'defender' ? 0.35 : 0.4;
           const useNeuralNetwork = Math.random() > neuralNetworkThreshold;
           
           console.log(`${player.team} ${player.role} #${player.id} - Using neural network: ${useNeuralNetwork}`);
@@ -329,8 +275,7 @@ const usePlayerMovement = ({
               player.position,
               player.targetPosition,
               newPosition,
-              player.role,
-              gameTime
+              player.role
             );
             
             newPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, newPosition.x));
@@ -357,7 +302,7 @@ const usePlayerMovement = ({
           };
           
           let targetX = roleOffsets[player.role] || player.targetPosition.x;
-          let targetY = ball.position.y;
+          let targetY = Math.max(100, Math.min(PITCH_HEIGHT - 100, ball.position.y));
           
           const defensiveThirdWidth = PITCH_WIDTH / 3;
           const isInDefensiveThird = (player.team === 'red' && ball.position.x < defensiveThirdWidth) || 
@@ -370,32 +315,28 @@ const usePlayerMovement = ({
             const ballYRelativeToCenter = (ball.position.y - PITCH_HEIGHT/2) / 2;
             targetY = ball.position.y - ballYRelativeToCenter;
           } else {
-            targetX += (Math.random() - 0.5) * 10;
-            targetY += (Math.random() - 0.5) * 15;
+            targetX += (Math.random() - 0.5) * 40;
+            targetY += (Math.random() - 0.5) * 60;
           }
           
           const dx = targetX - player.position.x;
           const dy = targetY - player.position.y;
           const dist = Math.sqrt(dx*dx + dy*dy);
           
-          const timeMinutes = gameTime || 0;
-          const earlyGameSpeedBonus = timeMinutes < 5 ? 0.5 : 
-                                     timeMinutes < 15 ? 0.3 : 0;
-          
-          let moveSpeed = 2.2 + earlyGameSpeedBonus;
+          let moveSpeed = 2.2;
           if (player.role === 'defender') {
-            moveSpeed = 2.4 + earlyGameSpeedBonus;
+            moveSpeed = 2.5;
           }
           
           let moveX = dist > 0 ? (dx / dist) * moveSpeed : 0;
           let moveY = dist > 0 ? (dy / dist) * moveSpeed : 0;
           
-          if (player.role === 'defender' && Math.random() > 0.95) {
-            moveX += (Math.random() - 0.5) * 0.3;
-            moveY += (Math.random() - 0.5) * 0.3;
-          } else if (Math.random() > 0.95) {
-            moveX += (Math.random() - 0.5) * 0.2;
-            moveY += (Math.random() - 0.5) * 0.2;
+          if (player.role === 'defender' && Math.random() > 0.7) {
+            moveX += (Math.random() - 0.5) * 1.0;
+            moveY += (Math.random() - 0.5) * 1.0;
+          } else if (Math.random() > 0.8) {
+            moveX += (Math.random() - 0.5) * 0.8;
+            moveY += (Math.random() - 0.5) * 0.8;
           }
           
           let proposedPosition = {
@@ -407,8 +348,7 @@ const usePlayerMovement = ({
             player.position,
             player.targetPosition,
             proposedPosition,
-            player.role,
-            timeMinutes
+            player.role
           );
           
           proposedPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, proposedPosition.x));
@@ -474,9 +414,9 @@ const usePlayerMovement = ({
       
       return processedPlayers;
     });
-  }, [ball, gameReady, setPlayers, gameTime, score, lastMovementTime, brainInitialized]);
+  }, [ball, gameReady, setPlayers, gameTime, score, lastMovementTime]);
 
-  return { updatePlayerPositions, formations, possession, initializationProgress, processedPlayers, totalPlayers };
+  return { updatePlayerPositions, formations, possession };
 };
 
 const calculateExecutionPrecision = (teamElo?: number): number => {

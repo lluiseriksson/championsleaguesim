@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
@@ -67,15 +66,12 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   });
   
   const [score, setScore] = useState<Score>({ red: 0, blue: 0 });
-  const [gameStarted] = useState(true);
+  const [gameStarted, setGameStarted] = useState(true);
   const [matchEnded, setMatchEnded] = useState(false);
   const [goldenGoal, setGoldenGoal] = useState(false);
   const [lastScorer, setLastScorer] = useState<'red' | 'blue' | null>(null);
   
   const [goldenGoalScored, setGoldenGoalScored] = useState(false);
-  const [initializing, setInitializing] = useState(true);
-  const [ballStartedMoving, setBallStartedMoving] = useState(false);
-  const [ballMovingDetected, setBallMovingDetected] = useState(false);
   
   const resultDeterminedRef = useRef(false);
   
@@ -238,36 +234,16 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
     setPlayers(newPlayers);
   };
   
-  const { 
-    updatePlayerPositions, 
-    formations, 
-    possession, 
-    initializationProgress,
-    processedPlayers,
-    totalPlayers
-  } = usePlayerMovement({ 
+  const { updatePlayerPositions } = usePlayerMovement({ 
     players, 
     setPlayers, 
     ball, 
-    gameReady: true,
-    batchSize: 11 // Set batch size to 11 to load one team at a time
+    gameReady: true 
   });
-  
-  useEffect(() => {
-    if (initializationProgress >= 100) {
-      setInitializing(false);
-    }
-  }, [initializationProgress]);
   
   const handleGoalScored = (team: 'red' | 'blue') => {
     console.log(`Goal scored by ${team} team, golden goal mode: ${goldenGoal}`);
     setLastScorer(team);
-  };
-  
-  const handleBallFirstMove = () => {
-    console.log("Ball started moving, starting match timer");
-    setBallMovingDetected(true);
-    setBallStartedMoving(true);
   };
   
   if (matchEnded) {
@@ -291,29 +267,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         initialTime={matchDuration} 
         onTimeEnd={handleTimeEnd}
         goldenGoal={goldenGoal}
-        startTimer={ballStartedMoving}
       />
-      
-      {initializing && (
-        <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center z-50 text-white">
-          <div className="text-lg font-semibold mb-2">Initializing Player AI</div>
-          <div className="w-64 bg-gray-200 rounded-full h-2.5 mb-2">
-            <div 
-              className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" 
-              style={{ width: `${Math.round(initializationProgress)}%` }}
-            ></div>
-          </div>
-          <div className="text-sm mb-1">
-            {Math.round(initializationProgress)}% Complete
-          </div>
-          <div className="text-xs text-gray-300">
-            Loaded {processedPlayers} of {totalPlayers} players
-          </div>
-          <div className="text-xs text-gray-400 mt-1">
-            Please wait while AI is being initialized...
-          </div>
-        </div>
-      )}
       
       <GameBoard
         players={players}
@@ -343,7 +297,6 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         onGoalScored={handleGoalScored}
         homeTeam={homeTeam}
         awayTeam={awayTeam}
-        onBallFirstMove={handleBallFirstMove}
       />
     </div>
   );

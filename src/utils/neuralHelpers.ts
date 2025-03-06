@@ -1,7 +1,7 @@
 import { Position, NeuralInput, NeuralOutput, TeamContext, PITCH_WIDTH, PITCH_HEIGHT, SituationContext } from '../types/football';
 import * as brain from 'brain.js';
 import { calculateShotQuality } from './playerBrain';
-import { calculateDistance } from './neuralCore';
+import { calculateDistance, normalizeValue } from './neuralCore';
 
 // Normalize a position to a value between 0 and 1
 export const normalizePosition = (pos: Position): Position => ({

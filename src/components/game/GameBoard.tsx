@@ -19,7 +19,6 @@ interface GameBoardProps {
   awayTeam?: string;
   onGoalScored?: (team: 'red' | 'blue') => void;
   tournamentMode?: boolean;
-  onBallFirstMove?: () => void; // Add callback for when ball first moves
 }
 
 const GameBoard: React.FC<GameBoardProps> = ({
@@ -33,8 +32,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
   homeTeam = 'Home',
   awayTeam = 'Away',
   onGoalScored,
-  tournamentMode = false,
-  onBallFirstMove
+  tournamentMode = false
 }) => {
   return (
     <div className="relative w-[800px] h-[600px] bg-pitch mx-auto overflow-hidden rounded-lg shadow-lg">
@@ -68,7 +66,6 @@ const GameBoard: React.FC<GameBoardProps> = ({
         }}
         updatePlayerPositions={updatePlayerPositions}
         tournamentMode={tournamentMode}
-        onBallFirstMove={onBallFirstMove} // Pass the callback
       />
     </div>
   );

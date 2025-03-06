@@ -18,7 +18,6 @@ interface GameLogicProps {
   setScore: React.Dispatch<React.SetStateAction<Score>>;
   updatePlayerPositions: () => void;
   tournamentMode?: boolean;
-  onBallFirstMove?: () => void; // Callback for when ball first moves
 }
 
 const GameLogic: React.FC<GameLogicProps> = ({
@@ -29,13 +28,10 @@ const GameLogic: React.FC<GameLogicProps> = ({
   score,
   setScore,
   updatePlayerPositions,
-  tournamentMode = false,
-  onBallFirstMove
+  tournamentMode = false
 }) => {
   // Reference to track the last player who touched the ball
   const lastPlayerTouchRef = React.useRef<Player | null>(null);
-  // Track if ball first move callback was triggered
-  const ballFirstMoveTriggeredRef = React.useRef(false);
   
   console.log(`GameLogic rendered with players: ${players.length}, tournamentMode: ${tournamentMode}`);
 
@@ -53,7 +49,28 @@ const GameLogic: React.FC<GameLogicProps> = ({
     tournamentMode
   });
 
-  // Ball movement system with improved first movement detection
+  // Goal notification system
+  const { totalGoalsRef } = useGameLoop({
+    players,
+    updatePlayerPositions,
+    updateBallPosition: () => {}, // Will be overridden below
+    incrementSyncCounter: () => {}, // Will be overridden below
+    syncModels: () => {}, // Will be overridden below
+    checkLearningProgress: () => {}, // Will be overridden below
+    ball,
+    score,
+    tournamentMode
+  });
+
+  // Goal notification hook
+  const { handleGoalScored } = useGoalNotification({
+    tournamentMode,
+    totalGoalsRef,
+    ball,
+    setBall
+  });
+
+  // Ball movement system
   const { updateBallPosition } = useBallMovementSystem({
     ball,
     setBall,
@@ -73,15 +90,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
       lastPlayerTouchRef.current = player;
       console.log(`Ball touched by ${player.team} ${player.role} #${player.id}`);
     },
-    tournamentMode,
-    onBallFirstMove: () => {
-      // Ensure we only trigger this once
-      if (!ballFirstMoveTriggeredRef.current && onBallFirstMove) {
-        console.log("GameLogic: Triggering ball first move callback");
-        ballFirstMoveTriggeredRef.current = true;
-        onBallFirstMove();
-      }
-    }
+    tournamentMode
   });
 
   // Model synchronization system with tournament mode flag
@@ -91,8 +100,8 @@ const GameLogic: React.FC<GameLogicProps> = ({
     tournamentMode
   });
 
-  // Goal notification system
-  const { totalGoalsRef } = useGameLoop({
+  // Run game loop with actual functions
+  useGameLoop({
     players,
     updatePlayerPositions,
     updateBallPosition,
@@ -102,14 +111,6 @@ const GameLogic: React.FC<GameLogicProps> = ({
     ball,
     score,
     tournamentMode
-  });
-
-  // Goal notification hook
-  const { handleGoalScored } = useGoalNotification({
-    tournamentMode,
-    totalGoalsRef,
-    ball,
-    setBall
   });
 
   // Save models on component unmount

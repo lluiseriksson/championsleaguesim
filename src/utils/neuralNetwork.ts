@@ -1,8 +1,7 @@
 
 import * as brain from 'brain.js';
-import { NeuralNet, Position, NeuralInput, NeuralOutput, TeamContext } from '../types/football';
+import { NeuralNet, Position, NeuralInput, NeuralOutput, TeamContext, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
 import { createNeuralInput, isNetworkValid } from './neuralHelpers';
-import { normalizeValue } from './neuralCore';
 import { createExperienceReplay } from './experienceReplay';
 import { initializeSpecializedBrain } from './specializedNetworks';
 
@@ -59,6 +58,7 @@ export const createPlayerBrain = (): NeuralNet => {
         shootingAngle: Math.random(),
         shootingQuality: Math.random(),
         
+        // Add the new tactical metrics
         zoneControl: Math.random(),
         passingLanesQuality: Math.random(),
         spaceCreation: Math.random(),
@@ -126,6 +126,7 @@ export const createPlayerBrain = (): NeuralNet => {
         shootingAngle: Math.random(),
         shootingQuality: Math.random(),
         
+        // Add the tactical metrics
         zoneControl: 0.6 + Math.random() * 0.4,
         passingLanesQuality: 0.5 + Math.random() * 0.5,
         spaceCreation: 0.4 + Math.random() * 0.6,
@@ -193,6 +194,7 @@ export const createPlayerBrain = (): NeuralNet => {
         shootingAngle: Math.random(),
         shootingQuality: Math.random(),
         
+        // Add the tactical metrics
         zoneControl: 0.6 + Math.random() * 0.4,
         passingLanesQuality: 0.5 + Math.random() * 0.5,
         spaceCreation: 0.4 + Math.random() * 0.6,
@@ -260,6 +262,7 @@ export const createPlayerBrain = (): NeuralNet => {
         shootingAngle: Math.random(),
         shootingQuality: Math.random(),
         
+        // Add defensive tactical metrics
         zoneControl: 0.3 + Math.random() * 0.3,
         passingLanesQuality: 0.2 + Math.random() * 0.3,
         spaceCreation: 0.2 + Math.random() * 0.3,
@@ -327,6 +330,7 @@ export const createPlayerBrain = (): NeuralNet => {
         shootingAngle: Math.random(),
         shootingQuality: Math.random(),
         
+        // Add crowded field tactical metrics
         zoneControl: 0.4 + Math.random() * 0.3,
         passingLanesQuality: 0.3 + Math.random() * 0.3,
         spaceCreation: 0.2 + Math.random() * 0.3,
@@ -395,6 +399,7 @@ export const createPlayerBrain = (): NeuralNet => {
         shootingAngle: Math.random(),
         shootingQuality: Math.random(),
         
+        // Add midfield tactical metrics
         zoneControl: 0.5 + Math.random() * 0.3,
         passingLanesQuality: 0.5 + Math.random() * 0.3,
         spaceCreation: 0.5 + Math.random() * 0.3,
@@ -504,6 +509,7 @@ const createFallbackBrain = (): NeuralNet => {
     shootingAngle: 0.5,
     shootingQuality: 0.5,
     
+    // Add tactical metrics with default values
     zoneControl: 0.5,
     passingLanesQuality: 0.5,
     spaceCreation: 0.5,
