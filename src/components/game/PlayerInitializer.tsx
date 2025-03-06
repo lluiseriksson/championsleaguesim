@@ -1,10 +1,10 @@
-
 import React from 'react';
 import { Player, PITCH_WIDTH, PITCH_HEIGHT, KitType } from '../../types/football';
 import { createPlayerBrain } from '../../utils/playerBrain';
 import { initializePlayerBrain } from '../../utils/modelLoader';
 import { getAwayTeamKit } from '../../types/kits';
 import { teamKitColors } from '../../types/kits/teamColorsData';
+import { resetUsedGoalkeeperKits } from '../../types/kits/kitTypes';
 
 interface PlayerInitializerProps {
   setPlayers: React.Dispatch<React.SetStateAction<Player[]>>;
@@ -49,6 +49,9 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
   React.useEffect(() => {
     const loadPlayers = async () => {
       try {
+        // Reset the used goalkeeper kits for this new match
+        resetUsedGoalkeeperKits();
+        
         const initialPlayers: Player[] = [];
         
         // Get random team names from the available teams

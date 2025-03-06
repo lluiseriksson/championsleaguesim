@@ -97,13 +97,23 @@ export const goalkeeperKitOptions = {
   }
 };
 
+// Track which goalkeeper kits have been used in the current match
+let usedGoalkeeperKits: string[] = [];
+
+// Reset the used goalkeeper kits (should be called when a new match starts)
+export function resetUsedGoalkeeperKits(): void {
+  usedGoalkeeperKits = [];
+}
+
 // Function to select the best goalkeeper kit based on team colors
+// Now ensuring home and away goalkeepers have different kits
 export function selectGoalkeeperKit(
   teamName: string,
   opposingTeamName: string | undefined,
   teamPrimaryColor: string,
   teamSecondaryColor: string,
-  opposingTeamPrimaryColor?: string
+  opposingTeamPrimaryColor?: string,
+  isHomeTeam?: boolean
 ): TeamKitColors {
   // Parse the team's colors
   const r = parseInt(teamPrimaryColor.slice(1, 3), 16);
@@ -111,12 +121,11 @@ export function selectGoalkeeperKit(
   const b = parseInt(teamPrimaryColor.slice(5, 7), 16);
   
   // Get an array of all goalkeeper kit options
-  const kitOptions = Object.values(goalkeeperKitOptions);
-  let bestKit = kitOptions[0];
-  let maxDistance = 0;
+  const kitOptions = Object.entries(goalkeeperKitOptions);
+  let rankedKits: Array<{kit: TeamKitColors, distance: number, name: string}> = [];
   
-  // Find the kit with maximum color distance from both teams
-  for (const kit of kitOptions) {
+  // Rank all kits by color distance from both teams
+  for (const [kitName, kit] of kitOptions) {
     // Parse the kit primary color
     const kitR = parseInt(kit.primary.slice(1, 3), 16);
     const kitG = parseInt(kit.primary.slice(3, 5), 16);
@@ -145,15 +154,42 @@ export function selectGoalkeeperKit(
       totalDistance += distanceToOpponent;
     }
     
-    // Update best kit if this one has better distance
-    if (totalDistance > maxDistance) {
-      maxDistance = totalDistance;
-      bestKit = kit;
-    }
+    // Add to ranked kits
+    rankedKits.push({ kit, distance: totalDistance, name: kitName });
   }
   
-  // Add some logging for diagnostics
-  console.log(`Selected goalkeeper kit for ${teamName}: ${bestKit.primary}`);
+  // Sort kits by distance (highest first)
+  rankedKits.sort((a, b) => b.distance - a.distance);
   
-  return bestKit;
+  // For the first goalkeeper (usually home team), pick the best kit
+  if (usedGoalkeeperKits.length === 0 || isHomeTeam) {
+    const bestKit = rankedKits[0];
+    usedGoalkeeperKits.push(bestKit.name);
+    
+    // Add some logging for diagnostics
+    console.log(`Selected ${isHomeTeam ? 'home' : ''} goalkeeper kit for ${teamName}: ${bestKit.kit.primary} (${bestKit.name})`);
+    
+    return bestKit.kit;
+  } 
+  // For the second goalkeeper (usually away team), pick the best remaining kit
+  else {
+    // Filter out any already used kits
+    const availableKits = rankedKits.filter(k => !usedGoalkeeperKits.includes(k.name));
+    
+    // If we somehow used all kits, just pick the one with the largest distance that hasn't been used first
+    const bestKit = availableKits.length > 0 ? availableKits[0] : rankedKits.find(k => k.name !== usedGoalkeeperKits[0]) || rankedKits[1];
+    
+    if (bestKit) {
+      usedGoalkeeperKits.push(bestKit.name);
+      
+      // Add some logging for diagnostics
+      console.log(`Selected away goalkeeper kit for ${teamName}: ${bestKit.kit.primary} (${bestKit.name})`);
+      
+      return bestKit.kit;
+    }
+    
+    // Fallback (should never happen)
+    console.log("Warning: Fallback goalkeeper kit selected");
+    return goalkeeperKitOptions.brightOrange;
+  }
 }

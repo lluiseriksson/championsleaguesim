@@ -125,7 +125,8 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
         opposingTeamName,
         kitColors.primary,
         kitColors.secondary,
-        opposingTeamPrimaryColor
+        opposingTeamPrimaryColor,
+        player.team === 'red' // Pass whether this is a home team goalkeeper
       );
     }
     
