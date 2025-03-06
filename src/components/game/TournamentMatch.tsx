@@ -66,7 +66,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   });
   
   const [score, setScore] = useState<Score>({ red: 0, blue: 0 });
-  const [gameStarted, setGameStarted] = useState(true);
+  const [gameStarted] = useState(true);
   const [matchEnded, setMatchEnded] = useState(false);
   const [goldenGoal, setGoldenGoal] = useState(false);
   const [lastScorer, setLastScorer] = useState<'red' | 'blue' | null>(null);
@@ -235,7 +235,14 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
     setPlayers(newPlayers);
   };
   
-  const { updatePlayerPositions, formations, possession, initializationProgress } = usePlayerMovement({ 
+  const { 
+    updatePlayerPositions, 
+    formations, 
+    possession, 
+    initializationProgress,
+    processedPlayers,
+    totalPlayers
+  } = usePlayerMovement({ 
     players, 
     setPlayers, 
     ball, 
@@ -279,13 +286,18 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       {initializing && (
         <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center z-50 text-white">
           <div className="text-lg font-semibold mb-2">Initializing Player AI</div>
-          <div className="w-64 bg-gray-200 rounded-full h-2.5 mb-4">
+          <div className="w-64 bg-gray-200 rounded-full h-2.5 mb-2">
             <div 
               className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" 
               style={{ width: `${initializationProgress}%` }}
             ></div>
           </div>
-          <div className="text-sm">{Math.round(initializationProgress)}% Complete</div>
+          <div className="text-sm mb-1">
+            {Math.round(initializationProgress)}% Complete
+          </div>
+          <div className="text-xs text-gray-300">
+            Loaded {processedPlayers} of {totalPlayers} players
+          </div>
         </div>
       )}
       

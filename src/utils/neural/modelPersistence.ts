@@ -176,19 +176,20 @@ export const loadModel = async (team: string, role: string, version: number = 1)
   }
 };
 
-// New non-blocking async version of loadModel that works with timeouts
+// Improved non-blocking async version of loadModel with better performance
 export const loadModelAsync = (team: string, role: string, version: number = 1): Promise<NeuralNet | null> => {
   return new Promise((resolve) => {
-    // Wrap in setTimeout to prevent UI blocking
-    setTimeout(async () => {
+    // Use requestAnimationFrame instead of setTimeout for better browser performance
+    requestAnimationFrame(async () => {
       try {
+        // Use a more efficient approach to prevent UI blocking
         const result = await loadModel(team, role, version);
         resolve(result);
       } catch (error) {
         console.error('Error in loadModelAsync:', error);
         resolve(null);
       }
-    }, 0);
+    });
   });
 };
 

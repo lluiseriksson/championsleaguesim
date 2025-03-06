@@ -36,16 +36,21 @@ const usePlayerMovement = ({
   const [lastMovementTime, setLastMovementTime] = useState(Date.now());
   const [brainInitialized, setBrainInitialized] = useState(false);
   const [initializationProgress, setInitializationProgress] = useState(0);
+  const [processedPlayers, setProcessedPlayers] = useState(0);
+  const totalPlayers = players.length;
 
   useEffect(() => {
     if (gameReady && players.length > 0 && !brainInitialized) {
-      console.log("Starting staggered initialization of player brains...");
+      console.log("Starting optimized staggered initialization of player brains...");
       
       let playersCopy = [...players];
       
-      const batchSize = 3;
+      const batchSize = 2;
       let currentBatch = 0;
       const totalBatches = Math.ceil(players.length / batchSize);
+      
+      setProcessedPlayers(0);
+      setInitializationProgress(0);
       
       const initializeBatch = () => {
         const startIdx = currentBatch * batchSize;
@@ -53,40 +58,50 @@ const usePlayerMovement = ({
         
         console.log(`Initializing batch ${currentBatch + 1}/${totalBatches} (players ${startIdx} to ${endIdx - 1})`);
         
-        for (let i = startIdx; i < endIdx; i++) {
-          let player = playersCopy[i];
-          
-          if (!player.brain || !player.brain.net || typeof player.brain.net.run !== 'function') {
-            console.log(`Creating new brain for ${player.team} ${player.role} #${player.id}`);
-            player = {
+        Promise.all(
+          playersCopy.slice(startIdx, endIdx).map(async (player, localIdx) => {
+            const playerIdx = startIdx + localIdx;
+            
+            if (!player.brain || !player.brain.net || typeof player.brain.net.run !== 'function') {
+              console.log(`Creating new brain for ${player.team} ${player.role} #${player.id}`);
+              player = {
+                ...player,
+                brain: createPlayerBrain()
+              };
+            } else {
+              player = validatePlayerBrain(player);
+            }
+            
+            playersCopy[playerIdx] = {
               ...player,
-              brain: createPlayerBrain()
+              brain: initializePlayerBrainWithHistory(player.brain)
             };
-          } else {
-            player = validatePlayerBrain(player);
-          }
+            
+            setProcessedPlayers(prev => {
+              const newCount = prev + 1;
+              setInitializationProgress(Math.floor((newCount / totalPlayers) * 100));
+              return newCount;
+            });
+            
+            return true;
+          })
+        ).then(() => {
+          currentBatch++;
           
-          playersCopy[i] = {
-            ...player,
-            brain: initializePlayerBrainWithHistory(player.brain)
-          };
-        }
-        
-        currentBatch++;
-        setInitializationProgress(Math.min(100, (currentBatch / totalBatches) * 100));
-        
-        if (currentBatch < totalBatches) {
-          setTimeout(initializeBatch, 50);
-        } else {
-          setPlayers(playersCopy);
-          setBrainInitialized(true);
-          console.log("All player brains initialized successfully");
-        }
+          if (currentBatch < totalBatches) {
+            requestAnimationFrame(() => setTimeout(initializeBatch, 50));
+          } else {
+            setPlayers(playersCopy);
+            setBrainInitialized(true);
+            setInitializationProgress(100);
+            console.log("All player brains initialized successfully");
+          }
+        });
       };
       
-      setTimeout(initializeBatch, 10);
+      setTimeout(initializeBatch, 50);
     }
-  }, [gameReady, setPlayers, players, brainInitialized]);
+  }, [gameReady, setPlayers, players, brainInitialized, totalPlayers]);
 
   useEffect(() => {
     if (gameReady && players.length > 0) {
@@ -450,7 +465,7 @@ const usePlayerMovement = ({
     });
   }, [ball, gameReady, setPlayers, gameTime, score, lastMovementTime, brainInitialized]);
 
-  return { updatePlayerPositions, formations, possession, initializationProgress };
+  return { updatePlayerPositions, formations, possession, initializationProgress, processedPlayers, totalPlayers };
 };
 
 const calculateExecutionPrecision = (teamElo?: number): number => {
