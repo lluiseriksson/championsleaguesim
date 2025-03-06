@@ -42,14 +42,14 @@ interface TournamentMatchProps {
   homeTeam: string;
   awayTeam: string;
   onMatchComplete: (winner: string, finalScore: Score, wasGoldenGoal: boolean) => void;
-  matchDuration?: number; // en segundos
+  matchDuration?: number; // in seconds
 }
 
 const TournamentMatch: React.FC<TournamentMatchProps> = ({ 
   homeTeam, 
   awayTeam, 
   onMatchComplete,
-  matchDuration = 120 // 2 minutos por defecto (changed from 180)
+  matchDuration = 120 // 2 minutes default (changed from 180)
 }) => {
   const displayHomeTeam = transliterateRussianName(homeTeam);
   const displayAwayTeam = transliterateRussianName(awayTeam);
@@ -83,21 +83,21 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   
   const handleTimeEnd = useMemo(() => {
     return () => {
-      console.log("Tiempo terminado. Puntuación:", score);
+      console.log("Time ended. Score:", score);
       
       if (score.red === score.blue) {
-        console.log("Comenzando gol de oro");
+        console.log("Starting golden goal time");
         setGoldenGoal(true);
         setLastScorer(null);
-        toast("¡TIEMPO AGOTADO! - Comienza el tiempo de gol de oro", {
-          description: "El primer equipo en marcar gana el partido"
+        toast("TIME'S UP! - Golden goal period begins", {
+          description: "First team to score wins the match"
         });
       } else {
         const winner = score.red > score.blue ? homeTeam : awayTeam;
         const displayWinner = transliterateRussianName(winner);
-        console.log("Partido terminado. Ganador:", displayWinner);
-        toast(`¡Fin del partido! ${displayWinner} gana`, {
-          description: `Resultado final: ${displayHomeTeam} ${score.red} - ${score.blue} ${displayAwayTeam}`,
+        console.log("Match ended. Winner:", displayWinner);
+        toast(`Match finished! ${displayWinner} wins`, {
+          description: `Final score: ${displayHomeTeam} ${score.red} - ${score.blue} ${displayAwayTeam}`,
         });
         
         // Mark that result has been determined
@@ -132,8 +132,8 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         const displayWinner = transliterateRussianName(winner);
         
         console.log("Golden goal winner:", displayWinner);
-        toast(`¡${displayWinner} gana con gol de oro!`, {
-          description: `Resultado final: ${displayHomeTeam} ${score.red} - ${score.blue} ${displayAwayTeam}`,
+        toast(`${displayWinner} wins with a golden goal!`, {
+          description: `Final score: ${displayHomeTeam} ${score.red} - ${score.blue} ${displayAwayTeam}`,
         });
         
         // Mark that result has been determined
@@ -240,13 +240,13 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   if (matchEnded) {
     return (
       <div className="flex flex-col items-center justify-center h-96 bg-gray-100 rounded-lg">
-        <h2 className="text-2xl font-bold mb-4">Partido finalizado</h2>
+        <h2 className="text-2xl font-bold mb-4">Match finished</h2>
         <div className="text-xl">
           {displayHomeTeam} {score.red} - {score.blue} {displayAwayTeam}
         </div>
         <div className="mt-4 text-lg font-semibold">
-          Ganador: {score.red > score.blue ? displayHomeTeam : displayAwayTeam}
-          {goldenGoalScored && <span className="ml-2 text-amber-500">(Gol de Oro)</span>}
+          Winner: {score.red > score.blue ? displayHomeTeam : displayAwayTeam}
+          {goldenGoalScored && <span className="ml-2 text-amber-500">(Golden Goal)</span>}
         </div>
       </div>
     );
