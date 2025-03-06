@@ -2,18 +2,23 @@
 import { Position, Player } from '../types/football';
 import { calculateDistance } from './neuralCore';
 
+// Updated role radius limits with extra 20 units added to each
 const ROLE_RADIUS_LIMITS = {
-  goalkeeper: 90,    // Increased from 70 for more freedom
-  defender: 190,     // Increased from 150 for more dynamic behavior
-  midfielder: 180,   // Unchanged
-  forward: 250       // Increased from 220 for more passing options
+  goalkeeper: 90,    // Kept the same as before
+  defender: 210,     // Increased from 190 (+20)
+  midfielder: 200,   // Increased from 180 (+20)
+  forward: 270       // Increased from 250 (+20)
 };
+
+// Extra flexibility radius for neural network fine-tuning
+const NEURAL_ADJUSTMENT_RADIUS = 20;
 
 export const constrainMovementToRadius = (
   currentPosition: Position,
   targetPosition: Position,
   proposedPosition: Position,
-  role: Player['role']
+  role: Player['role'],
+  isNeuralNetworkAdjustment: boolean = false
 ): Position => {
   // Add randomization to radius limits for more varied movement
   const baseMaxRadius = ROLE_RADIUS_LIMITS[role];
@@ -24,10 +29,13 @@ export const constrainMovementToRadius = (
     ((currentPosition.x > 500 && proposedPosition.x > 450) || 
      (currentPosition.x < 300 && proposedPosition.x < 350));
   
-  // Increase radius for forwards making attacking runs
+  // Allow extra radius for neural network fine tuning
+  const extraRadius = isNeuralNetworkAdjustment ? NEURAL_ADJUSTMENT_RADIUS : 0;
+  
+  // Increase radius for forwards making attacking runs or neural network adjustments
   const maxRadius = isForwardInAttackingPosition 
-    ? baseMaxRadius * 1.3 * randomFactor
-    : baseMaxRadius * randomFactor;
+    ? (baseMaxRadius * 1.3 * randomFactor) + extraRadius
+    : (baseMaxRadius * randomFactor) + extraRadius;
   
   // Calculate distance from tactical position
   const distanceFromTarget = calculateDistance(proposedPosition, targetPosition);

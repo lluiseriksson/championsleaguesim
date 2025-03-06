@@ -238,6 +238,35 @@ const usePlayerMovement = ({
     return null;
   };
 
+  const applyNeuralFineTuning = (player: Player, basePosition: Position): Position => {
+    if (player.role === 'goalkeeper') return basePosition;
+    
+    try {
+      const neuralOutput = useNeuralNetworkForPlayer(player, ball);
+      if (!neuralOutput) return basePosition;
+      
+      const fineAdjustmentFactor = 0.2;
+      const fineX = neuralOutput.x * fineAdjustmentFactor;
+      const fineY = neuralOutput.y * fineAdjustmentFactor;
+      
+      const adjustedPosition = {
+        x: basePosition.x + fineX,
+        y: basePosition.y + fineY
+      };
+      
+      return constrainMovementToRadius(
+        player.position,
+        basePosition,
+        adjustedPosition,
+        player.role,
+        true
+      );
+    } catch (error) {
+      console.error(`Error applying neural fine-tuning for player ${player.id}:`, error);
+      return basePosition;
+    }
+  };
+
   const updatePlayerPositions = React.useCallback(() => {
     if (!gameReady) return;
     
@@ -350,29 +379,31 @@ const usePlayerMovement = ({
             moveY += (Math.random() - 0.5) * 0.5;
           }
           
-          let proposedPosition = {
+          let basePosition = {
             x: player.position.x + moveX,
             y: player.position.y + moveY
           };
           
-          proposedPosition = constrainMovementToRadius(
+          basePosition = constrainMovementToRadius(
             player.position,
             player.targetPosition,
-            proposedPosition,
+            basePosition,
             player.role
           );
           
-          proposedPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, proposedPosition.x));
-          proposedPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, proposedPosition.y));
+          const finalPosition = applyNeuralFineTuning(player, basePosition);
+          
+          finalPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, finalPosition.x));
+          finalPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, finalPosition.y));
           
           const completeBrain = ensureCompleteBrain(player.brain);
           
           return {
             ...player,
-            proposedPosition,
+            proposedPosition: finalPosition,
             movement: { 
-              x: moveX,
-              y: moveY
+              x: finalPosition.x - player.position.x,
+              y: finalPosition.y - player.position.y
             },
             brain: {
               ...completeBrain,
