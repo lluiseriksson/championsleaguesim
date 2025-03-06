@@ -1,3 +1,4 @@
+
 import { Player, Ball, PITCH_WIDTH, PITCH_HEIGHT, GOAL_HEIGHT, NeuralNet } from '../types/football';
 import { isNetworkValid } from './neuralHelpers';
 
@@ -78,8 +79,8 @@ const useNeuralNetworkForGoalkeeper = (
     // Use the neural network output if available
     if (output && typeof output.moveX === 'number' && typeof output.moveY === 'number') {
       // Convert from 0-1 range to direction
-      const moveX = (output.moveX * 2 - 1) * 3; // Scale to reasonable speed
-      const moveY = (output.moveY * 2 - 1) * 4; // Y movement more important for GK
+      const moveX = (output.moveX * 2 - 1) * 1.5; // Reduced by 50% from 3 to 1.5
+      const moveY = (output.moveY * 2 - 1) * 2; // Reduced by 50% from 4 to 2
       
       return { x: moveX, y: moveY };
     }
@@ -147,7 +148,9 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
     // Move faster when ball is coming directly at goal but add some randomness
     const directShot = Math.abs(ball.position.y - PITCH_HEIGHT/2) < GOAL_HEIGHT/2;
     const randomFactor = 0.8 + Math.random() * 0.4; // 0.8 to 1.2 randomness
-    const baseSpeedMultiplier = directShot ? 3.0 * randomFactor : 2.0 * randomFactor;
+    
+    // Reduced base speed multiplier by 50%
+    const baseSpeedMultiplier = directShot ? 1.5 * randomFactor : 1.0 * randomFactor; // Reduced from 3.0/2.0 to 1.5/1.0
     const adjustedSpeedMultiplier = baseSpeedMultiplier * eloSpeedMultiplier;
     
     moveX = Math.sign(targetX - player.position.x) * adjustedSpeedMultiplier;
@@ -157,7 +160,9 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
     const targetGoalLine = goalLine + randomGoalLineOffset;
     
     const distanceToGoalLine = Math.abs(player.position.x - targetGoalLine);
-    moveX = Math.sign(targetGoalLine - player.position.x) * Math.min(distanceToGoalLine * 0.2, 2.5) * eloSpeedMultiplier;
+    
+    // Reduced base speed by 50%
+    moveX = Math.sign(targetGoalLine - player.position.x) * Math.min(distanceToGoalLine * 0.1, 1.25) * eloSpeedMultiplier; // Changed from 0.2/2.5 to 0.1/1.25
   }
   
   // Calculate vertical movement to track the ball or expected ball position
@@ -178,12 +183,14 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
   
   // Calculate vertical movement with higher responsiveness, adjusted by ELO
   const yDifference = limitedTargetY - player.position.y;
-  moveY = Math.sign(yDifference) * Math.min(Math.abs(yDifference) * 0.15, 3.0) * eloSpeedMultiplier;
+  
+  // Reduced base vertical speed by 50%
+  moveY = Math.sign(yDifference) * Math.min(Math.abs(yDifference) * 0.075, 1.5) * eloSpeedMultiplier; // Changed from 0.15/3.0 to 0.075/1.5
   
   // Prioritize vertical movement when ball is coming directly at goal
   if (ballMovingTowardGoal && Math.abs(ball.position.x - player.position.x) < 100) {
-    // Add some randomness to the vertical movement priority
-    const verticalPriorityMultiplier = 1.3 + Math.random() * 0.4; // 1.3 to 1.7
+    // Add some randomness to the vertical movement priority (reduced by 50%)
+    const verticalPriorityMultiplier = 0.65 + Math.random() * 0.2; // Changed from 1.3-1.7 to 0.65-0.85
     moveY = moveY * verticalPriorityMultiplier * eloSpeedMultiplier;
   }
   
