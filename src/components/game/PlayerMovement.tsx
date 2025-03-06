@@ -7,7 +7,6 @@ import {
   createGameContext 
 } from '../../utils/gameContextTracker';
 import { initializePlayerBrainWithHistory } from '../../utils/brainTraining';
-import { isStrategicMovement, calculateReceivingPositionQuality } from '../../utils/playerBrain';
 import { isNetworkValid } from '../../utils/neuralHelpers';
 import { validatePlayerBrain, createTacticalInput } from '../../utils/neural/networkValidator';
 import { constrainMovementToRadius } from '../../utils/movementConstraints';
@@ -83,7 +82,9 @@ const usePlayerMovement = ({
             };
           }
 
-          if (!player.brain || !isNetworkValid(player.brain.net)) {
+          // Validate brain before using it
+          const validatedPlayer = validatePlayerBrain(player);
+          if (!validatedPlayer.brain || !validatedPlayer.brain.net) {
             console.warn(`Invalid brain detected for ${player.team} ${player.role}. Using fallback movement.`);
             
             const roleOffsets = {
@@ -149,57 +150,10 @@ const usePlayerMovement = ({
             gameContext.teammateDensity || 0.5,
             gameContext.opponentDensity || 0.5
           );
-          
-          input.gameTime = gameContext.gameTime;
-          input.scoreDifferential = gameContext.scoreDifferential;
-          input.momentum = player.brain.successRate?.overall || 0.5;
-          input.possessionDuration = gameContext.possession?.team === player.team ? 
-            Math.min(1, gameContext.possession.duration / 600) : 0;
-          input.ballVelocityX = normalizeValue(ball.velocity.x, -20, 20);
-          input.ballVelocityY = normalizeValue(ball.velocity.y, -20, 20);
 
-          let output;
-          if (player.brain.specializedNetworks && player.brain.specializedNetworks.length > 0) {
-            const ownGoal = player.team === 'red' ? 
-              { x: 0, y: PITCH_HEIGHT / 2 } : 
-              { x: PITCH_WIDTH, y: PITCH_HEIGHT / 2 };
-              
-            const opponentGoal = player.team === 'red' ? 
-              { x: PITCH_WIDTH, y: PITCH_HEIGHT / 2 } : 
-              { x: 0, y: PITCH_HEIGHT / 2 };
-            
-            const hasTeamPossession = gameContext.possession?.team === player.team;
-            
-            const situation = analyzeSituation(
-              player.position,
-              ball.position,
-              ownGoal,
-              opponentGoal,
-              hasTeamPossession,
-              gameContext.teammateDensity || 0.5,
-              gameContext.opponentDensity || 0.5,
-              player.brain.actionHistory || []
-            );
-            
-            const networkType = selectSpecializedNetwork(player.brain, situation);
-            
-            if (networkType !== player.brain.currentSpecialization) {
-              console.log(`${player.team} ${player.role} #${player.id} switching from ${player.brain.currentSpecialization || 'none'} to ${networkType} network`);
-              
-              player.brain.currentSpecialization = networkType;
-            }
-            
-            try {
-              output = combineSpecializedOutputs(player.brain, situation, input);
-            } catch (error) {
-              console.warn(`Error using specialized networks: ${error.message}`);
-              output = player.brain.net.run(input);
-            }
-          } else {
-            output = player.brain.net.run(input);
-          }
+          const output = validatedPlayer.brain.net.run(input);
           
-          const executionPrecision = calculateExecutionPrecision(player.teamElo);
+          const executionPrecision = 1;
           
           let moveX = (output.moveX || 0.5) * 2 - 1;
           let moveY = (output.moveY || 0.5) * 2 - 1;
@@ -210,7 +164,7 @@ const usePlayerMovement = ({
           moveX = Math.max(-1, Math.min(1, moveX));
           moveY = Math.max(-1, Math.min(1, moveY));
           
-          player.brain.lastOutput = { x: moveX, y: moveY };
+          validatedPlayer.brain.lastOutput = { x: moveX, y: moveY };
 
           const dx = ball.position.x - player.position.x;
           const dy = ball.position.y - player.position.y;
@@ -267,31 +221,28 @@ const usePlayerMovement = ({
           proposedPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, proposedPosition.x));
           proposedPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, proposedPosition.y));
 
-          if (player.teamElo && player.teamElo > 2200) {
-            console.log(`High ELO player ${player.team} #${player.id} moved with precision ${executionPrecision.toFixed(2)} ${isMovingTowardsBall ? 'towards' : 'away from'} ball`);
-          }
-
           return {
             ...player,
             proposedPosition,
             movement: { x: moveX, y: moveY },
             brain: {
-              ...player.brain,
+              ...validatedPlayer.brain,
               lastOutput: { x: moveX, y: moveY },
               lastAction: 'move' as const
             }
           };
+
         } catch (error) {
           console.error(`Error updating player ${player.team} ${player.role} #${player.id}:`, error);
           return {
             ...player,
             proposedPosition: player.position,
             movement: { x: 0, y: 0 },
-            brain: {
+            brain: player.brain ? {
               ...player.brain,
               lastOutput: { x: 0, y: 0 },
               lastAction: 'move' as const
-            }
+            } : { net: null }
           };
         }
       });

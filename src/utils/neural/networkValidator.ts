@@ -1,4 +1,4 @@
-import { NeuralNet, Player } from '../../types/football';
+import { NeuralNet, Player, Position } from '../../types/football';
 import { createPlayerBrain } from '../neuralCore';
 import * as brain from 'brain.js';
 
@@ -143,4 +143,74 @@ export const isNetworkValid = (net: brain.NeuralNetwork<any, any> | null): boole
   } catch (error) {
     return false;
   }
+};
+
+export const enhanceTacticalNetworks = (player: Player): Player => {
+  const validatedPlayer = validatePlayerBrain(player);
+  return validatedPlayer;
+};
+
+export const createTacticalInput = (
+  player: Player,
+  normalizedBallX: number,
+  normalizedBallY: number,
+  hasTeamPossession: boolean,
+  isDefensiveThird: boolean,
+  isAttackingThird: boolean,
+  teammateDensity: number,
+  opponentDensity: number
+) => {
+  return {
+    ballX: normalizedBallX,
+    ballY: normalizedBallY,
+    playerX: player.position.x / 800,
+    playerY: player.position.y / 600,
+    ballVelocityX: 0,
+    ballVelocityY: 0,
+    distanceToGoal: 0.5,
+    angleToGoal: 0,
+    nearestTeammateDistance: 0.5,
+    nearestTeammateAngle: 0,
+    nearestOpponentDistance: 0.5,
+    nearestOpponentAngle: 0,
+    isInShootingRange: isAttackingThird ? 1 : 0,
+    isInPassingRange: 1,
+    isDefendingRequired: isDefensiveThird ? 1 : 0,
+    distanceToOwnGoal: 0.5,
+    angleToOwnGoal: 0,
+    isFacingOwnGoal: 0,
+    isDangerousPosition: 0,
+    isBetweenBallAndOwnGoal: 0,
+    teamElo: 0.5,
+    eloAdvantage: 0,
+    gameTime: 0.5,
+    scoreDifferential: 0,
+    momentum: 0.5,
+    formationCompactness: 0.5,
+    formationWidth: 0.5,
+    recentSuccessRate: 0.5,
+    possessionDuration: hasTeamPossession ? 0.5 : 0,
+    distanceFromFormationCenter: 0.5,
+    isInFormationPosition: 1,
+    teammateDensity,
+    opponentDensity,
+    shootingAngle: 0.5,
+    shootingQuality: 0.5,
+    zoneControl: 0.5,
+    passingLanesQuality: 0.5,
+    spaceCreation: 0.5,
+    defensiveSupport: 0.5,
+    pressureIndex: 0.5,
+    tacticalRole: 0.5,
+    supportPositioning: 0.5,
+    pressingEfficiency: 0.5,
+    coverShadow: 0.5,
+    verticalSpacing: 0.5,
+    horizontalSpacing: 0.5,
+    territorialControl: 0.5,
+    counterAttackPotential: 0.5,
+    pressureResistance: 0.5,
+    recoveryPosition: 0.5,
+    transitionSpeed: 0.5
+  };
 };

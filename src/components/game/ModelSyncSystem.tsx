@@ -1,10 +1,9 @@
-
 import React, { useState, useRef } from 'react';
-import { Player, Position } from '../../types/football';
+import { Player } from '../../types/football';
 import { saveModel } from '../../utils/neural/modelPersistence';
 import { createExperienceReplay } from '../../utils/experienceReplay';
 import { toast } from 'sonner';
-import { validatePlayerBrain, enhanceTacticalNetworks } from '../../utils/neural/networkValidator';
+import { validatePlayerBrain } from '../../utils/neural/networkValidator';
 
 // Interval between model synchronization (in frames)
 const DEFAULT_SYNC_INTERVAL = 600; // 10 seconds at 60fps
@@ -34,7 +33,6 @@ export const useModelSyncSystem = ({
     learningCheckCounter.current += 1;
   };
   
-  // Save models to database and ensure network integrity
   const syncModels = React.useCallback(async () => {
     const syncInterval = tournamentMode ? TOURNAMENT_SYNC_INTERVAL : DEFAULT_SYNC_INTERVAL;
     
@@ -42,28 +40,23 @@ export const useModelSyncSystem = ({
       const currentTime = Date.now();
       const timeSinceLastSync = currentTime - lastSyncTime;
       
-      // Only sync if at least 5 seconds have passed (prevents rapid saving in case of frame spikes)
       if (timeSinceLastSync >= 5000) {
         console.log('Synchronizing neural models...');
         
-        // Select a subset of players to save (to avoid too many DB operations)
         const playersToSync = players.filter((_, index) => index % 3 === syncCounter.current % 3);
         
         let syncCount = 0;
         for (const player of playersToSync) {
           try {
-            // First validate and enhance the player's brain
-            const enhancedPlayer = enhanceTacticalNetworks(validatePlayerBrain(player));
+            const validatedPlayer = validatePlayerBrain(player);
             
-            // If the player was updated, update it in the state
-            if (enhancedPlayer !== player) {
+            if (validatedPlayer !== player) {
               setPlayers(currentPlayers => 
-                currentPlayers.map(p => p.id === player.id ? enhancedPlayer : p)
+                currentPlayers.map(p => p.id === player.id ? validatedPlayer : p)
               );
             }
             
-            // Then save the model
-            if (await saveModel(enhancedPlayer)) {
+            if (await saveModel(validatedPlayer)) {
               syncCount++;
             }
           } catch (error) {
@@ -85,7 +78,6 @@ export const useModelSyncSystem = ({
     }
   }, [players, setPlayers, tournamentMode, lastSyncTime]);
   
-  // Check and enhance learning capabilities
   const checkLearningProgress = React.useCallback(() => {
     if (learningCheckCounter.current >= LEARNING_CHECK_INTERVAL) {
       console.log('Checking neural network learning progress...');
@@ -94,14 +86,12 @@ export const useModelSyncSystem = ({
       
       setPlayers(currentPlayers => 
         currentPlayers.map(player => {
-          // Skip players that already have proper experience replay setup
           if (player.brain?.experienceReplay?.capacity > 0) {
             return player;
           }
           
           enhancedPlayers++;
           
-          // Set up experience replay for players that don't have it
           return {
             ...player,
             brain: {
