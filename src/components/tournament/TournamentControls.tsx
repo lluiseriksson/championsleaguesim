@@ -16,7 +16,7 @@ const TournamentControls: React.FC<TournamentControlsProps> = ({
   resetTournament,
   startAutoSimulation
 }) => {
-  console.log("TournamentControls: autoSimulation =", autoSimulation, "currentRound =", currentRound);
+  console.log("TournamentControls rendered: autoSimulation =", autoSimulation, "currentRound =", currentRound);
   
   if (currentRound > 7) {
     return (
@@ -44,10 +44,12 @@ const TournamentControls: React.FC<TournamentControlsProps> = ({
       
       {!autoSimulation && (
         <Button 
-          onClick={startAutoSimulation}
+          onClick={() => {
+            console.log("Auto simulation button clicked");
+            startAutoSimulation();
+          }}
           variant="default"
           className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
-          disabled={autoSimulation}
         >
           <Play className="h-4 w-4" />
           Start Auto Simulation

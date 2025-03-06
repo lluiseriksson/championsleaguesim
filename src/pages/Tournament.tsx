@@ -27,18 +27,7 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
     setPlayingMatch
   } = useTournament(embeddedMode);
 
-  const [showBracket, setShowBracket] = useState(true);
-
-  console.log("Tournament: autoSimulation =", autoSimulation, "currentRound =", currentRound);
-
-  // Always show both the bracket and active match during auto simulation
-  useEffect(() => {
-    if (playingMatch && activeMatch && !embeddedMode && !autoSimulation) {
-      setShowBracket(false);
-    } else {
-      setShowBracket(true);
-    }
-  }, [playingMatch, activeMatch, embeddedMode, autoSimulation]);
+  console.log("Tournament rendered: autoSimulation =", autoSimulation, "activeMatch =", activeMatch?.id, "playingMatch =", playingMatch);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -57,35 +46,33 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
       </div>
       
       <div className="grid grid-cols-1 gap-8">
-        {showBracket && (
-          <div className="overflow-x-auto mb-8">
-            <TournamentBracket 
-              matches={matches} 
-              onMatchClick={(match) => {
-                if (!autoSimulation && match.teamA && match.teamB && !match.played) {
-                  if (embeddedMode) {
-                    simulateSingleMatch(match);
-                  } else {
-                    playMatch(match);
-                    setShowBracket(false);
-                  }
+        {/* Always show the bracket */}
+        <div className="overflow-x-auto mb-8">
+          <TournamentBracket 
+            matches={matches} 
+            onMatchClick={(match) => {
+              if (!autoSimulation && match.teamA && match.teamB && !match.played) {
+                if (embeddedMode) {
+                  simulateSingleMatch(match);
+                } else {
+                  playMatch(match);
                 }
-              }}
-              showFullBracket={true}
-            />
-          </div>
-        )}
+              }
+            }}
+            showFullBracket={true}
+          />
+        </div>
         
-        {(!showBracket || autoSimulation) && activeMatch && activeMatch.teamA && activeMatch.teamB && (
-          <div className={`${autoSimulation ? "mt-8 border-t pt-8" : ""}`}>
-            {autoSimulation && <h3 className="text-xl font-bold mb-4">Current Match</h3>}
+        {/* Show the active match when it exists */}
+        {activeMatch && activeMatch.teamA && activeMatch.teamB && (
+          <div className="border-t pt-8">
+            <h3 className="text-xl font-bold mb-4">Current Match</h3>
             <ActiveMatch
               activeMatch={activeMatch}
               onBackClick={() => {
                 if (!autoSimulation) {
                   setActiveMatch(null);
                   setPlayingMatch(false);
-                  setShowBracket(true);
                 }
               }}
               onMatchComplete={handleMatchComplete}

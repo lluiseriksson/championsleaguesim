@@ -44,7 +44,7 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
         </div>
       </div>
       
-      <div className="w-full h-full">
+      <div className="w-full min-h-[500px]">
         <TournamentMatch 
           homeTeam={activeMatch.teamA.name}
           awayTeam={activeMatch.teamB.name}

@@ -328,6 +328,7 @@ export const useTournament = (embeddedMode = false) => {
     
     if (firstMatch) {
       console.log("Found first match to start auto simulation:", firstMatch.teamA?.name, "vs", firstMatch.teamB?.name);
+      
       setActiveMatch(firstMatch);
       setPlayingMatch(true);
       setAutoSimulation(true);
@@ -341,7 +342,7 @@ export const useTournament = (embeddedMode = false) => {
         description: "No unplayed matches available"
       });
     }
-  }, [embeddedMode, matches, currentRound, setActiveMatch, setPlayingMatch]);
+  }, [embeddedMode, matches, currentRound]);
 
   const getWinner = useCallback(() => {
     return matches.find(m => m.round === 7)?.winner;
