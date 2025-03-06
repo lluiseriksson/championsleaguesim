@@ -402,6 +402,12 @@ const usePlayerMovement = ({
             newPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, newPosition.x));
             newPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, newPosition.y));
             
+            if (player.team === 'red') {
+              newPosition.x = Math.max(12, Math.min(75, newPosition.x)); // Keep red goalkeeper near left goal
+            } else {
+              newPosition.x = Math.max(PITCH_WIDTH - 75, Math.min(PITCH_WIDTH - 12, newPosition.x)); // Keep blue goalkeeper near right goal
+            }
+            
             const completeBrain = ensureCompleteBrain(player.brain);
             
             return {
