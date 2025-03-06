@@ -166,17 +166,17 @@ export const getCurriculumDifficulty = (stage: number): {
   // Ensure stage is between 0 and 1
   const normalizedStage = Math.max(0, Math.min(1, stage));
   
-  // Learning rate decreases as stage increases (more fine-tuning)
-  const learningRate = 0.1 - (normalizedStage * 0.08);
+  // Learning rate decreases more gradually as stage increases (for more stable learning)
+  const learningRate = 0.15 - (normalizedStage * 0.12);
   
-  // Batch size increases as stage increases (more complex patterns)
-  const batchSize = Math.floor(5 + (normalizedStage * 15));
+  // Batch size increases more significantly in later stages (more complex patterns)
+  const batchSize = Math.floor(8 + (normalizedStage * 22));
   
-  // Error threshold decreases as stage increases (higher precision)
-  const errorThreshold = 0.01 - (normalizedStage * 0.008);
+  // Error threshold decreases more aggressively (higher precision requirements)
+  const errorThreshold = 0.015 - (normalizedStage * 0.013);
   
-  // Reward scale increases as stage increases (more ambitious goals)
-  const rewardScale = 1.0 + normalizedStage;
+  // Reward scale increases more significantly in later stages (more ambitious goals)
+  const rewardScale = 1.0 + (normalizedStage * 1.5);
   
   return {
     learningRate,
@@ -186,23 +186,28 @@ export const getCurriculumDifficulty = (stage: number): {
   };
 };
 
-// Update curriculum learning stage based on performance
+// Update curriculum learning stage based on performance with improved progression
 export const updateCurriculumStage = (brain: NeuralNet): number => {
   if (!brain.successRate) {
     return 0.1; // Default starting stage
   }
   
   // Calculate stage based on overall success rate
-  // We want to progress gradually but not too quickly
   let stage = brain.learningStage || 0;
   
-  // Increase stage if doing well
-  if (brain.successRate.overall > 0.6) {
+  // Increase stage if doing well - more aggressive progression
+  if (brain.successRate.overall > 0.65) {
+    stage += 0.08;
+  }
+  else if (brain.successRate.overall > 0.55) {
     stage += 0.05;
   }
-  // Decrease stage if doing poorly
-  else if (brain.successRate.overall < 0.3) {
-    stage -= 0.03;
+  // Decrease stage if doing poorly - more forgiving regression
+  else if (brain.successRate.overall < 0.35) {
+    stage -= 0.02;
+  }
+  else if (brain.successRate.overall < 0.25) {
+    stage -= 0.04;
   }
   
   // If using specialized networks, adjust based on their performance too
@@ -213,9 +218,38 @@ export const updateCurriculumStage = (brain: NeuralNet): number => {
     ) / brain.specializedNetworks.length;
     
     if (avgSpecializedPerformance > 0.7) {
-      stage += 0.02;
+      stage += 0.03;
+    } else if (avgSpecializedPerformance > 0.6) {
+      stage += 0.01;
     } else if (avgSpecializedPerformance < 0.4) {
+      stage -= 0.01;
+    } else if (avgSpecializedPerformance < 0.3) {
+      stage -= 0.03;
+    }
+  }
+  
+  // Add performance stability check - if the network is oscillating, slow down progression
+  if (brain.actionHistory && brain.actionHistory.length > 20) {
+    const recentActions = brain.actionHistory.slice(-20);
+    const successCount = recentActions.filter(action => action.success).length;
+    const successRate = successCount / 20;
+    
+    // Check for oscillation (alternating between success and failure)
+    let oscillationCount = 0;
+    for (let i = 1; i < recentActions.length; i++) {
+      if (recentActions[i].success !== recentActions[i-1].success) {
+        oscillationCount++;
+      }
+    }
+    
+    // If high oscillation, slow down progression
+    if (oscillationCount > 14) {
       stage -= 0.02;
+    }
+    
+    // Reward consistent performance
+    if (successRate > 0.7 && oscillationCount < 6) {
+      stage += 0.03;
     }
   }
   
