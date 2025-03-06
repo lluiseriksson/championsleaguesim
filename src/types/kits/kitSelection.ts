@@ -1,4 +1,3 @@
-
 import { KitType, TeamKit } from './kitTypes';
 import { teamKitColors } from './teamColorsData';
 import { 
@@ -10,6 +9,7 @@ import {
   getEnhancedColorDistance,
   areColorsSufficientlyDifferent
 } from './colorUtils';
+import { teamHasRedPrimaryColor } from './kitConflictChecker';
 
 // Cache for kit selections to avoid recalculating
 const kitSelectionCache: Record<string, KitType> = {};
@@ -77,6 +77,16 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
 
   if (!homeTeam || !awayTeam) {
     return 'away'; // Default to away kit if team not found
+  }
+
+  // Check for red vs red conflict as early check
+  const homeIsRed = teamHasRedPrimaryColor(homeTeamName, 'home');
+  const awayIsRed = teamHasRedPrimaryColor(awayTeamName, 'away');
+  
+  if (homeIsRed && awayIsRed) {
+    // Red vs Red - use third kit immediately
+    kitSelectionCache[cacheKey] = 'third';
+    return 'third';
   }
 
   // Parse home team colors (players and goalkeeper)

@@ -5,6 +5,7 @@ import MatchTimer from './MatchTimer';
 import { Player, Ball, Score, PITCH_WIDTH, PITCH_HEIGHT, PLAYER_RADIUS } from '../../types/football';
 import { toast } from 'sonner';
 import { getAwayTeamKit } from '../../types/kits';
+import { performFinalKitCheck, resolveKitConflict } from '../../types/kits/kitConflictChecker';
 import GameLogic from '../GameLogic';
 
 const transliterateRussianName = (name: string): string => {
@@ -21,7 +22,6 @@ const transliterateRussianName = (name: string): string => {
     'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
   };
 
-  // Special case for Greek team
   if (name === 'Ολυμπιακός') return 'Olympiakos';
 
   const hasCyrillic = /[А-Яа-яЁё]/.test(name);
@@ -146,7 +146,19 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   const initializePlayers = () => {
     const newPlayers: Player[] = [];
     
-    const awayTeamKitType = getAwayTeamKit(homeTeam, awayTeam);
+    let awayTeamKitType = getAwayTeamKit(homeTeam, awayTeam);
+    
+    const kitCheckPassed = performFinalKitCheck(homeTeam, awayTeam, awayTeamKitType);
+    
+    if (!kitCheckPassed) {
+      console.warn(`Kit conflict detected between ${homeTeam} and ${awayTeam}. Forcing alternate kit.`);
+      awayTeamKitType = resolveKitConflict(homeTeam, awayTeam);
+      
+      toast.warning(`Kit conflict resolved`, {
+        description: `${awayTeam} will use their ${awayTeamKitType} kit to avoid color clash with ${homeTeam}`
+      });
+    }
+    
     console.log(`Tournament match: ${displayHomeTeam} (home) vs ${displayAwayTeam} (${awayTeamKitType})`);
     
     const redTeamPositions = [

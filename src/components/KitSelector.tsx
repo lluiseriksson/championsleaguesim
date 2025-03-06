@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   teamKitColors, 
@@ -6,6 +5,7 @@ import {
   KitSelectionResult,
   PlayerPosition
 } from '../types/kits';
+import { performFinalKitCheck, teamHasRedPrimaryColor } from '../types/kits/kitConflictChecker';
 
 const KitSelector: React.FC = () => {
   const [homeTeam, setHomeTeam] = useState<string>('Liverpool');
@@ -14,20 +14,17 @@ const KitSelector: React.FC = () => {
   const [teams, setTeams] = useState<string[]>([]);
 
   useEffect(() => {
-    // Get all available teams
     const availableTeams = Object.keys(teamKitColors);
     setTeams(availableTeams);
   }, []);
 
   useEffect(() => {
-    // Calculate kit selection when teams change
     if (homeTeam && awayTeam) {
       const result = getPositionSpecificKits(homeTeam, awayTeam);
       setKitResult(result);
     }
   }, [homeTeam, awayTeam]);
 
-  // Helper to get background color for kit display
   const getKitColor = (team: string, kitType: string, position: PlayerPosition) => {
     if (!teamKitColors[team]) return '#CCCCCC';
     
@@ -36,6 +33,41 @@ const KitSelector: React.FC = () => {
     }
     
     return teamKitColors[team][kitType as keyof typeof teamKitColors[string]].primary;
+  };
+
+  const checkForRedKitConflict = () => {
+    if (!homeTeam || !awayTeam || !kitResult) return null;
+    
+    const homeIsRed = teamHasRedPrimaryColor(homeTeam, 'home');
+    const awayIsRed = teamHasRedPrimaryColor(awayTeam, kitResult.awayTeamKitType);
+    
+    if (homeIsRed && awayIsRed) {
+      return (
+        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-800">
+          <p className="text-sm font-semibold mb-1">⚠️ Red Kit Conflict!</p>
+          <p className="text-xs">
+            Both {homeTeam} and {awayTeam} have red primary colors in their selected kits.
+            This would cause confusion during a match.
+          </p>
+        </div>
+      );
+    }
+    
+    const kitCheckPassed = performFinalKitCheck(homeTeam, awayTeam, kitResult.awayTeamKitType);
+    
+    if (!kitCheckPassed) {
+      return (
+        <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md text-amber-800">
+          <p className="text-sm font-semibold mb-1">⚠️ Color Conflict Detected</p>
+          <p className="text-xs">
+            The kit colors selected for {homeTeam} and {awayTeam} may cause confusion.
+            In a real match, {awayTeam} would need to use their third kit.
+          </p>
+        </div>
+      );
+    }
+    
+    return null;
   };
 
   return (
@@ -117,6 +149,8 @@ const KitSelector: React.FC = () => {
               </div>
             </div>
           </div>
+          
+          {checkForRedKitConflict()}
           
           {kitResult.conflictDescription && (
             <div className="mt-4 bg-gray-50 p-2 rounded text-xs font-mono whitespace-pre-wrap">
