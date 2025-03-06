@@ -11,6 +11,7 @@ import { isNetworkValid } from '../../utils/neuralHelpers';
 import { validatePlayerBrain, createTacticalInput } from '../../utils/neural/networkValidator';
 import { constrainMovementToRadius } from '../../utils/movementConstraints';
 import { calculateCollisionAvoidance } from '../../hooks/game/useTeamCollisions';
+import { createPlayerBrain } from '../../utils/playerBrain';
 
 interface PlayerMovementProps {
   players: Player[];
@@ -32,16 +33,23 @@ const usePlayerMovement = ({
   const [formations, setFormations] = useState({ redFormation: [], blueFormation: [] });
   const [possession, setPossession] = useState({ team: null, player: null, duration: 0 });
   const [lastMovementTime, setLastMovementTime] = useState(Date.now());
+  const [brainInitialized, setBrainInitialized] = useState(false);
 
   useEffect(() => {
-    if (gameReady && players.length > 0) {
+    if (gameReady && players.length > 0 && !brainInitialized) {
       console.log("Initializing player brains for all players...");
+      
       setPlayers(currentPlayers => 
         currentPlayers.map(player => {
           let playerWithBrain = player;
           
-          if (!player.brain || !player.brain.net) {
+          if (!player.brain || !player.brain.net || typeof player.brain.net.run !== 'function') {
             console.log(`Creating new brain for ${player.team} ${player.role} #${player.id}`);
+            playerWithBrain = {
+              ...player,
+              brain: createPlayerBrain()
+            };
+          } else {
             playerWithBrain = validatePlayerBrain(player);
           }
           
@@ -51,8 +59,10 @@ const usePlayerMovement = ({
           };
         })
       );
+      
+      setBrainInitialized(true);
     }
-  }, [gameReady, setPlayers]);
+  }, [gameReady, setPlayers, players, brainInitialized]);
 
   useEffect(() => {
     if (gameReady && players.length > 0) {
@@ -69,25 +79,22 @@ const usePlayerMovement = ({
   const ensureCompleteBrain = (brain: Partial<NeuralNet> | null | { net: any }): NeuralNet => {
     if (!brain) {
       console.log("Creating default brain for player with no brain");
-      return {
-        net: null,
-        lastOutput: { x: 0, y: 0 },
-        lastAction: 'move',
-        actionHistory: [],
-        successRate: { shoot: 0, pass: 0, intercept: 0, overall: 0 }
-      };
+      return createPlayerBrain();
     }
     
     if ('net' in brain && Object.keys(brain).length === 1) {
       console.log("Expanding basic brain to full structure");
-      const basicBrain: NeuralNet = {
+      return {
         net: brain.net,
         lastOutput: { x: 0, y: 0 },
         lastAction: 'move',
         actionHistory: [],
-        successRate: { shoot: 0, pass: 0, intercept: 0, overall: 0 }
+        successRate: { shoot: 0, pass: 0, intercept: 0, overall: 0 },
+        experienceReplay: createExperienceReplay(),
+        learningStage: 0.1,
+        lastReward: 0,
+        cumulativeReward: 0
       };
-      return basicBrain;
     }
     
     const completeBrain = brain as Partial<NeuralNet>;

@@ -5,6 +5,7 @@ import { saveModel } from '../../utils/neural/modelPersistence';
 import { createExperienceReplay } from '../../utils/experienceReplay';
 import { toast } from 'sonner';
 import { validatePlayerBrain } from '../../utils/neural/networkValidator';
+import { createPlayerBrain } from '../../utils/playerBrain';
 
 // Interval between model synchronization (in frames)
 const DEFAULT_SYNC_INTERVAL = 600; // 10 seconds at 60fps
@@ -37,6 +38,7 @@ export const useModelSyncSystem = ({
       // Count valid neural networks
       let validCount = 0;
       let invalidCount = 0;
+      let missingCount = 0;
       
       players.forEach(player => {
         if (player.brain && player.brain.net) {
@@ -53,22 +55,32 @@ export const useModelSyncSystem = ({
             console.error(`Error validating neural network for ${player.team} ${player.role} #${player.id}:`, error);
           }
         } else {
-          invalidCount++;
+          missingCount++;
           console.warn(`Missing neural network for ${player.team} ${player.role} #${player.id}`);
         }
       });
       
-      console.log(`Neural network check complete: ${validCount} valid, ${invalidCount} invalid`);
+      console.log(`Neural network check complete: ${validCount} valid, ${invalidCount} invalid, ${missingCount} missing`);
       
-      // If we have invalid networks, run validation on all players
-      if (invalidCount > 0) {
+      // If we have invalid or missing networks, run validation on all players
+      if (invalidCount > 0 || missingCount > 0) {
         console.log("Validating and fixing neural networks...");
         
         setPlayers(currentPlayers => 
-          currentPlayers.map(player => validatePlayerBrain(player))
+          currentPlayers.map(player => {
+            // If player has no brain or invalid brain, create a new one
+            if (!player.brain || !player.brain.net || typeof player.brain.net.run !== 'function') {
+              console.log(`Creating new brain for ${player.team} ${player.role} #${player.id}`);
+              return {
+                ...player,
+                brain: createPlayerBrain()
+              };
+            }
+            return validatePlayerBrain(player);
+          })
         );
         
-        toast.info(`Fixed ${invalidCount} neural networks`, {
+        toast.info(`Fixed ${invalidCount + missingCount} neural networks`, {
           duration: 3000,
           position: 'bottom-right'
         });
@@ -165,7 +177,11 @@ export const useModelSyncSystem = ({
           // Fix invalid neural networks
           if (!player.brain || !player.brain.net || typeof player.brain.net.run !== 'function') {
             fixedPlayers++;
-            return validatePlayerBrain(player);
+            console.log(`Creating new neural network for ${player.team} ${player.role} #${player.id}`);
+            return {
+              ...player,
+              brain: createPlayerBrain()
+            };
           }
           
           return player;
