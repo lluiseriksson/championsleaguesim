@@ -3,15 +3,15 @@ import { isNetworkValid } from './neuralHelpers';
 
 // Calculate goalkeeper speed multiplier based on team ELO difference
 const calculateGoalkeeperSpeedMultiplier = (playerElo?: number, opposingTeamElo?: number): number => {
-  // Default to 0.7 if ELOs are not available (reduced from 1.0)
-  if (!playerElo || !opposingTeamElo) return 0.7;
+  // Default to 1.0 if ELOs are not available
+  if (!playerElo || !opposingTeamElo) return 1.0;
   
   // Calculate ELO difference (capped at ±1000 to prevent extreme values)
   const eloDifference = Math.min(Math.max(playerElo - opposingTeamElo, -1000), 1000);
   
   // For each ELO point difference, we adjust by 0.1% (0.001)
-  // Even best team has reduced speed now (0.7 base), lower ELO teams get further reduced speed
-  const speedMultiplier = 0.7 - Math.max(0, -eloDifference) * 0.001;
+  // Base speed is now 50% of original (1.0 to 0.5)
+  const speedMultiplier = 0.5 - Math.max(0, -eloDifference) * 0.0005;
   
   return speedMultiplier;
 };
@@ -19,8 +19,8 @@ const calculateGoalkeeperSpeedMultiplier = (playerElo?: number, opposingTeamElo?
 // Add a function to introduce randomness based on skill level
 const addPositioningNoise = (value: number, playerElo?: number): number => {
   // Calculate noise level inversely related to ELO (better players have less noise)
-  const baseNoise = 0.3; // Increased base noise level for all goalkeepers (from 0.2)
-  const eloBonus = playerElo ? Math.min(0.1, Math.max(0, (playerElo - 1500) / 5000)) : 0; // Reduced ELO bonus from 0.15 to 0.1
+  const baseNoise = 0.25; // Moderate noise level for all goalkeepers
+  const eloBonus = playerElo ? Math.min(0.1, Math.max(0, (playerElo - 1500) / 5000)) : 0;
   const noiseLevel = baseNoise - eloBonus;
   
   // Generate random noise
@@ -77,9 +77,9 @@ const useNeuralNetworkForGoalkeeper = (
     
     // Use the neural network output if available
     if (output && typeof output.moveX === 'number' && typeof output.moveY === 'number') {
-      // Convert from 0-1 range to direction - further reduced by another 40%
-      const moveX = (output.moveX * 2 - 1) * 0.9; // Reduced from 1.5 to 0.9
-      const moveY = (output.moveY * 2 - 1) * 1.2; // Reduced from 2 to 1.2
+      // Convert from 0-1 range to direction - reduced by 50%
+      const moveX = (output.moveX * 2 - 1) * 1.0; // Adjusted from 0.9 to 1.0
+      const moveY = (output.moveY * 2 - 1) * 1.5; // Adjusted from 1.2 to 1.5
       
       return { x: moveX, y: moveY };
     }
@@ -93,10 +93,10 @@ const useNeuralNetworkForGoalkeeper = (
 // Specialized movement logic for goalkeepers
 export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: number): { x: number, y: number } => {
   // First try to use neural network if available
-  if (player.brain && Math.random() > 0.5) { // Reduced from 0.3 to 0.5 (more random behavior)
+  if (player.brain && Math.random() > 0.4) { // More neural network usage (0.4 instead of 0.5)
     const neuralMovement = useNeuralNetworkForGoalkeeper(player, ball, player.brain);
     if (neuralMovement) {
-      // Add more randomness to neural network output
+      // Add randomness to neural network output
       return {
         x: addPositioningNoise(neuralMovement.x, player.teamElo),
         y: addPositioningNoise(neuralMovement.y, player.teamElo)
@@ -130,38 +130,38 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
   
   // Reduce goalkeeper aggressiveness - only move out on closer balls
   const shouldMoveForward = 
-    (isLeftSide && ball.position.x < 120 && ballMovingTowardGoal) || // Reduced from 150 to 120
-    (!isLeftSide && ball.position.x > PITCH_WIDTH - 120 && ballMovingTowardGoal); // Reduced from 150 to 120
+    (isLeftSide && ball.position.x < 120 && ballMovingTowardGoal) || 
+    (!isLeftSide && ball.position.x > PITCH_WIDTH - 120 && ballMovingTowardGoal);
   
   if (shouldMoveForward) {
     // Move toward ball less aggressively - stay closer to goal line
-    const maxAdvance = isLeftSide ? 100 : PITCH_WIDTH - 100; // Reduced from 120 to 100
+    const maxAdvance = isLeftSide ? 100 : PITCH_WIDTH - 100;
     
     // Add randomness to max advance distance
-    const randomizedMaxAdvance = maxAdvance + (Math.random() * 30 - 15); // Reduced from 40-20 to 30-15
+    const randomizedMaxAdvance = maxAdvance + (Math.random() * 30 - 15);
     
     const targetX = isLeftSide 
-      ? Math.min(ball.position.x - 25, randomizedMaxAdvance) // Reduced aggressiveness
-      : Math.max(ball.position.x + 25, randomizedMaxAdvance); // Reduced aggressiveness
+      ? Math.min(ball.position.x - 25, randomizedMaxAdvance)
+      : Math.max(ball.position.x + 25, randomizedMaxAdvance);
     
     // Move faster when ball is coming directly at goal but add some randomness
     const directShot = Math.abs(ball.position.y - PITCH_HEIGHT/2) < GOAL_HEIGHT/2;
-    const randomFactor = 0.7 + Math.random() * 0.3; // Reduced from 0.8-1.2 to 0.7-1.0
+    const randomFactor = 0.8 + Math.random() * 0.4; // Increased from 0.7+0.3 to 0.8+0.4
     
-    // Further reduced by another 40%
-    const baseSpeedMultiplier = directShot ? 0.9 * randomFactor : 0.6 * randomFactor; // Reduced from 1.5/1.0 to 0.9/0.6
+    // Reduced by 50% instead of 70%
+    const baseSpeedMultiplier = directShot ? 1.2 * randomFactor : 0.9 * randomFactor; // Increased from 0.9/0.6 to 1.2/0.9
     const adjustedSpeedMultiplier = baseSpeedMultiplier * eloSpeedMultiplier;
     
     moveX = Math.sign(targetX - player.position.x) * adjustedSpeedMultiplier;
   } else {
     // Return to goal line with random positioning
-    const randomGoalLineOffset = (Math.random() * 25 - 12.5); // Increased randomness
+    const randomGoalLineOffset = (Math.random() * 25 - 12.5);
     const targetGoalLine = goalLine + randomGoalLineOffset;
     
     const distanceToGoalLine = Math.abs(player.position.x - targetGoalLine);
     
-    // Further reduced by another 40%
-    moveX = Math.sign(targetGoalLine - player.position.x) * Math.min(distanceToGoalLine * 0.06, 0.75) * eloSpeedMultiplier; // Reduced from 0.1/1.25 to 0.06/0.75
+    // Reduced by 50% instead of 70%
+    moveX = Math.sign(targetGoalLine - player.position.x) * Math.min(distanceToGoalLine * 0.08, 1.0) * eloSpeedMultiplier; // Increased from 0.06/0.75 to 0.08/1.0
   }
   
   // Calculate vertical movement to track the ball or expected ball position
@@ -169,38 +169,38 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
   
   // If ball is moving fast, anticipate where it will go, with more error
   const isBallMovingFast = Math.abs(ball.velocity.y) > 3;
-  // Add a prediction error based on ELO - increased error
-  const predictionError = Math.random() * 80 - 40; // Increased from ±30 to ±40 pixels of error
+  // Add a prediction error based on ELO
+  const predictionError = Math.random() * 60 - 30; // Reduced from ±40 to ±30 pixels of error
   const targetY = isBallMovingFast ? expectedBallY + predictionError : ball.position.y;
   
   // Limit target Y to reasonable goal area with more randomness
-  const randomYOffset = (Math.random() * 40 - 20); // Increased from ±15 to ±20 pixels of randomness
+  const randomYOffset = (Math.random() * 30 - 15); // Reduced from ±20 to ±15 pixels of randomness
   const limitedTargetY = Math.max(
-    PITCH_HEIGHT/2 - GOAL_HEIGHT/2 - 35 + randomYOffset, // Increased randomness
-    Math.min(PITCH_HEIGHT/2 + GOAL_HEIGHT/2 + 35 + randomYOffset, targetY) // Increased randomness
+    PITCH_HEIGHT/2 - GOAL_HEIGHT/2 - 35 + randomYOffset,
+    Math.min(PITCH_HEIGHT/2 + GOAL_HEIGHT/2 + 35 + randomYOffset, targetY)
   );
   
   // Calculate vertical movement with reduced responsiveness
   const yDifference = limitedTargetY - player.position.y;
   
-  // Further reduced by another 40%
-  moveY = Math.sign(yDifference) * Math.min(Math.abs(yDifference) * 0.045, 0.9) * eloSpeedMultiplier; // Reduced from 0.075/1.5 to 0.045/0.9
+  // Reduced by 50% instead of 70%
+  moveY = Math.sign(yDifference) * Math.min(Math.abs(yDifference) * 0.06, 1.2) * eloSpeedMultiplier; // Increased from 0.045/0.9 to 0.06/1.2
   
   // Prioritize vertical movement when ball is coming directly at goal
   if (ballMovingTowardGoal && Math.abs(ball.position.x - player.position.x) < 100) {
-    // Add some randomness to the vertical movement priority - further reduced
-    const verticalPriorityMultiplier = 0.4 + Math.random() * 0.15; // Reduced from 0.65-0.85 to 0.4-0.55
+    // Add some randomness to the vertical movement priority
+    const verticalPriorityMultiplier = 0.6 + Math.random() * 0.2; // Increased from 0.4-0.55 to 0.6-0.8
     moveY = moveY * verticalPriorityMultiplier * eloSpeedMultiplier;
   }
   
-  // Add final noise to movement - more noise
+  // Add final noise to movement
   moveX = addPositioningNoise(moveX, player.teamElo);
   moveY = addPositioningNoise(moveY, player.teamElo);
   
   // Occasionally add random hesitation where keeper moves very little
-  if (Math.random() < 0.15) { // 15% chance of goalkeeper hesitation
-    moveX *= 0.3;
-    moveY *= 0.3;
+  if (Math.random() < 0.12) { // 12% chance of goalkeeper hesitation (reduced from 15%)
+    moveX *= 0.4; // Increased from 0.3 to 0.4
+    moveY *= 0.4; // Increased from 0.3 to 0.4
     console.log(`GK ${player.team}: HESITATION`);
   }
   
