@@ -1,4 +1,4 @@
-import { Position, NeuralInput, NeuralOutput, TeamContext, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
+import { Position, NeuralInput, NeuralOutput, TeamContext, PITCH_WIDTH, PITCH_HEIGHT, SituationContext } from '../types/football';
 import * as brain from 'brain.js';
 
 // Normalize a position to a value between 0 and 1
@@ -206,6 +206,43 @@ const calculatePerformanceMetrics = (actionHistory: Array<{
   return {
     successRate,
     momentum: Math.max(0, Math.min(1, normalizedMomentum))
+  };
+};
+
+// Create a situation context from neural input and team context
+export const createSituationContext = (
+  input: NeuralInput, 
+  teamContext: TeamContext,
+  playerPosition: Position,
+  ballPosition: Position
+): SituationContext => {
+  // Determine field position by thirds
+  const playerX = input.playerX;
+  const isDefensiveThird = playerX < 0.33;
+  const isMiddleThird = playerX >= 0.33 && playerX <= 0.66;
+  const isAttackingThird = playerX > 0.66;
+  
+  // Determine possession
+  const hasTeamPossession = input.isInShootingRange > 0.5 || input.isInPassingRange > 0.5;
+  
+  // Calculate distances
+  const distanceToBall = Math.sqrt(
+    Math.pow(playerPosition.x - ballPosition.x, 2) + 
+    Math.pow(playerPosition.y - ballPosition.y, 2)
+  ) / Math.sqrt(PITCH_WIDTH * PITCH_WIDTH + PITCH_HEIGHT * PITCH_HEIGHT);
+  
+  // Create situation context
+  return {
+    isDefensiveThird,
+    isMiddleThird,
+    isAttackingThird,
+    hasTeamPossession,
+    isSetPiece: false, // Would need additional game state
+    isTransitioning: input.ballVelocityX > 0.3 || input.ballVelocityY > 0.3,
+    distanceToBall,
+    distanceToOwnGoal: input.distanceToOwnGoal,
+    distanceToOpponentGoal: input.distanceToGoal,
+    defensivePressure: input.opponentDensity * (1 - input.distanceToOwnGoal)
   };
 };
 

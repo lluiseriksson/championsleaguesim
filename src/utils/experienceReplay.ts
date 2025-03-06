@@ -1,4 +1,6 @@
-import { NeuralInput, NeuralOutput, ExperienceReplay, NeuralNet } from '../types/football';
+import { NeuralInput, NeuralOutput, ExperienceReplay, NeuralNet, SituationContext, Position } from '../types/football';
+import { selectSpecializedNetwork, updateSpecializedNetworks } from './specializedNetworks';
+import { createSituationContext } from './neuralHelpers';
 
 // Initialize an experience replay buffer
 export const createExperienceReplay = (capacity: number = 100): ExperienceReplay => {
@@ -63,7 +65,8 @@ export const addExperience = (
 // Sample experiences for training based on priorities
 export const sampleExperiences = (
   experienceReplay: ExperienceReplay,
-  sampleSize: number = 10
+  sampleSize: number = 10,
+  specializationType?: string
 ): { inputs: NeuralInput[], outputs: NeuralOutput[], weights: number[] } => {
   const { inputs, outputs, priorities } = experienceReplay;
   
@@ -75,17 +78,44 @@ export const sampleExperiences = (
   const totalPriority = priorities.reduce((sum, priority) => sum + priority, 0);
   const weights = priorities.map(priority => priority / totalPriority);
   
-  // Select indices based on weights
-  const selectedIndices: number[] = [];
-  for (let i = 0; i < Math.min(sampleSize, inputs.length); i++) {
-    const random = Math.random();
-    let cumulativeWeight = 0;
+  // Filter by specialization if requested
+  let selectedIndices: number[] = [];
+  
+  if (specializationType) {
+    // For specialized training, select related experiences
+    for (let i = 0; i < inputs.length; i++) {
+      const input = inputs[i];
+      
+      // Create a situation context to determine if this experience is relevant
+      // to the specialization we're training
+      const relevantToSpecialization = isExperienceRelevantToSpecialization(
+        input,
+        specializationType
+      );
+      
+      if (relevantToSpecialization) {
+        selectedIndices.push(i);
+      }
+    }
     
-    for (let j = 0; j < weights.length; j++) {
-      cumulativeWeight += weights[j];
-      if (random <= cumulativeWeight) {
-        selectedIndices.push(j);
-        break;
+    // If we have too many samples, select a random subset
+    if (selectedIndices.length > sampleSize) {
+      selectedIndices = selectedIndices
+        .sort(() => Math.random() - 0.5)
+        .slice(0, sampleSize);
+    }
+  } else {
+    // Without specialization, use original priority-based sampling
+    for (let i = 0; i < Math.min(sampleSize, inputs.length); i++) {
+      const random = Math.random();
+      let cumulativeWeight = 0;
+      
+      for (let j = 0; j < weights.length; j++) {
+        cumulativeWeight += weights[j];
+        if (random <= cumulativeWeight) {
+          selectedIndices.push(j);
+          break;
+        }
       }
     }
   }
@@ -100,6 +130,29 @@ export const sampleExperiences = (
     outputs: sampledOutputs,
     weights: sampledWeights
   };
+};
+
+// Determine if an experience is relevant to a specific specialization
+const isExperienceRelevantToSpecialization = (
+  input: NeuralInput,
+  specializationType: string
+): boolean => {
+  // Simple rules to determine relevance
+  switch (specializationType) {
+    case 'attacking':
+      return input.playerX > 0.6 && input.isInShootingRange > 0.5;
+    case 'defending':
+      return input.playerX < 0.4 && input.isDefendingRequired > 0.5;
+    case 'possession':
+      return input.isInPassingRange > 0.5 && input.nearestTeammateDistance < 0.3;
+    case 'transition':
+      return Math.abs(input.ballVelocityX) > 0.3 || Math.abs(input.ballVelocityY) > 0.3;
+    case 'setpiece':
+      // Would need more context about set pieces
+      return false;
+    default:
+      return true; // General is always relevant
+  }
 };
 
 // Get the curriculum learning difficulty based on stage
@@ -151,6 +204,88 @@ export const updateCurriculumStage = (brain: NeuralNet): number => {
     stage -= 0.03;
   }
   
+  // If using specialized networks, adjust based on their performance too
+  if (brain.specializedNetworks && brain.specializedNetworks.length > 0) {
+    const avgSpecializedPerformance = brain.specializedNetworks.reduce(
+      (sum, network) => sum + network.performance.overallSuccess, 
+      0
+    ) / brain.specializedNetworks.length;
+    
+    if (avgSpecializedPerformance > 0.7) {
+      stage += 0.02;
+    } else if (avgSpecializedPerformance < 0.4) {
+      stage -= 0.02;
+    }
+  }
+  
   // Clamp to valid range
   return Math.max(0.1, Math.min(1.0, stage));
+};
+
+// Add training for specialized networks
+export const trainSpecializedNetworks = (
+  brain: NeuralNet,
+  input: NeuralInput,
+  output: NeuralOutput,
+  reward: number,
+  playerPosition: Position,
+  ballPosition: Position
+): NeuralNet => {
+  if (!brain.specializedNetworks || brain.specializedNetworks.length === 0) {
+    return brain;
+  }
+  
+  try {
+    // Create a situation context to update the right networks
+    const dummyContext: TeamContext = {
+      teammates: [],
+      opponents: [],
+      ownGoal: { x: 0, y: 0 },
+      opponentGoal: { x: 0, y: 0 }
+    };
+    
+    const situation = createSituationContext(input, dummyContext, playerPosition, ballPosition);
+    
+    // Determine which specialized network to use
+    const specializationType = selectSpecializedNetwork(brain, situation);
+    
+    // Get samples focused on this specialization for more targeted training
+    if (brain.experienceReplay) {
+      const { inputs, outputs } = sampleExperiences(
+        brain.experienceReplay,
+        10, // Small batch size for incremental learning
+        specializationType
+      );
+      
+      if (inputs.length > 0 && outputs.length > 0) {
+        // Find the right specialized network to train
+        const specializedNetwork = brain.specializedNetworks.find(
+          n => n.type === specializationType
+        );
+        
+        if (specializedNetwork) {
+          // Train the specialized network
+          specializedNetwork.net.train(
+            inputs.map((input, i) => ({ input, output: outputs[i] })),
+            {
+              iterations: 20, // Quick adaptive training
+              errorThresh: 0.01,
+              learningRate: 0.05,
+              logPeriod: 100
+            }
+          );
+          
+          console.log(`Trained specialized network: ${specializationType}`);
+        }
+      }
+    }
+    
+    // Update network performance based on reward
+    const success = reward > 0;
+    return updateSpecializedNetworks(brain, 'move', success, situation);
+    
+  } catch (error) {
+    console.warn('Error training specialized networks:', error);
+    return brain;
+  }
 };

@@ -2,6 +2,7 @@ import * as brain from 'brain.js';
 import { NeuralNet, Position, NeuralInput, NeuralOutput, TeamContext, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
 import { createNeuralInput, isNetworkValid } from './neuralHelpers';
 import { createExperienceReplay } from './experienceReplay';
+import { initializeSpecializedBrain } from './specializedNetworks';
 
 export const createPlayerBrain = (): NeuralNet => {
   try {
@@ -232,22 +233,12 @@ export const createPlayerBrain = (): NeuralNet => {
     const experienceReplay = createExperienceReplay(100);
     
     console.log("Created enhanced neural network with curriculum learning and experience replay");
-    return {
-      net,
-      lastOutput: { x: 0, y: 0 },
-      lastAction: 'move',
-      actionHistory: [],
-      successRate: {
-        shoot: 0.5,
-        pass: 0.5,
-        intercept: 0.5,
-        overall: 0.5
-      },
-      experienceReplay,
-      learningStage: 0.1,
-      lastReward: 0,
-      cumulativeReward: 0
-    };
+    
+    const enhancedBrain = initializeSpecializedBrain();
+    
+    enhancedBrain.net = net;
+    
+    return enhancedBrain;
   } catch (error) {
     console.error("Error creating neural network:", error);
     return createFallbackBrain();

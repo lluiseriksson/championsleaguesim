@@ -1,4 +1,3 @@
-
 import * as brain from 'brain.js';
 
 export interface Position {
@@ -69,7 +68,6 @@ export interface NeuralOutput {
   intercept: number;
 }
 
-// Enhanced experience replay memory for neural networks
 export interface ExperienceReplay {
   inputs: NeuralInput[];
   outputs: NeuralOutput[];
@@ -78,6 +76,40 @@ export interface ExperienceReplay {
   timestamps: number[];  // When the experience was recorded
   capacity: number;      // Maximum buffer size
   currentIndex: number;  // Current position in the buffer
+}
+
+export type NetworkSpecialization = 
+  | 'general'      // General-purpose network
+  | 'attacking'    // Specialized for attacking situations
+  | 'defending'    // Specialized for defending situations
+  | 'possession'   // Specialized for maintaining possession
+  | 'transition'   // Specialized for transition play
+  | 'setpiece'     // Specialized for set pieces
+  | 'selector'     // Network that selects which specialized network to use
+  | 'meta';        // Meta-network that combines outputs
+
+export interface SituationContext {
+  isDefensiveThird: boolean;    // Player is in defensive third of field
+  isMiddleThird: boolean;       // Player is in middle third of field
+  isAttackingThird: boolean;    // Player is in attacking third of field
+  hasTeamPossession: boolean;   // Team has possession of the ball
+  isSetPiece: boolean;          // Currently in a set piece situation
+  isTransitioning: boolean;     // Team is transitioning between defense/attack
+  distanceToBall: number;       // Distance to ball (normalized 0-1)
+  distanceToOwnGoal: number;    // Distance to own goal (normalized 0-1)
+  distanceToOpponentGoal: number; // Distance to opponent goal (normalized 1)
+  defensivePressure: number;    // Level of defensive pressure (0-1)
+}
+
+export interface SpecializedNeuralNet {
+  type: NetworkSpecialization;
+  net: brain.NeuralNetwork<NeuralInput, NeuralOutput>;
+  confidence: number;           // How confident this network is in current situation (0-1)
+  performance: {                // Performance metrics for this specialized network
+    overallSuccess: number;     // Overall success rate (0-1)
+    situationSuccess: number;   // Success rate in its specialized situation (0-1)
+    usageCount: number;         // How many times this network has been used
+  };
 }
 
 export interface NeuralNet {
@@ -97,11 +129,18 @@ export interface NeuralNet {
     intercept: number;
     overall: number;
   };
-  // New properties for advanced learning
+  // Experience replay properties
   experienceReplay?: ExperienceReplay;
-  learningStage?: number;  // For curriculum learning (0-1)
-  lastReward?: number;     // For delayed reward tracking
-  cumulativeReward?: number; // Track total rewards over time
+  learningStage?: number;       // For curriculum learning (0-1)
+  lastReward?: number;          // For delayed reward tracking
+  cumulativeReward?: number;    // Track total rewards over time
+  
+  // New properties for specialized networks
+  specializedNetworks?: SpecializedNeuralNet[];
+  selectorNetwork?: SpecializedNeuralNet;
+  metaNetwork?: SpecializedNeuralNet;
+  currentSpecialization?: NetworkSpecialization;
+  lastSituationContext?: SituationContext;
 }
 
 export type KitType = 'home' | 'away' | 'third';
