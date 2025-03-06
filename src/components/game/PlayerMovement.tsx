@@ -56,23 +56,46 @@ const usePlayerMovement = ({
     }
   }, [ball, players, gameReady]);
 
-  // Helper function to ensure brain has lastOutput property
-  const ensureCompleteBrain = (brain: Partial<NeuralNet> | null): NeuralNet => {
+  // Helper function to ensure brain has all required properties
+  const ensureCompleteBrain = (brain: Partial<NeuralNet> | null | { net: any }): NeuralNet => {
+    // If brain is null or undefined, create a default object
+    if (!brain) {
+      return {
+        net: null,
+        lastOutput: { x: 0, y: 0 },
+        lastAction: 'move',
+        actionHistory: [],
+        successRate: { shoot: 0, pass: 0, intercept: 0, overall: 0 }
+      };
+    }
+    
+    // If brain has only 'net' property, add all missing properties
+    if ('net' in brain && Object.keys(brain).length === 1) {
+      return {
+        net: brain.net,
+        lastOutput: { x: 0, y: 0 },
+        lastAction: 'move',
+        actionHistory: [],
+        successRate: { shoot: 0, pass: 0, intercept: 0, overall: 0 }
+      };
+    }
+    
+    // For existing brains, ensure all required properties exist
     return {
-      net: brain?.net || null,
-      lastOutput: brain?.lastOutput || { x: 0, y: 0 },
-      lastAction: brain?.lastAction || 'move',
-      actionHistory: brain?.actionHistory || [],
-      successRate: brain?.successRate || { shoot: 0, pass: 0, intercept: 0, overall: 0 },
-      experienceReplay: brain?.experienceReplay,
-      learningStage: brain?.learningStage,
-      lastReward: brain?.lastReward,
-      cumulativeReward: brain?.cumulativeReward,
-      specializedNetworks: brain?.specializedNetworks,
-      selectorNetwork: brain?.selectorNetwork,
-      metaNetwork: brain?.metaNetwork,
-      currentSpecialization: brain?.currentSpecialization,
-      lastSituationContext: brain?.lastSituationContext
+      net: brain.net || null,
+      lastOutput: brain.lastOutput || { x: 0, y: 0 },
+      lastAction: brain.lastAction || 'move',
+      actionHistory: brain.actionHistory || [],
+      successRate: brain.successRate || { shoot: 0, pass: 0, intercept: 0, overall: 0 },
+      experienceReplay: brain.experienceReplay,
+      learningStage: brain.learningStage,
+      lastReward: brain.lastReward,
+      cumulativeReward: brain.cumulativeReward,
+      specializedNetworks: brain.specializedNetworks,
+      selectorNetwork: brain.selectorNetwork,
+      metaNetwork: brain.metaNetwork,
+      currentSpecialization: brain.currentSpecialization,
+      lastSituationContext: brain.lastSituationContext
     };
   };
 
@@ -276,7 +299,7 @@ const usePlayerMovement = ({
       });
       
       // Process the final positions and remove temporary properties
-      return proposedPositions.map(p => {
+      const processedPlayers = proposedPositions.map(p => {
         const teammates = proposedPositions.filter(
           teammate => teammate.team === p.team && teammate.id !== p.id
         );
@@ -288,19 +311,21 @@ const usePlayerMovement = ({
         );
         
         // Create a clean player object without the temporary properties
-        const cleanPlayer: Player = {
+        const cleanPlayer = {
           ...p,
           position: collisionAdjustedPosition,
-          // Exclude temporary properties
           brain: p.brain
         };
         
-        // Delete the temporary properties
-        delete (cleanPlayer as any).proposedPosition;
-        delete (cleanPlayer as any).movement;
+        // Delete the temporary properties using a typed approach
+        const playerWithTempProps = cleanPlayer as any;
+        delete playerWithTempProps.proposedPosition;
+        delete playerWithTempProps.movement;
         
-        return cleanPlayer;
+        return cleanPlayer as Player;
       });
+      
+      return processedPlayers;
     });
   }, [ball, gameReady, setPlayers, formations, possession, gameTime, score]);
 

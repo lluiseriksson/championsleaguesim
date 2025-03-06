@@ -1,3 +1,4 @@
+
 import { NeuralNet, Player, Position, NeuralInput } from '../../types/football';
 import { createPlayerBrain } from '../neuralCore';
 import * as brain from 'brain.js';
@@ -145,11 +146,13 @@ export const isNetworkValid = (net: brain.NeuralNetwork<any, any> | null): boole
   }
 };
 
+// Añadido para exportar la función que se importa en ModelSyncSystem
 export const enhanceTacticalNetworks = (player: Player): Player => {
   const validatedPlayer = validatePlayerBrain(player);
   return validatedPlayer;
 };
 
+// Añadido para exportar la función que se importa en PlayerMovement
 export const createTacticalInput = (
   player: Player,
   normalizedBallX: number,
