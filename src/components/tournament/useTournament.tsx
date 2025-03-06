@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Match, TournamentTeam } from '../../types/tournament';
 import { teamKitColors } from '../../types/kits';
@@ -40,7 +39,11 @@ export const useTournament = (embeddedMode = false) => {
       const nextMatch = findNextUnplayedMatch();
       
       if (nextMatch) {
-        playMatch(nextMatch);
+        if (embeddedMode) {
+          simulateSingleMatch(nextMatch);
+        } else {
+          playMatch(nextMatch);
+        }
       } else {
         const roundMatches = matches.filter(m => m.round === currentRound);
         const allRoundMatchesPlayed = roundMatches.every(m => m.played);
@@ -74,7 +77,7 @@ export const useTournament = (embeddedMode = false) => {
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [autoSimulation, playingMatch, currentRound, matches]);
+  }, [autoSimulation, playingMatch, currentRound, matches, embeddedMode, simulateSingleMatch, playMatch]);
 
   const initializeTournament = useCallback(() => {
     const tournamentTeams: TournamentTeam[] = Object.entries(teamKitColors).map(([name, colors], index) => ({
@@ -262,6 +265,7 @@ export const useTournament = (embeddedMode = false) => {
   }, [activeMatch, matches, currentRound, autoSimulation, playMatch]);
 
   const startAutoSimulation = useCallback(() => {
+    console.log("Starting auto simulation...");
     setAutoSimulation(true);
     toast.success("Auto Simulation Started", {
       description: "Tournament will progress automatically"
