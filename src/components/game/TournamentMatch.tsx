@@ -185,6 +185,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       const role = pos.role as Player['role'];
       
       const playerBrain = createPlayerBrain();
+      console.log(`Created brain for red ${role} #${i + 1} - network valid: ${playerBrain.net !== null}`);
       
       newPlayers.push({
         id: i + 1,
@@ -218,6 +219,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       const role = pos.role as Player['role'];
       
       const playerBrain = createPlayerBrain();
+      console.log(`Created brain for blue ${role} #${i + 12} - network valid: ${playerBrain.net !== null}`);
       
       newPlayers.push({
         id: i + 12,
@@ -232,7 +234,8 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       });
     }
     
-    setPlayers(newPlayers);
+    const validatedPlayers = newPlayers.map(player => validatePlayerBrain(player));
+    setPlayers(validatedPlayers);
   };
   
   const { updatePlayerPositions } = usePlayerMovement({ 

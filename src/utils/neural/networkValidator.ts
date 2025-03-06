@@ -29,12 +29,14 @@ export const validatePlayerBrain = (player: Player): Player => {
     const testInput = createBasicTestInput();
     
     if (!player.brain.net || typeof player.brain.net.run !== 'function') {
+      console.log(`Invalid network detected for ${player.team} ${player.role} #${player.id}: missing run function, creating new one`);
       throw new Error('Invalid network: missing or run function not available');
     }
     
     const output = player.brain.net.run(testInput);
     
     if (!output || typeof output.moveX !== 'number' || typeof output.moveY !== 'number') {
+      console.log(`Invalid network output for ${player.team} ${player.role} #${player.id}, creating new one`);
       throw new Error('Invalid network output structure');
     }
     

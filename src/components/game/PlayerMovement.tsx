@@ -41,16 +41,19 @@ const usePlayerMovement = ({
     if (gameReady && players.length > 0) {
       setPlayers(currentPlayers => 
         currentPlayers.map(player => {
-          if (!player.brain || !player.brain.net) {
-            console.log(`Initializing missing brain for ${player.team} ${player.role} #${player.id}`);
+          const validatedPlayer = validatePlayerBrain(player);
+          
+          if (!validatedPlayer.brain || !validatedPlayer.brain.net || !isNetworkValid(validatedPlayer.brain.net)) {
+            console.log(`Re-initializing invalid brain for ${player.team} ${player.role} #${player.id}`);
             return {
               ...player,
               brain: createPlayerBrain()
             };
           }
+          
           return {
-            ...player,
-            brain: initializePlayerBrainWithHistory(player.brain)
+            ...validatedPlayer,
+            brain: initializePlayerBrainWithHistory(validatedPlayer.brain)
           };
         })
       );
@@ -122,6 +125,21 @@ const usePlayerMovement = ({
       };
     }
     
+    try {
+      const testInput = createBasicTestInput();
+      brain.net.run(testInput);
+    } catch (error) {
+      console.log("Neural network validation failed during runtime, creating new brain");
+      const newBrain = createPlayerBrain();
+      return {
+        ...newBrain,
+        lastOutput: (brain as Partial<NeuralNet>).lastOutput || { x: 0, y: 0 },
+        lastAction: (brain as Partial<NeuralNet>).lastAction || 'move',
+        actionHistory: (brain as Partial<NeuralNet>).actionHistory || [],
+        successRate: (brain as Partial<NeuralNet>).successRate || { shoot: 0, pass: 0, intercept: 0, overall: 0 }
+      };
+    }
+    
     const completeBrain = brain as Partial<NeuralNet>;
     return {
       net: completeBrain.net || null,
@@ -153,10 +171,22 @@ const usePlayerMovement = ({
       return null;
     }
     
-    if (!player.brain || !player.brain.net) return null;
+    if (!player.brain || !player.brain.net) {
+      setTimeout(() => {
+        setPlayers(currentPlayers => 
+          currentPlayers.map(p => p.id === player.id ? validatePlayerBrain(player) : p)
+        );
+      }, 100);
+      return null;
+    }
     
     try {
       if (!isNetworkValid(player.brain.net)) {
+        setTimeout(() => {
+          setPlayers(currentPlayers => 
+            currentPlayers.map(p => p.id === player.id ? validatePlayerBrain(player) : p)
+          );
+        }, 100);
         return null;
       }
       
@@ -255,6 +285,12 @@ const usePlayerMovement = ({
       }
     } catch (error) {
       console.log(`Error using neural network for ${player.team} ${player.role} #${player.id}:`, error);
+      
+      setTimeout(() => {
+        setPlayers(currentPlayers => 
+          currentPlayers.map(p => p.id === player.id ? validatePlayerBrain(player) : p)
+        );
+      }, 100);
     }
     
     neuralNetworkCacheRef.current.set(cacheKey, {
