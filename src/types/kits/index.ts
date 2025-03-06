@@ -22,6 +22,15 @@ export {
   clearKitSelectionCache
 } from './kitSelection';
 
+// Position-specific kit selection
+export {
+  getPositionSpecificKits,
+  clearPositionKitCache,
+  generateSpecialKit,
+  type PlayerPosition,
+  type KitSelectionResult
+} from './positionSpecificKits';
+
 // Kit accessors
 export { 
   getTeamKitColor,
