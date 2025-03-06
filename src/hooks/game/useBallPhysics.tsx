@@ -75,10 +75,46 @@ function handlePlayerCollisions(
   const collisionCooldown = 150; // ms
   const goalkeeperCollisionCooldown = 100; // shorter cooldown for goalkeepers
 
-  // Check goalkeeper collisions first with higher priority
+  // Enhanced goalkeeper collision detection with predictive positioning
   if (currentTime - lastCollisionTimeRef.current > goalkeeperCollisionCooldown) {
     for (const goalkeeper of goalkeepers) {
-      const collision = checkCollision(newPosition, goalkeeper.position);
+      // Standard collision detection first
+      let collision = checkCollision(newPosition, goalkeeper.position);
+      
+      // If no direct collision, check for near-misses with angled shots
+      if (!collision) {
+        // Calculate ball trajectory angle
+        const ballAngle = Math.atan2(currentVelocity.y, currentVelocity.x);
+        
+        // Get goalkeeper side (left or right)
+        const isLeftGoalkeeper = goalkeeper.position.x < PITCH_WIDTH / 2;
+        
+        // Check if ball is approaching the goal from an angle (especially 45 degrees)
+        const isAngledShot = Math.abs(Math.abs(ballAngle) - Math.PI/4) < Math.PI/6; // Within 30 degrees of 45-degree angle
+        
+        // Is ball moving toward the goal?
+        const ballMovingTowardsGoal = 
+          (isLeftGoalkeeper && currentVelocity.x < -1) || 
+          (!isLeftGoalkeeper && currentVelocity.x > 1);
+        
+        // Enhanced detection for angled shots approaching goal
+        if (isAngledShot && ballMovingTowardsGoal) {
+          // Use a larger collision radius for goalkeeper when ball is approaching at angles
+          const extendedRadius = 1.4; // 40% larger collision detection radius
+          
+          // Calculate distance with enlarged radius check
+          const dx = newPosition.x - goalkeeper.position.x;
+          const dy = newPosition.y - goalkeeper.position.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          
+          // Check with enlarged radius
+          collision = distance <= (BALL_RADIUS + goalkeeper.radius * extendedRadius);
+          
+          if (collision) {
+            console.log("Enhanced goalkeeper collision detected for angled shot");
+          }
+        }
+      }
       
       if (collision) {
         // Record which player touched the ball

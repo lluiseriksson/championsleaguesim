@@ -28,14 +28,18 @@ const limitSpeed = (velocity: Position): Position => {
   return velocity;
 };
 
-export const checkCollision = (ballPos: Position, playerPos: Position): boolean => {
+export const checkCollision = (ballPos: Position, playerPos: Position, isGoalkeeper: boolean = false): boolean => {
   const dx = ballPos.x - playerPos.x;
   const dy = ballPos.y - playerPos.y;
   const distance = Math.sqrt(dx * dx + dy * dy);
-  const minDistance = PLAYER_RADIUS + BALL_RADIUS;
+  
+  // Use a larger collision radius for goalkeepers to improve their effectiveness
+  const collisionRadius = isGoalkeeper ? 
+    PLAYER_RADIUS * 1.2 + BALL_RADIUS : // 20% larger radius for goalkeepers
+    PLAYER_RADIUS + BALL_RADIUS;
   
   // Add a small buffer to prevent the ball from getting stuck
-  return distance <= minDistance + 0.5;
+  return distance <= collisionRadius + 0.5;
 };
 
 export const addRandomEffect = (velocity: Position): Position => {

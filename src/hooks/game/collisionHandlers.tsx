@@ -14,7 +14,7 @@ export function handleFieldPlayerCollisions(
   lastKickPositionRef: React.MutableRefObject<Position | null>
 ): Position {
   for (const player of fieldPlayers) {
-    const collision = checkCollision(newPosition, player.position);
+    const collision = checkCollision(newPosition, player.position, false); // Explicitly pass false for isGoalkeeper
     
     if (collision) {
       // Record which player touched the ball
