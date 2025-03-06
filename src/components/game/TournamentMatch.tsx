@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
@@ -6,6 +7,7 @@ import { Player, Ball, Score, PITCH_WIDTH, PITCH_HEIGHT, PLAYER_RADIUS } from '.
 import { toast } from 'sonner';
 import { getAwayTeamKit } from '../../types/kits';
 import { performFinalKitCheck, resolveKitConflict } from '../../types/kits/kitConflictChecker';
+import { KitType } from '../../types/kits/kitTypes';
 import GameLogic from '../GameLogic';
 
 const transliterateRussianName = (name: string): string => {
