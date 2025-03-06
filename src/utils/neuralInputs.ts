@@ -1,6 +1,6 @@
-
 import { Ball, Player, TeamContext, NeuralInput } from '../types/football';
 import { calculateDistance, normalizeValue } from './neuralCore';
+import { calculateShotQuality } from './playerBrain';
 
 export const calculateNetworkInputs = (ball: Ball, player: Player, context: TeamContext): NeuralInput => {
   // Basic normalization of positions
@@ -205,6 +205,31 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
   const distanceFromFormationCenter = context.distanceFromCenter || 0.5;
   const isInFormationPosition = context.isInPosition ? 1 : 0;
 
+  // Calculate shooting angles and opportunities in all directions
+  let bestShootingAngle = 0;
+  let bestShootingQuality = 0;
+  
+  // Check shooting opportunities in 8 directions
+  for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 4) {
+    const targetPosition = {
+      x: player.position.x + Math.cos(angle) * 100,
+      y: player.position.y + Math.sin(angle) * 100
+    };
+    
+    const shotQuality = calculateShotQuality(
+      player.position,
+      targetPosition,
+      context.teammates,
+      context.opponents
+    );
+    
+    if (shotQuality > bestShootingQuality) {
+      bestShootingQuality = shotQuality;
+      bestShootingAngle = angle;
+    }
+  }
+  
+  // Add enhanced shooting awareness to inputs
   return {
     ballX: normalizedBallX,
     ballY: normalizedBallY,
@@ -238,6 +263,8 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
     distanceFromFormationCenter,
     isInFormationPosition,
     teammateDensity,
-    opponentDensity
+    opponentDensity,
+    shootingAngle: normalizeValue(bestShootingAngle, 0, Math.PI * 2),
+    shootingQuality: bestShootingQuality
   };
 };

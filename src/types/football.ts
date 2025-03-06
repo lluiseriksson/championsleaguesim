@@ -57,6 +57,8 @@ export interface NeuralInput {
   isInFormationPosition: number;   // Whether player is in correct position (0-1)
   teammateDensity: number;         // Density of teammates around player (0-1)
   opponentDensity: number;         // Density of opponents around player (0-1)
+  shootingAngle: number;    // Best angle for shooting (0-1, normalized from 0-2π)
+  shootingQuality: number;  // Quality of best shooting opportunity (0-1)
 }
 
 export interface NeuralOutput {
