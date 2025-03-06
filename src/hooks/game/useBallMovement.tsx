@@ -91,16 +91,16 @@ export const useBallMovement = ({
       };
 
       // First check if a goal was scored
-      const { goalScored, updatedBall } = handleGoalCheck(currentBall, newPosition);
+      const { goalScored, updatedBall: ballAfterGoalCheck } = handleGoalCheck(currentBall, newPosition);
       if (goalScored) {
         return {
-          ...updatedBall,
+          ...ballAfterGoalCheck,
           previousPosition: previousPosition
         };
       }
 
       // Handle ball collisions and movement
-      const updatedBall = handleBallPhysics(
+      const ballAfterPhysics = handleBallPhysics(
         currentBall,
         newPosition,
         goalkeepers,
@@ -112,7 +112,7 @@ export const useBallMovement = ({
 
       // Add the previous position to the updated ball
       return {
-        ...updatedBall,
+        ...ballAfterPhysics,
         previousPosition: previousPosition
       };
     });
