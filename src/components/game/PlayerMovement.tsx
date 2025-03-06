@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Player, Ball, PITCH_WIDTH, PITCH_HEIGHT } from '../../types/football';
 import { moveGoalkeeper } from '../../utils/playerBrain';
@@ -111,11 +112,23 @@ const usePlayerMovement = ({
               y: player.position.y + moveY
             };
             
-            let maxDistance = 50;
+            // Updated fallback movement ranges to match neural network movement ranges
+            let maxDistance = 200;
+            const distanceToBall = Math.sqrt(
+              Math.pow(ball.position.x - player.position.x, 2) +
+              Math.pow(ball.position.y - player.position.y, 2)
+            );
+            
             switch (player.role) {
-              case 'defender': maxDistance = 70; break;
-              case 'midfielder': maxDistance = 100; break;
-              case 'forward': maxDistance = 120; break;
+              case 'defender': 
+                maxDistance = distanceToBall < 150 ? 400 : 200;
+                break;
+              case 'midfielder': 
+                maxDistance = distanceToBall < 200 ? 400 : 200;
+                break;
+              case 'forward': 
+                maxDistance = distanceToBall < 250 ? 400 : 200;
+                break;
             }
             
             const distanceFromStart = Math.sqrt(
