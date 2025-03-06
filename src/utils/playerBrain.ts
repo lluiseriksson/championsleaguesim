@@ -1,3 +1,4 @@
+
 import { NeuralNet, Player, TeamContext, Ball, Position } from '../types/football';
 import { calculateDistance } from './neuralCore';
 import { isPassingLaneOpen } from './movementConstraints';
@@ -336,7 +337,7 @@ export const calculatePassingSuccess = (
     id: -index - 1, // Negative IDs to avoid conflicts
     position: pos,
     role: 'defender' as const,
-    team: passer.team === 'red' ? 'blue' : 'red',
+    team: (passer.team === 'red' ? 'blue' : 'red') as 'red' | 'blue', // Fix: explicitly cast to 'red' | 'blue'
     brain: { net: null, lastOutput: { x: 0, y: 0 } },
     targetPosition: pos,
     radius: 12 // Default player radius
