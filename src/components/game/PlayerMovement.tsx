@@ -11,7 +11,6 @@ import { isNetworkValid } from '../../utils/neuralHelpers';
 import { validatePlayerBrain, createTacticalInput } from '../../utils/neural/networkValidator';
 import { constrainMovementToRadius } from '../../utils/movementConstraints';
 import { calculateCollisionAvoidance } from '../../hooks/game/useTeamCollisions';
-import { createPlayerBrain } from '../../utils/neuralNetwork';
 
 interface PlayerMovementProps {
   players: Player[];
@@ -36,19 +35,10 @@ const usePlayerMovement = ({
   useEffect(() => {
     if (gameReady && players.length > 0) {
       setPlayers(currentPlayers => 
-        currentPlayers.map(player => {
-          let updatedBrain = player.brain;
-          
-          if (!player.brain || !player.brain.net) {
-            console.log(`Creating new brain for ${player.team} ${player.role} #${player.id}`);
-            updatedBrain = createPlayerBrain();
-          }
-          
-          return {
-            ...player,
-            brain: initializePlayerBrainWithHistory(updatedBrain)
-          };
-        })
+        currentPlayers.map(player => ({
+          ...player,
+          brain: initializePlayerBrainWithHistory(player.brain)
+        }))
       );
     }
   }, [gameReady, setPlayers]);
@@ -107,16 +97,10 @@ const usePlayerMovement = ({
   };
 
   const useNeuralNetworkForPlayer = (player: Player, ball: Ball): { x: number, y: number } | null => {
-    if (!player.brain || !player.brain.net) {
-      console.log(`Missing brain for ${player.team} ${player.role} #${player.id}, creating new one`);
-      player.brain = createPlayerBrain();
-      return null;
-    }
+    if (!player.brain || !player.brain.net) return null;
     
     try {
       if (!isNetworkValid(player.brain.net)) {
-        console.log(`Invalid network for ${player.team} ${player.role} #${player.id}, recreating`);
-        player.brain = createPlayerBrain();
         return null;
       }
       
