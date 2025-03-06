@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Player, Ball, PITCH_WIDTH, PITCH_HEIGHT, NeuralNet } from '../../types/football';
-import { moveGoalkeeper } from '../../utils/playerBrain';
+import { moveGoalkeeper } from '../../utils/goalkeeperLogic';
 import { 
   trackFormation, 
   trackPossession, 
@@ -236,7 +236,12 @@ const usePlayerMovement = ({
         try {
           if (player.role === 'goalkeeper') {
             console.log(`Moving goalkeeper ${player.team} #${player.id}`);
-            const movement = moveGoalkeeper(player, ball);
+            
+            const opposingTeam = player.team === 'red' ? 'blue' : 'red';
+            const opposingTeamPlayer = currentPlayers.find(p => p.team === opposingTeam);
+            const opposingTeamElo = opposingTeamPlayer?.teamElo;
+            
+            const movement = moveGoalkeeper(player, ball, opposingTeamElo);
             const newPosition = {
               x: player.position.x + movement.x,
               y: player.position.y + movement.y
