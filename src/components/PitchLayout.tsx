@@ -24,18 +24,18 @@ const PitchLayout: React.FC = () => {
       <div className="absolute left-0 top-1/2 w-16 h-36 border-2 border-pitch-lines transform -translate-y-1/2" />
       <div className="absolute right-0 top-1/2 w-16 h-36 border-2 border-pitch-lines transform -translate-y-1/2" />
       
-      {/* Penalty arcs - properly connecting to the penalty areas */}
+      {/* Penalty arcs - only the ones connecting to the exterior penalty areas */}
       <div 
-        className="absolute left-[36px] top-1/2 w-36 h-36 border-2 border-pitch-lines rounded-full"
+        className="absolute left-[36px] top-1/2 w-48 h-48 border-2 border-pitch-lines rounded-full"
         style={{ 
-          clipPath: 'polygon(0% 25%, 100% 25%, 100% 75%, 0% 75%)',
+          clipPath: 'polygon(0% 37%, 50% 37%, 50% 63%, 0% 63%)',
           transform: 'translateY(-50%)'
         }}
       />
       <div 
-        className="absolute right-[36px] top-1/2 w-36 h-36 border-2 border-pitch-lines rounded-full"
+        className="absolute right-[36px] top-1/2 w-48 h-48 border-2 border-pitch-lines rounded-full"
         style={{ 
-          clipPath: 'polygon(0% 25%, 100% 25%, 100% 75%, 0% 75%)',
+          clipPath: 'polygon(50% 37%, 100% 37%, 100% 63%, 50% 63%)',
           transform: 'translateY(-50%)'
         }}
       />
