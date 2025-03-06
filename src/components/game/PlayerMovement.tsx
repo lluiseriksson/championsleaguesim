@@ -41,11 +41,11 @@ const usePlayerMovement = ({
 
   useEffect(() => {
     if (gameReady && players.length > 0 && !brainInitialized) {
-      console.log("Starting optimized staggered initialization of player brains...");
+      console.log("Starting highly optimized single-player initialization of player brains...");
       
       let playersCopy = [...players];
       
-      const batchSize = 2;
+      const batchSize = 1;
       let currentBatch = 0;
       const totalBatches = Math.ceil(players.length / batchSize);
       
@@ -56,50 +56,55 @@ const usePlayerMovement = ({
         const startIdx = currentBatch * batchSize;
         const endIdx = Math.min(startIdx + batchSize, players.length);
         
-        console.log(`Initializing batch ${currentBatch + 1}/${totalBatches} (players ${startIdx} to ${endIdx - 1})`);
+        console.log(`Initializing player ${startIdx + 1}/${players.length}`);
         
-        Promise.all(
-          playersCopy.slice(startIdx, endIdx).map(async (player, localIdx) => {
-            const playerIdx = startIdx + localIdx;
-            
-            if (!player.brain || !player.brain.net || typeof player.brain.net.run !== 'function') {
-              console.log(`Creating new brain for ${player.team} ${player.role} #${player.id}`);
-              player = {
+        requestAnimationFrame(() => {
+          Promise.all(
+            playersCopy.slice(startIdx, endIdx).map(async (player, localIdx) => {
+              const playerIdx = startIdx + localIdx;
+              
+              if (!player.brain || !player.brain.net || typeof player.brain.net.run !== 'function') {
+                console.log(`Creating new brain for ${player.team} ${player.role} #${player.id}`);
+                player = {
+                  ...player,
+                  brain: createPlayerBrain()
+                };
+              } else {
+                player = validatePlayerBrain(player);
+              }
+              
+              playersCopy[playerIdx] = {
                 ...player,
-                brain: createPlayerBrain()
+                brain: initializePlayerBrainWithHistory(player.brain)
               };
+              
+              setProcessedPlayers(prev => {
+                const newCount = prev + 1;
+                const exactProgress = (newCount / totalPlayers) * 100;
+                setInitializationProgress(exactProgress);
+                return newCount;
+              });
+              
+              return true;
+            })
+          ).then(() => {
+            currentBatch++;
+            
+            if (currentBatch < totalBatches) {
+              setTimeout(() => {
+                requestAnimationFrame(initializeBatch);
+              }, 100);
             } else {
-              player = validatePlayerBrain(player);
+              setPlayers(playersCopy);
+              setBrainInitialized(true);
+              setInitializationProgress(100);
+              console.log("All player brains initialized successfully");
             }
-            
-            playersCopy[playerIdx] = {
-              ...player,
-              brain: initializePlayerBrainWithHistory(player.brain)
-            };
-            
-            setProcessedPlayers(prev => {
-              const newCount = prev + 1;
-              setInitializationProgress(Math.floor((newCount / totalPlayers) * 100));
-              return newCount;
-            });
-            
-            return true;
-          })
-        ).then(() => {
-          currentBatch++;
-          
-          if (currentBatch < totalBatches) {
-            requestAnimationFrame(() => setTimeout(initializeBatch, 50));
-          } else {
-            setPlayers(playersCopy);
-            setBrainInitialized(true);
-            setInitializationProgress(100);
-            console.log("All player brains initialized successfully");
-          }
+          });
         });
       };
       
-      setTimeout(initializeBatch, 50);
+      setTimeout(initializeBatch, 100);
     }
   }, [gameReady, setPlayers, players, brainInitialized, totalPlayers]);
 

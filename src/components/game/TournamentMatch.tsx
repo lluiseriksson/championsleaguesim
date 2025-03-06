@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
@@ -289,7 +290,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
           <div className="w-64 bg-gray-200 rounded-full h-2.5 mb-2">
             <div 
               className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" 
-              style={{ width: `${initializationProgress}%` }}
+              style={{ width: `${Math.round(initializationProgress)}%` }}
             ></div>
           </div>
           <div className="text-sm mb-1">
@@ -297,6 +298,9 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
           </div>
           <div className="text-xs text-gray-300">
             Loaded {processedPlayers} of {totalPlayers} players
+          </div>
+          <div className="text-xs text-gray-400 mt-1">
+            Please wait while AI is being initialized...
           </div>
         </div>
       )}

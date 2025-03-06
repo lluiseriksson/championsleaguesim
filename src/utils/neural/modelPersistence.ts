@@ -176,19 +176,21 @@ export const loadModel = async (team: string, role: string, version: number = 1)
   }
 };
 
-// Improved non-blocking async version of loadModel with better performance
+// Highly optimized non-blocking async version of loadModel with better performance
 export const loadModelAsync = (team: string, role: string, version: number = 1): Promise<NeuralNet | null> => {
   return new Promise((resolve) => {
-    // Use requestAnimationFrame instead of setTimeout for better browser performance
-    requestAnimationFrame(async () => {
-      try {
-        // Use a more efficient approach to prevent UI blocking
-        const result = await loadModel(team, role, version);
-        resolve(result);
-      } catch (error) {
-        console.error('Error in loadModelAsync:', error);
-        resolve(null);
-      }
+    // Use requestAnimationFrame with setTimeout for better browser performance and prevent UI freezing
+    requestAnimationFrame(() => {
+      setTimeout(async () => {
+        try {
+          // Break the heavy operation into smaller chunks if possible
+          const result = await loadModel(team, role, version);
+          resolve(result);
+        } catch (error) {
+          console.error('Error in loadModelAsync:', error);
+          resolve(null);
+        }
+      }, 10); // Add a small timeout to let the browser breathe
     });
   });
 };
