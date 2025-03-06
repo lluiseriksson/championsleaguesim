@@ -1,3 +1,4 @@
+
 import { NeuralNet, Player, Position, NeuralInput } from '../../types/football';
 import { createPlayerBrain } from '../neuralCore';
 import * as brain from 'brain.js';
@@ -240,7 +241,54 @@ export const createTacticalInput = (
     input.coverShadow = 0.7;
     input.verticalSpacing = 0.6;
     input.horizontalSpacing = 0.7;
+    
+    // NEW: Dynamic defender behavior based on game situation
+    if (hasTeamPossession) {
+      input.recoveryPosition = 0.4; // Less defensive when team has possession
+      input.pressureIndex = 0.3;    // Less pressing when team has possession
+      input.transitionSpeed = 0.8;  // Faster transitions for counters
+    } else if (isDefensiveThird) {
+      input.recoveryPosition = 0.9; // Very defensive in own third
+      input.pressureIndex = 0.8;    // High pressing when defending own third
+      input.transitionSpeed = 0.5;  // Slower, more cautious transitions
+    }
+  } else if (player.role === 'forward') {
+    // NEW: Enhanced forward behaviors
+    input.spaceCreation = 0.8;              // Forwards prioritize finding space
+    input.passingLanesQuality = 0.7;        // Better passing awareness
+    input.shootingQuality = isAttackingThird ? 0.9 : 0.5; // Better shooting in attacking third
+    input.counterAttackPotential = 0.8;     // High counter attack awareness
+    input.pressureResistance = 0.7;         // Better under pressure
+    
+    if (isAttackingThird) {
+      input.territorialControl = 0.7;       // Control space in attacking third
+      input.supportPositioning = 0.8;       // Better positioning for receiving passes
+    }
   }
   
   return input;
+};
+
+// NEW: Determine if a player should make a passing run
+export const shouldMakePassingRun = (
+  player: Player,
+  ballPosition: Position,
+  hasTeamPossession: boolean,
+  isAttackingThird: boolean
+): boolean => {
+  // Only make runs in appropriate situations
+  if (!hasTeamPossession) return false;
+  
+  if (player.role === 'forward') {
+    // Forwards make runs more often
+    return Math.random() > 0.6;
+  } else if (player.role === 'midfielder' && isAttackingThird) {
+    // Midfielders make runs in attacking third
+    return Math.random() > 0.75;
+  } else if (player.role === 'defender' && hasTeamPossession) {
+    // Defenders occasionally make supporting runs when team has possession
+    return Math.random() > 0.9;
+  }
+  
+  return false;
 };
