@@ -12,8 +12,10 @@ const CONFLICTING_TEAM_PAIRS = [
   ['Athletic Bilbao', 'Southampton'],
   ['AC Milan', 'Athletic Bilbao'],
   ['Ajax', 'Fulham'],
-  ['Real Madrid', 'Leeds United']
-  // Removed Forest vs Espanyol as we'll check colors explicitly
+  ['Real Madrid', 'Leeds United'],
+  ['Liverpool', 'Manchester United'],
+  ['Bayern Munich', 'FC København'],
+  ['FC København', 'AC Milan']
 ];
 
 // Function to check if a team uses red as primary color
@@ -74,12 +76,18 @@ export const performFinalKitCheck = (
   // First, check known conflict pairs
   if (areTeamsInConflictList(homeTeam, awayTeam)) {
     console.warn(`⚠️ KNOWN KIT CONFLICT BETWEEN: ${homeTeam} vs ${awayTeam}`);
+    toast.error(`Kit conflict between ${homeTeam} and ${awayTeam}!`, {
+      description: "Teams have similar colored kits. Resolving automatically..."
+    });
     return false;
   }
   
   // Special check for Forest vs Espanyol
   if (checkForestVsEspanyolConflict(homeTeam, awayTeam, awayTeamKit)) {
     console.warn(`⚠️ FOREST-ESPANYOL KIT CONFLICT DETECTED: ${homeTeam} vs ${awayTeam}`);
+    toast.error(`Kit conflict between ${homeTeam} and ${awayTeam}!`, {
+      description: "Similar red kits detected. Resolving automatically..."
+    });
     return false;
   }
   
@@ -94,6 +102,9 @@ export const performFinalKitCheck = (
   // Red vs Red conflict detected
   if (homeIsRed && awayIsRed) {
     console.warn(`⚠️ RED KIT CONFLICT DETECTED: ${homeTeam} vs ${awayTeam}`);
+    toast.error(`Kit conflict detected!`, {
+      description: `Both ${homeTeam} and ${awayTeam} have red kits. Resolving automatically...`
+    });
     return false;
   }
   
@@ -102,6 +113,9 @@ export const performFinalKitCheck = (
   if ((homeTeam === 'RB Leipzig' && awayTeam === 'Udinese') || 
       (homeTeam === 'Udinese' && awayTeam === 'RB Leipzig')) {
     console.warn(`⚠️ SPECIAL CASE KIT CONFLICT: ${homeTeam} vs ${awayTeam}`);
+    toast.error(`Kit conflict between ${homeTeam} and ${awayTeam}!`, {
+      description: "Teams have similar color combinations. Resolving automatically..."
+    });
     return false;
   }
   
@@ -113,6 +127,9 @@ export const resolveKitConflict = (homeTeam: string, awayTeam: string): KitType 
   // If teams are in the known conflict list, always use third kit
   if (areTeamsInConflictList(homeTeam, awayTeam)) {
     console.log(`Forcing third kit for ${awayTeam} against ${homeTeam} due to known conflict`);
+    toast.success(`Conflict resolved`, {
+      description: `${awayTeam} will use their third kit against ${homeTeam}`
+    });
     return 'third';
   }
   
@@ -124,9 +141,15 @@ export const resolveKitConflict = (homeTeam: string, awayTeam: string): KitType 
     // If away kit conflicts, use third kit, otherwise use away kit
     if (awayConflict) {
       console.log(`${awayTeam} away kit conflicts with ${homeTeam}, using third kit`);
+      toast.success(`Conflict resolved`, {
+        description: `${awayTeam} will use their third kit against ${homeTeam}`
+      });
       return 'third';
     } else {
       console.log(`${awayTeam} away kit is fine against ${homeTeam}`);
+      toast.success(`No conflict detected`, {
+        description: `${awayTeam} will use their away kit against ${homeTeam}`
+      });
       return 'away';
     }
   }
@@ -134,6 +157,9 @@ export const resolveKitConflict = (homeTeam: string, awayTeam: string): KitType 
   // If away team has a red away kit, force third kit
   if (teamHasRedPrimaryColor(awayTeam, 'away')) {
     console.log(`Forcing third kit for ${awayTeam} against ${homeTeam} due to red away kit`);
+    toast.success(`Conflict resolved`, {
+      description: `${awayTeam} will use their third kit to avoid red kit conflict`
+    });
     return 'third';
   }
   
@@ -141,10 +167,14 @@ export const resolveKitConflict = (homeTeam: string, awayTeam: string): KitType 
   // In this case, log an error but still return third as the best option
   if (teamHasRedPrimaryColor(homeTeam, 'home') && teamHasRedPrimaryColor(awayTeam, 'third')) {
     console.error(`⚠️ SEVERE KIT CONFLICT: Both ${homeTeam} (home) and ${awayTeam} (third) use red kits!`);
-    toast.error(`Kit conflict between ${homeTeam} and ${awayTeam}!`, {
-      description: "Both teams have similar colored kits. This may cause confusion."
+    toast.error(`Severe kit conflict!`, {
+      description: `Both ${homeTeam} (home) and ${awayTeam} (third) use red kits. This may cause confusion.`
     });
+    return 'away'; // In this rare case, away might be better than third
   }
   
+  toast.success(`Conflict resolved`, {
+    description: `${awayTeam} will use their third kit`
+  });
   return 'third';
 };

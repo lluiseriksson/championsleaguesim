@@ -1,4 +1,3 @@
-
 import { KitType, TeamKit } from './kitTypes';
 import { teamKitColors } from './teamColorsData';
 import { 
@@ -17,8 +16,8 @@ import {
 } from './kitConflictChecker';
 
 const kitSelectionCache: Record<string, KitType> = {};
+const kitConflictCache: Record<string, boolean> = {};
 
-// Updated to conditionally handle Forest vs Espanyol based on actual color analysis
 const teamConflictOverrides: Record<string, Record<string, KitType>> = {
   'Athletic Bilbao': {
     'Union Berlin': 'third',
@@ -31,16 +30,23 @@ const teamConflictOverrides: Record<string, Record<string, KitType>> = {
     'Southampton': 'third'
   },
   'Ajax': {
-    'Real Madrid': 'third'
+    'Real Madrid': 'third',
+    'Fulham': 'third'
   },
   'Real Madrid': {
-    'Ajax': 'away'
+    'Ajax': 'away',
+    'Leeds United': 'third'
+  },
+  'Leeds United': {
+    'Real Madrid': 'away'
   },
   'AC Milan': {
-    'FC København': 'third'
+    'FC København': 'third',
+    'Athletic Bilbao': 'third'
   },
   'FC København': {
-    'AC Milan': 'away'
+    'AC Milan': 'away',
+    'Bayern Munich': 'away'
   },
   'Liverpool': {
     'Manchester United': 'third',
@@ -55,31 +61,27 @@ const teamConflictOverrides: Record<string, Record<string, KitType>> = {
   'Bayern Munich': {
     'FC København': 'third',
     'AC Milan': 'third'
+  },
+  'Espanyol': {
+    'Forest': 'third'
+  },
+  'Forest': {
+    'Espanyol': 'third'
   }
-  // Removed static Forest/Espanyol override to use dynamic color check instead
 };
 
 export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitType => {
   const cacheKey = `${homeTeamName}:${awayTeamName}`;
   if (kitSelectionCache[cacheKey]) {
+    console.log(`Using cached kit selection for ${awayTeamName} against ${homeTeamName}: ${kitSelectionCache[cacheKey]}`);
     return kitSelectionCache[cacheKey];
-  }
-  
-  // Special handling for Forest vs Espanyol based on actual colors
-  if ((homeTeamName === 'Forest' && awayTeamName === 'Espanyol') || 
-      (homeTeamName === 'Espanyol' && awayTeamName === 'Forest')) {
-    // Check if away kit conflicts with home kit
-    const awayKitConflict = checkForestVsEspanyolConflict(homeTeamName, awayTeamName, 'away');
-    // If away kit conflicts, use third kit, otherwise use away kit
-    const selectedKit = awayKitConflict ? 'third' : 'away';
-    console.log(`Selected ${selectedKit} kit for ${awayTeamName} against ${homeTeamName} based on color analysis`);
-    kitSelectionCache[cacheKey] = selectedKit;
-    return selectedKit;
   }
   
   if (teamConflictOverrides[homeTeamName]?.[awayTeamName]) {
     const override = teamConflictOverrides[homeTeamName][awayTeamName];
+    console.log(`Using explicit override for ${awayTeamName} against ${homeTeamName}: ${override}`);
     kitSelectionCache[cacheKey] = override;
+    kitConflictCache[cacheKey] = true;
     return override;
   }
 
@@ -87,7 +89,16 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
   const awayTeam = teamKitColors[awayTeamName];
 
   if (!homeTeam || !awayTeam) {
+    kitSelectionCache[cacheKey] = 'away';
     return 'away';
+  }
+
+  if ((homeTeamName === 'Forest' && awayTeamName === 'Espanyol') || 
+      (homeTeamName === 'Espanyol' && awayTeamName === 'Forest')) {
+    console.log(`Special handling for ${homeTeamName} vs ${awayTeamName}`);
+    kitSelectionCache[cacheKey] = 'third';
+    kitConflictCache[cacheKey] = true;
+    return 'third';
   }
 
   const homeIsRed = teamHasRedPrimaryColor(homeTeamName, 'home');
@@ -98,7 +109,9 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
   const similarReds = areRedColorsTooSimilar(homeOutfieldPrimary, awayOutfieldPrimary);
   
   if ((homeIsRed && awayIsRed) || similarReds) {
+    console.log(`Red kit conflict between ${homeTeamName} and ${awayTeamName}, using third kit`);
     kitSelectionCache[cacheKey] = 'third';
+    kitConflictCache[cacheKey] = true;
     return 'third';
   }
 
@@ -130,6 +143,7 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
       console.log(`RED vs RED conflict detected between ${homeTeamName} and ${awayTeamName} - forcing third kit`);
     }
     kitSelectionCache[cacheKey] = 'third';
+    kitConflictCache[cacheKey] = true;
     return 'third';
   }
   
@@ -139,6 +153,7 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
       console.log(`RED vs BURGUNDY conflict detected between ${homeTeamName} and ${awayTeamName} - forcing third kit`);
     }
     kitSelectionCache[cacheKey] = 'third';
+    kitConflictCache[cacheKey] = true;
     return 'third';
   }
 
@@ -180,6 +195,7 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
       console.log(`Selected away kit for ${awayTeamName} (no conflicts)`);
     }
     kitSelectionCache[cacheKey] = 'away';
+    kitConflictCache[cacheKey] = true;
     return 'away';
   }
   
@@ -188,6 +204,7 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
       console.log(`Selected third kit for ${awayTeamName} (no conflicts)`);
     }
     kitSelectionCache[cacheKey] = 'third';
+    kitConflictCache[cacheKey] = true;
     return 'third';
   }
   
@@ -196,6 +213,7 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
       console.log(`Selected away kit for ${awayTeamName} (fewer conflicts)`);
     }
     kitSelectionCache[cacheKey] = 'away';
+    kitConflictCache[cacheKey] = true;
     return 'away';
   } 
   
@@ -204,6 +222,7 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
       console.log(`Selected third kit for ${awayTeamName} (fewer conflicts)`);
     }
     kitSelectionCache[cacheKey] = 'third';
+    kitConflictCache[cacheKey] = true;
     return 'third';
   }
   
@@ -249,9 +268,26 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
   return selectedKit;
 };
 
+export const hasKnownKitConflict = (homeTeamName: string, awayTeamName: string): boolean => {
+  const cacheKey = `${homeTeamName}:${awayTeamName}`;
+  
+  if (teamConflictOverrides[homeTeamName]?.[awayTeamName]) {
+    return true;
+  }
+  
+  if (kitConflictCache[cacheKey] !== undefined) {
+    return kitConflictCache[cacheKey];
+  }
+  
+  return false;
+};
+
 export const clearKitSelectionCache = () => {
   for (const key in kitSelectionCache) {
     delete kitSelectionCache[key];
+  }
+  for (const key in kitConflictCache) {
+    delete kitConflictCache[key];
   }
   console.log("Kit selection cache cleared");
 };

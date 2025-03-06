@@ -66,14 +66,42 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   });
   
   const [score, setScore] = useState<Score>({ red: 0, blue: 0 });
-  const [gameStarted, setGameStarted] = useState(true);
+  const [gameStarted, setGameStarted] = useState(false);
   const [matchEnded, setMatchEnded] = useState(false);
   const [goldenGoal, setGoldenGoal] = useState(false);
   const [lastScorer, setLastScorer] = useState<'red' | 'blue' | null>(null);
-  
   const [goldenGoalScored, setGoldenGoalScored] = useState(false);
   
+  const [kitConflictResolved, setKitConflictResolved] = useState(false);
+  
   const resultDeterminedRef = useRef(false);
+  
+  useEffect(() => {
+    if (!kitConflictResolved && homeTeam && awayTeam) {
+      console.log(`Checking kit conflicts between ${homeTeam} and ${awayTeam}`);
+      
+      let awayTeamKitType = getAwayTeamKit(homeTeam, awayTeam);
+      
+      const kitCheckPassed = performFinalKitCheck(homeTeam, awayTeam, awayTeamKitType);
+      
+      if (!kitCheckPassed) {
+        console.warn(`Kit conflict detected between ${homeTeam} and ${awayTeam}. Resolving...`);
+        awayTeamKitType = resolveKitConflict(homeTeam, awayTeam);
+        
+        toast.success(`Kit conflict resolved`, {
+          description: `${awayTeam} will use their ${awayTeamKitType} kit to avoid color clash with ${homeTeam}`
+        });
+      }
+      
+      setKitConflictResolved(true);
+      
+      initializePlayers(awayTeamKitType);
+      
+      setTimeout(() => {
+        setGameStarted(true);
+      }, 1000);
+    }
+  }, [homeTeam, awayTeam, kitConflictResolved]);
   
   useEffect(() => {
     console.log('TournamentMatch: matchDuration =', matchDuration);
@@ -109,18 +137,6 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   }, [score, homeTeam, awayTeam, onMatchComplete, displayHomeTeam, displayAwayTeam]);
   
   useEffect(() => {
-    if (players.length === 0 && homeTeam && awayTeam) {
-      console.log("Initializing players for match:", displayHomeTeam, "vs", displayAwayTeam);
-      initializePlayers();
-    }
-    
-    return () => {
-      console.log("Tournament match component unmounting, cleaning up resources");
-      setPlayers([]);
-    };
-  }, [homeTeam, awayTeam]);
-  
-  useEffect(() => {
     if (goldenGoal && !goldenGoalScored) {
       if (lastScorer) {
         console.log("Golden goal scored by:", lastScorer);
@@ -143,21 +159,8 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
     }
   }, [goldenGoal, lastScorer, score, homeTeam, awayTeam, onMatchComplete, goldenGoalScored, displayHomeTeam, displayAwayTeam]);
   
-  const initializePlayers = () => {
+  const initializePlayers = (awayTeamKitType: KitType) => {
     const newPlayers: Player[] = [];
-    
-    let awayTeamKitType = getAwayTeamKit(homeTeam, awayTeam);
-    
-    const kitCheckPassed = performFinalKitCheck(homeTeam, awayTeam, awayTeamKitType);
-    
-    if (!kitCheckPassed) {
-      console.warn(`Kit conflict detected between ${homeTeam} and ${awayTeam}. Forcing alternate kit.`);
-      awayTeamKitType = resolveKitConflict(homeTeam, awayTeam);
-      
-      toast.warning(`Kit conflict resolved`, {
-        description: `${awayTeam} will use their ${awayTeamKitType} kit to avoid color clash with ${homeTeam}`
-      });
-    }
     
     console.log(`Tournament match: ${displayHomeTeam} (home) vs ${displayAwayTeam} (${awayTeamKitType})`);
     
@@ -238,7 +241,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
     players, 
     setPlayers, 
     ball, 
-    gameReady: true 
+    gameReady: gameStarted 
   });
   
   const handleGoalScored = (team: 'red' | 'blue') => {
@@ -256,6 +259,22 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         <div className="mt-4 text-lg font-semibold">
           Winner: {score.red > score.blue ? displayHomeTeam : displayAwayTeam}
           {goldenGoalScored && <span className="ml-2 text-amber-500">(Golden Goal)</span>}
+        </div>
+      </div>
+    );
+  }
+  
+  if (!gameStarted) {
+    return (
+      <div className="relative mt-12 pt-8">
+        <div className="flex flex-col items-center justify-center h-96 bg-gray-100 rounded-lg">
+          <h2 className="text-2xl font-bold mb-4">Preparing Match</h2>
+          <div className="text-xl mb-4">
+            {displayHomeTeam} vs {displayAwayTeam}
+          </div>
+          <div className="animate-pulse text-sm text-gray-600">
+            Resolving kit conflicts and preparing teams...
+          </div>
         </div>
       </div>
     );
