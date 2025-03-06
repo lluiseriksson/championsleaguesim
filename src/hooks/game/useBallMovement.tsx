@@ -17,6 +17,7 @@ interface BallMovementProps {
   checkGoal: (position: Position) => 'red' | 'blue' | null;
   onBallTouch: (player: Player) => void;
   tournamentMode?: boolean;
+  onBallFirstMove?: () => void; // Add callback for when ball first moves
 }
 
 export const useBallMovement = ({ 
@@ -25,7 +26,8 @@ export const useBallMovement = ({
   players, 
   checkGoal, 
   onBallTouch,
-  tournamentMode = false
+  tournamentMode = false,
+  onBallFirstMove
 }: BallMovementProps) => {
   // Memoize player categorization
   const { goalkeepers, fieldPlayers } = React.useMemo(() => ({
@@ -46,6 +48,9 @@ export const useBallMovement = ({
 
   // Reference to store previous ball position for tracking
   const previousBallPositionRef = React.useRef<Position>({ ...ball.position });
+  
+  // Track if we've detected the first ball movement
+  const ballFirstMoveDetectedRef = React.useRef(false);
 
   const updateBallPosition = React.useCallback(() => {
     setBall(currentBall => {
@@ -54,6 +59,12 @@ export const useBallMovement = ({
       
       // Check current ball speed
       const currentSpeed = calculateBallSpeed(currentBall.velocity);
+      
+      // If this is the first significant ball movement, trigger the callback
+      if (!ballFirstMoveDetectedRef.current && currentSpeed > 0.5 && onBallFirstMove) {
+        ballFirstMoveDetectedRef.current = true;
+        onBallFirstMove();
+      }
       
       // Detect if ball is stuck in same position
       const isStuck = checkBallStuckInPlace(
@@ -68,6 +79,13 @@ export const useBallMovement = ({
       // If ball is stuck, give it a random kick
       if (isStuck) {
         const kickedBall = applyRandomKick(currentBall, tournamentMode);
+        
+        // If this is the first significant ball movement, trigger the callback
+        if (!ballFirstMoveDetectedRef.current && onBallFirstMove) {
+          ballFirstMoveDetectedRef.current = true;
+          onBallFirstMove();
+        }
+        
         return {
           ...kickedBall,
           previousPosition: previousPosition
@@ -122,7 +140,8 @@ export const useBallMovement = ({
     fieldPlayers, 
     onBallTouch, 
     tournamentMode, 
-    handleGoalCheck
+    handleGoalCheck,
+    onBallFirstMove
   ]);
 
   return { updateBallPosition };

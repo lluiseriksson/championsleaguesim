@@ -18,6 +18,7 @@ interface GameLogicProps {
   setScore: React.Dispatch<React.SetStateAction<Score>>;
   updatePlayerPositions: () => void;
   tournamentMode?: boolean;
+  onBallFirstMove?: () => void; // Add callback for when ball first moves
 }
 
 const GameLogic: React.FC<GameLogicProps> = ({
@@ -28,7 +29,8 @@ const GameLogic: React.FC<GameLogicProps> = ({
   score,
   setScore,
   updatePlayerPositions,
-  tournamentMode = false
+  tournamentMode = false,
+  onBallFirstMove
 }) => {
   // Reference to track the last player who touched the ball
   const lastPlayerTouchRef = React.useRef<Player | null>(null);
@@ -90,7 +92,8 @@ const GameLogic: React.FC<GameLogicProps> = ({
       lastPlayerTouchRef.current = player;
       console.log(`Ball touched by ${player.team} ${player.role} #${player.id}`);
     },
-    tournamentMode
+    tournamentMode,
+    onBallFirstMove // Pass the callback
   });
 
   // Model synchronization system with tournament mode flag

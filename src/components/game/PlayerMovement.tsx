@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Player, Ball, PITCH_WIDTH, PITCH_HEIGHT, NeuralNet } from '../../types/football';
 import { moveGoalkeeper } from '../../utils/goalkeeperLogic';
@@ -22,6 +21,7 @@ interface PlayerMovementProps {
   gameReady: boolean;
   gameTime?: number;
   score?: { red: number, blue: number };
+  batchSize?: number;
 }
 
 const usePlayerMovement = ({ 
@@ -30,7 +30,8 @@ const usePlayerMovement = ({
   ball, 
   gameReady,
   gameTime = 0,
-  score = { red: 0, blue: 0 }
+  score = { red: 0, blue: 0 },
+  batchSize = 1
 }: PlayerMovementProps) => {
   const [formations, setFormations] = useState({ redFormation: [], blueFormation: [] });
   const [possession, setPossession] = useState({ team: null, player: null, duration: 0 });
@@ -42,11 +43,10 @@ const usePlayerMovement = ({
 
   useEffect(() => {
     if (gameReady && players.length > 0 && !brainInitialized) {
-      console.log("Starting highly optimized single-player initialization of player brains...");
+      console.log(`Starting player initialization with batch size: ${batchSize}`);
       
       let playersCopy = [...players];
       
-      const batchSize = 1;
       let currentBatch = 0;
       const totalBatches = Math.ceil(players.length / batchSize);
       
@@ -107,7 +107,7 @@ const usePlayerMovement = ({
       
       setTimeout(initializeBatch, 100);
     }
-  }, [gameReady, setPlayers, players, brainInitialized, totalPlayers]);
+  }, [gameReady, setPlayers, players, brainInitialized, totalPlayers, batchSize]);
 
   useEffect(() => {
     if (gameReady && players.length > 0) {

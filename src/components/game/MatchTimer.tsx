@@ -5,12 +5,14 @@ interface MatchTimerProps {
   initialTime: number;
   onTimeEnd: () => void;
   goldenGoal?: boolean;
+  startTimer?: boolean; // Add this prop to control when timer starts
 }
 
 const MatchTimer: React.FC<MatchTimerProps> = ({ 
   initialTime, 
   onTimeEnd,
-  goldenGoal = false
+  goldenGoal = false,
+  startTimer = false // Default to false
 }) => {
   const [elapsedTime, setElapsedTime] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -46,6 +48,15 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
   }, [goldenGoal, elapsedTime]);
 
   useEffect(() => {
+    // Only start the timer if startTimer is true
+    if (!startTimer && !goldenGoal) {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      return;
+    }
+    
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -68,7 +79,7 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
         timerRef.current = null;
       }
     };
-  }, [elapsedTime, onTimeEnd, goldenGoal, initialTime]);
+  }, [elapsedTime, onTimeEnd, goldenGoal, initialTime, startTimer]);
 
   useEffect(() => {
     if (goldenGoal) {
@@ -93,7 +104,9 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
 
   return (
     <div className="match-timer font-mono text-2xl font-bold bg-black bg-opacity-80 text-white px-6 py-3 rounded-md shadow-lg absolute top-[-70px] left-1/2 transform -translate-x-1/2 z-30">
-      {goldenGoal ? (
+      {!startTimer && !goldenGoal ? (
+        <span className="text-amber-400 animate-pulse">READY...</span>
+      ) : goldenGoal ? (
         <span className="text-amber-400 animate-pulse">GOLDEN GOAL! {formattedTime}</span>
       ) : (
         formattedTime

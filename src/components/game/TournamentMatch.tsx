@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
@@ -74,6 +73,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   
   const [goldenGoalScored, setGoldenGoalScored] = useState(false);
   const [initializing, setInitializing] = useState(true);
+  const [ballStartedMoving, setBallStartedMoving] = useState(false);
   
   const resultDeterminedRef = useRef(false);
   
@@ -247,7 +247,8 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
     players, 
     setPlayers, 
     ball, 
-    gameReady: true 
+    gameReady: true,
+    batchSize: 1
   });
   
   useEffect(() => {
@@ -259,6 +260,11 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   const handleGoalScored = (team: 'red' | 'blue') => {
     console.log(`Goal scored by ${team} team, golden goal mode: ${goldenGoal}`);
     setLastScorer(team);
+  };
+  
+  const handleBallFirstMove = () => {
+    console.log("Ball started moving, starting match timer");
+    setBallStartedMoving(true);
   };
   
   if (matchEnded) {
@@ -282,6 +288,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         initialTime={matchDuration} 
         onTimeEnd={handleTimeEnd}
         goldenGoal={goldenGoal}
+        startTimer={ballStartedMoving}
       />
       
       {initializing && (
@@ -333,6 +340,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         onGoalScored={handleGoalScored}
         homeTeam={homeTeam}
         awayTeam={awayTeam}
+        onBallFirstMove={handleBallFirstMove}
       />
     </div>
   );
