@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Player } from '../types/football';
 import { getTeamKitColor, getTeamKitColors, KitType } from '../types/kits';
+import { adjustGreenKitForPitchContrast, isColorTooCloseToField } from '../types/kits/kitTypes';
 
 interface PlayerSpriteProps {
   player: Player;
@@ -12,7 +13,13 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
   const getPlayerColor = (player: Player) => {
     // If the player has a teamName and kitType, use the corresponding kit color
     if (player.teamName && player.kitType) {
-      const kitColor = getTeamKitColor(player.teamName, player.kitType as KitType);
+      let kitColor = getTeamKitColor(player.teamName, player.kitType as KitType);
+      
+      // Adjust green colors to provide better contrast with the field
+      if (isColorTooCloseToField(kitColor)) {
+        kitColor = adjustGreenKitForPitchContrast(kitColor);
+      }
+      
       return `bg-[${kitColor}]`;
     }
     
@@ -70,6 +77,16 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
     
     // Get standard kit colors
     let kitColors = getTeamKitColors(player.teamName, player.kitType as KitType);
+    
+    // Check if primary color is too close to field and adjust if needed
+    if (isColorTooCloseToField(kitColors.primary)) {
+      kitColors.primary = adjustGreenKitForPitchContrast(kitColors.primary);
+    }
+    
+    // Check if secondary color is too close to field and adjust if needed
+    if (isColorTooCloseToField(kitColors.secondary)) {
+      kitColors.secondary = adjustGreenKitForPitchContrast(kitColors.secondary);
+    }
     
     // For goalkeepers, invert primary and secondary colors
     if (player.role === 'goalkeeper') {
