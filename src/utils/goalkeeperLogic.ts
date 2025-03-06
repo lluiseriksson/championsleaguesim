@@ -174,11 +174,11 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
   const predictionError = Math.random() * 40 - 20; // Changed from ±25 to ±20 for a balance of accuracy and error
   const targetY = isBallMovingFast ? expectedBallY + predictionError : ball.position.y;
   
-  // REDUCED: Keeper vertical movement range - stay closer to goal center
-  const randomYOffset = (Math.random() * 30 - 15); // Reduced from ±25 to ±15
+  // REMOVED: Eliminated the random Y offset entirely
+  const randomYOffset = 0; // Changed from ±15 to 0 for strict positioning
   const limitedTargetY = Math.max(
-    PITCH_HEIGHT/2 - GOAL_HEIGHT/2 - 20 + randomYOffset, // Reduced from 35 to 20
-    Math.min(PITCH_HEIGHT/2 + GOAL_HEIGHT/2 + 20 + randomYOffset, targetY) // Reduced from 35 to 20
+    PITCH_HEIGHT/2 - GOAL_HEIGHT/2 - 20 + randomYOffset, // Now effectively no random offset
+    Math.min(PITCH_HEIGHT/2 + GOAL_HEIGHT/2 + 20 + randomYOffset, targetY) // Now effectively no random offset
   );
   
   // Calculate vertical movement with increased responsiveness
