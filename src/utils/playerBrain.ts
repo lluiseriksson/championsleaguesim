@@ -90,6 +90,41 @@ export const calculateShotQuality = (
   return Math.max(0, Math.min(1, qualityScore));
 };
 
+// Enhanced: Check if shot is likely on target using predicted trajectory
+export const isShotLikelyOnTarget = (
+  playerPosition: Position,
+  shotDirection: Position,
+  opponentGoalPosition: Position,
+  goalHeight: number
+): boolean => {
+  // Normalize shot direction vector
+  const magnitude = Math.sqrt(shotDirection.x * shotDirection.x + shotDirection.y * shotDirection.y);
+  if (magnitude === 0) return false;
+  
+  const normalizedDirection = {
+    x: shotDirection.x / magnitude,
+    y: shotDirection.y / magnitude
+  };
+  
+  // Get goal line position
+  const goalLineX = opponentGoalPosition.x;
+  const goalY = opponentGoalPosition.y;
+  
+  // Check if shot direction is heading away from goal
+  const isMovingTowardsGoal = 
+    (playerPosition.x < goalLineX && normalizedDirection.x > 0) ||
+    (playerPosition.x > goalLineX && normalizedDirection.x < 0);
+    
+  if (!isMovingTowardsGoal) return false;
+  
+  // Calculate where shot would intersect with goal line
+  const xDistance = Math.abs(goalLineX - playerPosition.x);
+  const interceptY = playerPosition.y + (normalizedDirection.y / Math.abs(normalizedDirection.x)) * xDistance;
+  
+  // Check if interception point is within goal height
+  return Math.abs(interceptY - goalY) < (goalHeight / 2);
+};
+
 // Calculate the quality of a position for receiving a pass
 export const calculateReceivingPositionQuality = (
   playerPosition: Position,
@@ -241,7 +276,21 @@ export const findOptimalPassReceivingPosition = (
   };
 };
 
-// NEW: Determine if this is a good shooting opportunity
+// Enhanced: Calculate if the shot is heading toward the correct goal
+export const isShotTowardsCorrectGoal = (
+  player: Player,
+  shotVelocity: Position
+): boolean => {
+  if (player.team === 'red') {
+    // Red team should shoot to the right
+    return shotVelocity.x > 0;
+  } else {
+    // Blue team should shoot to the left
+    return shotVelocity.x < 0;
+  }
+};
+
+// Enhanced: Determine if this is a good shooting opportunity
 export const isGoodShotOpportunity = (
   player: Player,
   ballPosition: Position,

@@ -31,6 +31,13 @@ const STRATEGIC_POSITION_REWARD = 0.6;
 const OPEN_SPACE_REWARD = 0.4;
 const TACTICAL_REWARD_SCALE = 0.8;
 
+// New specific reward parameters
+const ON_TARGET_SHOT_REWARD = 1.2;
+const SHOT_OFF_TARGET_PENALTY = -0.8;
+const SUCCESSFUL_PASS_REWARD = 0.9;
+const BALL_LOSS_PENALTY = -1.0;
+const AUTO_GOAL_SEVERE_PENALTY = -6.0;
+
 // Reward positioning when the player creates space or finds open positions
 const calculatePositioningReward = (player: Player, context: TeamContext): number => {
   let reward = 0;
@@ -114,8 +121,61 @@ export const updatePlayerBrain = (
     rewardFactor += TACTICAL_REWARD_SCALE * tacticalReward;
   }
 
+  // NEW: Check if shot was on-target or off-target
+  if (brain.lastAction === 'shoot' && !scored) {
+    // Check if shot was heading toward the goal
+    const goalY = context.opponentGoal.y;
+    const goalHalfHeight = 100; // Approximation of GOAL_HEIGHT/2
+    
+    // Calculate the shot trajectory
+    const shotVectorX = ball.velocity.x;
+    const shotVectorY = ball.velocity.y;
+    
+    // For a shot to be on target, it needs to be heading toward the goal
+    // and have a trajectory that would intersect with the goal line
+    let onTarget = false;
+    
+    // Red team shoots right, blue team shoots left
+    const isRightward = shotVectorX > 0;
+    const isHeadingTowardsCorrectDirection = 
+      (player.team === 'red' && isRightward) || 
+      (player.team === 'blue' && !isRightward);
+    
+    if (isHeadingTowardsCorrectDirection) {
+      // Simple trajectory calculation
+      const interceptY = player.position.y + shotVectorY * (Math.abs((context.opponentGoal.x - player.position.x) / shotVectorX));
+      onTarget = Math.abs(interceptY - goalY) < goalHalfHeight;
+      
+      if (onTarget) {
+        console.log(`${player.team} ${player.role} #${player.id} shot ON TARGET! Reward: ${ON_TARGET_SHOT_REWARD}`);
+        rewardFactor += ON_TARGET_SHOT_REWARD;
+      } else {
+        console.log(`${player.team} ${player.role} #${player.id} shot OFF TARGET. Penalty: ${SHOT_OFF_TARGET_PENALTY}`);
+        rewardFactor += SHOT_OFF_TARGET_PENALTY;
+      }
+    } else {
+      // Shooting in the wrong direction (toward own goal or sideline)
+      console.log(`${player.team} ${player.role} #${player.id} shot in WRONG DIRECTION! Severe penalty!`);
+      rewardFactor += WRONG_DIRECTION_SHOT_PENALTY;
+    }
+  }
+  
+  // NEW: Reward for successful passes to teammates
+  if (brain.lastAction === 'pass' && !isOwnGoal) {
+    const passDestinationIsTeammate = brain.lastPassOutcome?.success === true;
+    if (passDestinationIsTeammate) {
+      console.log(`${player.team} ${player.role} #${player.id} made a SUCCESSFUL PASS! Reward: ${SUCCESSFUL_PASS_REWARD}`);
+      rewardFactor += SUCCESSFUL_PASS_REWARD;
+    } else {
+      // Penalize giving the ball to an opponent
+      console.log(`${player.team} ${player.role} #${player.id} LOST POSSESSION! Penalty: ${BALL_LOSS_PENALTY}`);
+      rewardFactor += BALL_LOSS_PENALTY;
+    }
+  }
+
+  // Increase own goal penalty
   if (isOwnGoal) {
-    rewardFactor = OWN_GOAL_PLAYER_PENALTY;
+    rewardFactor = AUTO_GOAL_SEVERE_PENALTY;
     console.log(`SEVERE PENALTY: ${player.team} ${player.role} #${player.id} caused an own goal! Penalty: ${rewardFactor}`);
   }
 

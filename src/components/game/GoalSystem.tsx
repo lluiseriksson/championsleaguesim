@@ -26,6 +26,65 @@ export const useGoalSystem = ({
   lastPlayerTouchRef,
   tournamentMode = false
 }: GoalSystemProps) => {
+  // Track the last player action for reward assignment
+  const lastActionRef = React.useRef<{
+    player: Player | null;
+    action: 'shoot' | 'pass' | 'intercept' | 'move' | null;
+    targetPlayer: Player | null;
+    timestamp: number;
+  }>({
+    player: null,
+    action: null,
+    targetPlayer: null,
+    timestamp: 0
+  });
+
+  // Track if a shot is on target for reward purposes
+  const trackShotOnTarget = React.useCallback((shooter: Player, shotVelocity: Position) => {
+    // Record the shot attempt for reward calculation
+    lastActionRef.current = {
+      player: shooter,
+      action: 'shoot',
+      targetPlayer: null,
+      timestamp: Date.now()
+    };
+
+    // Record shot direction in player brain for reward calculation
+    if (shooter.brain) {
+      shooter.brain.lastShotDirection = shotVelocity;
+    }
+    
+    if (!tournamentMode) {
+      console.log(`SHOT TRACKED: ${shooter.team} ${shooter.role} #${shooter.id} shot with velocity (${shotVelocity.x.toFixed(1)}, ${shotVelocity.y.toFixed(1)})`);
+    }
+  }, [tournamentMode]);
+
+  // Track pass attempts for reward purposes
+  const trackPassAttempt = React.useCallback((passer: Player, targetPlayer: Player | null) => {
+    lastActionRef.current = {
+      player: passer,
+      action: 'pass',
+      targetPlayer,
+      timestamp: Date.now()
+    };
+    
+    // Update brain with pass outcome information
+    if (passer.brain && targetPlayer) {
+      passer.brain.lastPassOutcome = {
+        success: targetPlayer.team === passer.team,
+        targetId: targetPlayer.id
+      };
+    }
+    
+    if (!tournamentMode) {
+      if (targetPlayer) {
+        console.log(`PASS TRACKED: ${passer.team} ${passer.role} #${passer.id} passed to ${targetPlayer.team} ${targetPlayer.role} #${targetPlayer.id}`);
+      } else {
+        console.log(`PASS TRACKED: ${passer.team} ${passer.role} #${passer.id} passed but no receiver found`);
+      }
+    }
+  }, [tournamentMode]);
+
   // Check if a goal was scored
   const checkGoal = React.useCallback((position: Position): 'red' | 'blue' | null => {
     const goalY = PITCH_HEIGHT / 2;
@@ -216,5 +275,5 @@ export const useGoalSystem = ({
     });
   }, [ball, getTeamContext, setPlayers, setScore, lastPlayerTouchRef, tournamentMode]);
 
-  return { checkGoal, processGoal };
+  return { checkGoal, processGoal, trackShotOnTarget, trackPassAttempt };
 };
