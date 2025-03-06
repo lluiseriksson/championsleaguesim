@@ -24,25 +24,25 @@ const PitchLayout: React.FC = () => {
       <div className="absolute left-0 top-1/2 w-16 h-36 border-2 border-pitch-lines transform -translate-y-1/2" />
       <div className="absolute right-0 top-1/2 w-16 h-36 border-2 border-pitch-lines transform -translate-y-1/2" />
       
-      {/* Penalty arcs - fixed to be symmetrical and connected to penalty areas */}
+      {/* Penalty arcs - corrected to connect properly with penalty areas */}
       <div 
-        className="absolute left-[36px] top-1/2 w-36 h-36 border-2 border-pitch-lines rounded-full"
+        className="absolute left-[36px] top-1/2 w-48 h-48 border-2 border-pitch-lines rounded-full"
         style={{ 
-          clipPath: 'polygon(0% 25%, 100% 25%, 100% 75%, 0% 75%)',
+          clipPath: 'polygon(0% 37%, 50% 37%, 50% 63%, 0% 63%)',
           transform: 'translateY(-50%)'
         }}
       />
       <div 
-        className="absolute right-[36px] top-1/2 w-36 h-36 border-2 border-pitch-lines rounded-full"
+        className="absolute right-[36px] top-1/2 w-48 h-48 border-2 border-pitch-lines rounded-full"
         style={{ 
-          clipPath: 'polygon(0% 25%, 100% 25%, 100% 75%, 0% 75%)',
+          clipPath: 'polygon(50% 37%, 100% 37%, 100% 63%, 50% 63%)',
           transform: 'translateY(-50%)'
         }}
       />
       
-      {/* Penalty spots */}
-      <div className="absolute left-[60px] top-1/2 w-2 h-2 bg-white rounded-full transform -translate-x-1/2 -translate-y-1/2" />
-      <div className="absolute right-[60px] top-1/2 w-2 h-2 bg-white rounded-full transform -translate-x-1/2 -translate-y-1/2" />
+      {/* Penalty spots - moved further from goal */}
+      <div className="absolute left-[80px] top-1/2 w-2 h-2 bg-white rounded-full transform -translate-x-1/2 -translate-y-1/2" />
+      <div className="absolute right-[80px] top-1/2 w-2 h-2 bg-white rounded-full transform -translate-x-1/2 -translate-y-1/2" />
       
       {/* Corner arcs - top left */}
       <div className="absolute left-0 top-0 w-10 h-10 border-r-2 border-b-2 border-pitch-lines rounded-br-[10px]" />
