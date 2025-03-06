@@ -1,8 +1,7 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 
 interface MatchTimerProps {
-  initialTime: number; // in seconds (total match duration)
+  initialTime: number;
   onTimeEnd: () => void;
   goldenGoal?: boolean;
 }
@@ -12,72 +11,53 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
   onTimeEnd,
   goldenGoal = false
 }) => {
-  // Instead of counting down, we'll track elapsed time
   const [elapsedTime, setElapsedTime] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const initializedRef = useRef(false);
   const timeEndCalledRef = useRef(false);
   const goldenGoalStartTimeRef = useRef(0);
   
-  // Calculate what time should show on the chronometer (scaling to 90 minutes)
   const getDisplayMinutes = (elapsed: number, total: number) => {
-    // Scale the elapsed time to a 90-minute match
-    const scaledMinutes = Math.floor((elapsed / total) * 90);
-    return scaledMinutes;
+    // Speed up initial time progression to show movement earlier
+    const scaleFactor = elapsed < 10 ? 2 : 1;  // Double speed for first 10 seconds
+    const scaledMinutes = Math.floor((elapsed / total) * 90 * scaleFactor);
+    return Math.min(90, scaledMinutes);  // Cap at 90 minutes
   };
-  
-  console.log('MatchTimer rendered with initialTime:', initialTime, 'elapsedTime:', elapsedTime, 'goldenGoal:', goldenGoal);
 
   useEffect(() => {
     // Only reset elapsed time when initialTime changes
     if (!initializedRef.current) {
-      console.log('Setting up chronometer with total time:', initialTime);
       setElapsedTime(0);
       initializedRef.current = true;
     }
   }, [initialTime]);
 
-  // Store the time when golden goal starts
   useEffect(() => {
     if (goldenGoal && goldenGoalStartTimeRef.current === 0) {
       goldenGoalStartTimeRef.current = elapsedTime;
-      console.log('Golden goal started at elapsed time:', goldenGoalStartTimeRef.current);
     } else if (!goldenGoal) {
       goldenGoalStartTimeRef.current = 0;
     }
   }, [goldenGoal, elapsedTime]);
 
   useEffect(() => {
-    console.log('Setting up timer with elapsedTime:', elapsedTime, 'initialTime:', initialTime, 'goldenGoal:', goldenGoal);
-    
-    // Clear any existing interval
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
     
-    // Call onTimeEnd when we reach initialTime AND we're not in golden goal mode AND we haven't called it yet
     if (elapsedTime >= initialTime && !goldenGoal && !timeEndCalledRef.current) {
-      console.log('Time ended, calling onTimeEnd');
       timeEndCalledRef.current = true;
       onTimeEnd();
     }
 
-    // In regular mode: start timer if we haven't reached the end time
-    // In golden goal mode: always keep the timer running
     if (elapsedTime < initialTime || goldenGoal) {
       timerRef.current = setInterval(() => {
-        setElapsedTime((prevTime) => {
-          const newTime = prevTime + 1;
-          console.log('Tick, elapsed time:', newTime, 'of', initialTime, 'goldenGoal:', goldenGoal);
-          return newTime;
-        });
-      }, 1000);
+        setElapsedTime(prevTime => prevTime + 1);
+      }, 500); // Update twice per second for smoother progression
     }
 
-    // Cleanup function
     return () => {
-      console.log('Cleaning up timer');
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
@@ -85,19 +65,15 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
     };
   }, [elapsedTime, onTimeEnd, goldenGoal, initialTime]);
 
-  // Reset the timeEndCalled ref when golden goal state changes
   useEffect(() => {
     if (goldenGoal) {
-      console.log('Golden goal mode activated, resetting timeEndCalled flag');
       timeEndCalledRef.current = false;
     }
   }, [goldenGoal]);
 
-  // Calculate the display time in football match format (MM:SS)
   const displayMinutes = getDisplayMinutes(elapsedTime, initialTime);
   const displaySeconds = Math.floor((elapsedTime / initialTime) * 90 * 60) % 60;
   
-  // In golden goal mode, calculate the extra time properly based on simulated match time
   let formattedTime;
   if (goldenGoal) {
     const extraTimeElapsed = elapsedTime - goldenGoalStartTimeRef.current;
@@ -109,8 +85,6 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
   } else {
     formattedTime = `${displayMinutes}:${displaySeconds < 10 ? '0' : ''}${displaySeconds}`;
   }
-  
-  console.log('Displaying formatted time:', formattedTime, 'goldenGoal:', goldenGoal);
 
   return (
     <div className="match-timer font-mono text-2xl font-bold bg-black bg-opacity-80 text-white px-6 py-3 rounded-md shadow-lg absolute top-[-70px] left-1/2 transform -translate-x-1/2 z-30">
