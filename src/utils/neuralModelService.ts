@@ -35,7 +35,13 @@ const batchLoadModels = async (
 ): Promise<Record<string, any>> => {
   console.log(`Batch loading ${playerIds.length} models with batch size ${batchSize}`);
   
-  const tasks = playerIds.map(id => () => loadModelAsync(id));
+  // Fix: mapping tasks now includes team, role, and version parameters
+  const tasks = playerIds.map(id => {
+    // Extract team and role from the player ID
+    const [team, role] = id.split('-');
+    return () => loadModelAsync(team, role, 1); // Using default version 1
+  });
+  
   const results = await throttlePromises(tasks, batchSize);
   
   const modelMap: Record<string, any> = {};
