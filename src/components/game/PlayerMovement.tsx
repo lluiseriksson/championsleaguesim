@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Player, Ball, PITCH_WIDTH, PITCH_HEIGHT, NeuralNet } from '../../types/football';
 import { moveGoalkeeper } from '../../utils/playerBrain';
@@ -130,158 +129,61 @@ const usePlayerMovement = ({
             };
           }
 
-          // Validate brain before using it
-          const validatedPlayer = validatePlayerBrain(player);
-          if (!validatedPlayer.brain || !validatedPlayer.brain.net) {
-            console.warn(`Invalid brain detected for ${player.team} ${player.role}. Using fallback movement.`);
-            
-            const roleOffsets = {
-              defender: player.team === 'red' ? 150 : PITCH_WIDTH - 150,
-              midfielder: player.team === 'red' ? 300 : PITCH_WIDTH - 300,
-              forward: player.team === 'red' ? 500 : PITCH_WIDTH - 500
-            };
-            
-            const targetX = roleOffsets[player.role] || player.targetPosition.x;
-            const targetY = Math.max(100, Math.min(PITCH_HEIGHT - 100, ball.position.y));
-            
-            const dx = targetX - player.position.x;
-            const dy = targetY - player.position.y;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-            const moveSpeed = 1.2;
-            
-            let proposedPosition = {
-              x: player.position.x + (dist > 0 ? (dx / dist) * moveSpeed : 0),
-              y: player.position.y + (dist > 0 ? (dy / dist) * moveSpeed : 0)
-            };
-            
-            proposedPosition = constrainMovementToRadius(
-              player.position,
-              player.targetPosition,
-              proposedPosition,
-              player.role
-            );
-            
-            const completeBrain = ensureCompleteBrain(player.brain);
-            
-            return {
-              ...player,
-              proposedPosition,
-              movement: { 
-                x: proposedPosition.x - player.position.x,
-                y: proposedPosition.y - player.position.y
-              },
-              brain: completeBrain
-            };
-          }
-
-          const gameContext = createGameContext(
-            gameTime,
-            3600,
-            score,
-            player.team,
-            possession,
-            formations,
-            player
-          );
-
-          const playerX = player.position.x / PITCH_WIDTH;
-          const isDefensiveThird = (player.team === 'red' && playerX < 0.33) || 
-                                  (player.team === 'blue' && playerX > 0.66);
-          const isAttackingThird = (player.team === 'red' && playerX > 0.66) || 
-                                  (player.team === 'blue' && playerX < 0.33);
-          
-          const input = createTacticalInput(
-            player,
-            ball.position.x / PITCH_WIDTH,
-            ball.position.y / PITCH_HEIGHT,
-            gameContext.possession?.team === player.team,
-            isDefensiveThird,
-            isAttackingThird,
-            gameContext.teammateDensity || 0.5,
-            gameContext.opponentDensity || 0.5
-          );
-
-          const output = validatedPlayer.brain.net.run(input);
-          
-          const executionPrecision = 1;
-          
-          let moveX = (output.moveX || 0.5) * 2 - 1;
-          let moveY = (output.moveY || 0.5) * 2 - 1;
-          
-          moveX = applyExecutionNoise(moveX, executionPrecision);
-          moveY = applyExecutionNoise(moveY, executionPrecision);
-          
-          moveX = Math.max(-1, Math.min(1, moveX));
-          moveY = Math.max(-1, Math.min(1, moveY));
-          
-          const lastOutput = { x: moveX, y: moveY };
-
-          const dx = ball.position.x - player.position.x;
-          const dy = ball.position.y - player.position.y;
-          const angleTowardsBall = Math.atan2(dy, dx);
-          const angleOfMovement = Math.atan2(moveY, moveX);
-          
-          const angleDiff = Math.abs(angleTowardsBall - angleOfMovement);
-          const isMovingTowardsBall = angleDiff < Math.PI / 2;
-
-          let maxDistance;
-          const distanceToBall = Math.sqrt(
-            Math.pow(ball.position.x - player.position.x, 2) +
-            Math.pow(ball.position.y - player.position.y, 2)
-          );
-
-          if (isMovingTowardsBall) {
-            switch (player.role) {
-              case 'defender':
-                maxDistance = distanceToBall < 150 ? 96 : 60;
-                break;
-              case 'midfielder':
-                maxDistance = distanceToBall < 200 ? 120 : 80;
-                break;
-              case 'forward':
-                maxDistance = distanceToBall < 250 ? 200 : 120;
-                break;
-            }
-          } else {
-            maxDistance = 600;
-          }
-
-          const eloSpeedBonus = player.teamElo ? Math.min(0.5, Math.max(0, (player.teamElo - 1500) / 1000)) : 0;
-          const moveSpeed = 2 + eloSpeedBonus;
-
-          const proposedPosition = {
-            x: player.position.x + moveX * moveSpeed,
-            y: player.position.y + moveY * moveSpeed,
+          // Default fallback movement for all non-goalkeeper players
+          const roleOffsets = {
+            defender: player.team === 'red' ? 150 : PITCH_WIDTH - 150,
+            midfielder: player.team === 'red' ? 300 : PITCH_WIDTH - 300,
+            forward: player.team === 'red' ? 500 : PITCH_WIDTH - 500
           };
-
-          const distanceFromStart = Math.sqrt(
-            Math.pow(proposedPosition.x - player.targetPosition.x, 2) +
-            Math.pow(proposedPosition.y - player.targetPosition.y, 2)
-          );
-
-          if (distanceFromStart > maxDistance) {
-            const angle = Math.atan2(
-              player.targetPosition.y - proposedPosition.y,
-              player.targetPosition.x - proposedPosition.x
-            );
-            proposedPosition.x = player.targetPosition.x + Math.cos(angle) * maxDistance;
-            proposedPosition.y = player.targetPosition.y + Math.sin(angle) * maxDistance;
+          
+          const targetX = roleOffsets[player.role] || player.targetPosition.x;
+          const targetY = Math.max(100, Math.min(PITCH_HEIGHT - 100, ball.position.y));
+          
+          const dx = targetX - player.position.x;
+          const dy = targetY - player.position.y;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          const moveSpeed = 1.8; // Increased speed slightly
+          
+          let moveX = dist > 0 ? (dx / dist) * moveSpeed : 0;
+          let moveY = dist > 0 ? (dy / dist) * moveSpeed : 0;
+          
+          // Add some randomness to movement for more dynamic gameplay
+          if (Math.random() > 0.8) {
+            moveX += (Math.random() - 0.5) * 0.5;
+            moveY += (Math.random() - 0.5) * 0.5;
           }
-
+          
+          let proposedPosition = {
+            x: player.position.x + moveX,
+            y: player.position.y + moveY
+          };
+          
+          proposedPosition = constrainMovementToRadius(
+            player.position,
+            player.targetPosition,
+            proposedPosition,
+            player.role
+          );
+          
+          // Keep players within pitch boundaries
           proposedPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, proposedPosition.x));
           proposedPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, proposedPosition.y));
-
+          
+          const completeBrain = ensureCompleteBrain(player.brain);
+          
           return {
             ...player,
             proposedPosition,
-            movement: { x: moveX, y: moveY },
+            movement: { 
+              x: moveX,
+              y: moveY
+            },
             brain: {
-              ...validatedPlayer.brain,
-              lastOutput,
+              ...completeBrain,
+              lastOutput: { x: moveX, y: moveY },
               lastAction: 'move' as const
             }
           };
-
         } catch (error) {
           console.error(`Error updating player ${player.team} ${player.role} #${player.id}:`, error);
           
