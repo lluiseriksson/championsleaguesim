@@ -1,3 +1,4 @@
+
 import { Ball, Player, TeamContext, NeuralInput } from '../types/football';
 import { calculateDistance, normalizeValue } from './neuralCore';
 
@@ -120,18 +121,18 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
   const averageElo = 2000; // Default average ELO if none provided
   const eloAdvantage = player.teamElo ? normalizeValue(player.teamElo - averageElo, -1000, 1000) : 0.5;
   
-  // Calculate additional contextual inputs
+  // Calculate additional contextual inputs with safe fallbacks
   const gameTime = context.gameTime || 0.5;
   const scoreDifferential = context.scoreDiff || 0;
   const momentum = player.brain.successRate?.overall || 0.5;
   
-  // Formation-based calculations
+  // Formation-based calculations with default values
   const formationCompactness = context.formationCompactness || 0.5;
   const formationWidth = context.formationWidth || 0.5;
   const distanceFromFormationCenter = context.distanceFromCenter || 0.5;
   const isInFormationPosition = context.isInPosition ? 1 : 0;
   
-  // Density calculations
+  // Density calculations with default values
   const teammateDensity = context.teammateDensity || 0.5;
   const opponentDensity = context.opponentDensity || 0.5;
 

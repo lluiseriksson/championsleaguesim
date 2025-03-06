@@ -10,12 +10,19 @@ export interface TeamContext {
   opponents: Position[];
   ownGoal: Position;
   opponentGoal: Position;
+  gameTime?: number;            // Normalized game time (0-1)
+  scoreDiff?: number;           // Score differential from perspective of current team
+  possessionDuration?: number;  // How long team has had possession
+  formationCompactness?: number; // How compact team formation is (0-1)
+  formationWidth?: number;      // Width of team formation (0-1)
+  distanceFromCenter?: number;  // How far from team's formation center (0-1)
+  isInPosition?: boolean;       // Whether player is in correct position
+  teammateDensity?: number;     // Density of teammates around player (0-1)
+  opponentDensity?: number;     // Density of opponents around player (0-1)
 }
 
-// Updated NeuralInput with more contextual features
 export interface NeuralInput {
   [key: string]: number; // Index signature
-  // Existing spatial features
   ballX: number;
   ballY: number;
   playerX: number;
@@ -39,7 +46,6 @@ export interface NeuralInput {
   teamElo: number;
   eloAdvantage: number;
   
-  // New contextual features
   gameTime: number;                // Normalized game time (0-1)
   scoreDifferential: number;       // Normalized score difference (-1 to 1)
   momentum: number;                // Team momentum indicator (0-1)
@@ -53,7 +59,6 @@ export interface NeuralInput {
   opponentDensity: number;         // Density of opponents around player (0-1)
 }
 
-// Cambiamos NeuralOutput para que cumpla con INeuralNetworkData
 export interface NeuralOutput {
   [key: string]: number; // Añadimos index signature
   moveX: number;
@@ -63,7 +68,6 @@ export interface NeuralOutput {
   intercept: number;
 }
 
-// Add historical context to NeuralNet
 export interface NeuralNet {
   net: brain.NeuralNetwork<NeuralInput, NeuralOutput>;
   lastOutput: { x: number; y: number };
@@ -97,7 +101,6 @@ export interface Player {
   teamElo?: number;   // The ELO rating of the player's team
 }
 
-// Added bounceDetection property to Ball interface
 export interface Ball {
   position: Position;
   velocity: Position;
