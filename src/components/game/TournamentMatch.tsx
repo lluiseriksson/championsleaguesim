@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
@@ -9,6 +8,7 @@ import { getAwayTeamKit } from '../../types/kits';
 import { performFinalKitCheck, resolveKitConflict } from '../../types/kits/kitConflictChecker';
 import { KitType } from '../../types/kits/kitTypes';
 import GameLogic from '../GameLogic';
+import { createPlayerBrain } from '../../utils/neuralNetwork';
 
 const transliterateRussianName = (name: string): string => {
   const cyrillicToLatin: Record<string, string> = {
@@ -184,16 +184,14 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       const pos = redTeamPositions[i];
       const role = pos.role as Player['role'];
       
+      const playerBrain = createPlayerBrain();
+      
       newPlayers.push({
         id: i + 1,
         position: { x: pos.x, y: pos.y },
         role: role,
         team: 'red',
-        brain: {
-          net: null as any,
-          lastOutput: { x: 0, y: 0 },
-          lastAction: 'move'
-        },
+        brain: playerBrain,
         targetPosition: { x: pos.x, y: pos.y },
         teamName: homeTeam,
         kitType: 'home',
@@ -219,16 +217,14 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       const pos = blueTeamPositions[i];
       const role = pos.role as Player['role'];
       
+      const playerBrain = createPlayerBrain();
+      
       newPlayers.push({
         id: i + 12,
         position: { x: pos.x, y: pos.y },
         role: role,
         team: 'blue',
-        brain: {
-          net: null as any,
-          lastOutput: { x: 0, y: 0 },
-          lastAction: 'move'
-        },
+        brain: playerBrain,
         targetPosition: { x: pos.x, y: pos.y },
         teamName: awayTeam,
         kitType: awayTeamKitType,

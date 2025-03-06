@@ -12,6 +12,7 @@ import { validatePlayerBrain, createTacticalInput } from '../../utils/neural/net
 import { constrainMovementToRadius } from '../../utils/movementConstraints';
 import { calculateCollisionAvoidance } from '../../hooks/game/useTeamCollisions';
 import { normalizeCoordinates, denormalizeCoordinates, normalizeVelocity } from '../../utils/gamePhysics';
+import { createPlayerBrain } from '../../utils/neuralNetwork';
 
 interface PlayerMovementProps {
   players: Player[];
@@ -39,10 +40,19 @@ const usePlayerMovement = ({
   useEffect(() => {
     if (gameReady && players.length > 0) {
       setPlayers(currentPlayers => 
-        currentPlayers.map(player => ({
-          ...player,
-          brain: initializePlayerBrainWithHistory(player.brain)
-        }))
+        currentPlayers.map(player => {
+          if (!player.brain || !player.brain.net) {
+            console.log(`Initializing missing brain for ${player.team} ${player.role} #${player.id}`);
+            return {
+              ...player,
+              brain: createPlayerBrain()
+            };
+          }
+          return {
+            ...player,
+            brain: initializePlayerBrainWithHistory(player.brain)
+          };
+        })
       );
     }
   }, [gameReady, setPlayers]);
@@ -84,16 +94,12 @@ const usePlayerMovement = ({
 
   const ensureCompleteBrain = (brain: Partial<NeuralNet> | null | { net: any }): NeuralNet => {
     if (!brain) {
-      return {
-        net: null,
-        lastOutput: { x: 0, y: 0 },
-        lastAction: 'move',
-        actionHistory: [],
-        successRate: { shoot: 0, pass: 0, intercept: 0, overall: 0 }
-      };
+      console.log("Creating new brain due to missing brain");
+      return createPlayerBrain();
     }
     
     if ('net' in brain && Object.keys(brain).length === 1) {
+      console.log("Creating complete brain from partial brain");
       const basicBrain: NeuralNet = {
         net: brain.net,
         lastOutput: { x: 0, y: 0 },
@@ -102,6 +108,18 @@ const usePlayerMovement = ({
         successRate: { shoot: 0, pass: 0, intercept: 0, overall: 0 }
       };
       return basicBrain;
+    }
+    
+    if (!brain.net || typeof brain.net?.run !== 'function') {
+      console.log("Fixing invalid neural network in brain");
+      const newBrain = createPlayerBrain();
+      return {
+        ...newBrain,
+        lastOutput: (brain as Partial<NeuralNet>).lastOutput || { x: 0, y: 0 },
+        lastAction: (brain as Partial<NeuralNet>).lastAction || 'move',
+        actionHistory: (brain as Partial<NeuralNet>).actionHistory || [],
+        successRate: (brain as Partial<NeuralNet>).successRate || { shoot: 0, pass: 0, intercept: 0, overall: 0 }
+      };
     }
     
     const completeBrain = brain as Partial<NeuralNet>;
