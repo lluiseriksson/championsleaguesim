@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Match, TournamentTeam } from '../../types/tournament';
-import { teamKitColors } from '../../types/teamKits';
+import { teamKitColors } from '../../types/kits';
 import { Score } from '../../types/football';
 import { toast } from 'sonner';
 import { clearKitSelectionCache } from '../../types/kits';
