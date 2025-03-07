@@ -188,7 +188,7 @@ export const useBallMovement = ({
         onBallTouch,
         lastCollisionTimeRef,
         lastKickPositionRef,
-        eloFactorsRef.current // Pass ELO advantage factors
+        eloFactorsRef.current // Pass ELO advantage factors as the 8th parameter
       );
 
       return {

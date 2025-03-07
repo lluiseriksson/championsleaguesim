@@ -1,3 +1,4 @@
+
 import { Player, Position } from '../../types/football';
 import { checkCollision, calculateNewVelocity } from '../../utils/gamePhysics';
 
@@ -10,7 +11,8 @@ export function handleFieldPlayerCollisions(
   onBallTouch: (player: Player) => void,
   currentTime: number,
   lastCollisionTimeRef: React.MutableRefObject<number>,
-  lastKickPositionRef: React.MutableRefObject<Position | null>
+  lastKickPositionRef: React.MutableRefObject<Position | null>,
+  eloFactors?: { red: number, blue: number } // Added ELO factors parameter as optional
 ): Position {
   for (const player of fieldPlayers) {
     const collision = checkCollision(newPosition, player.position, false); // Explicitly pass false for isGoalkeeper
@@ -28,6 +30,9 @@ export function handleFieldPlayerCollisions(
         currentVelocity,
         false
       );
+      
+      // Get ELO advantage factor for the player's team if available
+      const eloFactor = eloFactors && player.team ? eloFactors[player.team] : 1.0;
       
       // Add some force to ensure it moves away from player
       const dx = newPosition.x - player.position.x;
@@ -58,10 +63,16 @@ export function handleFieldPlayerCollisions(
         } else {
           // Normal deflection physics with slight directional bias towards opponent goal
           const directionBias = player.team === 'red' ? 0.2 : -0.2; // Positive for red, negative for blue
-          const adjustedDx = normalizedDx + directionBias;
           
-          newVelocity.x += adjustedDx * 1.5; 
-          newVelocity.y += normalizedDy * 1.5;
+          // Apply ELO advantage - stronger kicks and better accuracy for teams with higher ELO
+          const adjustedBias = directionBias * eloFactor;
+          const adjustedDx = normalizedDx + adjustedBias;
+          
+          // Enhance kick power based on ELO advantage
+          const powerMultiplier = eloFactor > 1.0 ? Math.min(1.8, eloFactor * 1.2) : 1.0;
+          
+          newVelocity.x += adjustedDx * 1.5 * powerMultiplier; 
+          newVelocity.y += normalizedDy * 1.5 * powerMultiplier;
         }
       }
       

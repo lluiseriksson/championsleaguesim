@@ -13,7 +13,8 @@ export function handleBallPhysics(
   fieldPlayers: Player[],
   onBallTouch: (player: Player) => void,
   lastCollisionTimeRef: React.MutableRefObject<number>,
-  lastKickPositionRef: React.MutableRefObject<Position | null>
+  lastKickPositionRef: React.MutableRefObject<Position | null>,
+  eloFactors?: { red: number, blue: number } // Added ELO factors parameter as optional
 ): Ball {
   // Check for boundary collisions (top and bottom)
   let newVelocity = { ...currentBall.velocity };
@@ -46,7 +47,8 @@ export function handleBallPhysics(
     onBallTouch,
     currentTime,
     lastCollisionTimeRef,
-    lastKickPositionRef
+    lastKickPositionRef,
+    eloFactors // Pass ELO factors to collision handler
   );
 
   // Apply velocity adjustments
@@ -68,7 +70,8 @@ function handlePlayerCollisions(
   onBallTouch: (player: Player) => void,
   currentTime: number,
   lastCollisionTimeRef: React.MutableRefObject<number>,
-  lastKickPositionRef: React.MutableRefObject<Position | null>
+  lastKickPositionRef: React.MutableRefObject<Position | null>,
+  eloFactors?: { red: number, blue: number } // Added ELO factors parameter as optional
 ): Position {
   // Get current time to prevent multiple collisions
   const collisionCooldown = 150; // ms
@@ -84,12 +87,23 @@ function handlePlayerCollisions(
         lastCollisionTimeRef.current = currentTime;
         lastKickPositionRef.current = { ...newPosition };
         
+        // Apply ELO advantage to goalkeeper collision if available
+        const eloFactor = eloFactors && goalkeeper.team ? eloFactors[goalkeeper.team] : 1.0;
+        
         newVelocity = calculateNewVelocity(
           newPosition,
           goalkeeper.position,
           currentVelocity,
           true
         );
+        
+        // Enhance goalkeeper's effectiveness based on team's ELO advantage
+        if (eloFactor > 1.0) {
+          // Stronger deflection for advantaged team's goalkeeper
+          const deflectionBoost = Math.min(1.3, eloFactor);
+          newVelocity.x *= deflectionBoost;
+          newVelocity.y *= deflectionBoost;
+        }
         
         console.log("Goalkeeper collision detected");
         break;
@@ -107,7 +121,8 @@ function handlePlayerCollisions(
       onBallTouch,
       currentTime,
       lastCollisionTimeRef,
-      lastKickPositionRef
+      lastKickPositionRef,
+      eloFactors // Pass ELO factors to field player collision handler
     );
   }
 
