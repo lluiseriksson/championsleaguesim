@@ -38,6 +38,18 @@ const GameLogic: React.FC<GameLogicProps> = ({
   
   console.log(`GameLogic rendered with players: ${players.length}, tournamentMode: ${tournamentMode}`);
 
+  // Find team ELO values for comparison
+  const redTeamElo = players.find(p => p.team === 'red')?.teamElo || 1500;
+  const blueTeamElo = players.find(p => p.team === 'blue')?.teamElo || 1500;
+  
+  // Default setup: home team (red) always learns, away team (blue) never learns
+  const homeTeamLearning = true;
+  const awayTeamLearning = false;
+  
+  // Log ELO comparison for debugging
+  console.log(`Team ELO comparison - Red (Home): ${redTeamElo}, Blue (Away): ${blueTeamElo}`);
+  console.log(`Learning configuration - Home team: ${homeTeamLearning ? 'YES' : 'NO'}, Away team: ${awayTeamLearning ? 'YES' : 'NO'}`);
+
   // Get team context functions
   const { getTeamContext } = useTeamContext({ players });
 
@@ -151,7 +163,12 @@ const GameLogic: React.FC<GameLogicProps> = ({
   });
 
   // Save models on component unmount
-  useModelSaveOnExit({ players, tournamentMode });
+  useModelSaveOnExit({ 
+    players, 
+    tournamentMode,
+    homeTeamLearning,
+    awayTeamLearning
+  });
 
   return null;
 };

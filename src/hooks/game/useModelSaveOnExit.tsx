@@ -8,11 +8,15 @@ import { syncPlayerHistoricalData } from '../../utils/neural/historicalTraining'
 interface ModelSaveOnExitProps {
   players: Player[];
   tournamentMode?: boolean;
+  homeTeamLearning?: boolean;
+  awayTeamLearning?: boolean;
 }
 
 export const useModelSaveOnExit = ({
   players,
-  tournamentMode = false
+  tournamentMode = false,
+  homeTeamLearning = true,  // Default: home team (red) learns
+  awayTeamLearning = false  // Default: away team (blue) doesn't learn
 }: ModelSaveOnExitProps) => {
   
   // Effect to save models on component unmount
@@ -21,7 +25,13 @@ export const useModelSaveOnExit = ({
       // When unmounting, save current models (selectively in tournament mode)
       if (!tournamentMode) {
         players
-          .filter(p => p.role !== 'goalkeeper')
+          .filter(p => {
+            // Filter based on team learning settings
+            if (p.role === 'goalkeeper') return false;
+            if (p.team === 'red' && !homeTeamLearning) return false;
+            if (p.team === 'blue' && !awayTeamLearning) return false;
+            return true;
+          })
           .forEach(player => {
             logNeuralNetworkStatus(player.team, player.role, player.id, "Saving model on exit");
             
@@ -45,7 +55,8 @@ export const useModelSaveOnExit = ({
         // Alternatively, save only a single model at most to minimize database load
         if (Math.random() < 0.05) { // 5% chance to save any model
           const randomPlayer = players.find(p => 
-            p.role === 'forward' && p.team === 'red'
+            p.role === 'forward' && 
+            ((p.team === 'red' && homeTeamLearning) || (p.team === 'blue' && awayTeamLearning))
           );
           
           if (randomPlayer) {
@@ -66,5 +77,5 @@ export const useModelSaveOnExit = ({
         }
       }
     };
-  }, [players, tournamentMode]);
+  }, [players, tournamentMode, homeTeamLearning, awayTeamLearning]);
 };

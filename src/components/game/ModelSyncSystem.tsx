@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Player } from '../../types/football';
 import { saveModel } from '../../utils/neural/modelPersistence';
@@ -36,6 +35,14 @@ export const useModelSyncSystem = ({
   const frameTimesRef = useRef<number[]>([]);
   const [hasPerformedHistoricalTraining, setHasPerformedHistoricalTraining] = useState(false);
   
+  const redTeamElo = players.find(p => p.team === 'red')?.teamElo || 1500;
+  const blueTeamElo = players.find(p => p.team === 'blue')?.teamElo || 1500;
+  
+  const homeTeamShouldLearn = true; // Home team (red) always learns
+  const awayTeamShouldLearn = false; // Away team (blue) never learns
+  
+  const redTeamShouldLearn = homeTeamShouldLearn && (redTeamElo >= blueTeamElo);
+  
   const incrementSyncCounter = () => {
     syncCounter.current += 1;
     learningCheckCounter.current += 1;
@@ -72,9 +79,7 @@ export const useModelSyncSystem = ({
   }, [isLowPerformance]);
   
   const syncModels = React.useCallback(async () => {
-    // In tournament mode, completely skip most model syncs to prevent crashes
     if (tournamentMode) {
-      // Only sync if it's a particularly good time and we're due
       if (syncCounter.current >= TOURNAMENT_SYNC_INTERVAL && Math.random() < 0.2) {
         console.log('Performing rare tournament mode sync');
         syncCounter.current = 0;
@@ -96,7 +101,16 @@ export const useModelSyncSystem = ({
         console.log('Synchronizing neural models...');
         
         const syncGroup = syncCounter.current % 3;
-        const playersToSync = players.filter((_, index) => index % 3 === syncGroup);
+        
+        const playersToSync = players.filter((p, index) => {
+          if (index % 3 !== syncGroup) return false;
+          if (p.role === 'goalkeeper') return false;
+          if (p.team === 'red' && !redTeamShouldLearn) return false;
+          if (p.team === 'blue' && !awayTeamShouldLearn) return false;
+          return true;
+        });
+        
+        console.log(`Syncing ${playersToSync.length} players (home: ${redTeamShouldLearn}, away: ${awayTeamShouldLearn})`);
         
         let syncCount = 0;
         let validationCount = 0;
@@ -112,7 +126,6 @@ export const useModelSyncSystem = ({
               );
             }
             
-            // Skip actually saving in tournament mode to prevent database issues
             if (!tournamentMode && validatedPlayer.brain?.net && validatedPlayer.role !== 'goalkeeper') {
               if (await saveModel(validatedPlayer)) {
                 syncCount++;
@@ -139,7 +152,7 @@ export const useModelSyncSystem = ({
       
       syncCounter.current = 0;
     }
-  }, [players, setPlayers, tournamentMode, lastSyncTime, isLowPerformance]);
+  }, [players, setPlayers, tournamentMode, lastSyncTime, isLowPerformance, redTeamShouldLearn, awayTeamShouldLearn]);
   
   const checkLearningProgress = React.useCallback(() => {
     if (isLowPerformance && Math.random() > 0.2) {
@@ -153,6 +166,9 @@ export const useModelSyncSystem = ({
       
       setPlayers(currentPlayers => 
         currentPlayers.map(player => {
+          if (player.team === 'red' && !redTeamShouldLearn) return player;
+          if (player.team === 'blue' && !awayTeamShouldLearn) return player;
+          
           if (player.role === 'goalkeeper') {
             return player;
           }
@@ -185,10 +201,9 @@ export const useModelSyncSystem = ({
       
       learningCheckCounter.current = 0;
     }
-  }, [setPlayers, tournamentMode, isLowPerformance]);
+  }, [setPlayers, tournamentMode, isLowPerformance, redTeamShouldLearn, awayTeamShouldLearn]);
 
   const performHistoricalTraining = React.useCallback(async () => {
-    // Skip in tournament mode or low performance
     if (tournamentMode || (isLowPerformance && Math.random() > 0.1)) {
       return;
     }
@@ -199,10 +214,9 @@ export const useModelSyncSystem = ({
       try {
         let trainedPlayers = 0;
         
-        // Filter to only train a subset of players to avoid performance issues
         const playersToTrain = players.filter(p => 
           p.role !== 'goalkeeper' && 
-          p.team === 'red' && 
+          ((p.team === 'red' && redTeamShouldLearn) || (p.team === 'blue' && awayTeamShouldLearn)) &&
           ['forward', 'midfielder'].includes(p.role) && 
           Math.random() < 0.7
         );
@@ -237,7 +251,7 @@ export const useModelSyncSystem = ({
       setHasPerformedHistoricalTraining(true);
       historicalTrainingCounter.current = 0;
     }
-  }, [players, setPlayers, tournamentMode, isLowPerformance, hasPerformedHistoricalTraining]);
+  }, [players, setPlayers, tournamentMode, isLowPerformance, hasPerformedHistoricalTraining, redTeamShouldLearn, awayTeamShouldLearn]);
   
   return { 
     syncModels, 
