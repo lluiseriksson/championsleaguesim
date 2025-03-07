@@ -1,10 +1,11 @@
-
 import React from 'react';
 import { Position, PITCH_HEIGHT, BALL_RADIUS, GOAL_HEIGHT, PITCH_WIDTH, Player, Ball } from '../../types/football';
 import { Score } from '../../types/football';
 import { updatePlayerBrain } from '../../utils/brainTraining';
 import { saveModel } from '../../utils/neuralModelService';
 import { calculateTacticalReward } from '../../utils/experienceReplay';
+import { calculateDistance } from '../../utils/neuralCore';
+import { isShotLikelyOnTarget } from '../../utils/playerBrain';
 
 interface GoalSystemProps {
   setScore: React.Dispatch<React.SetStateAction<Score>>;
@@ -32,33 +33,95 @@ export const useGoalSystem = ({
     action: 'shoot' | 'pass' | 'intercept' | 'move' | null;
     targetPlayer: Player | null;
     timestamp: number;
+    shotQuality?: number;
   }>({
     player: null,
     action: null,
     targetPlayer: null,
-    timestamp: 0
+    timestamp: 0,
+    shotQuality: 0
   });
 
-  // Track if a shot is on target for reward purposes
+  // NEW: Calculate shot quality for reward purposes
+  const calculateShotQuality = React.useCallback((shooter: Player, shotVelocity: Position) => {
+    // Get opponent goal
+    const teamContext = getTeamContext(shooter);
+    const opponentGoal = teamContext.opponentGoal;
+    
+    // Calculate base shot quality based on distance to goal
+    const distanceToGoal = calculateDistance(shooter.position, opponentGoal);
+    let shotQuality = Math.max(0.1, 1 - (distanceToGoal / 800));
+    
+    // Check if shot is on target
+    const isOnTarget = isShotLikelyOnTarget(
+      shooter.position, 
+      shotVelocity, 
+      opponentGoal, 
+      GOAL_HEIGHT
+    );
+    
+    // Shots on target get higher quality
+    if (isOnTarget) {
+      shotQuality *= 1.5;
+    } else {
+      shotQuality *= 0.3;
+    }
+    
+    // Check for blockers in shot path
+    let blockersInPath = 0;
+    const opponentsNearby = teamContext.opponents.filter(opp => 
+      calculateDistance(shooter.position, opp) < distanceToGoal
+    );
+    
+    // Simple blocking calculation
+    opponentsNearby.forEach(oppPos => {
+      const angleToGoal = Math.atan2(
+        opponentGoal.y - shooter.position.y,
+        opponentGoal.x - shooter.position.x
+      );
+      
+      const angleToOpp = Math.atan2(
+        oppPos.y - shooter.position.y,
+        oppPos.x - shooter.position.x
+      );
+      
+      // If opponent is in roughly the same direction as the goal
+      if (Math.abs(angleToGoal - angleToOpp) < Math.PI / 4) {
+        blockersInPath++;
+      }
+    });
+    
+    // Reduce quality based on blockers
+    shotQuality *= Math.max(0.2, 1 - (blockersInPath * 0.2));
+    
+    return Math.max(0, Math.min(1, shotQuality));
+  }, [getTeamContext]);
+  
+  // Enhanced: Track shot attempt with quality assessment
   const trackShotOnTarget = React.useCallback((shooter: Player, shotVelocity: Position) => {
+    // Calculate shot quality for reward later
+    const shotQuality = calculateShotQuality(shooter, shotVelocity);
+    
     // Record the shot attempt for reward calculation
     lastActionRef.current = {
       player: shooter,
       action: 'shoot',
       targetPlayer: null,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      shotQuality
     };
 
-    // Record shot direction in player brain for reward calculation
+    // Record shot direction and quality in player brain for reward calculation
     if (shooter.brain) {
       // Make sure we're adding the property safely
       shooter.brain.lastShotDirection = shotVelocity;
+      shooter.brain.lastShotQuality = shotQuality;
     }
     
     if (!tournamentMode) {
-      console.log(`SHOT TRACKED: ${shooter.team} ${shooter.role} #${shooter.id} shot with velocity (${shotVelocity.x.toFixed(1)}, ${shotVelocity.y.toFixed(1)})`);
+      console.log(`SHOT TRACKED: ${shooter.team} ${shooter.role} #${shooter.id} shot with velocity (${shotVelocity.x.toFixed(1)}, ${shotVelocity.y.toFixed(1)}), quality: ${shotQuality.toFixed(2)}`);
     }
-  }, [tournamentMode]);
+  }, [tournamentMode, calculateShotQuality]);
 
   // Track pass attempts for reward purposes
   const trackPassAttempt = React.useCallback((passer: Player, targetPlayer: Player | null) => {
@@ -169,6 +232,18 @@ export const useGoalSystem = ({
         // Get team context for this player
         const playerContext = getTeamContext(player);
         
+        // Get shot quality from last action if available
+        let shotQuality = 0;
+        if (lastActionRef.current.player?.id === player.id && 
+            lastActionRef.current.action === 'shoot' &&
+            lastActionRef.current.shotQuality !== undefined) {
+          shotQuality = lastActionRef.current.shotQuality;
+          
+          if (!tournamentMode) {
+            console.log(`Using tracked shot quality ${shotQuality.toFixed(2)} for ${player.team} ${player.role} #${player.id}`);
+          }
+        }
+        
         // Calculate additional tactical rewards
         let tacticalBonus = 0;
         if (player.brain.lastAction && 
@@ -194,6 +269,11 @@ export const useGoalSystem = ({
           } catch (error) {
             console.error('Error calculating tactical bonus:', error);
           }
+        }
+        
+        // Add shot quality to the brain for goal/no goal learning
+        if (player.brain) {
+          player.brain.lastShotQuality = shotQuality;
         }
         
         // Update brain with own goal information and tactical bonus

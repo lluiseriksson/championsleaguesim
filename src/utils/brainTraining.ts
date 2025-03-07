@@ -15,9 +15,9 @@ import {
 
 // Enhanced reward parameters
 const LEARNING_RATE = 0.08;
-const GOAL_REWARD = 1.5;
+const GOAL_REWARD = 2.5; // Increased from 1.5 to emphasize goal scoring
 const MISS_PENALTY = -0.8;
-const LAST_TOUCH_GOAL_REWARD = 2.0;
+const LAST_TOUCH_GOAL_REWARD = 3.0; // Increased from 2.0 to give more reward for direct goal involvement
 const LAST_TOUCH_GOAL_PENALTY = -3.0;
 const GOALKEEPER_MAX_PENALTY = -1.5;
 const GOALKEEPER_MIN_PENALTY = -0.3;
@@ -31,12 +31,17 @@ const STRATEGIC_POSITION_REWARD = 0.6;
 const OPEN_SPACE_REWARD = 0.4;
 const TACTICAL_REWARD_SCALE = 0.8;
 
-// New specific reward parameters
-const ON_TARGET_SHOT_REWARD = 1.2;
-const SHOT_OFF_TARGET_PENALTY = -0.8;
+// Improved shot reward parameters
+const ON_TARGET_SHOT_REWARD = 1.8; // Increased from 1.2 to better reward on-target shots
+const SHOT_OFF_TARGET_PENALTY = -1.2; // Increased penalty for off-target shots
 const SUCCESSFUL_PASS_REWARD = 0.9;
 const BALL_LOSS_PENALTY = -1.0;
 const AUTO_GOAL_SEVERE_PENALTY = -6.0;
+
+// NEW: Additional shooting reward parameters
+const SHOT_CLOSE_TO_GOAL_REWARD = 2.0; // Reward for shots that nearly score
+const SHOT_BLOCKED_BY_KEEPER_REWARD = 0.8; // Some reward for forcing goalkeeper save
+const GOAL_STREAK_BONUS = 0.5; // Additional bonus for consecutive goals
 
 // Reward positioning when the player creates space or finds open positions
 const calculatePositioningReward = (player: Player, context: TeamContext): number => {
@@ -121,55 +126,111 @@ export const updatePlayerBrain = (
     rewardFactor += TACTICAL_REWARD_SCALE * tacticalReward;
   }
 
-  // NEW: Check if shot was on-target or off-target
-  if (brain.lastAction === 'shoot' && !scored) {
-    // Check if shot was heading toward the goal
-    const goalY = context.opponentGoal.y;
-    const goalHalfHeight = 100; // Approximation of GOAL_HEIGHT/2
-    
-    // Calculate the shot trajectory
-    const shotVectorX = ball.velocity.x;
-    const shotVectorY = ball.velocity.y;
-    
-    // For a shot to be on target, it needs to be heading toward the goal
-    // and have a trajectory that would intersect with the goal line
-    let onTarget = false;
-    
-    // Red team shoots right, blue team shoots left
-    const isRightward = shotVectorX > 0;
-    const isHeadingTowardsCorrectDirection = 
-      (player.team === 'red' && isRightward) || 
-      (player.team === 'blue' && !isRightward);
-    
-    if (isHeadingTowardsCorrectDirection) {
-      // Simple trajectory calculation
-      const interceptY = player.position.y + shotVectorY * (Math.abs((context.opponentGoal.x - player.position.x) / shotVectorX));
-      onTarget = Math.abs(interceptY - goalY) < goalHalfHeight;
-      
-      if (onTarget) {
-        console.log(`${player.team} ${player.role} #${player.id} shot ON TARGET! Reward: ${ON_TARGET_SHOT_REWARD}`);
-        rewardFactor += ON_TARGET_SHOT_REWARD;
+  // ENHANCED: Improved shot reward calculation
+  if (brain.lastAction === 'shoot') {
+    // First, check if it was a goal
+    if (scored) {
+      // Check if player has consecutive goals
+      if (brain.goalStreak && brain.goalStreak > 0) {
+        brain.goalStreak++;
+        rewardFactor += GOAL_STREAK_BONUS * Math.min(brain.goalStreak, 3);
+        console.log(`${player.team} ${player.role} #${player.id} goal streak: ${brain.goalStreak}, bonus: +${GOAL_STREAK_BONUS * Math.min(brain.goalStreak, 3)}`);
       } else {
-        console.log(`${player.team} ${player.role} #${player.id} shot OFF TARGET. Penalty: ${SHOT_OFF_TARGET_PENALTY}`);
-        rewardFactor += SHOT_OFF_TARGET_PENALTY;
+        brain.goalStreak = 1;
       }
+      
+      // Huge reward for shooting and scoring
+      rewardFactor += GOAL_REWARD * 0.5; // Additional bonus for shooting goal
+      console.log(`${player.team} ${player.role} #${player.id} SCORED A GOAL! Total reward: ${rewardFactor.toFixed(2)}`);
     } else {
-      // Shooting in the wrong direction (toward own goal or sideline)
-      console.log(`${player.team} ${player.role} #${player.id} shot in WRONG DIRECTION! Severe penalty!`);
-      rewardFactor += WRONG_DIRECTION_SHOT_PENALTY;
+      // Reset goal streak
+      brain.goalStreak = 0;
+      
+      // Check if shot was heading toward the goal
+      const goalY = context.opponentGoal.y;
+      const goalHalfHeight = 100; // Approximation of GOAL_HEIGHT/2
+      
+      // Calculate the shot trajectory
+      const shotVectorX = ball.velocity.x;
+      const shotVectorY = ball.velocity.y;
+      
+      // For a shot to be on target, it needs to be heading toward the goal
+      // and have a trajectory that would intersect with the goal line
+      let onTarget = false;
+      
+      // Red team shoots right, blue team shoots left
+      const isRightward = shotVectorX > 0;
+      const isHeadingTowardsCorrectDirection = 
+        (player.team === 'red' && isRightward) || 
+        (player.team === 'blue' && !isRightward);
+      
+      if (isHeadingTowardsCorrectDirection) {
+        // Simple trajectory calculation
+        const interceptY = player.position.y + shotVectorY * (Math.abs((context.opponentGoal.x - player.position.x) / shotVectorX));
+        onTarget = Math.abs(interceptY - goalY) < goalHalfHeight;
+        
+        // Calculate distance to goal
+        const distanceToGoal = calculateDistance(player.position, context.opponentGoal);
+        
+        if (onTarget) {
+          // On target shot - reward based on proximity to goal
+          const distanceRewardFactor = Math.max(0.5, 1 - (distanceToGoal / 500));
+          const onTargetReward = ON_TARGET_SHOT_REWARD * distanceRewardFactor;
+          
+          console.log(`${player.team} ${player.role} #${player.id} shot ON TARGET! Reward: ${onTargetReward.toFixed(2)}`);
+          rewardFactor += onTargetReward;
+          
+          // Check if it's a very close shot (near miss or blocked by keeper)
+          if (distanceToGoal < 150 && brain.lastShotQuality && brain.lastShotQuality > 0.7) {
+            console.log(`${player.team} ${player.role} #${player.id} NEAR MISS! Extra reward: ${SHOT_CLOSE_TO_GOAL_REWARD.toFixed(2)}`);
+            rewardFactor += SHOT_CLOSE_TO_GOAL_REWARD;
+          }
+          
+          // Check if it was likely saved by goalkeeper
+          const goalKeeper = context.opponents.find(opp => opp.role === 'goalkeeper');
+          if (goalKeeper) {
+            const keeperDistance = calculateDistance(ball.position, goalKeeper);
+            if (keeperDistance < 40) {
+              console.log(`${player.team} ${player.role} #${player.id} shot SAVED BY KEEPER! Reward: ${SHOT_BLOCKED_BY_KEEPER_REWARD.toFixed(2)}`);
+              rewardFactor += SHOT_BLOCKED_BY_KEEPER_REWARD;
+            }
+          }
+        } else {
+          // Off target but in correct direction
+          console.log(`${player.team} ${player.role} #${player.id} shot OFF TARGET. Penalty: ${SHOT_OFF_TARGET_PENALTY.toFixed(2)}`);
+          rewardFactor += SHOT_OFF_TARGET_PENALTY;
+          
+          // Less penalty if shot was from far away
+          if (distanceToGoal > 300) {
+            rewardFactor += Math.min(0.8, distanceToGoal / 700); // Reduce penalty for long-distance shots
+          }
+        }
+      } else {
+        // Shooting in the wrong direction (toward own goal or sideline)
+        console.log(`${player.team} ${player.role} #${player.id} shot in WRONG DIRECTION! Severe penalty!`);
+        rewardFactor += WRONG_DIRECTION_SHOT_PENALTY;
+      }
+      
+      // Store shot quality for future reference
+      if (!brain.lastShotQuality) {
+        brain.lastShotQuality = 0;
+      }
     }
-  }
-  
-  // NEW: Reward for successful passes to teammates
-  if (brain.lastAction === 'pass' && !isOwnGoal) {
-    const passDestinationIsTeammate = brain.lastPassOutcome?.success === true;
-    if (passDestinationIsTeammate) {
-      console.log(`${player.team} ${player.role} #${player.id} made a SUCCESSFUL PASS! Reward: ${SUCCESSFUL_PASS_REWARD}`);
-      rewardFactor += SUCCESSFUL_PASS_REWARD;
-    } else {
-      // Penalize giving the ball to an opponent
-      console.log(`${player.team} ${player.role} #${player.id} LOST POSSESSION! Penalty: ${BALL_LOSS_PENALTY}`);
-      rewardFactor += BALL_LOSS_PENALTY;
+  } else if (brain.lastAction !== 'shoot') {
+    // If player didn't shoot, reset shot quality tracking
+    brain.lastShotQuality = 0;
+    
+    // NEW: Reward for successful passes to teammates
+    if (brain.lastAction === 'pass' && !isOwnGoal) {
+      const passDestinationIsTeammate = brain.lastPassOutcome?.success === true;
+      if (passDestinationIsTeammate) {
+        console.log(`${player.team} ${player.role} #${player.id} made a SUCCESSFUL PASS! Reward: ${SUCCESSFUL_PASS_REWARD}`);
+        rewardFactor += SUCCESSFUL_PASS_REWARD;
+      } else {
+        // Penalize giving the ball to an opponent
+        console.log(`${player.team} ${player.role} #${player.id} LOST POSSESSION! Penalty: ${BALL_LOSS_PENALTY}`);
+        rewardFactor += BALL_LOSS_PENALTY;
+      }
     }
   }
 
@@ -321,7 +382,7 @@ export const updatePlayerBrain = (
 
   if (scored && !wrongDirection) {
     if (lastAction === 'shoot') {
-      rewardFactor *= 1.8;
+      rewardFactor *= 2.0; // Increased from 1.8 to emphasize shooting goals
     } else if (lastAction === 'pass' && player.team === 'red') {
       rewardFactor *= 1.5;
     }
@@ -512,7 +573,9 @@ export const initializePlayerBrainWithHistory = (brain: NeuralNet): NeuralNet =>
       experienceReplay: createExperienceReplay(),
       learningStage: 0.1,
       lastReward: 0,
-      cumulativeReward: 0
+      cumulativeReward: 0,
+      goalStreak: 0, // NEW: Track consecutive goals
+      lastShotQuality: 0 // NEW: Track shot quality
     };
   }
   

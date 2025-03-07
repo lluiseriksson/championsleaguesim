@@ -49,7 +49,7 @@ export const isStrategicMovement = (
   return cosAngle < 0.7;
 };
 
-// Calculate the quality of a position for receiving a pass or making a shot
+// Enhanced: Calculate the quality of a position for shooting
 export const calculateShotQuality = (
   playerPosition: Position,
   targetPosition: Position,
@@ -301,9 +301,12 @@ export const isGoodShotOpportunity = (
   const distanceToBall = calculateDistance(player.position, ballPosition);
   if (distanceToBall > 30) return false;
   
-  // Check distance to goal
+  // Enhanced: Better distance to goal assessment
   const distanceToGoal = calculateDistance(player.position, opponentGoal);
-  if (distanceToGoal > 200) return false;
+  
+  // Forwards can shoot from further away
+  const maxShootingDistance = player.role === 'forward' ? 250 : 180;
+  if (distanceToGoal > maxShootingDistance) return false;
   
   // Calculate shooting lane quality
   const shootingVector = {
@@ -314,7 +317,8 @@ export const isGoodShotOpportunity = (
   const shootingAngle = Math.atan2(shootingVector.y, shootingVector.x);
   let laneQuality = 1.0;
   
-  // Check for opponents blocking shot
+  // Check for opponents blocking shot - enhanced to better detect blockages
+  let blockingOpponents = 0;
   for (const opponent of opponents) {
     const toOpponentVector = {
       x: opponent.x - player.position.x,
@@ -322,16 +326,69 @@ export const isGoodShotOpportunity = (
     };
     
     const opponentDist = calculateDistance(player.position, opponent);
+    
+    // Only consider opponents between player and goal
     if (opponentDist > distanceToGoal) continue;
     
     const opponentAngle = Math.atan2(toOpponentVector.y, toOpponentVector.x);
     const angleDiff = Math.abs(shootingAngle - opponentAngle);
     
     // If opponent blocks shooting lane
-    if (angleDiff < Math.PI / 6 && opponentDist < distanceToGoal * 0.8) {
-      laneQuality *= (angleDiff / (Math.PI / 6));
+    if (angleDiff < Math.PI / 5 && opponentDist < distanceToGoal * 0.8) {
+      laneQuality *= (angleDiff / (Math.PI / 5));
+      blockingOpponents++;
     }
   }
   
-  return laneQuality > 0.6;
+  // More forgiving shooting decision for forwards - they should try more shots
+  const qualityThreshold = player.role === 'forward' ? 0.4 : 0.6;
+  
+  // Take more risks when close to goal
+  if (distanceToGoal < 100) {
+    return laneQuality > (qualityThreshold * 0.6);
+  }
+  
+  return laneQuality > qualityThreshold;
+};
+
+// NEW: Calculate goalkeeper effectiveness at intercepting shots
+export const calculateGoalkeeperInterceptEffectiveness = (
+  goalkeeperPosition: Position,
+  shooterPosition: Position,
+  shotVelocity: Position,
+  goalPosition: Position
+): number => {
+  // Calculate where the shot will cross the goal line
+  const goalLineX = goalPosition.x;
+  const shooterToGoalX = Math.abs(goalLineX - shooterPosition.x);
+  
+  // If shot isn't heading toward goal, goalkeeper can't intercept
+  if ((shooterPosition.x < goalLineX && shotVelocity.x <= 0) || 
+      (shooterPosition.x > goalLineX && shotVelocity.x >= 0)) {
+    return 0;
+  }
+  
+  // Calculate shot trajectory
+  const shotMagnitude = Math.sqrt(shotVelocity.x * shotVelocity.x + shotVelocity.y * shotVelocity.y);
+  if (shotMagnitude === 0) return 0;
+  
+  const normalizedShotVector = {
+    x: shotVelocity.x / shotMagnitude,
+    y: shotVelocity.y / shotMagnitude
+  };
+  
+  // Calculate where shot would intersect with goal line
+  const interceptY = shooterPosition.y + 
+    (normalizedShotVector.y / Math.abs(normalizedShotVector.x)) * shooterToGoalX;
+  
+  // Calculate distance from goalkeeper to interception point
+  const interceptPoint = { x: goalLineX, y: interceptY };
+  const distanceToIntercept = calculateDistance(goalkeeperPosition, interceptPoint);
+  
+  // Calculate effectiveness based on distance
+  // Closer goalkeeper is to interception point, more effective they are
+  const maxEffectiveDistance = 100; // Beyond this distance, keeper isn't effective
+  const effectiveness = Math.max(0, 1 - (distanceToIntercept / maxEffectiveDistance));
+  
+  return effectiveness;
 };
