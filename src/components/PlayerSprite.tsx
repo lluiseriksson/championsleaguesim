@@ -168,17 +168,24 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ player }) => {
       data-team={player.team}
       data-team-name={player.teamName}
     >
-      {/* Team design showing the three kit colors with primary color taking 75% */}
-      <div className="absolute inset-0 w-full h-full opacity-80">
-        {player.teamName && player.kitType && (
-          <>
-            {/* Modified design: primary color takes 75%, accent stripe 5%, secondary color 20% */}
-            <div className="absolute top-0 left-0 w-[75%] h-full" style={{backgroundColor: 'var(--primary-color)'}}></div>
-            <div className="absolute top-0 left-[75%] w-[5%] h-full" style={{backgroundColor: 'var(--accent-color)'}}></div>
-            <div className="absolute top-0 right-0 w-[20%] h-full" style={{backgroundColor: 'var(--secondary-color)'}}></div>
-          </>
-        )}
-      </div>
+      {/* Conditional rendering based on player role */}
+      {player.role === 'goalkeeper' ? (
+        // Goalkeeper: Simple, single-color design
+        <div className="absolute inset-0 w-full h-full opacity-90" 
+             style={{backgroundColor: 'var(--primary-color)'}}></div>
+      ) : (
+        // Field players: Team design showing the three kit colors with primary color taking 75%
+        <div className="absolute inset-0 w-full h-full opacity-80">
+          {player.teamName && player.kitType && (
+            <>
+              {/* Modified design: primary color takes 75%, accent stripe 5%, secondary color 20% */}
+              <div className="absolute top-0 left-0 w-[75%] h-full" style={{backgroundColor: 'var(--primary-color)'}}></div>
+              <div className="absolute top-0 left-[75%] w-[5%] h-full" style={{backgroundColor: 'var(--accent-color)'}}></div>
+              <div className="absolute top-0 right-0 w-[20%] h-full" style={{backgroundColor: 'var(--secondary-color)'}}></div>
+            </>
+          )}
+        </div>
+      )}
       
       {/* Small letter to indicate the role with improved contrast */}
       <span className={`relative z-10 text-[10px] ${getTextColor(player)} drop-shadow-sm`}>
