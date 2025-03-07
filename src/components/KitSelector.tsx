@@ -8,8 +8,10 @@ import {
 } from '../types/kits';
 import { 
   performFinalKitCheck, 
-  teamHasRedPrimaryColor, 
-  areTeamsInConflictList 
+  teamHasRedPrimaryColor,
+  teamHasWhitePrimaryColor,
+  areTeamsInConflictList,
+  checkWhiteKitConflict
 } from '../types/kits/kitConflictChecker';
 import { Button } from './ui/button';
 
@@ -59,6 +61,21 @@ const KitSelector: React.FC = () => {
       );
     }
     
+    // Check for white kit conflicts
+    const whiteKitConflict = checkWhiteKitConflict(homeTeam, awayTeam, kitResult.awayTeamKitType);
+    
+    if (whiteKitConflict) {
+      return (
+        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-800">
+          <p className="text-sm font-semibold mb-1">⚠️ White Kit Conflict!</p>
+          <p className="text-xs">
+            Both {homeTeam} and {awayTeam} are using white kits which would cause confusion.
+            In a real match, {awayTeam} would need to use their third kit.
+          </p>
+        </div>
+      );
+    }
+    
     // Check for red kit conflicts
     const homeIsRed = teamHasRedPrimaryColor(homeTeam, 'home');
     const awayIsRed = teamHasRedPrimaryColor(awayTeam, kitResult.awayTeamKitType);
@@ -99,6 +116,12 @@ const KitSelector: React.FC = () => {
     );
   };
 
+  // Test specific teams
+  const testSevillaVsCrvenaZvezda = () => {
+    setHomeTeam('Sevilla');
+    setAwayTeam('Crvena Zvezda');
+  };
+
   return (
     <div className="p-4 bg-white rounded-lg shadow-md">
       <h2 className="text-2xl font-bold mb-4">Kit Conflict Analyzer</h2>
@@ -129,6 +152,16 @@ const KitSelector: React.FC = () => {
             ))}
           </select>
         </div>
+      </div>
+      
+      <div className="mb-4">
+        <Button 
+          variant="outline" 
+          onClick={testSevillaVsCrvenaZvezda}
+          className="w-full"
+        >
+          Test Sevilla vs Crvena Zvezda Conflict
+        </Button>
       </div>
       
       {kitResult && (

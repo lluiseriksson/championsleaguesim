@@ -1,6 +1,6 @@
 
 import { teamKitColors } from './teamColorsData';
-import { categorizeColor, ColorCategory } from './colorUtils';
+import { categorizeColor, ColorCategory, areWhiteColorsTooSimilar } from './colorUtils';
 import { getTeamKitColor } from './kitAccessors';
 import { KitType } from './kitTypes';
 import { toast } from 'sonner';
@@ -15,7 +15,8 @@ const CONFLICTING_TEAM_PAIRS = [
   ['Real Madrid', 'Leeds United'],
   ['Liverpool', 'Manchester United'],
   ['Bayern Munich', 'FC København'],
-  ['FC København', 'AC Milan']
+  ['FC København', 'AC Milan'],
+  ['Sevilla', 'Crvena Zvezda'] // Added Sevilla and Crvena Zvezda to conflicting pairs
 ];
 
 // Function to check if a team uses red as primary color
@@ -26,6 +27,16 @@ export const teamHasRedPrimaryColor = (teamName: string, kitType: KitType): bool
   const colorCategory = categorizeColor(primaryColor);
   
   return colorCategory === ColorCategory.RED || colorCategory === ColorCategory.BURGUNDY;
+};
+
+// Function to check if a team uses white as primary color
+export const teamHasWhitePrimaryColor = (teamName: string, kitType: KitType): boolean => {
+  if (!teamKitColors[teamName]) return false;
+  
+  const primaryColor = getTeamKitColor(teamName, kitType);
+  const colorCategory = categorizeColor(primaryColor);
+  
+  return colorCategory === ColorCategory.WHITE;
 };
 
 // Function to check if teams are in the known conflicting pairs list
@@ -63,6 +74,34 @@ export const checkForestVsEspanyolConflict = (homeTeam: string, awayTeam: string
   return redConflict;
 };
 
+// Function to check for white kit conflicts between teams
+export const checkWhiteKitConflict = (
+  homeTeam: string,
+  awayTeam: string,
+  awayTeamKit: KitType
+): boolean => {
+  const homeColor = getTeamKitColor(homeTeam, 'home');
+  const awayColor = getTeamKitColor(awayTeam, awayTeamKit);
+  
+  // Check if both teams have white kits
+  const homeIsWhite = categorizeColor(homeColor) === ColorCategory.WHITE;
+  const awayIsWhite = categorizeColor(awayColor) === ColorCategory.WHITE;
+  
+  // Log white kit detection for debugging
+  if (homeIsWhite && awayIsWhite) {
+    console.warn(`⚠️ WHITE KIT CONFLICT DETECTED: ${homeTeam} vs ${awayTeam}`);
+    return true;
+  }
+  
+  // Additional check for similar white shades
+  if (areWhiteColorsTooSimilar(homeColor, awayColor)) {
+    console.warn(`⚠️ SIMILAR WHITE SHADES CONFLICT: ${homeTeam} vs ${awayTeam}`);
+    return true;
+  }
+  
+  return false;
+};
+
 // Function to perform a final kit conflict check between two teams
 export const performFinalKitCheck = (
   homeTeam: string, 
@@ -78,6 +117,14 @@ export const performFinalKitCheck = (
     console.warn(`⚠️ KNOWN KIT CONFLICT BETWEEN: ${homeTeam} vs ${awayTeam}`);
     toast.error(`Kit conflict between ${homeTeam} and ${awayTeam}!`, {
       description: "Teams have similar colored kits. Resolving automatically..."
+    });
+    return false;
+  }
+  
+  // Check for white kit conflicts (Sevilla vs Crvena Zvezda)
+  if (checkWhiteKitConflict(homeTeam, awayTeam, awayTeamKit)) {
+    toast.error(`White kit conflict detected!`, {
+      description: `Both ${homeTeam} and ${awayTeam} have white kits. Resolving automatically...`
     });
     return false;
   }
@@ -129,6 +176,15 @@ export const resolveKitConflict = (homeTeam: string, awayTeam: string): KitType 
     console.log(`Forcing third kit for ${awayTeam} against ${homeTeam} due to known conflict`);
     toast.success(`Conflict resolved`, {
       description: `${awayTeam} will use their third kit against ${homeTeam}`
+    });
+    return 'third';
+  }
+  
+  // Check for white kit conflicts
+  if (teamHasWhitePrimaryColor(homeTeam, 'home') && teamHasWhitePrimaryColor(awayTeam, 'away')) {
+    console.log(`White kit conflict detected between ${homeTeam} and ${awayTeam}, using third kit`);
+    toast.success(`White kit conflict resolved`, {
+      description: `${awayTeam} will use their third kit to avoid white kit conflict`
     });
     return 'third';
   }
