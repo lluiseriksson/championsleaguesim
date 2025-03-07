@@ -1,6 +1,5 @@
-
-import { Player, Ball, NeuralInput, TeamContext, NeuralNet, Position } from '../types/football';
-import { calculateDistance, normalizePosition } from './neuralHelpers';
+import { Player, Ball, NeuralInput, TeamContext, NeuralNet, Position, GOAL_HEIGHT } from '../types/football';
+import { calculateDistance } from './neuralHelpers';
 
 // Maximum number of actions to track in history
 const MAX_ACTION_HISTORY = 20;

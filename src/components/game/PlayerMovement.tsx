@@ -498,12 +498,14 @@ const usePlayerMovement = ({
               };
               
               if (player.team === 'red') {
-                newPosition.x = Math.max(12, Math.min(75, newPosition.x));
+                newPosition.x = Math.max(25, Math.min(55, newPosition.x));
               } else {
-                newPosition.x = Math.max(PITCH_WIDTH - 75, Math.min(PITCH_WIDTH - 12, newPosition.x));
+                newPosition.x = Math.max(PITCH_WIDTH - 55, Math.min(PITCH_WIDTH - 25, newPosition.x));
               }
               
-              newPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, newPosition.y));
+              const goalCenterY = PITCH_HEIGHT / 2;
+              const maxYDistance = GOAL_HEIGHT / 2 + 20;
+              newPosition.y = Math.max(goalCenterY - maxYDistance, Math.min(goalCenterY + maxYDistance, newPosition.y));
               
               const completeBrain = ensureCompleteBrain(player.brain);
               
@@ -523,19 +525,20 @@ const usePlayerMovement = ({
             }
             
             const movement = moveGoalkeeper(player, ball, eloGoalkeeperMultiplier);
-            const newPosition = {
+            let newPosition = {
               x: player.position.x + movement.x,
               y: player.position.y + movement.y
             };
             
-            newPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, newPosition.x));
-            newPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, newPosition.y));
-            
             if (player.team === 'red') {
-              newPosition.x = Math.max(12, Math.min(75, newPosition.x));
+              newPosition.x = Math.max(25, Math.min(55, newPosition.x));
             } else {
-              newPosition.x = Math.max(PITCH_WIDTH - 75, Math.min(PITCH_WIDTH - 12, newPosition.x));
+              newPosition.x = Math.max(PITCH_WIDTH - 55, Math.min(PITCH_WIDTH - 25, newPosition.x));
             }
+            
+            const goalCenterY = PITCH_HEIGHT / 2;
+            const maxYDistance = GOAL_HEIGHT / 2 + 20;
+            newPosition.y = Math.max(goalCenterY - maxYDistance, Math.min(goalCenterY + maxYDistance, newPosition.y));
             
             const completeBrain = ensureCompleteBrain(player.brain);
             

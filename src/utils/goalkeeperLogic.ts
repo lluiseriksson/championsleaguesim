@@ -114,6 +114,8 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
   // Fallback to improved deterministic logic
   // Determine which side the goalkeeper is defending
   const isLeftSide = player.team === 'red';
+  
+  // FIXED: Explicitly set goal line position and ensure keeper stays on it
   const goalLine = isLeftSide ? 30 : PITCH_WIDTH - 30;
   
   // Calculate distance to ball
@@ -135,40 +137,39 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
   // Calculate horizontal movement - RESTRICT movement freedom
   let moveX = 0;
   
-  // FURTHER REDUCED: Reduce the range goalkeeper will move forward from goal
-  const shouldMoveForward = 
-    (isLeftSide && ball.position.x < 80 && ballMovingTowardGoal) || // Reduced from 120 to 80
-    (!isLeftSide && ball.position.x > PITCH_WIDTH - 80 && ballMovingTowardGoal); // Reduced from 120 to 80
-  
-  if (shouldMoveForward) {
-    // FURTHER REDUCED: Maximum distance from goal line keeper will advance
-    const maxAdvance = isLeftSide ? 60 : PITCH_WIDTH - 60; // Reduced from 80 to 60
+  // FIXED: Greatly reduce goalkeeper forward movement and ensure they return to goal line
+  const ballIsVeryClose = isLeftSide 
+    ? ball.position.x < 60 && distanceToBall < 60
+    : ball.position.x > PITCH_WIDTH - 60 && distanceToBall < 60;
     
-    // Add minimal randomness to max advance distance - reduced range
-    const randomizedMaxAdvance = maxAdvance + (Math.random() * 10 - 5); // Reduced from ±15 to ±5
+  // Only allow minimal forward movement when ball is extremely close
+  if (ballIsVeryClose && ballMovingTowardGoal) {
+    // Maximum forward movement is now very limited
+    const maxAdvance = isLeftSide ? 40 : PITCH_WIDTH - 40;
     
+    // Calculate target X position (much closer to goal line)
     const targetX = isLeftSide 
-      ? Math.min(ball.position.x - 25, randomizedMaxAdvance)
-      : Math.max(ball.position.x + 25, randomizedMaxAdvance);
+      ? Math.min(ball.position.x - 20, maxAdvance)
+      : Math.max(ball.position.x + 20, maxAdvance);
     
-    // Move faster when ball is coming directly at goal but add minimal randomness
-    const directShot = Math.abs(ball.position.y - PITCH_HEIGHT/2) < GOAL_HEIGHT/2;
-    const randomFactor = 0.9 + Math.random() * 0.2; // Reduced randomness from 0.4 to 0.2
+    // Check if goalkeeper is already ahead of the target position
+    const isAheadOfTarget = (isLeftSide && player.position.x > targetX) || 
+                         (!isLeftSide && player.position.x < targetX);
     
-    // Further reduced speed multipliers for more predictable positioning
-    const baseSpeedMultiplier = directShot ? 0.5 * randomFactor : 0.6 * randomFactor; // Reduced from 0.6/0.8
-    const adjustedSpeedMultiplier = baseSpeedMultiplier * eloSpeedMultiplier;
-    
-    moveX = Math.sign(targetX - player.position.x) * adjustedSpeedMultiplier;
+    if (isAheadOfTarget) {
+      // If ahead of target, move back to goal line quickly
+      moveX = isLeftSide ? -1.0 : 1.0;
+    } else {
+      // Move forward cautiously
+      moveX = Math.sign(targetX - player.position.x) * 0.4 * eloSpeedMultiplier;
+    }
   } else {
-    // Return to goal line with minimal random positioning
-    const randomGoalLineOffset = (Math.random() * 6 - 3); // Reduced from ±10 to ±3
-    const targetGoalLine = goalLine + randomGoalLineOffset;
+    // FIXED: Return to goal line with higher priority
+    const distanceToGoalLine = Math.abs(player.position.x - goalLine);
+    const goalLineReturnSpeed = Math.min(distanceToGoalLine * 0.2, 2.0);
     
-    const distanceToGoalLine = Math.abs(player.position.x - targetGoalLine);
-    
-    // Increase speed for returning to position to ensure goalkeepers stay on their line
-    moveX = Math.sign(targetGoalLine - player.position.x) * Math.min(distanceToGoalLine * 0.15, 1.8) * eloSpeedMultiplier;
+    // Faster return to goal line for better positioning
+    moveX = Math.sign(goalLine - player.position.x) * goalLineReturnSpeed * eloSpeedMultiplier;
   }
   
   // Calculate vertical movement to track the ball or expected ball position
@@ -181,7 +182,6 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
   const targetY = isBallMovingFast ? expectedBallY + predictionError : ball.position.y;
   
   // Further eliminated random Y offset entirely
-  const randomYOffset = 0; 
   const limitedTargetY = Math.max(
     PITCH_HEIGHT/2 - GOAL_HEIGHT/2 - 10, // Reduced padding from 20 to 10
     Math.min(PITCH_HEIGHT/2 + GOAL_HEIGHT/2 + 10, targetY) // Reduced padding from 20 to 10
@@ -215,6 +215,14 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
     moveX *= 0.7; // Increased from 0.5 to 0.7 for less dramatic hesitation
     moveY *= 0.7; // Increased from 0.5 to 0.7
     console.log(`GK ${player.team}: HESITATION`);
+  }
+  
+  // FIXED: Force goalkeeper to return to goal line if too far away
+  const maxDistanceFromGoalLine = 45;
+  if (Math.abs(player.position.x - goalLine) > maxDistanceFromGoalLine) {
+    // Override movement to return to goal line with urgency
+    moveX = Math.sign(goalLine - player.position.x) * 2.5 * eloSpeedMultiplier;
+    console.log(`GK ${player.team}: EMERGENCY RETURN TO GOAL LINE`);
   }
   
   console.log(`GK ${player.team}: movement (${moveX.toFixed(1)},${moveY.toFixed(1)}), ball dist: ${distanceToBall.toFixed(0)}, ELO mult: ${eloSpeedMultiplier.toFixed(2)}`);
