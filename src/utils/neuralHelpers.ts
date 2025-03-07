@@ -108,6 +108,45 @@ export const calculateDistance = (pos1: Position, pos2: Position): number => {
   return Math.sqrt(dx * dx + dy * dy);
 };
 
+// Add the missing calculateAngleAndDistance function
+export const calculateAngleAndDistance = (fromPos: Position, toPos: Position): { angle: number, distance: number } => {
+  const dx = toPos.x - fromPos.x;
+  const dy = toPos.y - fromPos.y;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+  const angle = Math.atan2(dy, dx) / Math.PI; // Normalized to -1 to 1
+  return { angle, distance };
+};
+
+// Add the missing normalizePosition function
+export const normalizePosition = (position: Position, team: string): Position => {
+  // Normalize position based on team perspective (red plays left to right, blue right to left)
+  if (team === 'blue') {
+    return {
+      x: PITCH_WIDTH - position.x,
+      y: PITCH_HEIGHT - position.y
+    };
+  }
+  return position;
+};
+
+// Add the missing getNearestEntity function
+export const getNearestEntity = (position: Position, entities: Position[]): { entity: Position, distance: number } | null => {
+  if (!entities || entities.length === 0) return null;
+  
+  let nearest = entities[0];
+  let minDistance = calculateDistance(position, nearest);
+  
+  for (let i = 1; i < entities.length; i++) {
+    const distance = calculateDistance(position, entities[i]);
+    if (distance < minDistance) {
+      minDistance = distance;
+      nearest = entities[i];
+    }
+  }
+  
+  return { entity: nearest, distance: minDistance };
+};
+
 // Calculate angle between two positions (-1 to 1, where 0 is straight ahead)
 export const calculateAngle = (fromPos: Position, toPos: Position): number => {
   const dx = toPos.x - fromPos.x;
@@ -274,8 +313,8 @@ export const createNeuralInput = (
     isInFormationPosition: gameContext.isInPosition ? 1 : 0,
     teammateDensity: gameContext.teammateDensity || 0.5,
     opponentDensity: gameContext.opponentDensity || 0.5,
-    shootingAngle: calculateShotQuality(player.position, opponentGoal),
-    shootingQuality: calculateShotQuality(player.position, opponentGoal),
+    shootingAngle: calculateShotQuality(player.position, opponentGoal, teammates, opponents),
+    shootingQuality: calculateShotQuality(player.position, opponentGoal, teammates, opponents),
     
     // Add tactical metrics
     zoneControl: gameContext.zoneControl || 0.5,
@@ -293,7 +332,7 @@ export const createNeuralInput = (
     counterAttackPotential: gameContext.counterAttackPotential || 0.5,
     pressureResistance: 1 - calculatePressureIndex(player.position, opponents),
     recoveryPosition: gameContext.recoveryPosition || 0.5,
-    transitionSpeed: gameContext.transitionSpeed || 0.5, // Fixed comma here
+    transitionSpeed: gameContext.transitionSpeed || 0.5,
     
     // Add the required player identity parameters
     playerId: gameContext.playerId !== undefined ? gameContext.playerId / 100 : 0.5,
@@ -307,38 +346,36 @@ export const createNeuralInput = (
 
 // Create a SituationContext from the current game state
 export const createSituationContext = (
-  player: any,
-  ballPos: Position,
-  opponentGoalPos: Position,
-  ownGoalPos: Position,
-  hasTeamPossession: boolean,
-  opponents: Position[]
+  input: NeuralInput,
+  context: TeamContext,
+  playerPosition: Position,
+  ballPosition: Position
 ): SituationContext => {
-  const distanceToBall = calculateDistance(player.position, ballPos) / 
+  const distanceToBall = calculateDistance(playerPosition, ballPosition) / 
     Math.sqrt(PITCH_WIDTH * PITCH_WIDTH + PITCH_HEIGHT * PITCH_HEIGHT);
   
-  const distanceToOwnGoal = calculateDistance(player.position, ownGoalPos) / 
+  const distanceToOwnGoal = calculateDistance(playerPosition, context.ownGoal) / 
     Math.sqrt(PITCH_WIDTH * PITCH_WIDTH + PITCH_HEIGHT * PITCH_HEIGHT);
   
-  const distanceToOpponentGoal = calculateDistance(player.position, opponentGoalPos) / 
+  const distanceToOpponentGoal = calculateDistance(playerPosition, context.opponentGoal) / 
     Math.sqrt(PITCH_WIDTH * PITCH_WIDTH + PITCH_HEIGHT * PITCH_HEIGHT);
   
   // Determine which third of the pitch the player is in
-  const normalizedX = player.position.x / PITCH_WIDTH;
-  const isInDefensiveThird = player.team === 'red' ? normalizedX < 0.33 : normalizedX > 0.67;
+  const normalizedX = playerPosition.x / PITCH_WIDTH;
+  const isInDefensiveThird = (input.playerTeamId < 0.5) ? normalizedX < 0.33 : normalizedX > 0.67;
   const isInMiddleThird = normalizedX >= 0.33 && normalizedX <= 0.67;
-  const isInAttackingThird = player.team === 'red' ? normalizedX > 0.67 : normalizedX < 0.33;
+  const isInAttackingThird = (input.playerTeamId < 0.5) ? normalizedX > 0.67 : normalizedX < 0.33;
   
   return {
-    isDefensiveThird,
-    isMiddleThird,
-    isAttackingThird,
-    hasTeamPossession,
+    isDefensiveThird: isInDefensiveThird,
+    isMiddleThird: isInMiddleThird,
+    isAttackingThird: isInAttackingThird,
+    hasTeamPossession: false, // This would need to be determined elsewhere
     isSetPiece: false, // This would need to be determined elsewhere
     isTransitioning: false, // This would need to be determined elsewhere
     distanceToBall,
     distanceToOwnGoal,
     distanceToOpponentGoal,
-    defensivePressure: calculatePressureIndex(player.position, opponents)
+    defensivePressure: calculatePressureIndex(playerPosition, context.opponents)
   };
 };

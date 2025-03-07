@@ -1,3 +1,4 @@
+
 import { NeuralNet, Player, TeamContext, Ball, Position } from '../types/football';
 import { calculateDistance } from './neuralCore';
 import { isPassingLaneOpen } from './movementConstraints';
@@ -9,7 +10,7 @@ export { calculateNetworkInputs } from './neuralInputs';
 export { updatePlayerBrain } from './brainTraining';
 export { 
   normalizePosition, 
-  calculateAngleAndDistance, 
+  calculateAngleAndDistance,
   getNearestEntity, 
   createNeuralInput, 
   isNetworkValid 
