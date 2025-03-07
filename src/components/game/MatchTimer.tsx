@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 
 interface MatchTimerProps {
@@ -13,8 +14,11 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
 }) => {
   // Instead of counting down, we'll track elapsed time
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [isRecovering, setIsRecovering] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const lastTickTimeRef = useRef<number>(Date.now());
+  const prevElapsedTimeRef = useRef<number>(0);
+  const stuckDetectionRef = useRef<NodeJS.Timeout | null>(null);
   const timeEndCalledRef = useRef(false);
   const goldenGoalStartTimeRef = useRef(0);
   const isActiveRef = useRef(true);
@@ -41,24 +45,65 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
     
     setElapsedTime(prev => {
       const newTime = prev + increment;
+      prevElapsedTimeRef.current = newTime;
       return newTime;
     });
+  };
+  
+  // Detect if timer is stuck and attempt to recover
+  const detectStuckTimer = () => {
+    const currentElapsed = prevElapsedTimeRef.current;
+    
+    // Check if timer updates have stalled (no change in 3 seconds)
+    const now = Date.now();
+    const timeSinceLastTick = (now - lastTickTimeRef.current) / 1000;
+    
+    if (timeSinceLastTick > 3) {
+      console.warn(`Timer appears stuck! Last update was ${timeSinceLastTick.toFixed(1)}s ago`);
+      setIsRecovering(true);
+      
+      // Force timer cleanup and restart
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      
+      // Adjust lastTickTime to avoid jumps
+      lastTickTimeRef.current = Date.now() - 1000; // simulate 1 second ago
+      
+      // Restart timer with a new interval
+      timerRef.current = setInterval(tick, 250);
+      
+      // Recovery complete
+      setTimeout(() => {
+        setIsRecovering(false);
+        console.log('Timer recovery attempt complete');
+      }, 1000);
+    }
   };
   
   // Reset timer when component mounts or initialTime changes
   useEffect(() => {
     console.log('Setting up chronometer with total time:', initialTime);
     setElapsedTime(0);
+    prevElapsedTimeRef.current = 0;
     lastTickTimeRef.current = Date.now();
     timeEndCalledRef.current = false;
     goldenGoalStartTimeRef.current = 0;
     isActiveRef.current = true;
+    
+    // Set up stuck detection system (independent from main timer)
+    stuckDetectionRef.current = setInterval(detectStuckTimer, 3000);
     
     return () => {
       isActiveRef.current = false;
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
+      }
+      if (stuckDetectionRef.current) {
+        clearInterval(stuckDetectionRef.current);
+        stuckDetectionRef.current = null;
       }
     };
   }, [initialTime]);
@@ -94,7 +139,7 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
     };
   }, []);
 
-  // Main timer effect - set up more reliable timer with requestAnimationFrame
+  // Main timer effect - set up more reliable timer with interval
   useEffect(() => {
     // Clear any existing interval
     if (timerRef.current) {
@@ -142,8 +187,8 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
   if (goldenGoal) {
     const extraTimeElapsed = elapsedTime - goldenGoalStartTimeRef.current;
     const extraTimeScaled = Math.floor((extraTimeElapsed / initialTime) * 90);
-    const extraMinutes = Math.floor(extraTimeScaled / 60);
-    const extraSeconds = extraTimeScaled % 60;
+    const extraMinutes = Math.floor(extraTimeScaled);
+    const extraSeconds = Math.floor((extraTimeScaled - extraMinutes) * 60);
     
     formattedTime = `90+${extraMinutes}:${extraSeconds < 10 ? '0' : ''}${extraSeconds}`;
   } else {
@@ -151,7 +196,7 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
   }
 
   return (
-    <div className="match-timer font-mono text-2xl font-bold bg-black bg-opacity-80 text-white px-6 py-3 rounded-md shadow-lg absolute top-[-70px] left-1/2 transform -translate-x-1/2 z-30">
+    <div className={`match-timer font-mono text-2xl font-bold bg-black bg-opacity-80 text-white px-6 py-3 rounded-md shadow-lg absolute top-[-70px] left-1/2 transform -translate-x-1/2 z-30 ${isRecovering ? 'border-2 border-yellow-400' : ''}`}>
       {goldenGoal ? (
         <span className="text-amber-400 animate-pulse">GOLDEN GOAL! {formattedTime}</span>
       ) : (
