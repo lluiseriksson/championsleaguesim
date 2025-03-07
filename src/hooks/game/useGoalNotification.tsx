@@ -1,6 +1,7 @@
 import React from 'react';
 import { toast } from 'sonner';
 import { Ball, PITCH_WIDTH, PITCH_HEIGHT } from '../../types/football';
+import { applyInitialKick } from './useBallInitialization';
 
 interface GoalNotificationProps {
   tournamentMode?: boolean;
@@ -84,16 +85,12 @@ export const useGoalNotification = ({
     
     // If celebration time has passed, reset the ball to center
     if (celebrationElapsed >= celebrationDuration) {
-      console.log("Goal celebration complete, resetting ball to center");
+      console.log("Goal celebration complete, resetting ball to center with strong kick");
       
-      // Reset ball position to center after goal with a random kick direction
+      // Reset ball position to center after goal with a stronger kick
       setBall({
         position: { x: PITCH_WIDTH/2, y: PITCH_HEIGHT/2 },
-        velocity: { 
-          // Random direction with stronger initial kick
-          x: (Math.random() >= 0.5 ? 1 : -1) * (5 + Math.random() * 5),
-          y: (Math.random() >= 0.5 ? 1 : -1) * (5 + Math.random() * 5)
-        },
+        velocity: applyInitialKick(), // Use our new helper for stronger kicks
         // Reset bounce detection
         bounceDetection: {
           consecutiveBounces: 0,
