@@ -78,6 +78,7 @@ interface PlayerMovementProps {
   gameTime?: number;
   score?: { red: number, blue: number };
   isLowPerformance?: boolean;
+  eloAdvantageMultiplier?: number;
 }
 
 const usePlayerMovement = ({ 
@@ -87,7 +88,8 @@ const usePlayerMovement = ({
   gameReady,
   gameTime = 0,
   score = { red: 0, blue: 0 },
-  isLowPerformance = false
+  isLowPerformance = false,
+  eloAdvantageMultiplier = 1.0
 }: PlayerMovementProps) => {
   const [formations, setFormations] = useState({ redFormation: [], blueFormation: [] });
   const [possession, setPossession] = useState({ team: null, player: null, duration: 0 });
@@ -330,6 +332,20 @@ const usePlayerMovement = ({
           moveX = -moveX;
         }
         
+        const teamElo = player.teamElo || 2000;
+        const baseElo = 2000;
+        
+        const eloSkillMultiplier = teamElo > baseElo 
+          ? 1.0 + Math.min(0.4, (teamElo - baseElo) / 2000 * eloAdvantageMultiplier)
+          : Math.max(0.7, 1.0 - (baseElo - teamElo) / 2000 * eloAdvantageMultiplier);
+        
+        moveX = moveX * eloSkillMultiplier;
+        moveY = moveY * eloSkillMultiplier;
+        
+        const decisionQuality = calculateExecutionPrecision(player.teamElo);
+        moveX = applyExecutionNoise(moveX, decisionQuality);
+        moveY = applyExecutionNoise(moveY, decisionQuality);
+        
         const result = { x: moveX, y: moveY };
         
         neuralNetworkCacheRef.current.set(cacheKey, {
@@ -393,7 +409,13 @@ const usePlayerMovement = ({
       const proposedPositions = currentPlayers.map(player => {
         try {
           if (player.role === 'goalkeeper') {
-            const movement = moveGoalkeeper(player, ball);
+            const teamElo = player.teamElo || 2000;
+            const baseElo = 2000;
+            const eloGoalkeeperMultiplier = teamElo > baseElo 
+              ? 1.0 + Math.min(0.3, (teamElo - baseElo) / 2000 * eloAdvantageMultiplier)
+              : Math.max(0.8, 1.0 - (baseElo - teamElo) / 2000 * eloAdvantageMultiplier);
+            
+            const movement = moveGoalkeeper(player, ball, eloGoalkeeperMultiplier);
             const newPosition = {
               x: player.position.x + movement.x,
               y: player.position.y + movement.y
@@ -422,16 +444,21 @@ const usePlayerMovement = ({
             };
           }
           
+          const teamElo = player.teamElo || 2000;
+          const baseElo = 2000;
+          const eloNeuralNetworkBonus = Math.min(0.2, Math.max(0, (teamElo - baseElo) / 2000) * 0.4);
+          
           const baseThreshold = isLowPerformance ? 0.7 : 0.6;
-          const neuralNetworkThreshold = player.role === 'defender' ? baseThreshold - 0.05 : baseThreshold;
+          const neuralNetworkThreshold = Math.max(0.4, player.role === 'defender' ? baseThreshold - 0.05 : baseThreshold - eloNeuralNetworkBonus);
           
           const useNeuralNetwork = Math.random() > neuralNetworkThreshold;
           const neuralMovement = useNeuralNetwork ? useNeuralNetworkForPlayer(player, ball) : null;
           
           if (neuralMovement) {
+            const executionPrecision = calculateExecutionPrecision(player.teamElo);
             let scaledMovement = {
-              x: neuralMovement.x * 0.3,
-              y: neuralMovement.y * 0.3
+              x: neuralMovement.x * 0.3 * executionPrecision,
+              y: neuralMovement.y * 0.3 * executionPrecision
             };
             
             let newPosition = {
@@ -586,7 +613,7 @@ const usePlayerMovement = ({
       
       return processedPlayers;
     });
-  }, [ball, gameReady, setPlayers, gameTime, score, isLowPerformance]);
+  }, [ball, gameReady, setPlayers, gameTime, score, isLowPerformance, eloAdvantageMultiplier]);
 
   return { updatePlayerPositions, formations, possession };
 };
@@ -594,9 +621,15 @@ const usePlayerMovement = ({
 const calculateExecutionPrecision = (teamElo?: number): number => {
   if (!teamElo) return 1.0;
   
+  const baseElo = 2000;
   const basePrecision = 0.7;
-  const eloPrecisionBonus = Math.max(0, (teamElo - 1500) / 100) * 0.02;
-  const precision = Math.min(0.98, basePrecision + eloPrecisionBonus);
+  
+  const eloPrecisionBonus = Math.max(0, (teamElo - baseElo) / 100) * 0.03;
+  const eloPrecisionPenalty = Math.max(0, (baseElo - teamElo) / 100) * 0.025;
+  
+  const precision = teamElo >= baseElo
+    ? Math.min(0.98, basePrecision + eloPrecisionBonus)
+    : Math.max(0.5, basePrecision - eloPrecisionPenalty);
   
   return precision;
 };

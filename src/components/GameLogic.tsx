@@ -33,7 +33,25 @@ const GameLogic: React.FC<GameLogicProps> = ({
   // Reference to track the last player who touched the ball
   const lastPlayerTouchRef = React.useRef<Player | null>(null);
   
+  // Calculate team ELOs for advantage calculations
+  const redTeamElo = React.useMemo(() => {
+    const redPlayers = players.filter(p => p.team === 'red');
+    return redPlayers.length > 0 && redPlayers[0].teamElo ? redPlayers[0].teamElo : 2000;
+  }, [players]);
+  
+  const blueTeamElo = React.useMemo(() => {
+    const bluePlayers = players.filter(p => p.team === 'blue');
+    return bluePlayers.length > 0 && bluePlayers[0].teamElo ? bluePlayers[0].teamElo : 2000;
+  }, [players]);
+  
+  const eloAdvantageMultiplier = React.useMemo(() => {
+    const eloDiff = Math.abs(redTeamElo - blueTeamElo);
+    // Stronger multiplier effect - previously this was a much smaller number
+    return Math.min(1.5, 1 + (eloDiff / 1000));
+  }, [redTeamElo, blueTeamElo]);
+  
   console.log(`GameLogic rendered with players: ${players.length}, tournamentMode: ${tournamentMode}`);
+  console.log(`Team ELOs - Red: ${redTeamElo}, Blue: ${blueTeamElo}, Advantage Multiplier: ${eloAdvantageMultiplier.toFixed(2)}`);
 
   // Get team context functions
   const { getTeamContext } = useTeamContext({ players });
@@ -46,7 +64,8 @@ const GameLogic: React.FC<GameLogicProps> = ({
     getTeamContext, 
     ball,
     lastPlayerTouchRef,
-    tournamentMode
+    tournamentMode,
+    teamElos: { red: redTeamElo, blue: blueTeamElo }
   });
 
   // Model synchronization system with tournament mode flag and performance monitoring
@@ -59,7 +78,8 @@ const GameLogic: React.FC<GameLogicProps> = ({
   } = useModelSyncSystem({
     players,
     setPlayers,
-    tournamentMode
+    tournamentMode,
+    eloAdvantageMultiplier
   });
 
   // Goal notification system
@@ -74,7 +94,8 @@ const GameLogic: React.FC<GameLogicProps> = ({
     ball,
     score,
     tournamentMode,
-    isLowPerformance
+    isLowPerformance,
+    eloAdvantageMultiplier
   });
 
   // Goal notification hook
@@ -105,7 +126,8 @@ const GameLogic: React.FC<GameLogicProps> = ({
       lastPlayerTouchRef.current = player;
       console.log(`Ball touched by ${player.team} ${player.role} #${player.id}`);
     },
-    tournamentMode
+    tournamentMode,
+    eloAdvantageMultiplier
   });
 
   // Run game loop with actual functions and performance monitoring
@@ -120,7 +142,8 @@ const GameLogic: React.FC<GameLogicProps> = ({
     ball,
     score,
     tournamentMode,
-    isLowPerformance
+    isLowPerformance,
+    eloAdvantageMultiplier
   });
 
   // Save models on component unmount

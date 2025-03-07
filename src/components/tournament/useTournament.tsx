@@ -59,7 +59,6 @@ export const useTournament = (embeddedMode = false) => {
           
           setCurrentRound(prevRound => prevRound + 1);
           
-          // Add a pause between rounds to let memory cleanup happen and prevent crashes
           setSimulationPaused(true);
           timeoutId = setTimeout(() => {
             setSimulationPaused(false);
@@ -76,9 +75,8 @@ export const useTournament = (embeddedMode = false) => {
       }
     };
     
-    // Add increasing delays based on how many matches have been played to prevent overload
     const baseDelay = 800;
-    const additionalDelay = Math.min(1500, matchesPlayed * 30); // Increases delay as tournament progresses
+    const additionalDelay = Math.min(1500, matchesPlayed * 30);
     
     timeoutId = setTimeout(simulateNextMatch, baseDelay + additionalDelay);
     
@@ -88,13 +86,19 @@ export const useTournament = (embeddedMode = false) => {
   }, [autoSimulation, playingMatch, currentRound, matches, simulationPaused, matchesPlayed]);
 
   const initializeTournament = useCallback(() => {
-    const tournamentTeams: TournamentTeam[] = Object.entries(teamKitColors).map(([name, colors], index) => ({
-      id: index + 1,
-      name,
-      seed: index + 1,
-      eloRating: 2000 - index * 4,
-      kitColors: colors
-    })).slice(0, 128);
+    const tournamentTeams: TournamentTeam[] = Object.entries(teamKitColors).map(([name, colors], index) => {
+      const baseElo = 2000;
+      const indexFactor = index * 8;
+      const randomVariation = Math.floor(Math.random() * 100) - 50;
+      
+      return {
+        id: index + 1,
+        name,
+        seed: index + 1,
+        eloRating: baseElo - indexFactor + randomVariation,
+        kitColors: colors
+      };
+    }).slice(0, 128);
 
     setTeams(tournamentTeams);
 
@@ -115,21 +119,18 @@ export const useTournament = (embeddedMode = false) => {
       }
     }
 
-    // Randomly shuffle the home teams (strongest 64 teams)
     const homeTeams = [...tournamentTeams.slice(0, 64)];
     for (let i = homeTeams.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [homeTeams[i], homeTeams[j]] = [homeTeams[j], homeTeams[i]];
     }
 
-    // Also randomly shuffle the away teams
     const awayTeams = [...tournamentTeams.slice(64)];
     for (let i = awayTeams.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [awayTeams[i], awayTeams[j]] = [awayTeams[j], awayTeams[i]];
     }
 
-    // Assign teams to first-round matches using the shuffled arrays
     for (let i = 0; i < 64; i++) {
       const match = initialMatches.find(m => m.round === 1 && m.position === i + 1);
       if (match) {
@@ -175,22 +176,32 @@ export const useTournament = (embeddedMode = false) => {
     
     if (!currentMatch || !currentMatch.teamA || !currentMatch.teamB) return;
     
-    const teamAStrength = currentMatch.teamA.eloRating + Math.random() * 100;
-    const teamBStrength = currentMatch.teamB.eloRating + Math.random() * 100;
+    const eloImpactFactor = 1.5;
+    const randomFactor = 75;
+    
+    const teamAStrength = currentMatch.teamA.eloRating * eloImpactFactor + Math.random() * randomFactor;
+    const teamBStrength = currentMatch.teamB.eloRating * eloImpactFactor + Math.random() * randomFactor;
     
     const winner = teamAStrength > teamBStrength ? currentMatch.teamA : currentMatch.teamB;
     currentMatch.winner = winner;
     currentMatch.played = true;
     
     const strengthDiff = Math.abs(teamAStrength - teamBStrength);
-    const goalDiff = Math.min(Math.floor(strengthDiff / 30), 5);
+    const goalDiff = Math.min(Math.floor(strengthDiff / 20), 6);
     const winnerGoals = 1 + Math.floor(Math.random() * 3) + Math.floor(goalDiff / 2);
     const loserGoals = Math.max(0, winnerGoals - goalDiff);
     
-    currentMatch.score = {
-      teamA: winnerGoals,
-      teamB: loserGoals
-    };
+    if (teamAStrength > teamBStrength) {
+      currentMatch.score = {
+        teamA: winnerGoals,
+        teamB: loserGoals
+      };
+    } else {
+      currentMatch.score = {
+        teamA: loserGoals,
+        teamB: winnerGoals
+      };
+    }
     
     if (currentMatch.round < 7) {
       const nextRoundPosition = Math.ceil(currentMatch.position / 2);
@@ -254,11 +265,9 @@ export const useTournament = (embeddedMode = false) => {
     setPlayingMatch(false);
     setMatchesPlayed(prev => prev + 1);
     
-    // Force a small delay after each match to prevent memory issues
     if (autoSimulation) {
       setSimulationPaused(true);
       
-      // Delay increases with more matches played
       const pauseTime = Math.min(2000, 1000 + matchesPlayed * 20);
       
       setTimeout(() => {
