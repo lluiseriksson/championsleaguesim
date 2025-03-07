@@ -15,6 +15,7 @@ import {
 } from '../../utils/neuralCore';
 import { validatePlayerBrain, isNetworkValid } from '../../utils/neural/networkValidator';
 import { initializePlayerBrainWithHistory } from '../../utils/neuralNetwork';
+import { forcePositionWithinRadiusBounds } from '../../utils/movementConstraints';
 
 // Shared brain for all field players
 let sharedFieldPlayerBrain: NeuralNet | null = null;
@@ -508,9 +509,16 @@ const usePlayerMovement = ({
             
             const completeBrain = ensureCompleteBrain(player.brain);
             
+            const finalPosition = forcePositionWithinRadiusBounds(
+              newPosition,
+              player.targetPosition,
+              'goalkeeper',
+              true
+            );
+            
             return {
               ...player,
-              proposedPosition: newPosition,
+              proposedPosition: finalPosition,
               movement,
               brain: {
                 ...completeBrain,
@@ -552,12 +560,24 @@ const usePlayerMovement = ({
             newPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, newPosition.x));
             newPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, newPosition.y));
             
+            newPosition = forcePositionWithinRadiusBounds(
+              newPosition,
+              player.targetPosition,
+              player.role,
+              true
+            );
+            
             const completeBrain = ensureCompleteBrain(player.brain);
+            
+            const finalPosition = applyNeuralFineTuning(player, newPosition);
             
             return {
               ...player,
-              proposedPosition: newPosition,
-              movement: scaledMovement,
+              proposedPosition: finalPosition,
+              movement: { 
+                x: finalPosition.x - player.position.x,
+                y: finalPosition.y - player.position.y
+              },
               brain: {
                 ...completeBrain,
                 lastOutput: neuralMovement,
@@ -626,17 +646,26 @@ const usePlayerMovement = ({
           
           const finalPosition = applyNeuralFineTuning(player, basePosition);
           
-          finalPosition.x = Math.max(12, Math.min(PITCH_WIDTH - 12, finalPosition.x));
-          finalPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, finalPosition.y));
+          let constrainedPosition = {
+            x: Math.max(12, Math.min(PITCH_WIDTH - 12, finalPosition.x)),
+            y: Math.max(12, Math.min(PITCH_HEIGHT - 12, finalPosition.y))
+          };
+          
+          constrainedPosition = forcePositionWithinRadiusBounds(
+            constrainedPosition,
+            player.targetPosition,
+            player.role,
+            false
+          );
           
           const completeBrain = ensureCompleteBrain(player.brain);
           
           return {
             ...player,
-            proposedPosition: finalPosition,
+            proposedPosition: constrainedPosition,
             movement: { 
-              x: finalPosition.x - player.position.x,
-              y: finalPosition.y - player.position.y
+              x: constrainedPosition.x - player.position.x,
+              y: constrainedPosition.y - player.position.y
             },
             brain: {
               ...completeBrain,
@@ -674,9 +703,16 @@ const usePlayerMovement = ({
           otherPlayers
         );
         
+        const finalPosition = forcePositionWithinRadiusBounds(
+          collisionAdjustedPosition,
+          p.targetPosition,
+          p.role,
+          p.role === 'goalkeeper'
+        );
+        
         const cleanPlayer = {
           ...p,
-          position: collisionAdjustedPosition,
+          position: finalPosition,
           brain: p.brain
         };
         

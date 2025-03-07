@@ -12,6 +12,42 @@ const ROLE_RADIUS_LIMITS = {
 // Increased neural adjustment radius for more freedom
 const NEURAL_ADJUSTMENT_RADIUS = 16; // Increased from 8 to 16
 
+// New function to force a position within boundaries
+export const forcePositionWithinRadiusBounds = (
+  position: Position,
+  targetPosition: Position,
+  role: Player['role'],
+  isNeuralNetworkAdjustment: boolean = false
+): Position => {
+  // Calculate the base max radius for this role
+  const baseMaxRadius = ROLE_RADIUS_LIMITS[role];
+  
+  // Apply extra radius for neural network adjustments, with special consideration for goalkeepers
+  const extraRadius = isNeuralNetworkAdjustment ? 
+    (role === 'goalkeeper' ? NEURAL_ADJUSTMENT_RADIUS * 2 : NEURAL_ADJUSTMENT_RADIUS) : 0;
+  
+  // Calculate max allowed radius without randomization
+  const maxRadius = baseMaxRadius + extraRadius;
+  
+  // Calculate distance from tactical position
+  const distanceFromTarget = calculateDistance(position, targetPosition);
+  
+  if (distanceFromTarget <= maxRadius) {
+    return position;
+  }
+  
+  // If outside radius, force to the radius boundary
+  const angle = Math.atan2(
+    position.y - targetPosition.y,
+    position.x - targetPosition.x
+  );
+  
+  return {
+    x: targetPosition.x + Math.cos(angle) * maxRadius,
+    y: targetPosition.y + Math.sin(angle) * maxRadius
+  };
+}
+
 export const constrainMovementToRadius = (
   currentPosition: Position,
   targetPosition: Position,

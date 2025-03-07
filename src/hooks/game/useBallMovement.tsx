@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Player, Ball, Position } from '../../types/football';
 import { handleBallPhysics } from './useBallPhysics';
@@ -8,6 +9,7 @@ import {
   applyRandomKick, 
   calculateBallSpeed 
 } from './useBallInitialization';
+import { forcePositionWithinRadiusBounds } from '../../utils/movementConstraints';
 
 interface BallMovementProps {
   ball: Ball;
@@ -49,6 +51,23 @@ export const useBallMovement = ({
   const previousBallPositionRef = React.useRef<Position>({ ...ball.position });
 
   const updateBallPosition = React.useCallback(() => {
+    // Ensure all players are within their radius constraints after ball updates
+    setTimeout(() => {
+      players.forEach(player => {
+        const fixedPosition = forcePositionWithinRadiusBounds(
+          player.position,
+          player.targetPosition,
+          player.role,
+          player.role === 'goalkeeper'
+        );
+        
+        // Only update if the position changed
+        if (fixedPosition.x !== player.position.x || fixedPosition.y !== player.position.y) {
+          player.position = fixedPosition;
+        }
+      });
+    }, 0);
+    
     setBall(currentBall => {
       // Store current position as previous before updating
       const previousPosition = { ...currentBall.position };
@@ -123,7 +142,8 @@ export const useBallMovement = ({
     fieldPlayers, 
     onBallTouch, 
     tournamentMode, 
-    handleGoalCheck
+    handleGoalCheck,
+    players
   ]);
 
   return { updateBallPosition };
