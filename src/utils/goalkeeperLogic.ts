@@ -131,7 +131,6 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
   }
   
   // Once we're close to the ideal position (center of goal), then track the ball
-  // Increase the range of when goalkeeper is considered in position
   const isNearIdealPosition = distanceToGoalLine <= 5 && distanceToCenter <= 15; // Increased from 4 to 5 and from 12 to 15
   
   if (isNearIdealPosition) {
@@ -376,3 +375,4 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
   
   return { x: moveX, y: moveY };
 };
+
