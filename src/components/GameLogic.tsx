@@ -55,6 +55,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
     incrementSyncCounter, 
     checkLearningProgress,
     checkPerformance,
+    performHistoricalTraining,
     isLowPerformance
   } = useModelSyncSystem({
     players,
@@ -71,6 +72,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
     syncModels,
     checkLearningProgress,
     checkPerformance,
+    performHistoricalTraining,
     ball,
     score,
     tournamentMode,
@@ -117,6 +119,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
     syncModels,
     checkLearningProgress,
     checkPerformance,
+    performHistoricalTraining,
     ball,
     score,
     tournamentMode,

@@ -10,6 +10,7 @@ interface UseGameLoopProps {
   syncModels: () => void;
   checkLearningProgress: () => void;
   checkPerformance?: () => void;
+  performHistoricalTraining?: () => void;
   ball: Ball;
   score: Score;
   tournamentMode?: boolean;
@@ -24,6 +25,7 @@ export const useGameLoop = ({
   syncModels,
   checkLearningProgress,
   checkPerformance,
+  performHistoricalTraining,
   ball,
   score,
   tournamentMode = false,
@@ -80,6 +82,15 @@ export const useGameLoop = ({
       }
     }
     
+    // Run historical training if available
+    if (performHistoricalTraining && frameCountRef.current % 180 === 0) {
+      try {
+        performHistoricalTraining();
+      } catch (error) {
+        console.error("Error in performHistoricalTraining:", error);
+      }
+    }
+    
     // Reset frame counter to prevent overflow
     if (frameCountRef.current >= 600) {
       frameCountRef.current = 0;
@@ -93,6 +104,7 @@ export const useGameLoop = ({
     syncModels, 
     checkLearningProgress,
     checkPerformance,
+    performHistoricalTraining,
     isLowPerformance
   ]);
   

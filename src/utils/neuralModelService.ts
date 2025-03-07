@@ -3,6 +3,7 @@
 import { saveModel, loadModel, saveTrainingSession } from './neural/modelPersistence';
 import { getBestModel, combineModels } from './neural/modelOptimization';
 import { getModelStats, compareModelPerformance } from './neural/modelStatistics';
+import { trainFromPreviousGames, syncPlayerHistoricalData } from './neural/historicalTraining';
 
 // Export all functions
 export {
@@ -17,5 +18,9 @@ export {
   
   // Statistics functions
   getModelStats,
-  compareModelPerformance
+  compareModelPerformance,
+  
+  // Historical training functions
+  trainFromPreviousGames,
+  syncPlayerHistoricalData
 };

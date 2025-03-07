@@ -3,6 +3,7 @@ import React from 'react';
 import { Player } from '../../types/football';
 import { saveModel } from '../../utils/neuralModelService';
 import { logNeuralNetworkStatus } from '../../utils/neural/neuralTypes';
+import { syncPlayerHistoricalData } from '../../utils/neural/historicalTraining';
 
 interface ModelSaveOnExitProps {
   players: Player[];
@@ -23,10 +24,18 @@ export const useModelSaveOnExit = ({
           .filter(p => p.role !== 'goalkeeper')
           .forEach(player => {
             logNeuralNetworkStatus(player.team, player.role, player.id, "Saving model on exit");
+            
+            // Save model to database
             saveModel(player)
               .catch(err => {
                 console.error(`Error saving model on exit:`, err);
                 logNeuralNetworkStatus(player.team, player.role, player.id, "Error saving model on exit", err);
+              });
+              
+            // Save historical training data
+            syncPlayerHistoricalData(player)
+              .catch(err => {
+                console.error(`Error saving historical data on exit:`, err);
               });
           });
       } else {
@@ -46,6 +55,12 @@ export const useModelSaveOnExit = ({
               .catch(err => {
                 console.error(`Error saving model in tournament:`, err);
                 logNeuralNetworkStatus(randomPlayer.team, randomPlayer.role, randomPlayer.id, "Error saving tournament model", err);
+              });
+              
+            // Still save historical data even in tournament mode
+            syncPlayerHistoricalData(randomPlayer)
+              .catch(err => {
+                console.error(`Error saving tournament historical data:`, err);
               });
           }
         }

@@ -5,6 +5,7 @@ import { saveModel } from '../../utils/neural/modelPersistence';
 import { createExperienceReplay } from '../../utils/experienceReplay';
 import { toast } from 'sonner';
 import { validatePlayerBrain } from '../../utils/neural/networkValidator';
+import { trainFromPreviousGames } from '../../utils/neural/historicalTraining';
 
 const DEFAULT_SYNC_INTERVAL = 1800; // 30 seconds at 60fps (was 600)
 const TOURNAMENT_SYNC_INTERVAL = 7200; // 120 seconds at 60fps (doubled from 3600)
@@ -12,6 +13,7 @@ const TOURNAMENT_SYNC_INTERVAL = 7200; // 120 seconds at 60fps (doubled from 360
 const LEARNING_CHECK_INTERVAL = 3600; // 60 seconds at 60fps
 
 const PERFORMANCE_CHECK_INTERVAL = 300; // 5 seconds at 60fps
+const HISTORICAL_TRAINING_INTERVAL = 5400; // 90 seconds at 60fps
 
 interface ModelSyncSystemProps {
   players: Player[];
@@ -27,15 +29,18 @@ export const useModelSyncSystem = ({
   const syncCounter = useRef(0);
   const learningCheckCounter = useRef(0);
   const performanceCheckCounter = useRef(0);
+  const historicalTrainingCounter = useRef(0);
   const [lastSyncTime, setLastSyncTime] = useState(Date.now());
   const [isLowPerformance, setIsLowPerformance] = useState(false);
   const lastFrameTimeRef = useRef(Date.now());
   const frameTimesRef = useRef<number[]>([]);
+  const [hasPerformedHistoricalTraining, setHasPerformedHistoricalTraining] = useState(false);
   
   const incrementSyncCounter = () => {
     syncCounter.current += 1;
     learningCheckCounter.current += 1;
     performanceCheckCounter.current += 1;
+    historicalTrainingCounter.current += 1;
     
     const now = Date.now();
     const frameTime = now - lastFrameTimeRef.current;
@@ -181,12 +186,65 @@ export const useModelSyncSystem = ({
       learningCheckCounter.current = 0;
     }
   }, [setPlayers, tournamentMode, isLowPerformance]);
+
+  const performHistoricalTraining = React.useCallback(async () => {
+    // Skip in tournament mode or low performance
+    if (tournamentMode || (isLowPerformance && Math.random() > 0.1)) {
+      return;
+    }
+
+    if (historicalTrainingCounter.current >= HISTORICAL_TRAINING_INTERVAL && !hasPerformedHistoricalTraining) {
+      console.log('Starting training from historical game data...');
+      
+      try {
+        let trainedPlayers = 0;
+        
+        // Filter to only train a subset of players to avoid performance issues
+        const playersToTrain = players.filter(p => 
+          p.role !== 'goalkeeper' && 
+          p.team === 'red' && 
+          ['forward', 'midfielder'].includes(p.role) && 
+          Math.random() < 0.7
+        );
+        
+        if (playersToTrain.length > 0) {
+          const updatedPlayers = await trainFromPreviousGames(playersToTrain);
+          
+          if (updatedPlayers && updatedPlayers.length > 0) {
+            trainedPlayers = updatedPlayers.length;
+            
+            setPlayers(currentPlayers => 
+              currentPlayers.map(p => {
+                const updatedPlayer = updatedPlayers.find(up => up.id === p.id);
+                return updatedPlayer || p;
+              })
+            );
+            
+            toast.success(`Trained ${trainedPlayers} players from historical game data`, {
+              duration: 3000,
+              position: 'bottom-right'
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error during historical training:', error);
+        toast.error('Error training from historical data', {
+          description: 'Unable to complete historical training',
+          duration: 3000,
+        });
+      }
+      
+      setHasPerformedHistoricalTraining(true);
+      historicalTrainingCounter.current = 0;
+    }
+  }, [players, setPlayers, tournamentMode, isLowPerformance, hasPerformedHistoricalTraining]);
   
   return { 
     syncModels, 
     incrementSyncCounter, 
     checkLearningProgress,
     checkPerformance,
+    performHistoricalTraining,
     isLowPerformance
   };
 };
