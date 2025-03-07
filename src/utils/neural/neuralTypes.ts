@@ -1,4 +1,3 @@
-
 // Types for neural network models in database
 export interface NeuralModelData {
   id?: number;
@@ -50,3 +49,12 @@ export const encodeTeamIdentity = (team: string): number => {
 export const normalizePlayerId = (id: number): number => {
   return (id % 100) / 100;
 };
+
+// New goalkeeper-specific neural network parameters
+export interface GoalkeeperNeuralParams {
+  ballDistanceFromGoal: number;  // Distance of ball from goal (0-1)
+  ballVelocityTowardsGoal: number; // Ball velocity towards goal (-1 to 1)
+  ballTrajectoryAngle: number;   // Angle of ball trajectory (0-1)
+  distanceFromCenter: number;    // Goalkeeper's distance from goal center (0-1)
+  isInOptimalPosition: number;   // Is goalkeeper in optimal position (0-1)
+}

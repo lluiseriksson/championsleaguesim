@@ -113,30 +113,22 @@ const usePlayerMovement = ({
     if (gameReady && players.length > 0) {
       setPlayers(currentPlayers => 
         currentPlayers.map(player => {
-          if (player.role === 'goalkeeper') {
-            const validatedPlayer = validatePlayerBrain(player);
-            
-            if (!validatedPlayer.brain || !validatedPlayer.brain.net || !isNetworkValid(validatedPlayer.brain.net)) {
-              console.log(`Re-initializing invalid brain for ${player.team} ${player.role} #${player.id}`);
-              return {
-                ...player,
-                brain: createPlayerBrain(),
-                teamElo: player.teamElo || 2000
-              };
-            }
-            
-            return {
-              ...validatedPlayer,
-              brain: initializePlayerBrainWithHistory(validatedPlayer.brain),
-              teamElo: validatedPlayer.teamElo || 2000
-            };
-          } else {
+          const validatedPlayer = validatePlayerBrain(player);
+          
+          if (!validatedPlayer.brain || !validatedPlayer.brain.net || !isNetworkValid(validatedPlayer.brain.net)) {
+            console.log(`Re-initializing invalid brain for ${player.team} ${player.role} #${player.id}`);
             return {
               ...player,
-              brain: sharedFieldPlayerBrain || createPlayerBrain(),
+              brain: createPlayerBrain(),
               teamElo: player.teamElo || 2000
             };
           }
+          
+          return {
+            ...validatedPlayer,
+            brain: initializePlayerBrainWithHistory(validatedPlayer.brain),
+            teamElo: validatedPlayer.teamElo || 2000
+          };
         })
       );
     }
@@ -296,9 +288,10 @@ const usePlayerMovement = ({
       const playerTeamId = player.team === 'red' ? 0 : 1;
       const playerPositionalRole = player.role === 'defender' ? 0.2 : 
                                   player.role === 'midfielder' ? 0.5 : 
-                                  player.role === 'forward' ? 0.8 : 0.5;
+                                  player.role === 'forward' ? 0.8 : 
+                                  player.role === 'goalkeeper' ? 0.0 : 0.5;
       
-      const input = {
+      let input: NeuralInput = {
         ballX: normalizedBallX,
         ballY: normalizedBallY,
         playerX: normalizedPlayerX,
@@ -311,12 +304,12 @@ const usePlayerMovement = ({
         nearestOpponentAngle: 0,
         isInShootingRange: 0,
         isInPassingRange: 0,
-        isDefendingRequired: player.role === 'defender' ? 1 : 0,
+        isDefendingRequired: player.role === 'defender' || player.role === 'goalkeeper' ? 1 : 0,
         distanceToOwnGoal: 0.5,
         angleToOwnGoal: 0,
         isFacingOwnGoal: 0,
         isDangerousPosition: 0,
-        isBetweenBallAndOwnGoal: 0,
+        isBetweenBallAndOwnGoal: player.role === 'goalkeeper' ? 1 : 0,
         teamElo: player.teamElo ? player.teamElo / 3000 : 0.5,
         eloAdvantage: 0,
         gameTime: gameTime / 90,
@@ -356,6 +349,33 @@ const usePlayerMovement = ({
         playerPositionalRole
       };
       
+      if (player.role === 'goalkeeper') {
+        const goalCenterX = player.team === 'red' ? 0 : PITCH_WIDTH;
+        const goalCenterY = PITCH_HEIGHT / 2;
+        
+        const ballDistFromGoal = Math.sqrt(
+          Math.pow(ball.position.x - goalCenterX, 2) + 
+          Math.pow(ball.position.y - goalCenterY, 2)
+        ) / PITCH_WIDTH;
+        
+        const ballToGoalVector = {
+          x: goalCenterX - ball.position.x,
+          y: goalCenterY - ball.position.y
+        };
+        const ballVelocityDotProduct = 
+          (ball.velocity.x * ballToGoalVector.x + ball.velocity.y * ballToGoalVector.y) / 
+          (Math.sqrt(Math.pow(ballToGoalVector.x, 2) + Math.pow(ballToGoalVector.y, 2)) * 
+          Math.sqrt(Math.pow(ball.velocity.x, 2) + Math.pow(ball.velocity.y, 2)) || 1);
+        
+        const distFromCenter = Math.sqrt(
+          Math.pow(player.position.x - goalCenterX, 2) + 
+          Math.pow(player.position.y - goalCenterY, 2)
+        ) / 100;
+        
+        input.distanceToOwnGoal = ballDistFromGoal;
+        input.ballVelocityX = ballVelocityDotProduct;
+      }
+      
       const output = player.brain.net.run(input);
       
       if (output && typeof output.moveX === 'number' && typeof output.moveY === 'number') {
@@ -368,6 +388,9 @@ const usePlayerMovement = ({
         } else if (player.role === 'forward') {
           moveXMultiplier = 3.5;
           moveYMultiplier = 3.3;
+        } else if (player.role === 'goalkeeper') {
+          moveXMultiplier = 1.0;
+          moveYMultiplier = 4.0;
         }
         
         const playerIdVariation = (player.id % 10) / 20;
@@ -464,6 +487,41 @@ const usePlayerMovement = ({
               ? 1.0 + Math.min(0.3, (teamElo - baseElo) / 2000 * eloAdvantageMultiplier)
               : Math.max(0.8, 1.0 - (baseElo - teamElo) / 2000 * eloAdvantageMultiplier);
             
+            const neuralNetworkThreshold = 0.4;
+            const useNeuralNetwork = Math.random() > neuralNetworkThreshold;
+            const neuralMovement = useNeuralNetwork ? useNeuralNetworkForPlayer(player, ball) : null;
+            
+            if (neuralMovement) {
+              let newPosition = {
+                x: player.position.x + neuralMovement.x * 0.5,
+                y: player.position.y + neuralMovement.y * 0.8
+              };
+              
+              if (player.team === 'red') {
+                newPosition.x = Math.max(12, Math.min(75, newPosition.x));
+              } else {
+                newPosition.x = Math.max(PITCH_WIDTH - 75, Math.min(PITCH_WIDTH - 12, newPosition.x));
+              }
+              
+              newPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, newPosition.y));
+              
+              const completeBrain = ensureCompleteBrain(player.brain);
+              
+              return {
+                ...player,
+                proposedPosition: newPosition,
+                movement: { 
+                  x: newPosition.x - player.position.x,
+                  y: newPosition.y - player.position.y
+                },
+                brain: {
+                  ...completeBrain,
+                  lastOutput: neuralMovement,
+                  lastAction: 'move' as const
+                }
+              };
+            }
+            
             const movement = moveGoalkeeper(player, ball, eloGoalkeeperMultiplier);
             const newPosition = {
               x: player.position.x + movement.x,
@@ -474,9 +532,9 @@ const usePlayerMovement = ({
             newPosition.y = Math.max(12, Math.min(PITCH_HEIGHT - 12, newPosition.y));
             
             if (player.team === 'red') {
-              newPosition.x = Math.max(12, Math.min(75, newPosition.x)); // Keep red goalkeeper near left goal
+              newPosition.x = Math.max(12, Math.min(75, newPosition.x));
             } else {
-              newPosition.x = Math.max(PITCH_WIDTH - 75, Math.min(PITCH_WIDTH - 12, newPosition.x)); // Keep blue goalkeeper near right goal
+              newPosition.x = Math.max(PITCH_WIDTH - 75, Math.min(PITCH_WIDTH - 12, newPosition.x));
             }
             
             const completeBrain = ensureCompleteBrain(player.brain);
