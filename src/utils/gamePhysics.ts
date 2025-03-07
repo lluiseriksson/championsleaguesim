@@ -1,4 +1,5 @@
-import { Position, PLAYER_RADIUS, BALL_RADIUS, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
+import { Position, Player, PLAYER_RADIUS, BALL_RADIUS, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
+import { calculateDistance } from './neuralCore';
 
 const MAX_BALL_SPEED = 18; // Keeping higher speed for powerful shots
 const MIN_BALL_SPEED = 8.4; // Doubled from 4.2 to 8.4
@@ -77,11 +78,12 @@ const limitSpeed = (velocity: Position): Position => {
   return velocity;
 };
 
-export const checkCollision = (ballPos: Position, playerPos: Position, isGoalkeeper: boolean = false): boolean => {
+export const checkCollision = (ballPos: Position, playerPos: Position, isGoalkeeper: boolean = false, playerRadius: number = PLAYER_RADIUS): boolean => {
   const dx = ballPos.x - playerPos.x;
   const dy = ballPos.y - playerPos.y;
   const distance = Math.sqrt(dx * dx + dy * dy);
   
+  // Use provided playerRadius instead of fixed PLAYER_RADIUS to account for ELO adjustments
   // Field players have 15 units of reach for interacting with the ball
   // For goalkeepers, use 15 units for non-angled shots, plus 0.5x extension for angled shots
   const fieldPlayerReach = 15 - BALL_RADIUS; // 15 units total minus ball radius
@@ -101,14 +103,15 @@ export const checkCollision = (ballPos: Position, playerPos: Position, isGoalkee
       reach *= 1.5; // 0.5x extension (1 + 0.5 = 1.5)
     }
     
-    return distance <= (BALL_RADIUS + reach);
+    return distance <= (BALL_RADIUS + reach + (playerRadius - PLAYER_RADIUS));
   }
   
   // For field players, use the extended 15-unit reach
   const reach = isGoalkeeper ? goalkeeperBaseReach : fieldPlayerReach;
   
   // Add a small buffer to prevent the ball from getting stuck
-  return distance <= (BALL_RADIUS + reach + 0.5);
+  // Include the difference between adjusted radius and standard radius
+  return distance <= (BALL_RADIUS + reach + 0.5 + (playerRadius - PLAYER_RADIUS));
 };
 
 export const addRandomEffect = (velocity: Position): Position => {

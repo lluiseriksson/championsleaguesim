@@ -13,12 +13,43 @@ const ROLE_RADIUS_LIMITS = {
 // Significantly reduced neural adjustment radius
 const NEURAL_ADJUSTMENT_RADIUS = 8; // Reduced from 20
 
+// Apply ELO-based adjustment to movement constraint radius
+const applyEloRadiusAdjustment = (
+  baseRadius: number,
+  player: Player,
+  allPlayers?: Player[]
+): number => {
+  if (!allPlayers || !player.teamElo) return baseRadius;
+  
+  // Find opponent team's ELO
+  const opponentTeam = player.team === 'red' ? 'blue' : 'red';
+  const opponentPlayer = allPlayers.find(p => p.team === opponentTeam && p.teamElo !== undefined);
+  
+  if (!opponentPlayer?.teamElo) return baseRadius;
+  
+  // Calculate ELO difference - only give advantage to lower-rated team
+  const eloDifference = opponentPlayer.teamElo - player.teamElo;
+  
+  // No advantage for higher-rated team
+  if (eloDifference <= 0) return baseRadius;
+  
+  // Cap at 500 ELO difference
+  const cappedDifference = Math.min(eloDifference, 500);
+  
+  // Calculate radius bonus (up to 15% boost)
+  const radiusBonus = (cappedDifference / 500) * 0.15;
+  
+  return baseRadius * (1 + radiusBonus);
+};
+
 export const constrainMovementToRadius = (
   currentPosition: Position,
   targetPosition: Position,
   proposedPosition: Position,
   role: Player['role'],
-  isNeuralNetworkAdjustment: boolean = false
+  isNeuralNetworkAdjustment: boolean = false,
+  player?: Player,
+  allPlayers?: Player[]
 ): Position => {
   // Add small randomization to radius limits (reduced from previous implementation)
   const baseMaxRadius = ROLE_RADIUS_LIMITS[role];
@@ -33,9 +64,14 @@ export const constrainMovementToRadius = (
   const extraRadius = isNeuralNetworkAdjustment ? NEURAL_ADJUSTMENT_RADIUS : 0;
   
   // Tighter radius constraints overall
-  const maxRadius = isForwardInAttackingPosition 
+  let maxRadius = isForwardInAttackingPosition 
     ? (baseMaxRadius * 1.15 * randomFactor) + extraRadius // Reduced from 1.3
     : (baseMaxRadius * randomFactor) + extraRadius;
+  
+  // Apply ELO-based radius adjustment if player and allPlayers are provided
+  if (player && allPlayers) {
+    maxRadius = applyEloRadiusAdjustment(maxRadius, player, allPlayers);
+  }
   
   // Calculate distance from tactical position
   const distanceFromTarget = calculateDistance(proposedPosition, targetPosition);
