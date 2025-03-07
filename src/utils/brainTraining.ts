@@ -588,5 +588,14 @@ export const initializePlayerBrainWithHistory = (brain: NeuralNet): NeuralNet =>
     };
   }
   
+  // Make sure goalStreak and lastShotQuality are initialized
+  if (brain.goalStreak === undefined) {
+    brain.goalStreak = 0;
+  }
+  
+  if (brain.lastShotQuality === undefined) {
+    brain.lastShotQuality = 0;
+  }
+  
   return brain;
 };
