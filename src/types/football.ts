@@ -1,3 +1,4 @@
+
 import * as brain from 'brain.js';
 
 export interface Position {
@@ -177,6 +178,9 @@ export interface NeuralNet {
   // Shot quality tracking and goal streaks
   lastShotQuality?: number;
   goalStreak?: number;
+  
+  // Shared neural network parameters
+  sharedParameters?: boolean;
 }
 
 export type KitType = 'home' | 'away' | 'third';

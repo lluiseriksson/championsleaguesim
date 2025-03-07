@@ -2,469 +2,14 @@
 import { Position, NeuralInput, NeuralOutput, TeamContext, PITCH_WIDTH, PITCH_HEIGHT, SituationContext } from '../types/football';
 import * as brain from 'brain.js';
 import { calculateShotQuality } from './playerBrain';
-import { calculateDistance, normalizeValue } from './neuralCore';
+import { SharedNetworkParams, encodePlayerRole, encodeTeamIdentity, normalizePlayerId } from './neural/neuralTypes';
 
-// Normalize a position to a value between 0 and 1
-export const normalizePosition = (pos: Position): Position => ({
-  x: pos.x / PITCH_WIDTH,
-  y: pos.y / PITCH_HEIGHT
-});
-
-// Calculate angle and distance between two positions (normalized)
-export const calculateAngleAndDistance = (from: Position, to: Position) => {
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
-  return {
-    angle: Math.atan2(dy, dx) / Math.PI, // Normalize angle to -1 to 1
-    distance: Math.sqrt(dx * dx + dy * dy) / Math.sqrt(PITCH_WIDTH * PITCH_WIDTH + PITCH_HEIGHT * PITCH_HEIGHT) // Normalize distance
-  };
-};
-
-// Find the nearest entity (teammate or opponent) from a list
-export const getNearestEntity = (position: Position, entities: Position[]) => {
-  if (!entities || entities.length === 0) {
-    return { distance: 1, angle: 0 }; // Default values if no entities
-  }
-  
-  let nearest = { distance: Infinity, angle: 0 };
-  
-  entities.forEach(entity => {
-    const result = calculateAngleAndDistance(position, entity);
-    if (result.distance < nearest.distance) {
-      nearest = result;
-    }
-  });
-  
-  return nearest;
-};
-
-// Enhanced createNeuralInput function with more context
-export const createNeuralInput = (
-  ball: { position: Position, velocity: Position },
-  player: Position,
-  context: TeamContext,
-  teamElo: number = 2000,
-  gameContext: {
-    gameTime?: number,
-    scoreDifferential?: number,
-    possession?: { team: string, duration: number },
-    teamFormation?: Position[],
-    actionHistory?: Array<{ action: string, success: boolean, timestamp: number }>,
-    playerId?: number,
-    playerRole?: string,
-    playerTeam?: string
-  } = {}
-): NeuralInput => {
-  const normalizedBall = normalizePosition(ball.position);
-  const normalizedPlayer = normalizePosition(player);
-  const goalAngle = calculateAngleAndDistance(player, context.opponentGoal);
-  
-  // Handle potential empty arrays
-  const teammates = Array.isArray(context.teammates) ? context.teammates : [];
-  const opponents = Array.isArray(context.opponents) ? context.opponents : [];
-  
-  const nearestTeammate = getNearestEntity(player, teammates);
-  const nearestOpponent = getNearestEntity(player, opponents);
-  
-  // Calculate strategic flags with safe values
-  const isInShootingRange = goalAngle.distance < 0.3 ? 1 : 0;
-  const isInPassingRange = nearestTeammate.distance < 0.2 ? 1 : 0;
-  const isDefendingRequired = nearestOpponent.distance < 0.15 ? 1 : 0;
-
-  // Add ELO related properties
-  const normalizedTeamElo = teamElo ? teamElo / 3000 : 0.5; // Normalize to 0-1 range assuming max ELO 3000
-  const averageElo = 2000;
-  const eloAdvantage = (teamElo - averageElo) / 1000; // Normalize to roughly -1 to 1 range
-
-  // Calculate formation metrics
-  const formationMetrics = calculateFormationMetrics(player, teammates);
-  
-  // Calculate recent performance metrics
-  const performanceMetrics = calculatePerformanceMetrics(gameContext.actionHistory || []);
-
-  // Calculate best shooting opportunity
-  let bestShootingAngle = 0;
-  let bestShootingQuality = 0;
-  
-  // Check shooting opportunities in 8 directions
-  for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 4) {
-    const targetPosition = {
-      x: player.x + Math.cos(angle) * 100,
-      y: player.y + Math.sin(angle) * 100
-    };
-    
-    const shotQuality = calculateShotQuality(
-      player,
-      targetPosition,
-      context.teammates || [],
-      context.opponents || []
-    );
-    
-    if (shotQuality > bestShootingQuality) {
-      bestShootingQuality = shotQuality;
-      bestShootingAngle = angle;
-    }
-  }
-
-  // Calculate additional tactical metrics
-  const teammateDensity = calculateDensity(player, teammates, 150);
-  const opponentDensity = calculateDensity(player, opponents, 150);
-  
-  // Calculate zone control and passing lanes if teammates and opponents are available
-  let zoneControl = 0.5;
-  let passingLanesQuality = 0.5;
-  let spaceCreation = 0.5;
-  
-  if (teammates.length > 0 && opponents.length > 0) {
-    // These calculations would typically be more complex in a real implementation
-    zoneControl = calculateZoneControl(player, teammates, opponents);
-    passingLanesQuality = calculatePassingLanes(player, teammates, opponents);
-    spaceCreation = Math.max(0, 1 - (teammateDensity + opponentDensity) / 2);
-  }
-
-  // Return the comprehensive neural input object with all required properties
-  return {
-    ballX: normalizedBall.x,
-    ballY: normalizedBall.y,
-    playerX: normalizedPlayer.x,
-    playerY: normalizedPlayer.y,
-    ballVelocityX: ball.velocity.x / 20, // Normalize velocity
-    ballVelocityY: ball.velocity.y / 20,
-    distanceToGoal: goalAngle.distance,
-    angleToGoal: goalAngle.angle,
-    nearestTeammateDistance: nearestTeammate.distance,
-    nearestTeammateAngle: nearestTeammate.angle,
-    nearestOpponentDistance: nearestOpponent.distance,
-    nearestOpponentAngle: nearestOpponent.angle,
-    isInShootingRange,
-    isInPassingRange,
-    isDefendingRequired,
-    distanceToOwnGoal: 0.5, // Default values that will be overridden when used properly
-    angleToOwnGoal: 0,
-    isFacingOwnGoal: 0,
-    isDangerousPosition: 0,
-    isBetweenBallAndOwnGoal: 0,
-    teamElo: normalizedTeamElo,
-    eloAdvantage: eloAdvantage,
-    
-    // Game context features
-    gameTime: gameContext.gameTime || 0.5,
-    scoreDifferential: gameContext.scoreDifferential || 0,
-    momentum: performanceMetrics.momentum,
-    formationCompactness: formationMetrics.compactness,
-    formationWidth: formationMetrics.width,
-    recentSuccessRate: performanceMetrics.successRate,
-    possessionDuration: gameContext.possession ? 
-      Math.min(1, gameContext.possession.duration / 600) : 0, // Normalize to 0-1 (max 10 seconds)
-    distanceFromFormationCenter: formationMetrics.distanceFromCenter,
-    isInFormationPosition: formationMetrics.isInPosition,
-    teammateDensity,
-    opponentDensity,
-    shootingAngle: bestShootingAngle / (Math.PI * 2), // Normalize to 0-1
-    shootingQuality: bestShootingQuality,
-    
-    // New tactical metrics
-    zoneControl,
-    passingLanesQuality,
-    spaceCreation,
-    defensiveSupport: calculateDefensiveSupport(player, teammates),
-    pressureIndex: calculatePressureIndex(player, opponents),
-    tacticalRole: 0.5, // Default value, would be more complex in real implementation
-    supportPositioning: calculateSupportPositioning(player, teammates),
-    pressingEfficiency: calculatePressingEfficiency(player, normalizedBall),
-    coverShadow: calculateCoverShadow(player, opponents),
-    verticalSpacing: calculateVerticalSpacing(teammates),
-    horizontalSpacing: calculateHorizontalSpacing(teammates),
-    territorialControl: zoneControl * (1 - calculatePressureIndex(player, opponents)),
-    counterAttackPotential: 0.5, // Default value
-    pressureResistance: 1 - calculatePressureIndex(player, opponents),
-    recoveryPosition: 0.5, // Default value
-    transitionSpeed: 0.5, // Default value
-    
-    // Add the required player identity parameters
-    playerId: gameContext.playerId !== undefined ? gameContext.playerId / 100 : 0.5,
-    playerRoleEncoding: gameContext.playerRole === 'goalkeeper' ? 0 : 
-                         gameContext.playerRole === 'defender' ? 0.33 : 
-                         gameContext.playerRole === 'midfielder' ? 0.66 : 
-                         gameContext.playerRole === 'forward' ? 1 : 0.5,
-    playerTeamId: gameContext.playerTeam === 'red' ? 0 : 
-                  gameContext.playerTeam === 'blue' ? 1 : 0.5,
-    playerPositionalRole: gameContext.playerRole === 'goalkeeper' ? 0 : 
-                          gameContext.playerRole === 'defender' ? 0.2 : 
-                          gameContext.playerRole === 'midfielder' ? 0.5 : 
-                          gameContext.playerRole === 'forward' ? 0.8 : 0.5
-  };
-};
-
-// Simple helper implementations for tactical metrics
-const calculateZoneControl = (player: Position, teammates: Position[], opponents: Position[]): number => {
-  // Simple implementation - would be more sophisticated in a real system
-  const radius = 150;
-  let teammateCount = 0;
-  let opponentCount = 0;
-  
-  teammates.forEach(pos => {
-    if (calculateDistance(player, pos) < radius) teammateCount++;
-  });
-  
-  opponents.forEach(pos => {
-    if (calculateDistance(player, pos) < radius) opponentCount++;
-  });
-  
-  return Math.max(0, Math.min(1, (teammateCount - opponentCount + 3) / 6));
-};
-
-const calculatePassingLanes = (player: Position, teammates: Position[], opponents: Position[]): number => {
-  // Simple implementation for passing lanes quality
-  const lanes = teammates.map(teammate => {
-    let quality = 1;
-    const dist = calculateDistance(player, teammate);
-    if (dist > 300) quality *= 0.5; // Long passes are harder
-    
-    // Check if opponents block the passing lane
-    opponents.forEach(opp => {
-      if (isInPassingLane(player, teammate, opp, 30)) {
-        quality *= 0.7; // Reduce quality if opponent blocks lane
-      }
-    });
-    
-    return quality;
-  });
-  
-  return lanes.length > 0 ? lanes.reduce((sum, q) => sum + q, 0) / lanes.length : 0;
-};
-
-const isInPassingLane = (from: Position, to: Position, pos: Position, tolerance: number): boolean => {
-  // Check if pos is in the passing lane between from and to
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-  
-  if (dist === 0) return false;
-  
-  // Project pos onto the line from->to
-  const t = ((pos.x - from.x) * dx + (pos.y - from.y) * dy) / (dist * dist);
-  
-  if (t < 0 || t > 1) return false;
-  
-  // Calculate perpendicular distance
-  const px = from.x + t * dx;
-  const py = from.y + t * dy;
-  const perpDist = Math.sqrt(Math.pow(pos.x - px, 2) + Math.pow(pos.y - py, 2));
-  
-  return perpDist < tolerance;
-};
-
-const calculateDefensiveSupport = (player: Position, teammates: Position[]): number => {
-  // Simple calculation of defensive support from teammates
-  const supportRadius = 200;
-  let supportScore = 0;
-  
-  teammates.forEach(pos => {
-    const dist = calculateDistance(player, pos);
-    if (dist < supportRadius) {
-      supportScore += 1 - (dist / supportRadius);
-    }
-  });
-  
-  return Math.min(1, supportScore / 3); // Max support from 3 teammates
-};
-
-const calculatePressureIndex = (player: Position, opponents: Position[]): number => {
-  // Calculate pressure from opponents
-  const pressureRadius = 150;
-  let pressureScore = 0;
-  
-  opponents.forEach(pos => {
-    const dist = calculateDistance(player, pos);
-    if (dist < pressureRadius) {
-      pressureScore += 1 - (dist / pressureRadius);
-    }
-  });
-  
-  return Math.min(1, pressureScore / 2); // Max pressure from 2 opponents
-};
-
-const calculateSupportPositioning = (player: Position, teammates: Position[]): number => {
-  // Simple implementation for support positioning quality
-  return teammates.length > 0 ? 
-    1 - Math.min(1, teammates.reduce((min, t) => 
-      Math.min(min, calculateDistance(player, t)), 1000) / 300) : 0;
-};
-
-const calculatePressingEfficiency = (player: Position, ball: { x: number, y: number }): number => {
-  // Simple implementation based on distance to ball
-  const dist = calculateDistance(player, ball);
-  return Math.max(0, 1 - Math.min(1, dist / 200));
-};
-
-const calculateCoverShadow = (player: Position, opponents: Position[]): number => {
-  // Simple implementation for cover shadow quality
-  const shadowAngle = Math.PI / 3; // 60 degrees shadow cone
-  let coverScore = 0;
-  
-  opponents.forEach(opp => {
-    const dist = calculateDistance(player, opp);
-    if (dist < 150) coverScore += 0.5 * (1 - dist / 150);
-  });
-  
-  return Math.min(1, coverScore);
-};
-
-const calculateVerticalSpacing = (positions: Position[]): number => {
-  if (positions.length < 2) return 1;
-  const yPositions = positions.map(p => p.y);
-  const spread = Math.max(...yPositions) - Math.min(...yPositions);
-  return Math.min(1, spread / PITCH_HEIGHT);
-};
-
-const calculateHorizontalSpacing = (positions: Position[]): number => {
-  if (positions.length < 2) return 1;
-  const xPositions = positions.map(p => p.x);
-  const spread = Math.max(...xPositions) - Math.min(...xPositions);
-  return Math.min(1, spread / PITCH_WIDTH);
-};
-
-// Calculate team formation metrics
-const calculateFormationMetrics = (playerPos: Position, teammates: Position[]) => {
-  if (!teammates.length) {
-    return {
-      compactness: 0.5,
-      width: 0.5,
-      distanceFromCenter: 0.5,
-      isInPosition: 1
-    };
-  }
-
-  // Calculate the team's formation center
-  const allPositions = [playerPos, ...teammates];
-  const center = {
-    x: allPositions.reduce((sum, pos) => sum + pos.x, 0) / allPositions.length,
-    y: allPositions.reduce((sum, pos) => sum + pos.y, 0) / allPositions.length
-  };
-
-  // Calculate distances from center
-  const distances = allPositions.map(pos => 
-    Math.sqrt(Math.pow(pos.x - center.x, 2) + Math.pow(pos.y - center.y, 2))
-  );
-  
-  // Find the min and max x positions to determine width
-  const xPositions = allPositions.map(pos => pos.x);
-  const minX = Math.min(...xPositions);
-  const maxX = Math.max(...xPositions);
-  const width = (maxX - minX) / PITCH_WIDTH;
-  
-  // Player distance from formation center
-  const playerDistance = Math.sqrt(
-    Math.pow(playerPos.x - center.x, 2) + Math.pow(playerPos.y - center.y, 2)
-  );
-  
-  return {
-    compactness: 1 - Math.min(1, Math.max(0, (Math.max(...distances) / (PITCH_WIDTH/2)))),
-    width: Math.min(1, width),
-    distanceFromCenter: Math.min(1, playerDistance / (PITCH_WIDTH/3)),
-    isInPosition: playerDistance < 100 ? 1 : Math.max(0, 1 - (playerDistance - 100) / 200)
-  };
-};
-
-// Calculate density of entities around a position
-const calculateDensity = (pos: Position, entities: Position[], radius: number): number => {
-  if (!entities.length) return 0;
-  
-  const count = entities.filter(entity => 
-    Math.sqrt(Math.pow(entity.x - pos.x, 2) + Math.pow(entity.y - pos.y, 2)) < radius
-  ).length;
-  
-  return Math.min(1, count / 5); // Normalize to 0-1, max of 5 entities counts as 1.0
-};
-
-// Calculate performance metrics from action history
-const calculatePerformanceMetrics = (actionHistory: Array<{ 
-  action: string, 
-  success: boolean, 
-  timestamp: number 
-}>) => {
-  if (!actionHistory.length) {
-    return {
-      successRate: 0.5,
-      momentum: 0.5
-    };
-  }
-  
-  // Only consider recent actions (last 10)
-  const recentActions = actionHistory.slice(-10);
-  
-  // Calculate success rate
-  const successCount = recentActions.filter(a => a.success).length;
-  const successRate = successCount / recentActions.length;
-  
-  // Calculate momentum (more recent actions have higher weight)
-  let momentumScore = 0;
-  let weightSum = 0;
-  
-  recentActions.forEach((action, index) => {
-    const weight = index + 1; // More recent actions have higher index
-    momentumScore += action.success ? weight : -weight;
-    weightSum += weight;
-  });
-  
-  // Normalize momentum to 0-1 range
-  const normalizedMomentum = 0.5 + (momentumScore / (2 * weightSum));
-  
-  return {
-    successRate,
-    momentum: Math.max(0, Math.min(1, normalizedMomentum))
-  };
-};
-
-// Create a situation context from neural input and team context
-export const createSituationContext = (
-  input: NeuralInput, 
-  teamContext: TeamContext,
-  playerPosition: Position,
-  ballPosition: Position
-): SituationContext => {
-  // Determine field position by thirds
-  const playerX = input.playerX;
-  const isDefensiveThird = playerX < 0.33;
-  const isMiddleThird = playerX >= 0.33 && playerX <= 0.66;
-  const isAttackingThird = playerX > 0.66;
-  
-  // Determine possession
-  const hasTeamPossession = input.isInShootingRange > 0.5 || input.isInPassingRange > 0.5;
-  
-  // Calculate distances
-  const distanceToBall = Math.sqrt(
-    Math.pow(playerPosition.x - ballPosition.x, 2) + 
-    Math.pow(playerPosition.y - ballPosition.y, 2)
-  ) / Math.sqrt(PITCH_WIDTH * PITCH_WIDTH + PITCH_HEIGHT * PITCH_HEIGHT);
-  
-  // Create situation context
-  return {
-    isDefensiveThird,
-    isMiddleThird,
-    isAttackingThird,
-    hasTeamPossession,
-    isSetPiece: false, // Would need additional game state
-    isTransitioning: input.ballVelocityX > 0.3 || input.ballVelocityY > 0.3,
-    distanceToBall,
-    distanceToOwnGoal: input.distanceToOwnGoal,
-    distanceToOpponentGoal: input.distanceToGoal,
-    defensivePressure: input.opponentDensity * (1 - input.distanceToOwnGoal)
-  };
-};
-
-// Improve neural network validation with more robust error handling
-export const isNetworkValid = (net: brain.NeuralNetwork<NeuralInput, NeuralOutput>): boolean => {
-  if (!net || typeof net.run !== 'function') {
-    console.warn("Neural network is missing or run function is not available");
-    return false;
-  }
+// Helper to determine if a neural network is valid and can be used
+export const isNetworkValid = (network: brain.NeuralNetwork<NeuralInput, NeuralOutput>): boolean => {
+  if (!network) return false;
   
   try {
-    console.log("Validating neural network...");
-    
-    // Create a simple test input with default values
+    // Try to run the network with some basic input
     const testInput: NeuralInput = {
       ballX: 0.5,
       ballY: 0.5,
@@ -488,21 +33,20 @@ export const isNetworkValid = (net: brain.NeuralNetwork<NeuralInput, NeuralOutpu
       isBetweenBallAndOwnGoal: 0,
       teamElo: 0.5,
       eloAdvantage: 0,
-      // Game context features
       gameTime: 0.5,
       scoreDifferential: 0,
       momentum: 0.5,
       formationCompactness: 0.5,
       formationWidth: 0.5,
       recentSuccessRate: 0.5,
-      possessionDuration: 0,
+      possessionDuration: 0.5,
       distanceFromFormationCenter: 0.5,
       isInFormationPosition: 1,
       teammateDensity: 0.5,
       opponentDensity: 0.5,
       shootingAngle: 0.5,
       shootingQuality: 0.5,
-      // New tactical metrics
+      
       zoneControl: 0.5,
       passingLanesQuality: 0.5,
       spaceCreation: 0.5,
@@ -519,38 +63,282 @@ export const isNetworkValid = (net: brain.NeuralNetwork<NeuralInput, NeuralOutpu
       pressureResistance: 0.5,
       recoveryPosition: 0.5,
       transitionSpeed: 0.5,
-      // Add the missing player identity parameters
+      
       playerId: 0.5,
       playerRoleEncoding: 0.5,
       playerTeamId: 0.5,
       playerPositionalRole: 0.5
     };
-
-    // Run the network with test input and check if output is valid
-    const output = net.run(testInput);
     
-    if (!output) {
-      console.warn("Network returned null or undefined output");
-      return false;
-    }
+    const output = network.run(testInput);
     
-    // Validate output structure and values
-    const requiredOutputs = ['moveX', 'moveY', 'shootBall', 'passBall', 'intercept'];
-    const hasAllOutputs = requiredOutputs.every(key => 
-      typeof output[key as keyof typeof output] === 'number' &&
-      !isNaN(output[key as keyof typeof output]) &&
-      isFinite(output[key as keyof typeof output])
+    // Check if output has expected properties
+    return (
+      typeof output.moveX === 'number' &&
+      typeof output.moveY === 'number' &&
+      typeof output.shootBall === 'number' &&
+      typeof output.passBall === 'number' &&
+      typeof output.intercept === 'number' &&
+      !isNaN(output.moveX) &&
+      !isNaN(output.moveY) &&
+      !isNaN(output.shootBall) &&
+      !isNaN(output.passBall) &&
+      !isNaN(output.intercept)
     );
-    
-    if (!hasAllOutputs) {
-      console.warn("Network output missing required properties or has invalid values");
-      return false;
-    }
-    
-    console.log("Neural network validation successful");
-    return true;
   } catch (error) {
-    console.warn("Error validating network:", error);
+    console.warn("Network validation failed:", error);
     return false;
   }
+};
+
+// Check if the player is in shooting range
+export const isInShootingRange = (playerPos: Position, goalPos: Position): boolean => {
+  const dx = goalPos.x - playerPos.x;
+  const dy = goalPos.y - playerPos.y;
+  const distanceSquared = dx * dx + dy * dy;
+  
+  // Consider it shooting range if within 200 pixels (can be adjusted)
+  return distanceSquared < 200 * 200;
+};
+
+// Calculate distance between two positions
+export const calculateDistance = (pos1: Position, pos2: Position): number => {
+  const dx = pos2.x - pos1.x;
+  const dy = pos2.y - pos1.y;
+  return Math.sqrt(dx * dx + dy * dy);
+};
+
+// Calculate angle between two positions (-1 to 1, where 0 is straight ahead)
+export const calculateAngle = (fromPos: Position, toPos: Position): number => {
+  const dx = toPos.x - fromPos.x;
+  const dy = toPos.y - fromPos.y;
+  const angle = Math.atan2(dy, dx) / Math.PI; // Normalized to -1 to 1
+  return angle;
+};
+
+// Calculate if player is between ball and own goal
+export const isBetweenBallAndGoal = (
+  playerPos: Position,
+  ballPos: Position,
+  goalPos: Position
+): boolean => {
+  // Vector from ball to goal
+  const ballToGoalX = goalPos.x - ballPos.x;
+  const ballToGoalY = goalPos.y - ballPos.y;
+  
+  // Vector from ball to player
+  const ballToPlayerX = playerPos.x - ballPos.x;
+  const ballToPlayerY = playerPos.y - ballPos.y;
+  
+  // Calculate dot product
+  const dotProduct = ballToGoalX * ballToPlayerX + ballToGoalY * ballToPlayerY;
+  
+  // Calculate magnitudes
+  const ballToGoalMagnitude = Math.sqrt(ballToGoalX * ballToGoalX + ballToGoalY * ballToGoalY);
+  const ballToPlayerMagnitude = Math.sqrt(ballToPlayerX * ballToPlayerX + ballToPlayerY * ballToPlayerY);
+  
+  // Calculate cosine of angle between vectors
+  const cosAngle = dotProduct / (ballToGoalMagnitude * ballToPlayerMagnitude);
+  
+  // Player is between if cosine is close to 1 (small angle) and player is closer to goal than ball
+  const playerToGoalDistance = calculateDistance(playerPos, goalPos);
+  const ballToGoalDistance = calculateDistance(ballPos, goalPos);
+  
+  return cosAngle > 0.7 && playerToGoalDistance < ballToGoalDistance;
+};
+
+// Calculate pressure index based on nearest opponents
+export const calculatePressureIndex = (
+  playerPos: Position,
+  opponents: Position[]
+): number => {
+  if (!opponents || opponents.length === 0) return 0;
+  
+  // Find distances to all opponents
+  const distances = opponents.map(opp => calculateDistance(playerPos, opp));
+  
+  // Sort distances
+  distances.sort((a, b) => a - b);
+  
+  // Take the closest 3 opponents or however many are available
+  const nearestCount = Math.min(3, distances.length);
+  let pressureSum = 0;
+  
+  for (let i = 0; i < nearestCount; i++) {
+    // Convert distance to pressure (closer = more pressure)
+    // 150 pixels is considered high pressure, 0 pressure beyond 400 pixels
+    const distanceFactor = Math.max(0, Math.min(1, (400 - distances[i]) / 250));
+    
+    // Weight closer opponents more heavily
+    const weight = nearestCount - i;
+    pressureSum += distanceFactor * weight;
+  }
+  
+  // Normalize to 0-1 range
+  const maxPossibleSum = (nearestCount * (nearestCount + 1)) / 2; // Sum of weights
+  return Math.min(1, pressureSum / maxPossibleSum);
+};
+
+// Create neural input from game state
+export const createNeuralInput = (
+  ballPos: Position,
+  ballVelocity: Position,
+  player: any,
+  gameContext: any,
+  teammates: Position[],
+  opponents: Position[]
+): NeuralInput => {
+  // Normalize positions to 0-1 range
+  const ballX = ballPos.x / PITCH_WIDTH;
+  const ballY = ballPos.y / PITCH_HEIGHT;
+  const playerX = player.position.x / PITCH_WIDTH;
+  const playerY = player.position.y / PITCH_HEIGHT;
+  
+  // Calculate distances and angles
+  const opponentGoal = player.team === 'red' ? { x: PITCH_WIDTH, y: PITCH_HEIGHT / 2 } : { x: 0, y: PITCH_HEIGHT / 2 };
+  const ownGoal = player.team === 'red' ? { x: 0, y: PITCH_HEIGHT / 2 } : { x: PITCH_WIDTH, y: PITCH_HEIGHT / 2 };
+  
+  const distanceToGoal = calculateDistance(player.position, opponentGoal) / Math.sqrt(PITCH_WIDTH * PITCH_WIDTH + PITCH_HEIGHT * PITCH_HEIGHT);
+  const angleToGoal = calculateAngle(player.position, opponentGoal);
+  
+  const distanceToOwnGoal = calculateDistance(player.position, ownGoal) / Math.sqrt(PITCH_WIDTH * PITCH_WIDTH + PITCH_HEIGHT * PITCH_HEIGHT);
+  const angleToOwnGoal = calculateAngle(player.position, ownGoal);
+  
+  // Find nearest teammate
+  let nearestTeammateDistance = 1;
+  let nearestTeammateAngle = 0;
+  
+  if (teammates && teammates.length > 0) {
+    let closestDist = Number.MAX_VALUE;
+    
+    for (const mate of teammates) {
+      const dist = calculateDistance(player.position, mate);
+      if (dist < closestDist && dist > 0) { // Avoid self
+        closestDist = dist;
+        nearestTeammateAngle = calculateAngle(player.position, mate);
+      }
+    }
+    
+    nearestTeammateDistance = Math.min(1, closestDist / 300); // Normalize to 0-1
+  }
+  
+  // Find nearest opponent
+  let nearestOpponentDistance = 1;
+  let nearestOpponentAngle = 0;
+  
+  if (opponents && opponents.length > 0) {
+    let closestDist = Number.MAX_VALUE;
+    
+    for (const opp of opponents) {
+      const dist = calculateDistance(player.position, opp);
+      if (dist < closestDist) {
+        closestDist = dist;
+        nearestOpponentAngle = calculateAngle(player.position, opp);
+      }
+    }
+    
+    nearestOpponentDistance = Math.min(1, closestDist / 300); // Normalize to 0-1
+  }
+  
+  return {
+    ballX,
+    ballY,
+    playerX,
+    playerY,
+    ballVelocityX: ballVelocity.x / 20, // Normalize velocity
+    ballVelocityY: ballVelocity.y / 20,
+    distanceToGoal,
+    angleToGoal,
+    nearestTeammateDistance,
+    nearestTeammateAngle,
+    nearestOpponentDistance,
+    nearestOpponentAngle,
+    isInShootingRange: isInShootingRange(player.position, opponentGoal) ? 1 : 0,
+    isInPassingRange: nearestTeammateDistance < 0.5 ? 1 : 0,
+    isDefendingRequired: calculateDistance(ballPos, ownGoal) < PITCH_WIDTH / 3 ? 1 : 0,
+    distanceToOwnGoal,
+    angleToOwnGoal,
+    isFacingOwnGoal: Math.abs(angleToOwnGoal) < 0.3 ? 1 : 0,
+    isDangerousPosition: distanceToOwnGoal < 0.3 ? 1 : 0,
+    isBetweenBallAndOwnGoal: isBetweenBallAndGoal(player.position, ballPos, ownGoal) ? 1 : 0,
+    teamElo: gameContext.teamElo || 0.5,
+    eloAdvantage: gameContext.eloAdvantage || 0,
+    gameTime: gameContext.gameTime || 0.5,
+    scoreDifferential: gameContext.scoreDifferential || 0,
+    momentum: gameContext.momentum || 0.5,
+    formationCompactness: gameContext.formationCompactness || 0.5,
+    formationWidth: gameContext.formationWidth || 0.5,
+    recentSuccessRate: gameContext.recentSuccessRate || 0.5,
+    possessionDuration: gameContext.possessionDuration || 0,
+    distanceFromFormationCenter: gameContext.distanceFromCenter || 0.5,
+    isInFormationPosition: gameContext.isInPosition ? 1 : 0,
+    teammateDensity: gameContext.teammateDensity || 0.5,
+    opponentDensity: gameContext.opponentDensity || 0.5,
+    shootingAngle: calculateShotQuality(player.position, opponentGoal),
+    shootingQuality: calculateShotQuality(player.position, opponentGoal),
+    
+    // Add tactical metrics
+    zoneControl: gameContext.zoneControl || 0.5,
+    passingLanesQuality: gameContext.passingLanesQuality || 0.5,
+    spaceCreation: gameContext.spaceCreation || 0.5,
+    defensiveSupport: gameContext.defensiveSupport || 0.5,
+    pressureIndex: calculatePressureIndex(player.position, opponents),
+    tacticalRole: gameContext.tacticalRole || 0.5,
+    supportPositioning: gameContext.supportPositioning || 0.5,
+    pressingEfficiency: gameContext.pressingEfficiency || 0.5,
+    coverShadow: gameContext.coverShadow || 0.5,
+    verticalSpacing: gameContext.verticalSpacing || 0.5,
+    horizontalSpacing: gameContext.horizontalSpacing || 0.5,
+    territorialControl: gameContext.territorialControl || 0.5,
+    counterAttackPotential: gameContext.counterAttackPotential || 0.5,
+    pressureResistance: 1 - calculatePressureIndex(player.position, opponents),
+    recoveryPosition: gameContext.recoveryPosition || 0.5,
+    transitionSpeed: gameContext.transitionSpeed || 0.5, // Fixed comma here
+    
+    // Add the required player identity parameters
+    playerId: gameContext.playerId !== undefined ? gameContext.playerId / 100 : 0.5,
+    playerRoleEncoding: gameContext.playerRoleEncoding !== undefined ? 
+      gameContext.playerRoleEncoding : encodePlayerRole(player.role),
+    playerTeamId: gameContext.playerTeamId !== undefined ? 
+      gameContext.playerTeamId : encodeTeamIdentity(player.team),
+    playerPositionalRole: gameContext.playerPositionalRole || 0.5
+  };
+};
+
+// Create a SituationContext from the current game state
+export const createSituationContext = (
+  player: any,
+  ballPos: Position,
+  opponentGoalPos: Position,
+  ownGoalPos: Position,
+  hasTeamPossession: boolean,
+  opponents: Position[]
+): SituationContext => {
+  const distanceToBall = calculateDistance(player.position, ballPos) / 
+    Math.sqrt(PITCH_WIDTH * PITCH_WIDTH + PITCH_HEIGHT * PITCH_HEIGHT);
+  
+  const distanceToOwnGoal = calculateDistance(player.position, ownGoalPos) / 
+    Math.sqrt(PITCH_WIDTH * PITCH_WIDTH + PITCH_HEIGHT * PITCH_HEIGHT);
+  
+  const distanceToOpponentGoal = calculateDistance(player.position, opponentGoalPos) / 
+    Math.sqrt(PITCH_WIDTH * PITCH_WIDTH + PITCH_HEIGHT * PITCH_HEIGHT);
+  
+  // Determine which third of the pitch the player is in
+  const normalizedX = player.position.x / PITCH_WIDTH;
+  const isInDefensiveThird = player.team === 'red' ? normalizedX < 0.33 : normalizedX > 0.67;
+  const isInMiddleThird = normalizedX >= 0.33 && normalizedX <= 0.67;
+  const isInAttackingThird = player.team === 'red' ? normalizedX > 0.67 : normalizedX < 0.33;
+  
+  return {
+    isDefensiveThird,
+    isMiddleThird,
+    isAttackingThird,
+    hasTeamPossession,
+    isSetPiece: false, // This would need to be determined elsewhere
+    isTransitioning: false, // This would need to be determined elsewhere
+    distanceToBall,
+    distanceToOwnGoal,
+    distanceToOpponentGoal,
+    defensivePressure: calculatePressureIndex(player.position, opponents)
+  };
 };
