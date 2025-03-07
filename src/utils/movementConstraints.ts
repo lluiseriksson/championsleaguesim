@@ -1,4 +1,5 @@
 
+
 import { Position, Player } from '../types/football';
 import { calculateDistance } from './neuralCore';
 
@@ -13,7 +14,7 @@ const ROLE_RADIUS_LIMITS = {
 // Significantly reduced neural adjustment radius
 const NEURAL_ADJUSTMENT_RADIUS = 8; // Reduced from 20
 
-// Apply ELO-based adjustment to movement constraint radius
+// Apply ELO-based adjustment to movement constraint radius - MORE AGGRESSIVE IMPLEMENTATION
 const applyEloRadiusAdjustment = (
   baseRadius: number,
   player: Player,
@@ -32,17 +33,17 @@ const applyEloRadiusAdjustment = (
   
   // No advantage for lower-rated team
   if (eloDifference <= 0) {
-    // Apply a larger penalty for lower-rated team (up to -25%)
+    // Apply a larger penalty for lower-rated team (up to -35%, increased from -25%)
     const cappedNegativeDifference = Math.max(eloDifference, -500);
-    const radiusPenalty = (cappedNegativeDifference / 500) * 0.25; // Increased from 0.10 to 0.25
+    const radiusPenalty = (cappedNegativeDifference / 500) * 0.35; // Increased from 0.25 to 0.35
     return baseRadius * (1 + radiusPenalty); // This will be a reduction since radiusPenalty is negative
   }
   
   // Cap at 500 ELO difference for higher-rated team
   const cappedDifference = Math.min(eloDifference, 500);
   
-  // Calculate radius bonus (up to 30% boost for higher-rated team, increased from 15%)
-  const radiusBonus = (cappedDifference / 500) * 0.30;
+  // Calculate radius bonus (up to 40% boost for higher-rated team, increased from 30%)
+  const radiusBonus = (cappedDifference / 500) * 0.40;
   
   return baseRadius * (1 + radiusBonus);
 };

@@ -84,12 +84,12 @@ function handlePlayerCollisions(
       const ballAngle = Math.atan2(dy, dx);
       const isAngledShot = Math.abs(ballAngle) > Math.PI/8;
       
-      // Check collision with adjusted reach based on ELO difference and shot angle
+      // Apply more aggressive ELO-based reach adjustment
       const eloReachAdjustment = useGoalkeeperReachAdjustment(goalkeeper, [...goalkeepers, ...fieldPlayers], isAngledShot);
       
       // Add the ELO-based reach adjustment to the goalkeeper for collision detection
-      // This effectively gives the higher-rated goalkeeper more reach for straight shots
-      // and reduces reach for lower-rated goalkeepers on angled shots
+      // This effectively gives the higher-rated goalkeeper much more reach for straight shots
+      // and severely reduces reach for lower-rated goalkeepers on angled shots
       const adjustedGoalkeeper = {
         ...goalkeeper,
         radius: goalkeeper.radius + eloReachAdjustment
@@ -110,7 +110,15 @@ function handlePlayerCollisions(
           isAngledShot // Pass the angled shot flag to calculateNewVelocity
         );
         
-        console.log(`Goalkeeper collision detected: ${isAngledShot ? 'angled shot' : 'straight shot'}, ELO adjustment: ${eloReachAdjustment.toFixed(2)}`);
+        // More detailed logging for ELO-based adjustments
+        const eloDiff = goalkeeper.teamElo ? 
+          (goalkeeper.team === 'red' ? 
+            goalkeeper.teamElo - (goalkeepers.find(g => g.team === 'blue')?.teamElo || 1500) :
+            goalkeeper.teamElo - (goalkeepers.find(g => g.team === 'red')?.teamElo || 1500)
+          ) : 0;
+        
+        console.log(`Goalkeeper collision detected: ${isAngledShot ? 'angled shot' : 'straight shot'}, ` +
+                    `ELO diff: ${eloDiff}, adjustment: ${eloReachAdjustment.toFixed(2)} units`);
         break;
       }
     }

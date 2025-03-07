@@ -236,4 +236,3 @@ export const calculateNewVelocity = (
   
   return limitSpeed(newVelocity);
 };
-

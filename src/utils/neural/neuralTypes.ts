@@ -10,24 +10,24 @@ export interface NeuralModelData {
   last_updated?: string;
 }
 
-// Calculate radius adjustment based on ELO difference
+// Calculate radius adjustment based on ELO difference - MORE AGGRESSIVE IMPLEMENTATION
 export const calculateEloRadiusAdjustment = (teamElo: number = 1500, opponentElo: number = 1500): number => {
   // Get absolute ELO difference (cap at 500 to prevent extreme adjustments)
   const eloDifference = Math.min(Math.abs(teamElo - opponentElo), 500);
   
-  // Higher-rated team gets radius boost, lower-rated team gets penalty
+  // Higher-rated team gets more significant radius boost, lower-rated team gets stronger penalty
   if (teamElo > opponentElo) {
-    // Calculate bonus for higher-rated team (0 to 10 units)
-    return Math.sqrt(eloDifference / 500) * 10;
+    // More aggressive bonus for higher-rated team (0 to 15 units, up from 10)
+    return Math.sqrt(eloDifference / 500) * 15;
   } else if (teamElo < opponentElo) {
-    // Calculate penalty for lower-rated team (0 to -10 units)
-    return -Math.sqrt(eloDifference / 500) * 10;
+    // More aggressive penalty for lower-rated team (0 to -15 units, down from -10)
+    return -Math.sqrt(eloDifference / 500) * 15;
   }
   
   return 0; // No adjustment for equal ratings
 };
 
-// Calculate goalkeeper reach adjustment for straight and angled shots based on ELO
+// Calculate goalkeeper reach adjustment for straight and angled shots based on ELO - MORE AGGRESSIVE IMPLEMENTATION
 export const calculateEloGoalkeeperReachAdjustment = (
   teamElo: number = 1500, 
   opponentElo: number = 1500, 
@@ -37,22 +37,23 @@ export const calculateEloGoalkeeperReachAdjustment = (
   const eloDifference = Math.min(Math.abs(teamElo - opponentElo), 500);
   
   if (teamElo > opponentElo) {
-    // Higher-rated team's goalkeeper gets bonus reach
+    // Higher-rated team's goalkeeper gets stronger bonus reach
     if (isAngledShot) {
-      // No additional bonus for angled shots (already have advantage)
-      return 0;
+      // Now adding a small bonus for angled shots too (up to 8 units)
+      return Math.sqrt(eloDifference / 500) * 8;
     } else {
-      // Significant bonus for straight shots (up to 20 units)
-      return Math.sqrt(eloDifference / 500) * 20;
+      // Even more significant bonus for straight shots (up to 25 units, up from 20)
+      return Math.sqrt(eloDifference / 500) * 25;
     }
   } else if (teamElo < opponentElo) {
-    // Lower-rated team's goalkeeper gets penalty only for angled shots
+    // Lower-rated team's goalkeeper gets stronger penalty
     if (isAngledShot) {
-      // Penalty for angled shots (up to -10 units)
-      return -Math.sqrt(eloDifference / 500) * 10;
+      // More severe penalty for angled shots (up to -15 units, down from -10)
+      // The larger the ELO difference, the more severe the penalty
+      return -Math.sqrt(eloDifference / 500) * 15;
     } else {
-      // No penalty for straight shots (already difficult)
-      return 0;
+      // Adding a small penalty for straight shots too (up to -5 units)
+      return -Math.sqrt(eloDifference / 500) * 5;
     }
   }
   
