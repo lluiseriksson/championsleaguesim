@@ -1,3 +1,4 @@
+
 import { Player, Ball, PITCH_WIDTH, PITCH_HEIGHT, GOAL_HEIGHT, NeuralNet } from '../types/football';
 import { isNetworkValid } from './neuralHelpers';
 
@@ -193,70 +194,106 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
     const predictionError = Math.random() * 10 - 5; // Reduced error range from ±10 to ±5
     const targetY = isBallMovingFast ? expectedBallY + predictionError : ball.position.y;
     
-    // NEW: Position closer to goal center when ball is far away
+    // MEJORADO: Reducimos el sesgo de centralización para ser más reactivo en los laterales
     const centeringBias = isLeftSide 
-      ? (ball.position.x > 300 ? 0.7 : 0.4) // Increased bias toward center 
-      : (ball.position.x < PITCH_WIDTH - 300 ? 0.7 : 0.4);
+      ? (ball.position.x > 300 ? 0.5 : 0.3) // Reducido de 0.7 a 0.5 y de 0.4 a 0.3
+      : (ball.position.x < PITCH_WIDTH - 300 ? 0.5 : 0.3); // Reducido para mayor reactividad lateral
     
-    // NEW: More heavily bias toward goal center when ball is far
-    const ballDistanceFromGoal = isLeftSide 
-      ? Math.abs(ball.position.x - 0) 
-      : Math.abs(ball.position.x - PITCH_WIDTH);
+    // Ajuste para pelota cercana a los laterales del arco
+    const distanceFromGoalCenter = Math.abs(ball.position.y - goalCenter);
+    const isBallNearGoalSide = distanceFromGoalCenter > GOAL_HEIGHT/3 && distanceFromGoalCenter < GOAL_HEIGHT*1.2;
+    
+    // Reducir aún más el sesgo de centralización cuando la pelota está cerca de los laterales del arco
+    const ballSideBias = isBallNearGoalSide ? 0.2 : centeringBias;
+    
+    // NUEVO: Más agresivo hacia los laterales cuando la pelota está cerca del arco y en los laterales
+    const isCloseToGoal = isLeftSide 
+      ? ball.position.x < 120
+      : ball.position.x > PITCH_WIDTH - 120;
       
-    const centeredTargetY = targetY * (1 - centeringBias) + goalCenter * centeringBias;
+    const finalCenteringBias = isCloseToGoal && isBallNearGoalSide ? 0.1 : ballSideBias;
     
-    // Further eliminated random Y offset entirely
+    // Aplicamos el sesgo ajustado
+    const centeredTargetY = targetY * (1 - finalCenteringBias) + goalCenter * finalCenteringBias;
+    
+    // Ampliamos el rango de movimiento en el eje Y para cubrir mejor los laterales
+    const maxYDistance = GOAL_HEIGHT/2 + 20; // Mantenemos 20 para evitar salirse demasiado
     const limitedTargetY = Math.max(
-      PITCH_HEIGHT/2 - GOAL_HEIGHT/2 - 10, // Reduced padding from 20 to 10
-      Math.min(PITCH_HEIGHT/2 + GOAL_HEIGHT/2 + 10, centeredTargetY) // Reduced padding from 20 to 10
+      PITCH_HEIGHT/2 - maxYDistance,
+      Math.min(PITCH_HEIGHT/2 + maxYDistance, centeredTargetY)
     );
     
-    // Calculate vertical movement with increased responsiveness for better positioning
+    // MEJORADO: Aumentamos la velocidad de reacción para disparos laterales
     const yDifference = limitedTargetY - player.position.y;
     
-    // FURTHER REDUCED: vertical movement speed for shots coming directly at goal
+    // Factor de velocidad vertical basado en la proximidad a los laterales del arco
     let verticalSpeedMultiplier = 1.0;
-    if (ballMovingTowardGoal && Math.abs(ball.position.y - PITCH_HEIGHT/2) < GOAL_HEIGHT/2) {
-      // Reduce speed for direct shots
-      verticalSpeedMultiplier = 0.7; // Increased from 0.6 for slightly better response
+    
+    // Si la pelota va directo al centro, reducimos velocidad para evitar errores
+    if (ballMovingTowardGoal && Math.abs(ball.position.y - PITCH_HEIGHT/2) < GOAL_HEIGHT/3) {
+      verticalSpeedMultiplier = 0.7; 
+    } 
+    // Si la pelota va hacia los laterales, aumentamos velocidad
+    else if (ballMovingTowardGoal && Math.abs(ball.position.y - PITCH_HEIGHT/2) > GOAL_HEIGHT/3) {
+      verticalSpeedMultiplier = 1.3; // Aumentado de 1.0 a 1.3 para mayor reactividad lateral
+      
+      // Extra boost para pelotas muy cercanas a los laterales
+      if (Math.abs(ball.position.y - PITCH_HEIGHT/2) > GOAL_HEIGHT/2) {
+        verticalSpeedMultiplier = 1.5; // Aún más rápido para los extremos
+      }
     }
     
-    moveY = Math.sign(yDifference) * Math.min(Math.abs(yDifference) * 0.1 * verticalSpeedMultiplier, 1.0) * eloSpeedMultiplier;
+    // NUEVO: Factor de ajuste basado en la velocidad horizontal de la pelota
+    const ballHorizontalVelocity = Math.abs(ball.velocity.x);
+    if (ballHorizontalVelocity > 5 && ballMovingTowardGoal) {
+      // Si la pelota viene rápido y directa, aumentamos más la reactividad
+      verticalSpeedMultiplier *= 1.2;
+    }
     
-    // NEW: Additional centering correction - always have a slight bias toward goal center
-    if (Math.abs(player.position.y - goalCenter) > 5) {
+    moveY = Math.sign(yDifference) * 
+            Math.min(Math.abs(yDifference) * 0.13 * verticalSpeedMultiplier, 1.5) * // Aumentado de 0.1 a 0.13
+            eloSpeedMultiplier;
+    
+    // Bias suavizado hacia el centro cuando el portero está lejos
+    if (Math.abs(player.position.y - goalCenter) > 25) { // Aumentado de 5 a 25
       const centeringCorrection = Math.sign(goalCenter - player.position.y) * 0.2;
       moveY = moveY * 0.8 + centeringCorrection;
     }
     
-    // Prioritize vertical movement when ball is coming directly at goal
+    // Priorizar movimiento vertical cuando la pelota viene directamente al arco
     if (ballMovingTowardGoal && Math.abs(ball.position.x - player.position.x) < 100) {
-      // Balance horizontal and vertical movement
-      const verticalPriorityMultiplier = 0.7 + Math.random() * 0.2;
+      // MEJORADO: Aumentamos prioridad para disparos laterales
+      const isLateralShot = Math.abs(ball.position.y - PITCH_HEIGHT/2) > GOAL_HEIGHT/3;
+      const verticalPriorityMultiplier = isLateralShot ? 0.9 : (0.7 + Math.random() * 0.2);
       moveY = moveY * verticalPriorityMultiplier * eloSpeedMultiplier;
+    }
+    
+    // NUEVO: Log para disparos laterales
+    if (isBallNearGoalSide && ballMovingTowardGoal && isCloseToGoal) {
+      console.log(`GK ${player.team}: LATERAL SHOT RESPONSE - moveY: ${moveY.toFixed(2)}, bias: ${finalCenteringBias.toFixed(2)}`);
     }
   }
   
-  // Add minimal final noise to movement
+  // Agregar ruido mínimo final al movimiento
   moveX = addPositioningNoise(moveX, player.teamElo);
   moveY = addPositioningNoise(moveY, player.teamElo);
   
-  // Decreased hesitation chance for more consistent movement
-  if (Math.random() < 0.08) { // 8% chance of goalkeeper hesitation
+  // Reducimos la probabilidad de duda para movimientos más consistentes
+  if (Math.random() < 0.08) { // 8% probabilidad de duda del portero
     moveX *= 0.7; 
     moveY *= 0.7;
     console.log(`GK ${player.team}: HESITATION`);
   }
   
-  // FIXED: Force goalkeeper to return to goal line if too far away
+  // Forzar al portero a volver a la línea de gol si está demasiado lejos
   const maxDistanceFromGoalLine = 45;
   if (Math.abs(player.position.x - goalLine) > maxDistanceFromGoalLine) {
-    // Override movement to return to goal line with urgency
+    // Anular movimiento para volver a la línea de gol con urgencia
     moveX = Math.sign(goalLine - player.position.x) * 2.5;
     console.log(`GK ${player.team}: EMERGENCY RETURN TO GOAL LINE`);
   }
   
-  // NEW: Extra correction to stay near goal center vertically when idle
+  // Corrección extra para permanecer cerca del centro del arco cuando está inactivo
   const isIdle = Math.abs(moveX) < 0.2 && Math.abs(moveY) < 0.2;
   if (isIdle && Math.abs(player.position.y - goalCenter) > GOAL_HEIGHT/4) {
     moveY = Math.sign(goalCenter - player.position.y) * 0.5;
