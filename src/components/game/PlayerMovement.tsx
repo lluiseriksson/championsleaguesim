@@ -475,6 +475,19 @@ const usePlayerMovement = ({
     }
   };
 
+  const calculateExecutionPrecision = (elo: number = 2000): number => {
+    const baseElo = 2000;
+    const precision = 1.0 + (Math.min(0.25, Math.max(-0.25, (elo - baseElo) / 2000)));
+    return precision;
+  };
+
+  const applyExecutionNoise = (value: number, precision: number, playerId: number): number => {
+    const noiseScale = 1.0 - Math.min(0.7, precision);
+    const playerSpecificNoise = (playerId % 10) / 100;
+    const noise = (Math.random() * 2 - 1) * noiseScale * (1.0 + playerSpecificNoise);
+    return value + noise;
+  };
+
   const updatePlayerPositions = React.useCallback(() => {
     if (!gameReady) return;
     
@@ -756,5 +769,26 @@ const usePlayerMovement = ({
           p.targetPosition,
           p.role,
           true
+        );
+        
+        return {
+          ...p,
+          proposedPosition: finalPosition
+        };
+      });
+      
+      return processedPlayers.map(p => ({
+        ...p,
+        position: p.proposedPosition || p.position
+      }));
+    });
+  }, [
+    gameReady,
+    setPlayers,
+    ball
+  ]);
 
+  return { updatePlayerPositions };
+};
 
+export default usePlayerMovement;
