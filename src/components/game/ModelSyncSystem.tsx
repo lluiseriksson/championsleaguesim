@@ -1,10 +1,10 @@
-
 import React, { useState, useRef } from 'react';
 import { Player } from '../../types/football';
 import { saveModel } from '../../utils/neural/modelPersistence';
 import { createExperienceReplay } from '../../utils/experienceReplay';
 import { toast } from 'sonner';
 import { validatePlayerBrain } from '../../utils/neural/networkValidator';
+import { calculatePlayerAdvantage } from '../../utils/eloAdvantageSystem';
 
 const DEFAULT_SYNC_INTERVAL = 1800; // 30 seconds at 60fps (was 600)
 const TOURNAMENT_SYNC_INTERVAL = 7200; // 120 seconds at 60fps (doubled from 3600)
@@ -17,14 +17,14 @@ interface ModelSyncSystemProps {
   players: Player[];
   setPlayers: React.Dispatch<React.SetStateAction<Player[]>>;
   tournamentMode?: boolean;
-  eloAdvantageMultiplier?: number;
+  teamAdvantageFactors?: { red: number, blue: number };
 }
 
 export const useModelSyncSystem = ({ 
   players, 
   setPlayers,
   tournamentMode = false,
-  eloAdvantageMultiplier = 1.0
+  teamAdvantageFactors = { red: 1.0, blue: 1.0 }
 }: ModelSyncSystemProps) => {
   const syncCounter = useRef(0);
   const learningCheckCounter = useRef(0);
@@ -48,7 +48,7 @@ export const useModelSyncSystem = ({
       
       teamElosRef.current = { red: redElo, blue: blueElo };
       
-      // DRASTIC IMPROVEMENT: Log the ELO difference for transparency
+      // Log the ELO difference for transparency
       const eloDifference = Math.abs(redElo - blueElo);
       console.log(`Team ELOs - Red: ${redElo}, Blue: ${blueElo}, Difference: ${eloDifference}`);
       if (eloDifference > 200) {
@@ -177,51 +177,41 @@ export const useModelSyncSystem = ({
             return player;
           }
           
-          // DRASTIC IMPROVEMENT: Apply much stronger ELO-based learning advantage
-          // Apply massive learning boost to higher ELO teams
-          const opponentTeamElo = player.team === 'red' ? teamElosRef.current.blue : teamElosRef.current.red;
-          const playerTeamElo = player.team === 'red' ? teamElosRef.current.red : teamElosRef.current.blue;
+          // Get team advantage factor from the standardized system
+          const teamAdvantage = player.team === 'red' ? 
+            teamAdvantageFactors.red : 
+            teamAdvantageFactors.blue;
           
-          // Calculate ELO difference and normalize to a factor
-          const eloDifference = playerTeamElo - opponentTeamElo;
+          // Calculate player-specific advantage
+          const playerAdvantage = calculatePlayerAdvantage(player, teamAdvantage);
           
-          // DRASTIC IMPROVEMENT: Much stronger learning rate adjustment based on ELO
-          // Higher ELO teams now learn MUCH faster than before
-          const learningAdvantage = eloDifference > 0 ? 
-            Math.min(3.0, 1 + ((eloDifference) / 500)) : // Halved from 1000 to 500 - stronger effect
-            Math.max(0.5, 1 + ((eloDifference) / 800)); // Disadvantage for lower ELO teams
-          
-          console.log(`${player.team} player learning advantage: ${learningAdvantage.toFixed(2)} (ELO diff: ${eloDifference})`);
+          console.log(`${player.team} ${player.role} advantage: ${playerAdvantage.toFixed(2)}`);
           
           if (player.brain?.experienceReplay?.capacity > 0) {
-            // DRASTIC IMPROVEMENT: Enhanced brain learning parameters
+            // Calculate reward multiplier based on player advantage
+            const rewardMultiplier = Math.max(0.5, playerAdvantage);
             
-            // Calculate reward multiplier based on ELO advantage
-            const rewardMultiplier = Math.max(0.5, learningAdvantage);
+            // Boost learning stage based on advantage
+            const learningStageBoost = Math.min(1, (player.brain.learningStage || 0.1) * playerAdvantage);
             
-            // Boost learning stage (neural network learning rate) based on ELO
-            const learningStageBoost = Math.min(1, (player.brain.learningStage || 0.1) * learningAdvantage);
-            
-            // DRASTIC IMPROVEMENT: Apply high-ELO bonus to rewards
-            // Higher ELO teams get larger rewards for the same actions
+            // Apply advantage-based bonus to rewards
             const lastRewardWithBonus = (player.brain.lastReward || 0) * rewardMultiplier;
             
-            // Apply cumulative reward bonus with stronger effect for higher ELO
-            const cumulativeRewardBonus = playerTeamElo > 2200 ? 1.5 : 
-                                        playerTeamElo > 2000 ? 1.2 : 1.0;
+            // Apply cumulative reward bonus for higher ELO
+            const cumulativeRewardBonus = playerAdvantage > 1.5 ? 1.5 : 
+                                        playerAdvantage > 1.0 ? 1.2 : 1.0;
             
             const enhancedCumulativeReward = (player.brain.cumulativeReward || 0) * 
                                            rewardMultiplier * 
                                            cumulativeRewardBonus;
             
-            // DRASTIC IMPROVEMENT: High ELO teams can get occasional memory boosts
-            // (larger experience replay buffer to remember more training examples)
+            // High advantage teams can get occasional memory boosts
             let experienceReplayCapacity = player.brain.experienceReplay.capacity;
             
-            if (playerTeamElo > 2200 && Math.random() < 0.3) {
-              // Boost capacity for high ELO teams occasionally
+            if (playerAdvantage > 1.7 && Math.random() < 0.3) {
+              // Boost capacity for high advantage teams occasionally
               experienceReplayCapacity = Math.min(200, experienceReplayCapacity + 10);
-              console.log(`${player.team} high-ELO player got memory capacity boost: ${experienceReplayCapacity}`);
+              console.log(`${player.team} high-advantage player got memory capacity boost: ${experienceReplayCapacity}`);
             }
             
             // Construct the enhanced brain with all improvements
@@ -236,8 +226,8 @@ export const useModelSyncSystem = ({
                   ...player.brain.experienceReplay,
                   capacity: experienceReplayCapacity
                 },
-                // DRASTIC IMPROVEMENT: ELO-based learning optimization
-                learningRate: Math.min(0.3, 0.05 + (learningAdvantage - 1) * 0.1),
+                // ELO-based learning optimization
+                learningRate: Math.min(0.3, 0.05 + (playerAdvantage - 1) * 0.1),
                 momentumFactor: Math.min(0.3, 0.1 + (rewardMultiplier - 1) * 0.1)
               }
             };
@@ -245,23 +235,23 @@ export const useModelSyncSystem = ({
           
           enhancedPlayers++;
           
-          // Create new brain with ELO-optimized parameters
+          // Base capacity on advantage
+          const baseCapacity = playerAdvantage > 1.5 ? 150 : 
+                             playerAdvantage > 1.0 ? 120 : 100;
+          
+          // Create new brain with advantage-optimized parameters
           return {
             ...player,
             brain: {
               ...player.brain,
-              experienceReplay: player.brain?.experienceReplay || createExperienceReplay(
-                // DRASTIC IMPROVEMENT: Starting capacity based on ELO
-                playerTeamElo > 2200 ? 150 : 
-                playerTeamElo > 2000 ? 120 : 100
-              ),
+              experienceReplay: player.brain?.experienceReplay || createExperienceReplay(baseCapacity),
               learningStage: player.brain?.learningStage || 
-                            (playerTeamElo > 2200 ? 0.2 : 0.1), // Higher starting point for high ELO
+                            (playerAdvantage > 1.5 ? 0.2 : 0.1),
               lastReward: player.brain?.lastReward || 0,
               cumulativeReward: player.brain?.cumulativeReward || 0,
-              // DRASTIC IMPROVEMENT: ELO-based starting parameters
-              learningRate: playerTeamElo > 2200 ? 0.15 : 0.1,
-              momentumFactor: playerTeamElo > 2200 ? 0.2 : 0.1
+              // Advantage-based starting parameters
+              learningRate: playerAdvantage > 1.5 ? 0.15 : 0.1,
+              momentumFactor: playerAdvantage > 1.5 ? 0.2 : 0.1
             }
           };
         })
@@ -276,7 +266,7 @@ export const useModelSyncSystem = ({
       
       learningCheckCounter.current = 0;
     }
-  }, [setPlayers, tournamentMode, isLowPerformance]);
+  }, [setPlayers, tournamentMode, isLowPerformance, teamAdvantageFactors]);
   
   return { 
     syncModels, 

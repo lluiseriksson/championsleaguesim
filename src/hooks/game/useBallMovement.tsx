@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Player, Ball, Position, PITCH_WIDTH, PITCH_HEIGHT } from '../../types/football';
 import { handleBallPhysics } from './useBallPhysics';
@@ -10,6 +9,7 @@ import {
   calculateBallSpeed 
 } from './useBallInitialization';
 import { forcePositionWithinRadiusBounds } from '../../utils/movementConstraints';
+import { calculatePlayerAdvantage } from '../../utils/eloAdvantageSystem';
 
 const FIELD_PADDING = {
   x: 12, // Minimum padding from edge of field
@@ -26,7 +26,7 @@ interface BallMovementProps {
   checkGoal: (position: Position) => 'red' | 'blue' | null;
   onBallTouch: (player: Player) => void;
   tournamentMode?: boolean;
-  eloAdvantageMultiplier?: number;
+  teamAdvantageFactors?: { red: number, blue: number };
 }
 
 export const useBallMovement = ({ 
@@ -36,51 +36,12 @@ export const useBallMovement = ({
   checkGoal, 
   onBallTouch,
   tournamentMode = false,
-  eloAdvantageMultiplier = 1.0
+  teamAdvantageFactors = { red: 1.0, blue: 1.0 }
 }: BallMovementProps) => {
   const { goalkeepers, fieldPlayers } = React.useMemo(() => ({
     goalkeepers: players.filter(p => p.role === 'goalkeeper'),
     fieldPlayers: players.filter(p => p.role !== 'goalkeeper')
   }), [players]);
-
-  const eloFactorsRef = React.useRef({
-    red: 1.0,
-    blue: 1.0
-  });
-
-  React.useEffect(() => {
-    if (players.length > 0 && eloAdvantageMultiplier > 1) {
-      const redPlayers = players.filter(p => p.team === 'red');
-      const bluePlayers = players.filter(p => p.team === 'blue');
-      
-      const redElo = redPlayers.length > 0 && redPlayers[0].teamElo ? redPlayers[0].teamElo : 2000;
-      const blueElo = bluePlayers.length > 0 && bluePlayers[0].teamElo ? bluePlayers[0].teamElo : 2000;
-      
-      // DRASTIC IMPROVEMENT: Increase ELO advantage multiplier significantly
-      // Calculate a much more dramatic advantage based on ELO difference
-      const eloDifference = Math.abs(redElo - blueElo);
-      const dramaticMultiplier = Math.min(4.0, 1.0 + (eloDifference / 400)); // Much stronger scaling
-      
-      if (redElo > blueElo) {
-        eloFactorsRef.current = {
-          red: dramaticMultiplier,
-          blue: 1.0 / Math.sqrt(dramaticMultiplier) // Disadvantage the lower ELO team
-        };
-      } else if (blueElo > redElo) {
-        eloFactorsRef.current = {
-          red: 1.0 / Math.sqrt(dramaticMultiplier), // Disadvantage the lower ELO team
-          blue: dramaticMultiplier
-        };
-      } else {
-        eloFactorsRef.current = {
-          red: 1.0,
-          blue: 1.0
-        };
-      }
-      
-      console.log(`DRAMATIC ELO advantage factors updated - Red: ${eloFactorsRef.current.red.toFixed(2)}, Blue: ${eloFactorsRef.current.blue.toFixed(2)}`);
-    }
-  }, [players, eloAdvantageMultiplier]);
 
   const { 
     lastCollisionTimeRef, 
@@ -96,7 +57,13 @@ export const useBallMovement = ({
   const updateBallPosition = React.useCallback(() => {
     setTimeout(() => {
       players.forEach(player => {
-        const eloFactor = player.team === 'red' ? eloFactorsRef.current.red : eloFactorsRef.current.blue;
+        // Get team advantage factor
+        const teamAdvantage = player.team === 'red' ? 
+          teamAdvantageFactors.red : 
+          teamAdvantageFactors.blue;
+        
+        // Calculate player-specific advantage
+        const playerAdvantage = calculatePlayerAdvantage(player, teamAdvantage);
         
         const fixedPosition = forcePositionWithinRadiusBounds(
           player.position,
@@ -140,38 +107,37 @@ export const useBallMovement = ({
           }
         }
         
-        // DRASTIC IMPROVEMENT: Much stronger ELO-based movement advantages for field players
+        // Apply standardized advantage-based movement improvements for field players
         if (player.role !== 'goalkeeper') {
-          // Apply drastic speed and agility improvements based on ELO
-          const speedBoost = eloFactor > 1.0 ? 
-            Math.min(3.0, eloFactor * 1.8) : // Much higher max boost (3x instead of 1.5x)
-            Math.max(0.6, eloFactor); // Low ELO teams move slower
+          // Apply speed improvements based on player advantage
+          const speedBoost = playerAdvantage > 1.0 ? 
+            Math.min(2.5, playerAdvantage * 1.5) : // Decreased from 3.0 (less extreme)
+            Math.max(0.7, playerAdvantage); // Increased min from 0.6 to 0.7
             
           const dx = player.targetPosition.x - player.position.x;
           const dy = player.targetPosition.y - player.position.y;
           
           if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
             const distance = Math.sqrt(dx * dx + dy * dy);
-            const moveSpeed = Math.min(distance, 4 * speedBoost); // Double base speed and apply boost
+            const moveSpeed = Math.min(distance, 3.5 * speedBoost); // Slightly reduced from 4
             
             if (distance > 0) {
-              // Dramatically increase movement speed based on ELO
-              finalPosition.x += (dx / distance) * moveSpeed * 0.25; // Increased from 0.2
-              finalPosition.y += (dy / distance) * moveSpeed * 0.25; // Increased from 0.2
+              // Apply movement speed based on advantage
+              finalPosition.x += (dx / distance) * moveSpeed * 0.25;
+              finalPosition.y += (dy / distance) * moveSpeed * 0.25;
               
-              // Add occasional "burst of speed" for high ELO teams
-              if (eloFactor > 1.5 && Math.random() < 0.08) {
+              // Add occasional "burst of speed" for high advantage teams
+              if (playerAdvantage > 1.5 && Math.random() < 0.08) {
                 finalPosition.x += (dx / distance) * moveSpeed * 0.15;
                 finalPosition.y += (dy / distance) * moveSpeed * 0.15;
-                console.log(`${player.team} player with high ELO advantage used speed burst!`);
+                console.log(`${player.team} player with high advantage used speed burst!`);
               }
             }
           }
           
-          // DRASTIC IMPROVEMENT: Better ball anticipation for high ELO teams
-          // Players with high ELO will move toward where the ball is going to be
-          if (eloFactor > 1.3 && ball.velocity.x !== 0 && ball.velocity.y !== 0) {
-            const anticipationFactor = Math.min(0.8, (eloFactor - 1) * 0.6);
+          // Better ball anticipation for high advantage teams
+          if (playerAdvantage > 1.3 && ball.velocity.x !== 0 && ball.velocity.y !== 0) {
+            const anticipationFactor = Math.min(0.8, (playerAdvantage - 1) * 0.6);
             const predictedBallX = ball.position.x + ball.velocity.x * 4 * anticipationFactor;
             const predictedBallY = ball.position.y + ball.velocity.y * 4 * anticipationFactor;
             
@@ -243,7 +209,7 @@ export const useBallMovement = ({
         onBallTouch,
         lastCollisionTimeRef,
         lastKickPositionRef,
-        eloFactorsRef.current
+        teamAdvantageFactors
       );
 
       return {
@@ -258,7 +224,8 @@ export const useBallMovement = ({
     onBallTouch, 
     tournamentMode, 
     handleGoalCheck,
-    players
+    players,
+    teamAdvantageFactors
   ]);
 
   return { updateBallPosition };

@@ -8,6 +8,12 @@ import { useGameLoop } from '../hooks/game/useGameLoop';
 import { useGoalNotification } from '../hooks/game/useGoalNotification';
 import { useModelSaveOnExit } from '../hooks/game/useModelSaveOnExit';
 import { useTeamContext } from '../hooks/game/useTeamContext';
+import { 
+  getTeamEloRatings, 
+  calculateTeamAdvantageFactors, 
+  logEloAdvantages,
+  BASE_ELO_IMPACT
+} from '../utils/eloAdvantageSystem';
 
 interface GameLogicProps {
   players: Player[];
@@ -18,7 +24,7 @@ interface GameLogicProps {
   setScore: React.Dispatch<React.SetStateAction<Score>>;
   updatePlayerPositions: () => void;
   tournamentMode?: boolean;
-  onGoalScored?: (team: 'red' | 'blue') => void; // Add the onGoalScored prop
+  onGoalScored?: (team: 'red' | 'blue') => void;
 }
 
 const GameLogic: React.FC<GameLogicProps> = ({
@@ -30,31 +36,30 @@ const GameLogic: React.FC<GameLogicProps> = ({
   setScore,
   updatePlayerPositions,
   tournamentMode = false,
-  onGoalScored // Add the prop here
+  onGoalScored
 }) => {
   // Reference to track the last player who touched the ball
   const lastPlayerTouchRef = React.useRef<Player | null>(null);
   
-  // Calculate team ELOs for advantage calculations
-  const redTeamElo = React.useMemo(() => {
-    const redPlayers = players.filter(p => p.team === 'red');
-    return redPlayers.length > 0 && redPlayers[0].teamElo ? redPlayers[0].teamElo : 2000;
-  }, [players]);
+  // Get team ELO ratings using our utility function
+  const teamElos = React.useMemo(() => 
+    getTeamEloRatings(players), 
+  [players]);
   
-  const blueTeamElo = React.useMemo(() => {
-    const bluePlayers = players.filter(p => p.team === 'blue');
-    return bluePlayers.length > 0 && bluePlayers[0].teamElo ? bluePlayers[0].teamElo : 2000;
-  }, [players]);
+  // Calculate team advantage factors using our utility function
+  const teamAdvantageFactors = React.useMemo(() => 
+    calculateTeamAdvantageFactors(teamElos.red, teamElos.blue, BASE_ELO_IMPACT), 
+  [teamElos.red, teamElos.blue]);
   
-  const eloAdvantageMultiplier = React.useMemo(() => {
-    const eloDiff = Math.abs(redTeamElo - blueTeamElo);
-    // Significantly increased multiplier effect - making ELO differences more impactful
-    return Math.min(2.5, 1 + (eloDiff / 600));
-  }, [redTeamElo, blueTeamElo]);
+  // Log ELO advantage info when it changes
+  React.useEffect(() => {
+    if (players.length > 0) {
+      logEloAdvantages(teamElos.red, teamElos.blue, BASE_ELO_IMPACT);
+    }
+  }, [teamElos.red, teamElos.blue, players.length]);
   
   console.log(`GameLogic rendered with players: ${players.length}, tournamentMode: ${tournamentMode}`);
-  console.log(`Team ELOs - Red: ${redTeamElo}, Blue: ${blueTeamElo}, Advantage Multiplier: ${eloAdvantageMultiplier.toFixed(2)}`);
-
+  
   // Get team context functions
   const { getTeamContext } = useTeamContext({ players });
 
@@ -67,7 +72,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
     ball,
     lastPlayerTouchRef,
     tournamentMode,
-    teamElos: { red: redTeamElo, blue: blueTeamElo }
+    teamElos
   });
 
   // Model synchronization system with tournament mode flag and performance monitoring
@@ -81,7 +86,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
     players,
     setPlayers,
     tournamentMode,
-    eloAdvantageMultiplier
+    teamAdvantageFactors
   });
 
   // Goal notification system
@@ -97,7 +102,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
     score,
     tournamentMode,
     isLowPerformance,
-    eloAdvantageMultiplier
+    teamAdvantageFactors
   });
 
   // Goal notification hook
@@ -134,7 +139,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
       console.log(`Ball touched by ${player.team} ${player.role} #${player.id}`);
     },
     tournamentMode,
-    eloAdvantageMultiplier
+    teamAdvantageFactors
   });
 
   // Run game loop with actual functions and performance monitoring
@@ -150,7 +155,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
     score,
     tournamentMode,
     isLowPerformance,
-    eloAdvantageMultiplier
+    teamAdvantageFactors
   });
 
   // Save models on component unmount
