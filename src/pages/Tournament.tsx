@@ -29,22 +29,14 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
   } = useTournament(embeddedMode);
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-2 py-2">
       <TournamentHeader 
         currentRound={currentRound}
         getWinner={getWinner}
       />
       
-      <div className="mb-6 flex items-center justify-between">
-        {currentRound <= 7 ? (
-          <TournamentControls
-            currentRound={currentRound}
-            autoSimulation={autoSimulation}
-            simulationPaused={simulationPaused}
-            resetTournament={resetTournament}
-            startAutoSimulation={startAutoSimulation}
-          />
-        ) : (
+      <div className="mb-2 flex items-center justify-between">
+        {currentRound <= 7 && (
           <TournamentControls
             currentRound={currentRound}
             autoSimulation={autoSimulation}

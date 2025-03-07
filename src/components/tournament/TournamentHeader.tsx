@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { Trophy } from 'lucide-react';
 import { TournamentTeam } from '../../types/tournament';
 
@@ -25,10 +24,10 @@ const TournamentHeader: React.FC<TournamentHeaderProps> = ({
 
   return (
     <>
-      <h1 className="text-3xl font-bold mb-6 text-center">Champions League Simulator</h1>
+      <h1 className="text-2xl font-bold mb-2 text-center">Champions League Simulator</h1>
       
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-xl font-semibold">{getTournamentStatus()}</h2>
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-lg font-semibold">{getTournamentStatus()}</h2>
         
         {currentRound > 7 && getWinner() && (
           <div className="flex items-center text-amber-500 font-bold gap-2">
@@ -36,10 +35,6 @@ const TournamentHeader: React.FC<TournamentHeaderProps> = ({
             <span>Champion: {getWinner()?.name}</span>
           </div>
         )}
-      </div>
-      
-      <div className="mb-6">
-        <Link to="/" className="text-blue-600 hover:underline">← Back to Home</Link>
       </div>
     </>
   );
