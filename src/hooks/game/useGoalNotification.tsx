@@ -37,15 +37,13 @@ export const useGoalNotification = ({
       }
     }
     
-    // IMPROVED: Reset ball position to center after goal with stronger velocity
-    // to prevent it from getting stuck in the goal
-    setBall(prev => ({
-      ...prev,
+    // Reset ball position to center after goal with a random kick direction
+    setBall({
       position: { x: PITCH_WIDTH/2, y: PITCH_HEIGHT/2 },
       velocity: { 
-        // Strong initial kick toward the team that conceded
-        x: scoringTeam === 'red' ? -3 : 3, 
-        y: (Math.random() * 2 - 1) * 2 
+        // Random direction with stronger initial kick 
+        x: (Math.random() * 6) - 3,
+        y: (Math.random() * 6) - 3
       },
       // Reset bounce detection to prevent issues after goal
       bounceDetection: {
@@ -54,7 +52,7 @@ export const useGoalNotification = ({
         lastBounceSide: '',
         sideEffect: false
       }
-    }));
+    });
     
     return scoringTeam;
   }, [tournamentMode, totalGoalsRef, setBall]);

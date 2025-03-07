@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Ball, Position, PITCH_WIDTH, PITCH_HEIGHT, GOAL_HEIGHT } from '../../types/football';
 
@@ -158,14 +157,14 @@ export const useBallGoalDetection = ({
       // Set the cooldown timestamp
       lastGoalTimeRef.current = currentTime;
       
-      // IMPROVED: Reset ball position to center with stronger initial velocity
-      // and make sure it's completely outside the goal area
+      // Reset ball position to center with completely random direction
+      // to prevent predictable patterns after goals
       const updatedBall = {
         ...currentBall,
         position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
         velocity: { 
-          x: goalScored === 'red' ? -5 : 5, // Stronger kick away from the goal
-          y: (Math.random() - 0.5) * 5 
+          x: (Math.random() * 8) - 4, // Fully random direction
+          y: (Math.random() * 8) - 4  // Fully random direction
         },
         bounceDetection: {
           consecutiveBounces: 0,
