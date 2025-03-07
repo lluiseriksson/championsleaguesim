@@ -1,12 +1,12 @@
 import { Position, Player, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
 import { calculateDistance } from './neuralCore';
 
-// Increased radius limits to allow more movement freedom
+// Role-specific radius limits with adjustments for positional discipline
 const ROLE_RADIUS_LIMITS = {
-  goalkeeper: 130,    // Increased from 110 to 130
-  defender: 150,     // Kept the same
-  midfielder: 140,   // Kept the same
-  forward: 180       // Kept the same
+  goalkeeper: 130,    // Limited radius for goalkeepers 
+  defender: 150,      // Limited radius for defenders
+  midfielder: 180,    // Increased from 140 to 180 for more freedom
+  forward: 200        // Increased from 180 to 200 for more freedom
 };
 
 // Increased neural adjustment radius for more freedom
@@ -29,9 +29,19 @@ export const forcePositionWithinRadiusBounds = (
   // Calculate the base max radius for this role
   const baseMaxRadius = ROLE_RADIUS_LIMITS[role];
   
-  // Apply extra radius for neural network adjustments, with special consideration for goalkeepers
-  const extraRadius = isNeuralNetworkAdjustment ? 
-    (role === 'goalkeeper' ? NEURAL_ADJUSTMENT_RADIUS * 3 : NEURAL_ADJUSTMENT_RADIUS) : 0; // Increased from *2 to *3 for goalkeepers
+  // Apply extra radius for neural network adjustments, with special consideration for roles
+  let extraRadius = 0;
+  if (isNeuralNetworkAdjustment) {
+    if (role === 'goalkeeper') {
+      extraRadius = NEURAL_ADJUSTMENT_RADIUS * 2; // Reduced from *3 to *2
+    } else if (role === 'defender') {
+      extraRadius = NEURAL_ADJUSTMENT_RADIUS * 1.5;
+    } else if (role === 'midfielder') {
+      extraRadius = NEURAL_ADJUSTMENT_RADIUS * 2.5; // More freedom
+    } else if (role === 'forward') {
+      extraRadius = NEURAL_ADJUSTMENT_RADIUS * 3; // Most freedom
+    }
+  }
   
   // Calculate max allowed radius without randomization
   const maxRadius = baseMaxRadius + extraRadius;
@@ -75,7 +85,7 @@ export const forcePositionWithinRadiusBounds = (
     x: Math.max(FIELD_PADDING.x, Math.min(PITCH_WIDTH - FIELD_PADDING.x, radiusBoundPosition.x)),
     y: Math.max(FIELD_PADDING.y, Math.min(PITCH_HEIGHT - FIELD_PADDING.y, radiusBoundPosition.y))
   };
-}
+};
 
 export const constrainMovementToRadius = (
   currentPosition: Position,
@@ -93,7 +103,7 @@ export const constrainMovementToRadius = (
     ((currentPosition.x > 500 && proposedPosition.x > 450) || 
      (currentPosition.x < 300 && proposedPosition.x < 350));
   
-  // Extra radius for neural network adjustments, with special consideration for goalkeepers
+  // Extra radius for neural network adjustments, with special consideration for roles
   const extraRadius = isNeuralNetworkAdjustment ? 
     (role === 'goalkeeper' ? NEURAL_ADJUSTMENT_RADIUS * 3 : NEURAL_ADJUSTMENT_RADIUS) : 0; // Increased from *2 to *3
   

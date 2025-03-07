@@ -43,6 +43,14 @@ const SHOT_CLOSE_TO_GOAL_REWARD = 2.0; // Reward for shots that nearly score
 const SHOT_BLOCKED_BY_KEEPER_REWARD = 0.8; // Some reward for forcing goalkeeper save
 const GOAL_STREAK_BONUS = 0.5; // Additional bonus for consecutive goals
 
+// NEW: Positional discipline rewards/penalties
+const GOALKEEPER_POSITION_PENALTY = -1.2; // Strong penalty for goalkeeper out of position
+const DEFENDER_POSITION_PENALTY = -0.8; // Significant penalty for defenders out of position
+const MIDFIELDER_POSITION_REWARD = 0.4; // Moderate reward for midfielders in good positions
+const FORWARD_POSITION_REWARD = 0.6; // Better reward for forwards in good positions
+const DEFENDER_DISTANCE_THRESHOLD = 120; // Distance threshold for defenders (in pixels)
+const GOALKEEPER_DISTANCE_THRESHOLD_POSITION = 80; // Distance threshold for goalkeepers (in pixels)
+
 // Reward positioning when the player creates space or finds open positions
 const calculatePositioningReward = (player: Player, context: TeamContext): number => {
   let reward = 0;
@@ -55,6 +63,61 @@ const calculatePositioningReward = (player: Player, context: TeamContext): numbe
       totalDistance += calculateDistance(player.position, teammate);
     }
     avgTeammateDistance = totalDistance / context.teammates.length;
+  }
+  
+  // NEW: Calculate distance to target/expected position
+  const distanceToTargetPosition = calculateDistance(player.position, player.targetPosition);
+  
+  // NEW: Apply role-specific positional rewards/penalties
+  if (player.role === 'goalkeeper') {
+    // Goalkeepers should stay very close to their expected position
+    if (distanceToTargetPosition > GOALKEEPER_DISTANCE_THRESHOLD_POSITION) {
+      // Apply stronger penalty the further the goalkeeper is from position
+      const positionPenalty = GOALKEEPER_POSITION_PENALTY * 
+        (distanceToTargetPosition / GOALKEEPER_DISTANCE_THRESHOLD_POSITION);
+      reward += Math.max(-2.0, positionPenalty); // Cap the penalty
+      console.log(`${player.team} goalkeeper out of position penalty: ${positionPenalty.toFixed(2)}`);
+    }
+  } else if (player.role === 'defender') {
+    // Defenders should maintain disciplined positions
+    if (distanceToTargetPosition > DEFENDER_DISTANCE_THRESHOLD) {
+      // Apply stronger penalty the further the defender is from position
+      const positionPenalty = DEFENDER_POSITION_PENALTY * 
+        (distanceToTargetPosition / DEFENDER_DISTANCE_THRESHOLD);
+      reward += Math.max(-1.5, positionPenalty); // Cap the penalty
+      console.log(`${player.team} defender out of position penalty: ${positionPenalty.toFixed(2)}`);
+    }
+  } else if (player.role === 'midfielder') {
+    // Midfielders get reward for creating space and moving dynamically
+    // They get less penalty for being out of position
+    if (avgTeammateDistance > 120) {
+      // Greater reward for finding open spaces as a midfielder
+      reward += MIDFIELDER_POSITION_REWARD * Math.min(1, (avgTeammateDistance - 120) / 200);
+    }
+    
+    // Small reward for creative positioning that doesn't stray too far
+    if (distanceToTargetPosition < 180) {
+      reward += 0.2;
+    } else if (distanceToTargetPosition > 250) {
+      // Only mild penalty for midfielders far from position
+      reward -= 0.3;
+    }
+  } else if (player.role === 'forward') {
+    // Forwards get greater rewards for finding space in attacking positions
+    if (player.team === 'red' && player.position.x > 500) {
+      reward += FORWARD_POSITION_REWARD;
+    } else if (player.team === 'blue' && player.position.x < 300) {
+      reward += FORWARD_POSITION_REWARD;
+    }
+    
+    // Reward movement that creates separation from defenders
+    const nearestOpponentDistance = Math.min(
+      ...context.opponents.map(opp => calculateDistance(player.position, opp))
+    );
+    
+    if (nearestOpponentDistance > 80) {
+      reward += 0.3 * Math.min(1, (nearestOpponentDistance - 80) / 100);
+    }
   }
   
   // Reward players who maintain good spacing with teammates (not too close)

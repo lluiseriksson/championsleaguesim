@@ -12,7 +12,7 @@ import { forcePositionWithinRadiusBounds } from '../../utils/movementConstraints
 
 const FIELD_PADDING = {
   x: 12, // Minimum padding from edge of field
-  goalX: 8, // Minimum distance from goal line (to prevent goalkeepers inside goals)
+  goalX: 12, // Increased from 8 to 12 - Minimum distance from goal line (to prevent goalkeepers inside goals)
   y: 12  // Minimum padding from top/bottom edge
 };
 
@@ -54,6 +54,7 @@ export const useBallMovement = ({
   const updateBallPosition = React.useCallback(() => {
     setTimeout(() => {
       players.forEach(player => {
+        // Apply position constraints based on role
         const fixedPosition = forcePositionWithinRadiusBounds(
           player.position,
           player.targetPosition,
@@ -62,6 +63,8 @@ export const useBallMovement = ({
         );
         
         let finalPosition = {...fixedPosition};
+        
+        // Enhanced goalkeeper constraints to ensure they stay visible and not in goals
         if (player.role === 'goalkeeper') {
           if (finalPosition.x < FIELD_PADDING.goalX) {
             finalPosition.x = FIELD_PADDING.goalX;
