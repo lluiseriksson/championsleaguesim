@@ -116,6 +116,11 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
   const distanceToGoalLine = Math.abs(player.position.x - goalLine);
   const distanceToCenter = Math.abs(player.position.y - goalCenter);
   
+  // Calculate distance to ball - defined at the top level of the function so it's available everywhere
+  const dx = ball.position.x - player.position.x;
+  const dy = ball.position.y - player.position.y;
+  const distanceToBall = Math.sqrt(dx * dx + dy * dy);
+  
   // First, always prioritize returning to goal line if not there
   if (distanceToGoalLine > 3) {
     const returnSpeed = Math.min(distanceToGoalLine * 0.3, 3.5) * 1.6; // Increased from 0.25 to 0.3, from 3.0 to 3.5, and from 1.5 to 1.6
@@ -145,11 +150,6 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
         };
       }
     }
-    
-    // Calculate distance to ball
-    const dx = ball.position.x - player.position.x;
-    const dy = ball.position.y - player.position.y;
-    const distanceToBall = Math.sqrt(dx * dx + dy * dy);
     
     // Calculate if ball is moving toward goal
     const ballMovingTowardGoal = 
@@ -375,4 +375,3 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
   
   return { x: moveX, y: moveY };
 };
-
