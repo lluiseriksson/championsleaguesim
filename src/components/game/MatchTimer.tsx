@@ -17,6 +17,7 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
   const lastTickTimeRef = useRef<number>(Date.now());
   const timeEndCalledRef = useRef(false);
   const goldenGoalStartTimeRef = useRef(0);
+  const isActiveRef = useRef(true);
   
   // Calculate what time should show on the chronometer (scaling to 90 minutes)
   const getDisplayMinutes = (elapsed: number, total: number) => {
@@ -27,8 +28,10 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
 
   // Function to tick the timer, with safeguards against missed frames
   const tick = () => {
+    if (!isActiveRef.current) return;
+    
     const now = Date.now();
-    const delta = Math.floor((now - lastTickTimeRef.current) / 1000);
+    const delta = Math.max(0, (now - lastTickTimeRef.current) / 1000);
     
     // If more than 5 seconds passed between ticks, something went wrong (tab inactive, etc.)
     // In that case, only increment by 1 to prevent huge jumps
@@ -49,8 +52,10 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
     lastTickTimeRef.current = Date.now();
     timeEndCalledRef.current = false;
     goldenGoalStartTimeRef.current = 0;
+    isActiveRef.current = true;
     
     return () => {
+      isActiveRef.current = false;
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
@@ -68,7 +73,28 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
     }
   }, [goldenGoal, elapsedTime]);
 
-  // Main timer effect
+  // Handle visibility change - pause when tab is not visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Tab is hidden, update lastTickTime to avoid large jumps when returning
+        console.log('Tab hidden, updating lastTickTime');
+        lastTickTimeRef.current = Date.now();
+      } else {
+        // Tab is visible again, update lastTickTime to resume normal timing
+        console.log('Tab visible again, updating lastTickTime');
+        lastTickTimeRef.current = Date.now();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  // Main timer effect - set up more reliable timer with requestAnimationFrame
   useEffect(() => {
     // Clear any existing interval
     if (timerRef.current) {
@@ -85,10 +111,9 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
 
     // In regular mode: start timer if we haven't reached the end time
     // In golden goal mode: always keep the timer running
-    if (elapsedTime < initialTime || goldenGoal) {
-      // Use a more frequent interval (500ms) for better reliability
-      // and to recover more quickly from potential browser throttling
-      timerRef.current = setInterval(tick, 500);
+    if ((elapsedTime < initialTime || goldenGoal) && isActiveRef.current) {
+      // Use a more frequent interval (250ms) for better reliability
+      timerRef.current = setInterval(tick, 250);
     }
 
     // Cleanup function

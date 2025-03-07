@@ -1,3 +1,4 @@
+
 import { useRef, useEffect, useCallback } from 'react';
 import { Player, Ball, Score } from '../../types/football';
 
@@ -33,10 +34,12 @@ export const useGameLoop = ({
   const totalGoalsRef = useRef<number>(0);
   
   const frameCountRef = useRef<number>(0);
-  
   const lastPerformanceCheckRef = useRef<number>(0);
+  const isActiveRef = useRef<boolean>(true);
   
   const gameLoop = useCallback((time: number) => {
+    if (!isActiveRef.current) return;
+    
     if (previousTimeRef.current === null) {
       previousTimeRef.current = time;
       requestRef.current = requestAnimationFrame(gameLoop);
@@ -90,13 +93,41 @@ export const useGameLoop = ({
     isLowPerformance
   ]);
   
+  // Handle visibility change to prevent performance issues when tab is inactive
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        console.log('Game loop paused - tab hidden');
+        isActiveRef.current = false;
+        
+        if (requestRef.current !== null) {
+          cancelAnimationFrame(requestRef.current);
+          requestRef.current = null;
+        }
+      } else {
+        console.log('Game loop resumed - tab visible');
+        isActiveRef.current = true;
+        previousTimeRef.current = null;
+        requestRef.current = requestAnimationFrame(gameLoop);
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [gameLoop]);
+  
   useEffect(() => {
     console.log('Game loop started');
+    isActiveRef.current = true;
     requestRef.current = requestAnimationFrame(gameLoop);
     console.log('Game loop initialized');
     
     return () => {
       console.log('Game loop cleanup');
+      isActiveRef.current = false;
       if (requestRef.current !== null) {
         cancelAnimationFrame(requestRef.current);
       }
