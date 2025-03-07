@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { Player, Ball, Score, Position } from '../types/football';
 import { useBallMovementSystem } from './game/BallMovementSystem';
 import { useModelSyncSystem } from './game/ModelSyncSystem';
@@ -31,7 +31,10 @@ const GameLogic: React.FC<GameLogicProps> = ({
   tournamentMode = false
 }) => {
   // Reference to track the last player who touched the ball
-  const lastPlayerTouchRef = React.useRef<Player | null>(null);
+  const lastPlayerTouchRef = useRef<Player | null>(null);
+  
+  // Control the frequency of historical training
+  const historicalTrainingCountRef = useRef(0);
   
   console.log(`GameLogic rendered with players: ${players.length}, tournamentMode: ${tournamentMode}`);
 
@@ -63,16 +66,37 @@ const GameLogic: React.FC<GameLogicProps> = ({
     tournamentMode
   });
 
+  // Create a throttled version of the historical training function
+  const throttledHistoricalTraining = () => {
+    // Only run historical training occasionally to prevent performance issues
+    historicalTrainingCountRef.current += 1;
+    
+    // In tournament mode, run it even less frequently
+    const threshold = tournamentMode ? 5 : 3;
+    
+    if (historicalTrainingCountRef.current >= threshold) {
+      historicalTrainingCountRef.current = 0;
+      
+      // Actually perform the training
+      if (performHistoricalTraining) {
+        console.log("Running scheduled historical training");
+        performHistoricalTraining();
+      }
+    } else {
+      console.log(`Skipping historical training (${historicalTrainingCountRef.current}/${threshold})`);
+    }
+  };
+
   // Goal notification system
   const { totalGoalsRef } = useGameLoop({
     players,
-    updatePlayerPositions: () => updatePlayerPositions(),
+    updatePlayerPositions: updatePlayerPositions,
     updateBallPosition: () => {}, // Will be overridden below
     incrementSyncCounter,
     syncModels,
     checkLearningProgress,
     checkPerformance,
-    performHistoricalTraining,
+    performHistoricalTraining: throttledHistoricalTraining,
     ball,
     score,
     tournamentMode,
@@ -119,7 +143,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
     syncModels,
     checkLearningProgress,
     checkPerformance,
-    performHistoricalTraining,
+    performHistoricalTraining: throttledHistoricalTraining,
     ball,
     score,
     tournamentMode,

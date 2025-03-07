@@ -17,6 +17,64 @@ interface GameInstance {
   timestamp: string;
 }
 
+// Default neural input to ensure all fields are populated
+const DEFAULT_NEURAL_INPUT: NeuralInput = {
+  ballX: 0.5,
+  ballY: 0.5,
+  playerX: 0.5,
+  playerY: 0.5,
+  ballVelocityX: 0,
+  ballVelocityY: 0,
+  distanceToGoal: 0.5,
+  angleToGoal: 0,
+  nearestTeammateDistance: 0.5,
+  nearestTeammateAngle: 0,
+  nearestOpponentDistance: 0.5,
+  nearestOpponentAngle: 0,
+  isInShootingRange: 0,
+  isInPassingRange: 0,
+  isDefendingRequired: 0,
+  distanceToOwnGoal: 0.5,
+  angleToOwnGoal: 0,
+  isFacingOwnGoal: 0,
+  isDangerousPosition: 0,
+  isBetweenBallAndOwnGoal: 0,
+  teamElo: 0.5,
+  eloAdvantage: 0,
+  gameTime: 0.5,
+  scoreDifferential: 0,
+  momentum: 0.5,
+  formationCompactness: 0.5,
+  formationWidth: 0.5,
+  recentSuccessRate: 0.5,
+  possessionDuration: 0,
+  distanceFromFormationCenter: 0.5,
+  isInFormationPosition: 1,
+  teammateDensity: 0.5,
+  opponentDensity: 0.5,
+  shootingAngle: 0.5,
+  shootingQuality: 0.5,
+  zoneControl: 0.5,
+  passingLanesQuality: 0.5,
+  spaceCreation: 0.5,
+  defensiveSupport: 0.5,
+  pressureIndex: 0.5,
+  tacticalRole: 0.5,
+  supportPositioning: 0.5,
+  pressingEfficiency: 0.5,
+  coverShadow: 0.5,
+  verticalSpacing: 0.5,
+  horizontalSpacing: 0.5,
+  territorialControl: 0.5,
+  counterAttackPotential: 0.5,
+  pressureResistance: 0.5,
+  recoveryPosition: 0.5,
+  transitionSpeed: 0.5
+};
+
+// Cache to avoid repeatedly fetching the same data
+const trainingDataCache = new Map<string, { timestamp: number, data: any[] }>();
+
 /**
  * Trains neural networks from historical game data
  */
@@ -36,31 +94,59 @@ export const trainFromPreviousGames = async (players: Player[]): Promise<Player[
       return null;
     }
     
-    // Load historical game data from the database
-    const { data: gameData, error } = await supabase
-      .from('game_history')
-      .select('*')
-      .order('timestamp', { ascending: false })
-      .limit(200); // Limit to most recent 200 entries
+    // Check cache first to avoid frequent database queries
+    const cacheKey = 'game_history';
+    const cachedData = trainingDataCache.get(cacheKey);
+    let gameData;
     
-    if (error || !gameData || gameData.length === 0) {
-      console.warn('No historical game data found', error);
+    // Use cache if it's less than 2 minutes old
+    if (cachedData && (Date.now() - cachedData.timestamp) < 120000) {
+      console.log('Using cached game history data');
+      gameData = cachedData.data;
+    } else {
+      // Load historical game data from the database
+      const { data, error } = await supabase
+        .from('game_history')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(150); // Reduced from 200 to improve performance
       
-      // If no data exists yet, let's create a sample entry for future training
-      if (!gameData || gameData.length === 0) {
-        const randomPlayer = validPlayers[0];
-        await saveSampleGameData(randomPlayer);
+      if (error || !data || data.length === 0) {
+        console.warn('No historical game data found', error);
+        
+        // If no data exists yet, let's create a sample entry for future training
+        if (!data || data.length === 0) {
+          const randomPlayer = validPlayers[0];
+          await saveSampleGameData(randomPlayer);
+        }
+        
+        return null;
       }
       
-      return null;
+      gameData = data;
+      
+      // Update cache
+      trainingDataCache.set(cacheKey, {
+        timestamp: Date.now(),
+        data: gameData
+      });
     }
     
     console.log(`Found ${gameData.length} historical game entries for training`);
     
+    // Only train a subset of players each time to reduce load
+    const playersToTrain = validPlayers.slice(0, 4);
+    console.log(`Training ${playersToTrain.length} players this cycle`);
+    
     // Process each player that needs to be trained
     const updatedPlayers = await Promise.all(
-      validPlayers.map(async (player) => {
+      validPlayers.map(async (player, index) => {
         try {
+          // Only train players in current batch
+          if (playersToTrain.findIndex(p => p.id === player.id) === -1) {
+            return player;
+          }
+          
           // Get relevant historical data for this player's team and role
           const relevantData = gameData.filter(entry => 
             entry.team === player.team && 
@@ -78,8 +164,8 @@ export const trainFromPreviousGames = async (players: Player[]): Promise<Player[
           
           console.log(`Training ${player.team} ${player.role} on ${relevantData.length} historical examples`);
           
-          // Prepare training data
-          const trainingData = relevantData.map(entry => ({
+          // Prepare training data - limit to most recent 20 examples to prevent overtraining
+          const trainingData = relevantData.slice(0, 20).map(entry => ({
             input: entry.inputs,
             output: entry.outputs
           }));
@@ -87,15 +173,18 @@ export const trainFromPreviousGames = async (players: Player[]): Promise<Player[
           // Train the neural network on historical data
           try {
             // Only train if we have enough data
-            if (trainingData.length >= 5) {
+            if (trainingData.length >= 3) {
+              // Use reduced training iterations to prevent freezing
+              const iterations = Math.min(30, trainingData.length * 2);
+              
               player.brain.net.train(trainingData, {
-                iterations: Math.min(50, trainingData.length * 2),
+                iterations: iterations,
                 errorThresh: 0.05,
                 learningRate: 0.1,
                 log: false
               });
               
-              console.log(`Successfully trained ${player.team} ${player.role} on ${trainingData.length} examples`);
+              console.log(`Successfully trained ${player.team} ${player.role} on ${trainingData.length} examples with ${iterations} iterations`);
               
               // Save the current game state for future training
               await saveCurrentGameData(player);
@@ -131,63 +220,8 @@ const saveCurrentGameData = async (player: Player): Promise<void> => {
     // Create a sample game instance from current player state
     const inputs = player.brain.actionHistory?.[player.brain.actionHistory.length - 1]?.context as NeuralInput;
     
-    // FIX: Ensure we have a valid NeuralInput object by providing defaults for all required properties
-    const defaultInputs: NeuralInput = {
-      ballX: 0.5,
-      ballY: 0.5,
-      playerX: 0.5,
-      playerY: 0.5,
-      ballVelocityX: 0,
-      ballVelocityY: 0,
-      distanceToGoal: 0.5,
-      angleToGoal: 0,
-      nearestTeammateDistance: 0.5,
-      nearestTeammateAngle: 0,
-      nearestOpponentDistance: 0.5,
-      nearestOpponentAngle: 0,
-      isInShootingRange: 0,
-      isInPassingRange: 0,
-      isDefendingRequired: 0,
-      distanceToOwnGoal: 0.5,
-      angleToOwnGoal: 0,
-      isFacingOwnGoal: 0,
-      isDangerousPosition: 0,
-      isBetweenBallAndOwnGoal: 0,
-      teamElo: 0.5,
-      eloAdvantage: 0,
-      gameTime: 0.5,
-      scoreDifferential: 0,
-      momentum: 0.5,
-      formationCompactness: 0.5,
-      formationWidth: 0.5,
-      recentSuccessRate: 0.5,
-      possessionDuration: 0,
-      distanceFromFormationCenter: 0.5,
-      isInFormationPosition: 1,
-      teammateDensity: 0.5,
-      opponentDensity: 0.5,
-      shootingAngle: 0.5,
-      shootingQuality: 0.5,
-      zoneControl: 0.5,
-      passingLanesQuality: 0.5,
-      spaceCreation: 0.5,
-      defensiveSupport: 0.5,
-      pressureIndex: 0.5,
-      tacticalRole: 0.5,
-      supportPositioning: 0.5,
-      pressingEfficiency: 0.5,
-      coverShadow: 0.5,
-      verticalSpacing: 0.5,
-      horizontalSpacing: 0.5,
-      territorialControl: 0.5,
-      counterAttackPotential: 0.5,
-      pressureResistance: 0.5,
-      recoveryPosition: 0.5,
-      transitionSpeed: 0.5
-    };
-    
     // Merge the actual inputs with default values to ensure all required properties exist
-    const validInputs: NeuralInput = inputs ? { ...defaultInputs, ...inputs } : defaultInputs;
+    const validInputs: NeuralInput = inputs ? { ...DEFAULT_NEURAL_INPUT, ...inputs } : DEFAULT_NEURAL_INPUT;
     
     const gameInstance: Partial<GameInstance> = {
       team: player.team,
@@ -207,13 +241,16 @@ const saveCurrentGameData = async (player: Player): Promise<void> => {
       timestamp: new Date().toISOString()
     };
     
-    // Save the game instance to the database
-    const { error } = await supabase
-      .from('game_history')
-      .insert(gameInstance);
-    
-    if (error) {
-      console.error('Error saving game history:', error);
+    // Only save successful games to reduce database size
+    if (gameInstance.success) {
+      // Save the game instance to the database
+      const { error } = await supabase
+        .from('game_history')
+        .insert(gameInstance);
+      
+      if (error) {
+        console.error('Error saving game history:', error);
+      }
     }
   } catch (e) {
     console.error('Error saving current game data:', e);
@@ -229,59 +266,7 @@ const saveSampleGameData = async (player: Player): Promise<void> => {
       team: player.team,
       role: player.role,
       action: 'shoot',
-      inputs: {
-        ballX: 0.7,
-        ballY: 0.5,
-        playerX: 0.7,
-        playerY: 0.5,
-        ballVelocityX: 0.01,
-        ballVelocityY: 0,
-        distanceToGoal: 0.2,
-        angleToGoal: 0,
-        nearestTeammateDistance: 0.3,
-        nearestTeammateAngle: 0.1,
-        nearestOpponentDistance: 0.4,
-        nearestOpponentAngle: 0.2,
-        isInShootingRange: 1,
-        isInPassingRange: 0,
-        isDefendingRequired: 0,
-        distanceToOwnGoal: 0.8,
-        angleToOwnGoal: 0.5,
-        isFacingOwnGoal: 0,
-        isDangerousPosition: 0,
-        isBetweenBallAndOwnGoal: 0,
-        teamElo: 0.6,
-        eloAdvantage: 0.1,
-        gameTime: 0.5,
-        scoreDifferential: 0,
-        momentum: 0.6,
-        formationCompactness: 0.5,
-        formationWidth: 0.5,
-        recentSuccessRate: 0.7,
-        possessionDuration: 0.3,
-        distanceFromFormationCenter: 0.2,
-        isInFormationPosition: 1,
-        teammateDensity: 0.4,
-        opponentDensity: 0.3,
-        shootingAngle: 0.8,
-        shootingQuality: 0.7,
-        zoneControl: 0.6,
-        passingLanesQuality: 0.5,
-        spaceCreation: 0.6,
-        defensiveSupport: 0.4,
-        pressureIndex: 0.3,
-        tacticalRole: 0.7,
-        supportPositioning: 0.6,
-        pressingEfficiency: 0.5,
-        coverShadow: 0.4,
-        verticalSpacing: 0.5,
-        horizontalSpacing: 0.5,
-        territorialControl: 0.6,
-        counterAttackPotential: 0.7,
-        pressureResistance: 0.6,
-        recoveryPosition: 0.4,
-        transitionSpeed: 0.6
-      },
+      inputs: DEFAULT_NEURAL_INPUT,
       outputs: {
         moveX: 0.8,
         moveY: 0.5,

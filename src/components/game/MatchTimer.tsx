@@ -18,6 +18,7 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
   const lastTickTimeRef = useRef<number>(Date.now());
   const timeEndCalledRef = useRef(false);
   const goldenGoalStartTimeRef = useRef(0);
+  const intervalErrorCountRef = useRef(0);
   
   // Calculate what time should show on the chronometer (scaling to 90 minutes)
   const getDisplayMinutes = (elapsed: number, total: number) => {
@@ -32,8 +33,10 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
     const delta = Math.floor((now - lastTickTimeRef.current) / 1000);
     
     // If more than 5 seconds passed between ticks, something went wrong (tab inactive, etc.)
-    // In that case, only increment by 1 to prevent huge jumps
-    const increment = delta > 5 ? 1 : delta > 0 ? delta : 1;
+    // In that case, use a value based on real time to prevent huge jumps
+    const increment = delta > 5 ? 
+      Math.min(5, Math.floor((now - lastTickTimeRef.current) / 1000)) : 
+      delta > 0 ? delta : 1;
     
     lastTickTimeRef.current = now;
     
@@ -54,6 +57,7 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
     lastTickTimeRef.current = Date.now();
     timeEndCalledRef.current = false;
     goldenGoalStartTimeRef.current = 0;
+    intervalErrorCountRef.current = 0;
     
     return () => {
       if (timerRef.current) {
@@ -73,7 +77,7 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
     }
   }, [goldenGoal, elapsedTime]);
 
-  // Main timer effect - Fixed to ensure it runs until initialTime is reached
+  // Main timer effect with additional resilience
   useEffect(() => {
     // Clear any existing interval
     if (timerRef.current) {
@@ -88,11 +92,56 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
       onTimeEnd();
     }
 
+    // Create a reliable timer using both interval and timeout as backup
+    const startTimer = () => {
+      // Use a more frequent interval (200ms) for better reliability
+      timerRef.current = setInterval(() => {
+        try {
+          tick();
+        } catch (error) {
+          console.error("Error in timer tick:", error);
+          intervalErrorCountRef.current++;
+          
+          // If we get too many errors, reset the interval
+          if (intervalErrorCountRef.current > 5) {
+            console.warn("Resetting problematic timer interval");
+            if (timerRef.current) {
+              clearInterval(timerRef.current);
+              timerRef.current = null;
+              // Restart with a new interval
+              startTimer();
+            }
+            intervalErrorCountRef.current = 0;
+          }
+        }
+      }, 200);
+    };
+    
     // In regular mode: start timer if we haven't reached the end time
     // In golden goal mode: always keep the timer running
     if (elapsedTime < initialTime || goldenGoal) {
-      // Use a more frequent interval (250ms) for better reliability
-      timerRef.current = setInterval(tick, 250);
+      startTimer();
+      
+      // Add a backup system to ensure time progresses
+      const backupTimerId = setTimeout(() => {
+        const now = Date.now();
+        const timeSinceLastTick = now - lastTickTimeRef.current;
+        
+        // If more than 2 seconds have passed without a tick, force an update
+        if (timeSinceLastTick > 2000) {
+          console.warn("Timer appears to be stalled, forcing update");
+          lastTickTimeRef.current = now;
+          setElapsedTime(prev => prev + 2);
+        }
+      }, 3000);
+      
+      return () => {
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+        clearTimeout(backupTimerId);
+      };
     }
 
     // Cleanup function
