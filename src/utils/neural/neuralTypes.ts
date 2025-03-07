@@ -1,3 +1,4 @@
+
 // Types for neural network models in database
 export interface NeuralModelData {
   id?: number;
@@ -79,4 +80,41 @@ export const logEloAdvantage = (homeTeam: string, homeElo: number, awayTeam: str
       `Radius bonus: ${radiusBonus > 0 ? '+' : ''}${radiusBonus.toFixed(2)} units for ${advantageTeam}`
     );
   }
+};
+
+// NEW: Diagnostic logging for neural network operations
+export const logNeuralNetworkStatus = (team: string, role: string, playerId: number, status: string, details?: any): void => {
+  const timestamp = new Date().toISOString().substr(11, 8); // HH:MM:SS format
+  console.log(`[NN:${timestamp}] ${team} ${role} #${playerId}: ${status}`);
+  if (details) {
+    console.log(`  Details: `, typeof details === 'object' ? JSON.stringify(details, null, 2) : details);
+  }
+};
+
+// NEW: Log neural network validation results
+export const logNetworkValidation = (team: string, role: string, playerId: number, isValid: boolean, error?: any): void => {
+  const timestamp = new Date().toISOString().substr(11, 8);
+  if (isValid) {
+    console.log(`[NN-Valid:${timestamp}] ${team} ${role} #${playerId}: Network is valid`);
+  } else {
+    console.log(`[NN-Error:${timestamp}] ${team} ${role} #${playerId}: Network validation failed`);
+    if (error) {
+      console.error(`  Error: `, error);
+    }
+  }
+};
+
+// NEW: Log neural network training operations
+export const logTrainingOperation = (team: string, role: string, playerId: number, actionType: string, reward: number, success: boolean): void => {
+  const timestamp = new Date().toISOString().substr(11, 8);
+  console.log(
+    `[NN-Train:${timestamp}] ${team} ${role} #${playerId}: ` +
+    `Action: ${actionType}, Reward: ${reward.toFixed(2)}, Success: ${success ? 'Yes' : 'No'}`
+  );
+};
+
+// NEW: Log neural network prediction issues
+export const logPredictionIssue = (team: string, role: string, playerId: number, issue: string): void => {
+  const timestamp = new Date().toISOString().substr(11, 8);
+  console.warn(`[NN-Predict:${timestamp}] ${team} ${role} #${playerId}: ${issue}`);
 };

@@ -1,10 +1,12 @@
+
 import { NeuralNet, Player, Position, NeuralInput } from '../../types/football';
 import { createPlayerBrain } from '../neuralNetwork';
 import * as brain from 'brain.js';
+import { logNetworkValidation, logNeuralNetworkStatus, logPredictionIssue } from './neuralTypes';
 
 export const validatePlayerBrain = (player: Player): Player => {
   if (!player.brain) {
-    console.log(`Creating new brain for ${player.team} ${player.role} #${player.id}`);
+    logNeuralNetworkStatus(player.team, player.role, player.id, "Creating new brain (missing brain)");
     return {
       ...player,
       brain: createPlayerBrain()
@@ -12,7 +14,7 @@ export const validatePlayerBrain = (player: Player): Player => {
   }
 
   if (!player.brain.net) {
-    console.log(`Creating network for existing brain ${player.team} ${player.role} #${player.id}`);
+    logNeuralNetworkStatus(player.team, player.role, player.id, "Creating network for existing brain (missing network)");
     const newBrain = createPlayerBrain();
     return {
       ...player,
@@ -29,20 +31,21 @@ export const validatePlayerBrain = (player: Player): Player => {
     const testInput = createBasicTestInput();
     
     if (!player.brain.net || typeof player.brain.net.run !== 'function') {
-      console.log(`Invalid network detected for ${player.team} ${player.role} #${player.id}: missing run function, creating new one`);
+      logNetworkValidation(player.team, player.role, player.id, false, "Missing run function");
       throw new Error('Invalid network: missing or run function not available');
     }
     
     const output = player.brain.net.run(testInput);
     
     if (!output || typeof output.moveX !== 'number' || typeof output.moveY !== 'number') {
-      console.log(`Invalid network output for ${player.team} ${player.role} #${player.id}, creating new one`);
+      logNetworkValidation(player.team, player.role, player.id, false, `Invalid output structure: ${JSON.stringify(output)}`);
       throw new Error('Invalid network output structure');
     }
     
+    logNetworkValidation(player.team, player.role, player.id, true);
     return player;
   } catch (error) {
-    console.warn(`Invalid network detected for ${player.team} ${player.role} #${player.id}, creating new one: ${error}`);
+    logNetworkValidation(player.team, player.role, player.id, false, error);
     
     const newBrain = createPlayerBrain();
     return {
@@ -135,7 +138,7 @@ export const enhanceTacticalNetworks = (player: Player): Player => {
   const validatedPlayer = validatePlayerBrain(player);
   
   if (player.role === 'defender' && validatedPlayer.brain && validatedPlayer.brain.net) {
-    console.log(`Enhanced tactical networks for ${player.team} defender #${player.id}`);
+    logNeuralNetworkStatus(player.team, player.role, player.id, "Enhanced tactical networks for defender");
   }
   
   return validatedPlayer;

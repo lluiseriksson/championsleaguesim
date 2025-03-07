@@ -2,6 +2,7 @@
 import React from 'react';
 import { Player } from '../../types/football';
 import { saveModel } from '../../utils/neuralModelService';
+import { logNeuralNetworkStatus } from '../../utils/neural/neuralTypes';
 
 interface ModelSaveOnExitProps {
   players: Player[];
@@ -21,8 +22,12 @@ export const useModelSaveOnExit = ({
         players
           .filter(p => p.role !== 'goalkeeper')
           .forEach(player => {
+            logNeuralNetworkStatus(player.team, player.role, player.id, "Saving model on exit");
             saveModel(player)
-              .catch(err => console.error(`Error saving model on exit:`, err));
+              .catch(err => {
+                console.error(`Error saving model on exit:`, err);
+                logNeuralNetworkStatus(player.team, player.role, player.id, "Error saving model on exit", err);
+              });
           });
       } else {
         // In tournament mode, completely disable model saving to prevent crashes
@@ -36,8 +41,12 @@ export const useModelSaveOnExit = ({
           
           if (randomPlayer) {
             console.log(`Saving single random model in tournament mode`);
+            logNeuralNetworkStatus(randomPlayer.team, randomPlayer.role, randomPlayer.id, "Saving random model in tournament mode");
             saveModel(randomPlayer)
-              .catch(err => console.error(`Error saving model in tournament:`, err));
+              .catch(err => {
+                console.error(`Error saving model in tournament:`, err);
+                logNeuralNetworkStatus(randomPlayer.team, randomPlayer.role, randomPlayer.id, "Error saving tournament model", err);
+              });
           }
         }
       }
