@@ -11,15 +11,15 @@ export interface TeamContext {
   opponents: Position[];
   ownGoal: Position;
   opponentGoal: Position;
-  gameTime?: number;
-  scoreDiff?: number;
-  possessionDuration?: number;
-  formationCompactness?: number;
-  formationWidth?: number;
-  distanceFromCenter?: number;
-  isInPosition?: boolean;
-  teammateDensity?: number;
-  opponentDensity?: number;
+  gameTime?: number;            // Normalized game time (0-1)
+  scoreDiff?: number;           // Score differential from perspective of current team
+  possessionDuration?: number;  // How long team has had possession
+  formationCompactness?: number; // How compact team formation is (0-1)
+  formationWidth?: number;      // Width of team formation (0-1)
+  distanceFromCenter?: number;  // How far from team's formation center (0-1)
+  isInPosition?: boolean;       // Whether player is in correct position
+  teammateDensity?: number;     // Density of teammates around player (0-1)
+  opponentDensity?: number;     // Density of opponents around player (0-1)
 }
 
 export interface NeuralInput {
@@ -60,7 +60,6 @@ export interface NeuralInput {
   shootingAngle: number;
   shootingQuality: number;
   
-  // Tactical metrics
   zoneControl: number;           // How well the player's team controls their current zone (0-1)
   passingLanesQuality: number;   // Quality of available passing lanes (0-1)
   spaceCreation: number;         // How well the player is creating/using space (0-1)
@@ -69,20 +68,14 @@ export interface NeuralInput {
   tacticalRole: number;          // Player's current tactical role effectiveness (0-1)
   supportPositioning: number;    // Quality of supporting position for teammates (0-1)
   pressingEfficiency: number;    // Effectiveness of pressing actions (0-1)
-  coverShadow: number;           // How well player cuts passing lanes (0-1)
-  verticalSpacing: number;       // Team's vertical spacing quality (0-1)
-  horizontalSpacing: number;     // Team's horizontal spacing quality (0-1)
-  territorialControl: number;    // Control over current territory (0-1)
+  coverShadow: number;          // How well player cuts passing lanes (0-1)
+  verticalSpacing: number;      // Team's vertical spacing quality (0-1)
+  horizontalSpacing: number;    // Team's horizontal spacing quality (0-1)
+  territorialControl: number;   // Control over current territory (0-1)
   counterAttackPotential: number; // Potential for counter-attack success (0-1)
-  pressureResistance: number;    // Ability to resist opponent pressure (0-1)
-  recoveryPosition: number;      // Quality of position for defensive recovery (0-1)
-  transitionSpeed: number;       // Speed of tactical transitions (0-1)
-  
-  // Player identity parameters for shared network
-  playerId: number;              // Normalized player ID (0-1)
-  playerRoleEncoding: number;    // Role encoding (0-1)
-  playerTeamId: number;          // Team encoding (0-1)
-  playerPositionalRole: number;  // Positional responsibility (0-1)
+  pressureResistance: number;   // Ability to resist opponent pressure (0-1)
+  recoveryPosition: number;     // Quality of position for defensive recovery (0-1)
+  transitionSpeed: number;      // Speed of tactical transitions (0-1)
 }
 
 export interface NeuralOutput {
@@ -105,14 +98,14 @@ export interface ExperienceReplay {
 }
 
 export type NetworkSpecialization = 
-  | 'general'
-  | 'attacking'
-  | 'defending'
-  | 'possession'
-  | 'transition'
-  | 'setpiece'
-  | 'selector'
-  | 'meta';
+  | 'general'      // General-purpose network
+  | 'attacking'    // Specialized for attacking situations
+  | 'defending'    // Specialized for defending situations
+  | 'possession'   // Specialized for maintaining possession
+  | 'transition'   // Specialized for transition play
+  | 'setpiece'     // Specialized for set pieces
+  | 'selector'     // Network that selects which specialized network to use
+  | 'meta';        // Meta-network that combines outputs
 
 export interface SituationContext {
   isDefensiveThird: boolean;    // Player is in defensive third of field
@@ -147,8 +140,8 @@ export interface NeuralNet {
   net: brain.NeuralNetwork<NeuralInput, NeuralOutput>;
   lastOutput: { x: number; y: number };
   lastAction?: 'move' | 'shoot' | 'pass' | 'intercept';
-  lastShotDirection?: Position;
-  lastPassOutcome?: PassOutcome;
+  lastShotDirection?: Position;        // Add this property for tracking shot direction
+  lastPassOutcome?: PassOutcome;       // Add this property for tracking pass outcomes
   // Performance tracking
   actionHistory?: {
     action: string;
@@ -164,23 +157,16 @@ export interface NeuralNet {
   };
   // Experience replay properties
   experienceReplay?: ExperienceReplay;
-  learningStage?: number;
-  lastReward?: number;
-  cumulativeReward?: number;
+  learningStage?: number;       // For curriculum learning (0-1)
+  lastReward?: number;          // For delayed reward tracking
+  cumulativeReward?: number;    // Track total rewards over time
   
-  // Specialized networks
+  // New properties for specialized networks
   specializedNetworks?: SpecializedNeuralNet[];
   selectorNetwork?: SpecializedNeuralNet;
   metaNetwork?: SpecializedNeuralNet;
   currentSpecialization?: NetworkSpecialization;
   lastSituationContext?: SituationContext;
-  
-  // Shot quality tracking and goal streaks
-  lastShotQuality?: number;
-  goalStreak?: number;
-  
-  // Shared neural network parameters
-  sharedParameters?: boolean;
 }
 
 export type KitType = 'home' | 'away' | 'third';

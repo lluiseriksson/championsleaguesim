@@ -227,7 +227,7 @@ export function areRedColorsTooSimilar(color1: string, color2: string): boolean 
   return false;
 }
 
-// Function to check for white kit conflicts with improved sensitivity
+// Add a specific function to check for white kit conflicts
 export function areWhiteColorsTooSimilar(color1: string, color2: string): boolean {
   const category1 = categorizeColor(color1);
   const category2 = categorizeColor(color2);
@@ -241,9 +241,9 @@ export function areWhiteColorsTooSimilar(color1: string, color2: string): boolea
       (rgb1.r + rgb1.g + rgb1.b) - (rgb2.r + rgb2.g + rgb2.b)
     ) / 3;
     
-    // For white kits, even small differences matter
-    // Lowering the threshold to detect more conflicts between white kits
-    return brightnessDiff < 25; // Lower from 15 to 25 to catch more white kit conflicts
+    // If the brightness difference is less than 15 on a 0-255 scale,
+    // consider the whites too similar
+    return brightnessDiff < 15;
   }
   
   return false;

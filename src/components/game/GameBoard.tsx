@@ -34,11 +34,6 @@ const GameBoard: React.FC<GameBoardProps> = ({
   onGoalScored,
   tournamentMode = false
 }) => {
-  // Debugging for score updates
-  React.useEffect(() => {
-    console.log(`GameBoard score updated: Red ${score.red} - Blue ${score.blue}`);
-  }, [score]);
-
   return (
     <div className="relative w-[800px] h-[600px] bg-pitch mx-auto overflow-hidden rounded-lg shadow-lg">
       <ScoreDisplay score={score} homeTeam={homeTeam} awayTeam={awayTeam} />
@@ -56,10 +51,21 @@ const GameBoard: React.FC<GameBoardProps> = ({
         ball={ball}
         setBall={setBall}
         score={score}
-        setScore={setScore}
+        setScore={(newScore) => {
+          const currentScore = typeof newScore === 'function' 
+            ? (newScore as (prev: Score) => Score)(score)
+            : newScore;
+            
+          // Check if a goal was scored
+          if (currentScore.red > score.red) {
+            onGoalScored?.('red');
+          } else if (currentScore.blue > score.blue) {
+            onGoalScored?.('blue');
+          }
+          setScore(currentScore);
+        }}
         updatePlayerPositions={updatePlayerPositions}
         tournamentMode={tournamentMode}
-        onGoalScored={onGoalScored}
       />
     </div>
   );

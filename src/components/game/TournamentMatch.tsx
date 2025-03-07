@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
@@ -10,7 +11,6 @@ import { KitType } from '../../types/kits/kitTypes';
 import GameLogic from '../GameLogic';
 import { createPlayerBrain } from '../../utils/neuralNetwork';
 import { validatePlayerBrain } from '../../utils/neural/networkValidator';
-import { applyInitialKick } from '../../hooks/game/useBallInitialization';
 
 const transliterateRussianName = (name: string): string => {
   const cyrillicToLatin: Record<string, string> = {
@@ -60,7 +60,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   const [players, setPlayers] = useState<Player[]>([]);
   const [ball, setBall] = useState<Ball>({
     position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
-    velocity: applyInitialKick(),
+    velocity: { x: Math.random() > 0.5 ? 3 : -3, y: (Math.random() - 0.5) * 3 },
     bounceDetection: {
       consecutiveBounces: 0,
       lastBounceTime: 0,
@@ -102,7 +102,6 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       initializePlayers(awayTeamKitType);
       
       setTimeout(() => {
-        setScore({ red: 0, blue: 0 });
         setGameStarted(true);
       }, 1000);
     }
@@ -169,6 +168,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
     
     console.log(`Tournament match: ${displayHomeTeam} (home) vs ${displayAwayTeam} (${awayTeamKitType})`);
     
+    // Create neural networks for the red team (home team, players 1-11)
     const redTeamBrains = [];
     for (let i = 0; i < 11; i++) {
       const playerBrain = createPlayerBrain();
@@ -221,10 +221,12 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       { x: PITCH_WIDTH - 500, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
     ];
     
+    // Reuse same brains for blue team by mirroring them from the red team
     for (let i = 0; i < blueTeamPositions.length; i++) {
       const pos = blueTeamPositions[i];
       const role = pos.role as Player['role'];
       
+      // Use corresponding brain from red team
       const mirroredBrain = redTeamBrains[i];
       console.log(`Mirrored brain for blue ${role} #${i + 12} from red player #${i + 1}`);
       
@@ -233,7 +235,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         position: { x: pos.x, y: pos.y },
         role: role,
         team: 'blue',
-        brain: mirroredBrain,
+        brain: mirroredBrain, // Reuse the brain from the red team
         targetPosition: { x: pos.x, y: pos.y },
         teamName: awayTeam,
         kitType: awayTeamKitType,
@@ -243,17 +245,6 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
     
     const validatedPlayers = newPlayers.map(player => validatePlayerBrain(player));
     setPlayers(validatedPlayers);
-    
-    setBall({
-      position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
-      velocity: applyInitialKick(),
-      bounceDetection: {
-        consecutiveBounces: 0,
-        lastBounceTime: 0,
-        lastBounceSide: '',
-        sideEffect: false
-      }
-    });
   };
   
   const { updatePlayerPositions } = usePlayerMovement({ 
@@ -323,8 +314,6 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
             ? (newScore as (prev: Score) => Score)(score)
             : newScore;
             
-          console.log(`Score update - Current: ${score.red}-${score.blue}, New: ${currentScore.red}-${currentScore.blue}`);
-          
           if (currentScore.red > score.red) {
             handleGoalScored('red');
           } else if (currentScore.blue > score.blue) {
@@ -343,4 +332,3 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
 };
 
 export default TournamentMatch;
-

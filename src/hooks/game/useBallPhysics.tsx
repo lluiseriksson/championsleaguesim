@@ -1,30 +1,9 @@
 import React from 'react';
 import { Player, Ball, Position, BALL_RADIUS, PITCH_WIDTH, PITCH_HEIGHT, PLAYER_RADIUS } from '../../types/football';
-import { checkCollision } from '../../utils/gamePhysics';
+import { handleFieldPlayerCollisions } from './collisionHandlers';
+import { checkCollision, calculateNewVelocity } from '../../utils/gamePhysics';
 import { handleTopBottomBoundaries, handleLeftRightBoundaries } from './boundaryCollisions';
 import { applyVelocityAdjustments, constrainBallPosition } from './velocityUtils';
-import { applyVelocityAdjustmentsWithElo } from './physics/eloPhysics';
-import { handleGoalkeeperCollisions } from './physics/goalkeeperCollisions';
-import { handleEnhancedFieldPlayerCollisions } from './physics/fieldPlayerCollisions';
-
-// Helper function to check if ball is in goal area
-const isInGoalArea = (position: Position): boolean => {
-  const goalY = PITCH_HEIGHT / 2;
-  const goalTop = goalY - 92; // GOAL_HEIGHT/2
-  const goalBottom = goalY + 92; // GOAL_HEIGHT/2
-  
-  // Check if in left goal area
-  const inLeftGoal = position.x <= BALL_RADIUS * 2 && 
-                    position.y >= goalTop && 
-                    position.y <= goalBottom;
-  
-  // Check if in right goal area
-  const inRightGoal = position.x >= PITCH_WIDTH - BALL_RADIUS * 2 && 
-                     position.y >= goalTop && 
-                     position.y <= goalBottom;
-  
-  return inLeftGoal || inRightGoal;
-};
 
 // Handle collisions and physics for the ball
 export function handleBallPhysics(
@@ -34,8 +13,7 @@ export function handleBallPhysics(
   fieldPlayers: Player[],
   onBallTouch: (player: Player) => void,
   lastCollisionTimeRef: React.MutableRefObject<number>,
-  lastKickPositionRef: React.MutableRefObject<Position | null>,
-  eloFactors?: { red: number, blue: number }
+  lastKickPositionRef: React.MutableRefObject<Position | null>
 ): Ball {
   // Check for boundary collisions (top and bottom)
   let newVelocity = { ...currentBall.velocity };
@@ -51,91 +29,89 @@ export function handleBallPhysics(
   const currentTime = performance.now();
   const bounceCooldown = 1000; // 1 second between bounce counts
   
-  // NEW: Check if the ball is in a goal area - if so, don't apply boundary collisions
-  const ballInGoalArea = isInGoalArea(newPosition);
-  
-  // Only handle top/bottom boundaries if not in goal area OR if in goal area but hitting top/bottom
-  if (!ballInGoalArea || (newPosition.y <= BALL_RADIUS || newPosition.y >= PITCH_HEIGHT - BALL_RADIUS)) {
-    newVelocity = handleTopBottomBoundaries(newPosition, newVelocity, bounceDetectionRef, currentTime, bounceCooldown);
-  }
-  
-  // IMPROVED: Only handle left/right boundaries if not in goal area
-  if (!ballInGoalArea) {
-    // Only apply side bounces if not in the goal area
-    newVelocity = handleLeftRightBoundaries(newPosition, newVelocity, bounceDetectionRef, currentTime, bounceCooldown);
-  } else {
-    // If in goal area, reduce velocity significantly to help ball stop in goal
-    newVelocity.x *= 0.1;
-    newVelocity.y *= 0.5;
-    
-    // If very close to goal line, stop completely to ensure ball stays in goal
-    if (newPosition.x <= BALL_RADIUS || newPosition.x >= PITCH_WIDTH - BALL_RADIUS) {
-      newVelocity.x = 0;
-      newVelocity.y = 0;
-    }
-  }
+  // Handle boundary collisions using the dedicated functions
+  newVelocity = handleTopBottomBoundaries(newPosition, newVelocity, bounceDetectionRef, currentTime, bounceCooldown);
+  newVelocity = handleLeftRightBoundaries(newPosition, newVelocity, bounceDetectionRef, currentTime, bounceCooldown);
 
-  // IMPROVED: Only constrain ball within pitch if not in goal area
-  if (!ballInGoalArea) {
-    newPosition = constrainBallPosition(newPosition, BALL_RADIUS, PITCH_WIDTH, PITCH_HEIGHT);
-  } else {
-    // For the goal area, only apply vertical constraint but not horizontal
-    if (newPosition.y < BALL_RADIUS) {
-      newPosition.y = BALL_RADIUS;
-    } else if (newPosition.y > PITCH_HEIGHT - BALL_RADIUS) {
-      newPosition.y = PITCH_HEIGHT - BALL_RADIUS;
-    }
-  }
+  // Ensure ball stays within the pitch boundaries
+  newPosition = constrainBallPosition(newPosition, BALL_RADIUS, PITCH_WIDTH, PITCH_HEIGHT);
 
-  // Handle player collisions, starting with goalkeepers
-  const { velocity: goalkeeperVelocity, collisionOccurred: goalkeeperCollision, position: goalkeeperAdjustedPosition } = handleGoalkeeperCollisions(
+  // Handle player collisions
+  newVelocity = handlePlayerCollisions(
     newPosition,
     newVelocity,
     currentBall.velocity,
     goalkeepers,
+    fieldPlayers,
     onBallTouch,
     currentTime,
     lastCollisionTimeRef,
-    lastKickPositionRef,
-    eloFactors
+    lastKickPositionRef
   );
-  
-  // Update position and velocity from goalkeeper collision if it occurred
-  if (goalkeeperCollision) {
-    newVelocity = goalkeeperVelocity;
-    newPosition = goalkeeperAdjustedPosition; // Use the adjusted position
-  } 
-  // Otherwise check field player collisions if no goalkeeper collision
-  else if (currentTime - lastCollisionTimeRef.current > 150) { // 150ms cooldown
-    const { velocity: fieldPlayerVelocity, collisionOccurred: fieldPlayerCollision } = handleEnhancedFieldPlayerCollisions(
-      newPosition,
-      newVelocity,
-      currentBall.velocity,
-      fieldPlayers,
-      onBallTouch,
-      currentTime,
-      lastCollisionTimeRef,
-      lastKickPositionRef,
-      eloFactors
-    );
-    
-    // Update velocity from field player collision if it occurred
-    if (fieldPlayerCollision) {
-      newVelocity = fieldPlayerVelocity;
-    }
-  }
 
-  // Apply velocity adjustments with potential ELO factors
-  // Only if not in goal area - preserve slow/stopped motion in goal
-  if (!ballInGoalArea) {
-    newVelocity = applyVelocityAdjustmentsWithElo(newVelocity, eloFactors);
-  }
+  // Apply velocity adjustments
+  newVelocity = applyVelocityAdjustments(newVelocity);
 
   return {
     position: newPosition,
     velocity: newVelocity,
     bounceDetection: bounceDetectionRef
   };
+}
+
+function handlePlayerCollisions(
+  newPosition: Position,
+  newVelocity: Position,
+  currentVelocity: Position,
+  goalkeepers: Player[],
+  fieldPlayers: Player[],
+  onBallTouch: (player: Player) => void,
+  currentTime: number,
+  lastCollisionTimeRef: React.MutableRefObject<number>,
+  lastKickPositionRef: React.MutableRefObject<Position | null>
+): Position {
+  // Get current time to prevent multiple collisions
+  const collisionCooldown = 150; // ms
+  const goalkeeperCollisionCooldown = 100; // shorter cooldown for goalkeepers
+
+  // Standard goalkeeper collision detection
+  if (currentTime - lastCollisionTimeRef.current > goalkeeperCollisionCooldown) {
+    for (const goalkeeper of goalkeepers) {
+      const collision = checkCollision(newPosition, goalkeeper.position, true);
+      
+      if (collision) {
+        onBallTouch(goalkeeper);
+        lastCollisionTimeRef.current = currentTime;
+        lastKickPositionRef.current = { ...newPosition };
+        
+        newVelocity = calculateNewVelocity(
+          newPosition,
+          goalkeeper.position,
+          currentVelocity,
+          true
+        );
+        
+        console.log("Goalkeeper collision detected");
+        break;
+      }
+    }
+  }
+
+  // Then check field player collisions if no goalkeeper collision occurred
+  if (currentTime - lastCollisionTimeRef.current > collisionCooldown) {
+    newVelocity = handleFieldPlayerCollisions(
+      newPosition,
+      newVelocity,
+      currentVelocity,
+      fieldPlayers,
+      onBallTouch,
+      currentTime,
+      lastCollisionTimeRef,
+      lastKickPositionRef
+    );
+  }
+
+  return newVelocity;
 }
 
 // Re-export constants for convenience

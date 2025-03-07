@@ -64,39 +64,51 @@ const limitSpeed = (velocity: Position): Position => {
     };
   }
   
-  // ALWAYS enforce minimum speed unless the ball is stopped
-  if (speed < MIN_BALL_SPEED && speed > 0.1) {
+  // ALWAYS apply minimum speed unless the ball should be completely stopped
+  // (which should only happen at game reset/initialization)
+  if (speed < MIN_BALL_SPEED && speed > 0) {
     const factor = MIN_BALL_SPEED / speed;
-    // More aggressive enforcement of minimum speed
     return {
-      x: velocity.x * factor * 1.05, // Add 5% extra to overcome friction
-      y: velocity.y * factor * 1.05  // Add 5% extra to overcome friction
+      x: velocity.x * factor,
+      y: velocity.y * factor
     };
   }
   
   return velocity;
 };
 
-// Updated checkCollision function with improved radiusMultiplier parameter
-export const checkCollision = (
-  ballPos: Position, 
-  playerPos: Position, 
-  isGoalkeeper: boolean = false,
-  radiusMultiplier: number = 1.0
-): boolean => {
+export const checkCollision = (ballPos: Position, playerPos: Position, isGoalkeeper: boolean = false): boolean => {
   const dx = ballPos.x - playerPos.x;
   const dy = ballPos.y - playerPos.y;
   const distance = Math.sqrt(dx * dx + dy * dy);
   
-  // Different base reach for goalkeepers (40) vs regular players (15)
-  const baseReach = isGoalkeeper ? 40 : 15;
+  // Field players have 15 units of reach for interacting with the ball
+  // For goalkeepers, use 15 units for non-angled shots, plus 0.5x extension for angled shots
+  const fieldPlayerReach = 15 - BALL_RADIUS; // 15 units total minus ball radius
+  const goalkeeperBaseReach = 15 - BALL_RADIUS; // Now 15 units minus ball radius for non-angled shots
   
-  // Apply the radius multiplier to adjust reach based on ELO
-  // Higher ELO = bigger collision radius = better ball control
-  const playerReach = (baseReach - BALL_RADIUS) * radiusMultiplier;
+  // For goalkeepers, check if it's an angled shot moving toward goal
+  if (isGoalkeeper) {
+    const isLeftGoalkeeper = playerPos.x < PITCH_WIDTH / 2;
+    const ballAngle = Math.atan2(dy, dx);
+    const isAngledShot = Math.abs(ballAngle) > Math.PI/8;
+    
+    // Base reach for non-angled shots is now 15 units
+    let reach = goalkeeperBaseReach;
+    
+    // Add 0.5x extension for angled shots moving toward goal
+    if (isAngledShot) {
+      reach *= 1.5; // 0.5x extension (1 + 0.5 = 1.5)
+    }
+    
+    return distance <= (BALL_RADIUS + reach);
+  }
+  
+  // For field players, use the extended 15-unit reach
+  const reach = isGoalkeeper ? goalkeeperBaseReach : fieldPlayerReach;
   
   // Add a small buffer to prevent the ball from getting stuck
-  return distance <= (BALL_RADIUS + playerReach + 0.5);
+  return distance <= (BALL_RADIUS + reach + 0.5);
 };
 
 export const addRandomEffect = (velocity: Position): Position => {
@@ -108,23 +120,6 @@ export const addRandomEffect = (velocity: Position): Position => {
   return {
     x: velocity.x + randomX,
     y: velocity.y + randomY * 2 // Greater effect on Y to push ball away from boundaries
-  };
-};
-
-export const applyRandomKick = (currentBall: any, tournamentMode: boolean = false): any => {
-  // Log less in tournament mode to reduce memory usage
-  if (!tournamentMode) {
-    console.log("Ball stuck in place or zero velocity, giving it a random kick");
-  }
-  
-  // Increased random kick velocity by ~20% (from 6 to 7.2 max range)
-  return {
-    ...currentBall,
-    position: currentBall.position,
-    velocity: {
-      x: (Math.random() * 7.2) - 3.6,
-      y: (Math.random() * 7.2) - 3.6
-    }
   };
 };
 
@@ -211,7 +206,7 @@ export const calculateNewVelocity = (
   );
   
   // Higher base speed for all balls - even higher for more powerful shots
-  const adjustedSpeed = Math.max(MIN_BALL_SPEED * 1.2, speed * 1.5);  // Increased from base 10 to MIN_BALL_SPEED * 1.2
+  const adjustedSpeed = Math.max(10, speed * 1.5);  // Increased from 9 to 10 and from 1.4 to 1.5
   
   // Add directional bias to reflection angle
   const reflectionAngle = angle + (angle - incidentAngle) + directionalBias;

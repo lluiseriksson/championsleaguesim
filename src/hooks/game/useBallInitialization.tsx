@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { Ball, Position } from '../../types/football';
 
@@ -39,21 +40,6 @@ export const applyRandomKick = (currentBall: Ball, tournamentMode: boolean): Bal
       x: (Math.random() * 7.2) - 3.6,
       y: (Math.random() * 7.2) - 3.6
     }
-  };
-};
-
-// Create a strong initial kick for game start
-export const applyInitialKick = (): Position => {
-  // Create a stronger kick with preference for horizontal movement
-  const horizontalStrength = (Math.random() * 10) + 5; // Between 5-15
-  const verticalStrength = (Math.random() * 6) - 3;    // Between -3 and 3
-  
-  // Randomize horizontal direction
-  const horizontalDirection = Math.random() > 0.5 ? 1 : -1;
-  
-  return {
-    x: horizontalDirection * horizontalStrength,
-    y: verticalStrength
   };
 };
 

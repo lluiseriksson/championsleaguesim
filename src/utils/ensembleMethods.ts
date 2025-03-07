@@ -1,116 +1,185 @@
 
 import * as brain from 'brain.js';
-import { NeuralNet, NeuralInput, NeuralOutput, NetworkSpecialization } from '../types/football';
+import { NeuralNet, NeuralInput, NeuralOutput } from '../types/football';
+import { createPlayerBrain } from './neuralNetwork';
 import { isNetworkValid } from './neuralHelpers';
 
-// Ensemble method: Simple averaging of multiple network outputs
-export const averageEnsembleOutput = (
-  networks: brain.NeuralNetwork<NeuralInput, NeuralOutput>[],
-  input: NeuralInput
-): NeuralOutput => {
-  try {
-    const validNetworks = networks.filter(isNetworkValid);
-    
-    if (validNetworks.length === 0) {
-      throw new Error('No valid networks found for ensemble averaging');
-    }
-    
-    const outputs = validNetworks.map(net => net.run(input));
-    
-    const result: NeuralOutput = {
-      moveX: 0,
-      moveY: 0,
-      shootBall: 0,
-      passBall: 0,
-      intercept: 0
-    };
-    
-    outputs.forEach(output => {
-      result.moveX += output.moveX / outputs.length;
-      result.moveY += output.moveY / outputs.length;
-      result.shootBall += output.shootBall / outputs.length;
-      result.passBall += output.passBall / outputs.length;
-      result.intercept += output.intercept / outputs.length;
-    });
-    
-    return result;
-  } catch (error) {
-    console.warn('Error in ensemble averaging:', error);
-    return {
-      moveX: 0.5,
-      moveY: 0.5,
-      shootBall: 0,
-      passBall: 0,
-      intercept: 0
-    };
-  }
-};
-
-// Ensemble method: Weighted voting based on network performance
-export const weightedEnsembleOutput = (
-  networks: Array<{ net: brain.NeuralNetwork<NeuralInput, NeuralOutput>, weight: number }>,
-  input: NeuralInput
-): NeuralOutput => {
-  try {
-    const validNetworks = networks.filter(n => isNetworkValid(n.net));
-    
-    if (validNetworks.length === 0) {
-      throw new Error('No valid networks found for weighted ensemble');
-    }
-    
-    const totalWeight = validNetworks.reduce((sum, network) => sum + network.weight, 0);
-    
-    if (totalWeight === 0) {
-      throw new Error('Total weight is zero for weighted ensemble');
-    }
-    
-    const result: NeuralOutput = {
-      moveX: 0,
-      moveY: 0,
-      shootBall: 0,
-      passBall: 0,
-      intercept: 0
-    };
-    
-    validNetworks.forEach(network => {
-      const output = network.net.run({
-        ...input,
-        // Ensure player identity parameters are included
-        playerId: input.playerId || 0.5,
-        playerRoleEncoding: input.playerRoleEncoding || 0.5,
-        playerTeamId: input.playerTeamId || 0.5,
-        playerPositionalRole: input.playerPositionalRole || 0.5
+// Create ensemble of neural networks (different architectures/parameters)
+export const createEnsemble = (count: number = 3): NeuralNet[] => {
+  const networks: NeuralNet[] = [];
+  
+  // Base network with standard configuration
+  const baseNet = createPlayerBrain();
+  networks.push(baseNet);
+  
+  // Add networks with different configurations
+  for (let i = 1; i < count; i++) {
+    try {
+      const net = new brain.NeuralNetwork<NeuralInput, NeuralOutput>({
+        hiddenLayers: i === 1 ? [32, 16] : [16, 16, 8], // Different architectures
+        activation: i === 1 ? 'sigmoid' : 'leaky-relu', // Different activation functions
+        learningRate: 0.05 + (i * 0.02),
+        momentum: 0.1 + (i * 0.05),
+        binaryThresh: 0.5,
+        errorThresh: 0.005
       });
       
-      const normalizedWeight = network.weight / totalWeight;
+      // Initialize with some basic training data
+      net.train([{
+        input: createDefaultInput(),
+        output: createDefaultOutput()
+      }], { iterations: 100 });
       
-      result.moveX += output.moveX * normalizedWeight;
-      result.moveY += output.moveY * normalizedWeight;
-      result.shootBall += output.shootBall * normalizedWeight;
-      result.passBall += output.passBall * normalizedWeight;
-      result.intercept += output.intercept * normalizedWeight;
-    });
-    
-    return result;
-  } catch (error) {
-    console.warn('Error in weighted ensemble:', error);
-    return {
-      moveX: 0.5,
-      moveY: 0.5,
-      shootBall: 0,
-      passBall: 0,
-      intercept: 0
-    };
+      if (isNetworkValid(net)) {
+        networks.push({
+          net,
+          lastOutput: { x: 0, y: 0 },
+          successRate: {
+            shoot: 0.5,
+            pass: 0.5,
+            intercept: 0.5,
+            overall: 0.5
+          }
+        });
+      }
+    } catch (error) {
+      console.error(`Error creating ensemble network ${i}:`, error);
+    }
   }
+  
+  return networks;
 };
 
-// Create a shared neural network interface
-export const createSharedNeuralInterface = (
-  baseNetwork: NeuralNet, 
-  useSharedParameters: boolean = true
-): NeuralNet => {
-  return {
-    ...baseNetwork,
-    sharedParameters: useSharedParameters
+// Create a default input for initialization
+const createDefaultInput = (): NeuralInput => ({
+  ballX: 0.5,
+  ballY: 0.5,
+  playerX: 0.5,
+  playerY: 0.5,
+  ballVelocityX: 0,
+  ballVelocityY: 0,
+  distanceToGoal: 0.5,
+  angleToGoal: 0,
+  nearestTeammateDistance: 0.5,
+  nearestTeammateAngle: 0,
+  nearestOpponentDistance: 0.5,
+  nearestOpponentAngle: 0,
+  isInShootingRange: 0,
+  isInPassingRange: 0,
+  isDefendingRequired: 0,
+  distanceToOwnGoal: 0.5,
+  angleToOwnGoal: 0,
+  isFacingOwnGoal: 0,
+  isDangerousPosition: 0,
+  isBetweenBallAndOwnGoal: 0,
+  teamElo: 0.5,
+  eloAdvantage: 0,
+  gameTime: 0.5,
+  scoreDifferential: 0,
+  momentum: 0.5,
+  formationCompactness: 0.5,
+  formationWidth: 0.5,
+  recentSuccessRate: 0.5,
+  possessionDuration: 0,
+  distanceFromFormationCenter: 0.5,
+  isInFormationPosition: 1,
+  teammateDensity: 0.5,
+  opponentDensity: 0.5,
+  shootingAngle: 0.5,
+  shootingQuality: 0.5,
+  // Add the tactical metrics
+  zoneControl: 0.5,
+  passingLanesQuality: 0.5,
+  spaceCreation: 0.5,
+  defensiveSupport: 0.5,
+  pressureIndex: 0.5,
+  tacticalRole: 0.5,
+  supportPositioning: 0.5,
+  pressingEfficiency: 0.5,
+  coverShadow: 0.5,
+  verticalSpacing: 0.5,
+  horizontalSpacing: 0.5,
+  territorialControl: 0.5,
+  counterAttackPotential: 0.5,
+  pressureResistance: 0.5,
+  recoveryPosition: 0.5,
+  transitionSpeed: 0.5
+});
+
+// Create a default output for initialization
+const createDefaultOutput = (): NeuralOutput => ({
+  moveX: 0.5,
+  moveY: 0.5,
+  shootBall: 0.2,
+  passBall: 0.2,
+  intercept: 0.2
+});
+
+// Get weighted prediction from ensemble
+export const getEnsemblePrediction = (
+  networks: NeuralNet[],
+  input: NeuralInput,
+  weights?: number[]
+): NeuralOutput => {
+  if (networks.length === 0) {
+    return createDefaultOutput();
+  }
+  
+  if (networks.length === 1) {
+    return networks[0].net.run(input);
+  }
+  
+  // Use equal weights if none provided
+  const netWeights = weights || networks.map(() => 1 / networks.length);
+  
+  // Get predictions from all networks
+  const predictions = networks
+    .filter(n => isNetworkValid(n.net))
+    .map(n => n.net.run(input));
+  
+  if (predictions.length === 0) {
+    return createDefaultOutput();
+  }
+  
+  // Calculate weighted average
+  const result: NeuralOutput = {
+    moveX: 0,
+    moveY: 0,
+    shootBall: 0,
+    passBall: 0,
+    intercept: 0
   };
+  
+  // Normalize weights to sum to 1
+  const totalWeight = netWeights.reduce((sum, w) => sum + w, 0);
+  const normalizedWeights = netWeights.map(w => w / totalWeight);
+  
+  // Calculate weighted sum
+  predictions.forEach((pred, i) => {
+    const weight = normalizedWeights[i] || 0;
+    result.moveX += pred.moveX * weight;
+    result.moveY += pred.moveY * weight;
+    result.shootBall += pred.shootBall * weight;
+    result.passBall += pred.passBall * weight;
+    result.intercept += pred.intercept * weight;
+  });
+  
+  return result;
+};
+
+// Update ensemble weights based on performance (not implemented yet)
+export const updateEnsembleWeights = (
+  networks: NeuralNet[],
+  successRates: number[]
+): number[] => {
+  // Simple version: weights proportional to success rates
+  const totalSuccess = successRates.reduce((sum, rate) => sum + rate, 0);
+  
+  if (totalSuccess <= 0) {
+    // Equal weights if no success data
+    return networks.map(() => 1 / networks.length);
+  }
+  
+  // Weight by success rate
+  return successRates.map(rate => rate / totalSuccess);
 };
