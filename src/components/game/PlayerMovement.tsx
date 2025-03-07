@@ -6,6 +6,15 @@ import {
   trackPossession, 
   createGameContext 
 } from '../../utils/gameContextTracker';
+import { 
+  createPlayerBrain, 
+  normalizeCoordinates, 
+  normalizeVelocity, 
+  constrainMovementToRadius,
+  calculateCollisionAvoidance 
+} from '../../utils/neuralCore';
+import { validatePlayerBrain, isNetworkValid } from '../../utils/neural/networkValidator';
+import { initializePlayerBrainWithHistory } from '../../utils/neuralNetwork';
 
 // Shared brain for all field players
 let sharedFieldPlayerBrain: NeuralNet | null = null;
