@@ -14,17 +14,21 @@ export function handleFieldPlayerCollisions(
   eloFactors?: { red: number, blue: number }
 ): Position {
   for (const player of fieldPlayers) {
-    // DRASTIC IMPROVEMENT: Higher ELO players have larger effective collision radius
+    // Apply ELO advantage to collision radius
     const eloFactor = eloFactors && player.team ? eloFactors[player.team] : 1.0;
-    const enhancedCollisionRadius = eloFactor > 1.0;
     
-    // Higher ELO players can reach the ball from slightly further away
-    // Fixed: Using the correct parameter order (position1, position2, isGoalkeeper, radiusMultiplier)
+    // Calculate radius multiplier based on ELO
+    // Higher ELO teams have larger effective collision radius (up to 40% larger)
+    const radiusMultiplier = eloFactor > 1.0 ? 
+                           Math.min(1.4, eloFactor * 1.2) : // Upper limit of 1.4x
+                           Math.max(0.8, eloFactor * 0.9);  // Lower limit of 0.8x
+    
+    // Use the improved collision detection with ELO-based radius
     const collision = checkCollision(
       newPosition, 
       player.position, 
       false, // This is a field player, not a goalkeeper
-      enhancedCollisionRadius ? (eloFactor * 1.2) : 1.0 // Up to 20% larger reach
+      radiusMultiplier // Apply the ELO-based radius multiplier
     );
     
     if (collision) {
@@ -126,7 +130,7 @@ export function handleFieldPlayerCollisions(
         }
       }
       
-      console.log(`Ball touched by ${player.team} ${player.role} with ELO factor: ${eloFactor.toFixed(2)}`);
+      console.log(`Ball touched by ${player.team} ${player.role} with ELO factor: ${eloFactor.toFixed(2)}, radius multiplier: ${radiusMultiplier.toFixed(2)}`);
       break; // Only handle one collision per frame
     }
   }

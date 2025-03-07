@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Player, Ball, Position, BALL_RADIUS, PITCH_WIDTH, PITCH_HEIGHT, PLAYER_RADIUS } from '../../types/football';
 import { handleFieldPlayerCollisions } from './collisionHandlers';
@@ -120,16 +119,18 @@ function handlePlayerCollisions(
   const collisionCooldown = 150; // ms
   const goalkeeperCollisionCooldown = 100; // shorter cooldown for goalkeepers
 
-  // DRASTIC IMPROVEMENT: Enhanced goalkeeper collision detection with ELO factors
+  // Enhanced goalkeeper collision detection with ELO factors
   if (currentTime - lastCollisionTimeRef.current > goalkeeperCollisionCooldown) {
     for (const goalkeeper of goalkeepers) {
       const eloFactor = eloFactors && goalkeeper.team ? eloFactors[goalkeeper.team] : 1.0;
       
-      // DRASTIC IMPROVEMENT: Higher ELO goalkeepers have larger effective reach
-      const enhancedCollisionRadius = eloFactor > 1.0;
-      const radiusMultiplier = enhancedCollisionRadius ? Math.min(1.4, eloFactor * 1.2) : 1.0;
+      // Calculate goalkeeper reach multiplier based on ELO
+      // Higher ELO goalkeepers have even larger collision radius than field players (up to 50% larger)
+      const radiusMultiplier = eloFactor > 1.0 ? 
+                             Math.min(1.5, eloFactor * 1.25) : // Upper limit of 1.5x for high ELO
+                             Math.max(0.7, eloFactor * 0.85);  // Lower limit of 0.7x for low ELO
       
-      // Fixed: Removed the fourth parameter and adjusted the call to match the function signature
+      // Enhanced collision detection with ELO-based radius
       const collision = checkCollision(
         newPosition, 
         goalkeeper.position, 
@@ -161,11 +162,9 @@ function handlePlayerCollisions(
           // Determine which direction to clear (away from own goal)
           const clearToRight = goalkeeper.team === 'red';
           
-          // Calculate clearing angle - aim for opponent's half but away from center
           const clearingAngleY = (Math.random() * 0.8 - 0.4) * Math.PI; // -0.4π to 0.4π
           const clearingPower = 12 + Math.random() * 6; // 12-18 power
           
-          // Set clearing vector
           if (clearToRight) {
             newVelocity.x = Math.abs(clearingPower * Math.cos(clearingAngleY));
           } else {
@@ -188,7 +187,7 @@ function handlePlayerCollisions(
           console.log(`Low ELO goalkeeper (${goalkeeper.team}) fumbled the ball!`);
         }
         
-        console.log(`Goalkeeper collision detected with ELO factor: ${eloFactor.toFixed(2)}`);
+        console.log(`Goalkeeper collision detected with ELO factor: ${eloFactor.toFixed(2)}, radius multiplier: ${radiusMultiplier.toFixed(2)}`);
         break;
       }
     }

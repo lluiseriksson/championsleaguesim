@@ -77,7 +77,7 @@ const limitSpeed = (velocity: Position): Position => {
   return velocity;
 };
 
-// Updated checkCollision function to accept an optional radiusMultiplier parameter
+// Updated checkCollision function with improved radiusMultiplier parameter
 export const checkCollision = (
   ballPos: Position, 
   playerPos: Position, 
@@ -88,11 +88,12 @@ export const checkCollision = (
   const dy = ballPos.y - playerPos.y;
   const distance = Math.sqrt(dx * dx + dy * dy);
   
-  // Different reach for goalkeepers (40) vs regular players (15)
-  // Apply the radius multiplier to adjust reach based on ELO or other factors
-  const playerReach = isGoalkeeper 
-    ? (40 - BALL_RADIUS) * radiusMultiplier  // 40 units for goalkeepers, adjusted by multiplier
-    : (15 - BALL_RADIUS) * radiusMultiplier; // 15 units for field players, adjusted by multiplier
+  // Different base reach for goalkeepers (40) vs regular players (15)
+  const baseReach = isGoalkeeper ? 40 : 15;
+  
+  // Apply the radius multiplier to adjust reach based on ELO
+  // Higher ELO = bigger collision radius = better ball control
+  const playerReach = (baseReach - BALL_RADIUS) * radiusMultiplier;
   
   // Add a small buffer to prevent the ball from getting stuck
   return distance <= (BALL_RADIUS + playerReach + 0.5);
