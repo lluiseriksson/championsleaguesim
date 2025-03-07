@@ -49,12 +49,13 @@ export const useGoalNotification = ({
     }
     
     // Reset ball position to center after goal with a random kick direction
+    // MEJORADO: Asegurar que la pelota se coloca exactamente en el centro con una velocidad significativa
     setBall({
       position: { x: PITCH_WIDTH/2, y: PITCH_HEIGHT/2 },
       velocity: { 
-        // Random direction with stronger initial kick 
-        x: (Math.random() * 6) - 3,
-        y: (Math.random() * 6) - 3
+        // Random direction with stronger initial kick to prevent stalling
+        x: (Math.random() >= 0.5 ? 1 : -1) * (4 + Math.random() * 4),
+        y: (Math.random() >= 0.5 ? 1 : -1) * (4 + Math.random() * 4)
       },
       // Reset bounce detection to prevent issues after goal
       bounceDetection: {
@@ -64,6 +65,9 @@ export const useGoalNotification = ({
         sideEffect: false
       }
     });
+    
+    // Log message to confirm ball reset
+    console.log(`Ball reset to center after goal by ${scoringTeam}`);
     
     return scoringTeam;
   }, [tournamentMode, totalGoalsRef, setBall, setScore]);

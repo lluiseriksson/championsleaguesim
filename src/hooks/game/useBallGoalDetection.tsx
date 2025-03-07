@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Ball, Position, PITCH_WIDTH, PITCH_HEIGHT, GOAL_HEIGHT } from '../../types/football';
 
@@ -139,7 +140,26 @@ export const useBallGoalDetection = ({
     let goalScored = null;
     
     if (allowGoalDetection) {
+      // MEJORADO: Usar la posición actual y algunas posiciones anteriores para una detección más precisa
       goalScored = checkGoal(newPosition);
+      
+      // Si no se detectó gol, comprobar si las posiciones anteriores indicarían un gol 
+      // (por si la pelota pasó rápidamente a través de la portería)
+      if (!goalScored && currentBall.previousPosition) {
+        const prevPosition = currentBall.previousPosition;
+        
+        // Comprobar si la trayectoria de la pelota atravesó la línea de gol
+        if (newPosition.x < 0 && prevPosition.x > 0 && 
+            Math.abs(newPosition.y - PITCH_HEIGHT/2) < GOAL_HEIGHT/2) {
+          goalScored = 'blue';
+          console.log("GOAL DETECTED retrospectively on left goal - trajectory analysis");
+        }
+        else if (newPosition.x > PITCH_WIDTH && prevPosition.x < PITCH_WIDTH && 
+                Math.abs(newPosition.y - PITCH_HEIGHT/2) < GOAL_HEIGHT/2) {
+          goalScored = 'red';
+          console.log("GOAL DETECTED retrospectively on right goal - trajectory analysis");
+        }
+      }
     } else if (!tournamentMode) {
       // Still check goal for debugging but don't count it
       const wouldBeGoal = checkGoal(newPosition);

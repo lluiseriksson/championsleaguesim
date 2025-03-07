@@ -199,9 +199,14 @@ export const useGoalSystem = ({
     const goalY = PITCH_HEIGHT / 2;
     const goalTop = goalY - GOAL_HEIGHT / 2;
     const goalBottom = goalY + GOAL_HEIGHT / 2;
+    
+    // Margen de tolerancia para la detección de goles
+    const goalMargin = 3; // Añadir un pequeño margen para mejorar detección
 
-    // Add more detailed logging for goal detection (limited in tournament mode)
-    if (position.x <= BALL_RADIUS && position.y >= goalTop && position.y <= goalBottom) {
+    // Verificación para el gol del equipo azul (portería izquierda)
+    if (position.x <= BALL_RADIUS + goalMargin && 
+        position.y >= goalTop - goalMargin && 
+        position.y <= goalBottom + goalMargin) {
       // Store the position where the goal was scored
       goalScoringPositionRef.current = { ...position };
       
@@ -211,7 +216,10 @@ export const useGoalSystem = ({
       return 'blue';
     }
     
-    if (position.x >= PITCH_WIDTH - BALL_RADIUS && position.y >= goalTop && position.y <= goalBottom) {
+    // Verificación para el gol del equipo rojo (portería derecha)
+    if (position.x >= PITCH_WIDTH - BALL_RADIUS - goalMargin && 
+        position.y >= goalTop - goalMargin && 
+        position.y <= goalBottom + goalMargin) {
       // Store the position where the goal was scored
       goalScoringPositionRef.current = { ...position };
       
@@ -506,4 +514,3 @@ export const useGoalSystem = ({
 
   return { checkGoal, processGoal, trackShotOnTarget, trackPassAttempt };
 };
-
