@@ -11,7 +11,7 @@ const calculateGoalkeeperSpeedMultiplier = (playerElo?: number, opposingTeamElo?
   
   // For each ELO point difference, we adjust by 0.1% (0.001)
   // Increase base multiplier to make movements more noticeable
-  const speedMultiplier = 0.90 - Math.max(0, -eloDifference) * 0.0004; // Increased from 0.85 to 0.90
+  const speedMultiplier = 0.95 - Math.max(0, -eloDifference) * 0.0004; // Increased from 0.90 to 0.95
   
   return speedMultiplier;
 };
@@ -19,7 +19,7 @@ const calculateGoalkeeperSpeedMultiplier = (playerElo?: number, opposingTeamElo?
 // Add a function to introduce randomness based on skill level
 const addPositioningNoise = (value: number, playerElo?: number): number => {
   // Calculate noise level inversely related to ELO (better players have less noise)
-  const baseNoise = 0.20; // Increased from 0.18 to 0.20
+  const baseNoise = 0.25; // Increased from 0.20 to 0.25
   const eloBonus = playerElo ? Math.min(0.10, Math.max(0, (playerElo - 1500) / 5000)) : 0;
   const noiseLevel = baseNoise - eloBonus;
   
@@ -29,7 +29,7 @@ const addPositioningNoise = (value: number, playerElo?: number): number => {
   return value + noise;
 };
 
-// Increased chance of using neural network for goalkeeper from 5% to 15% when well positioned
+// Increased chance of using neural network for goalkeeper from 35% to 50% when well positioned
 const useNeuralNetworkForGoalkeeper = (
   player: Player, 
   ball: Ball, 
@@ -38,9 +38,9 @@ const useNeuralNetworkForGoalkeeper = (
 ): { x: number, y: number } | null => {
   // Use neural network more often when goalkeeper is well positioned
   // Otherwise keep original 5% chance
-  const neuralNetworkChance = isWellPositioned ? 0.65 : 0.90; // Increased neural network usage (from 0.85/0.95)
+  const neuralNetworkChance = isWellPositioned ? 0.5 : 0.8; // Increased neural network usage (from 0.65/0.90)
   
-  if (Math.random() < neuralNetworkChance) { // 35% chance when well positioned, 10% otherwise
+  if (Math.random() < neuralNetworkChance) { // 50% chance when well positioned, 20% otherwise
     return null;
   }
   
@@ -87,9 +87,9 @@ const useNeuralNetworkForGoalkeeper = (
     // Use the neural network output with enhanced influence when well positioned
     if (output && typeof output.moveX === 'number' && typeof output.moveY === 'number') {
       // Increase neural network influence when goalkeeper is well-positioned
-      const positionInfluenceMultiplier = isWellPositioned ? 0.9 : 0.3; // Increased from 0.7 to 0.9
+      const positionInfluenceMultiplier = isWellPositioned ? 1.0 : 0.4; // Increased from 0.9 to 1.0 and from 0.3 to 0.4
       const moveX = (output.moveX * 2 - 1) * positionInfluenceMultiplier; // Increased influence
-      const moveY = (output.moveY * 2 - 1) * (isWellPositioned ? 1.0 : 0.5); // Increased from 0.8 to 1.0
+      const moveY = (output.moveY * 2 - 1) * (isWellPositioned ? 1.2 : 0.6); // Increased from 1.0 to 1.2 and from 0.5 to 0.6
       
       console.log(`GK ${player.team}: USING NEURAL NETWORK - influence: ${positionInfluenceMultiplier.toFixed(1)}`);
       return { x: moveX, y: moveY };
@@ -118,21 +118,21 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
   
   // First, always prioritize returning to goal line if not there
   if (distanceToGoalLine > 3) {
-    const returnSpeed = Math.min(distanceToGoalLine * 0.25, 3.0) * 1.5; // Increased from 0.2 to 0.25 and from 2.5 to 3.0
+    const returnSpeed = Math.min(distanceToGoalLine * 0.3, 3.5) * 1.6; // Increased from 0.25 to 0.3, from 3.0 to 3.5, and from 1.5 to 1.6
     moveX = Math.sign(goalLine - player.position.x) * returnSpeed;
     console.log(`GK ${player.team}: RETURNING TO GOAL LINE`);
   }
   
   // Second, always prioritize centering vertically if not centered
   if (distanceToCenter > 3) {
-    const centeringSpeed = Math.min(distanceToCenter * 0.18, 2.0) * 1.4; // Increased from 0.15 to 0.18 and from 1.8 to 2.0
+    const centeringSpeed = Math.min(distanceToCenter * 0.2, 2.2) * 1.5; // Increased from 0.18 to 0.2, from 2.0 to 2.2, and from 1.4 to 1.5
     moveY = Math.sign(goalCenter - player.position.y) * centeringSpeed;
     console.log(`GK ${player.team}: CENTERING VERTICALLY`);
   }
   
   // Once we're close to the ideal position (center of goal), then track the ball
   // Increase the range of when goalkeeper is considered in position
-  const isNearIdealPosition = distanceToGoalLine <= 4 && distanceToCenter <= 12; // Increased from 3 to 4 and from 10 to 12
+  const isNearIdealPosition = distanceToGoalLine <= 5 && distanceToCenter <= 15; // Increased from 4 to 5 and from 12 to 15
   
   if (isNearIdealPosition) {
     // First try to use neural network with increased frequency when well positioned
@@ -141,8 +141,8 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
       if (neuralMovement) {
         // Add minimal randomness to neural network output
         return {
-          x: addPositioningNoise(neuralMovement.x, player.teamElo),
-          y: addPositioningNoise(neuralMovement.y, player.teamElo)
+          x: addPositioningNoise(neuralMovement.x * 1.2, player.teamElo), // Boosted by 20%
+          y: addPositioningNoise(neuralMovement.y * 1.2, player.teamElo)  // Boosted by 20%
         };
       }
     }
@@ -158,25 +158,27 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
       (!isLeftSide && ball.velocity.x > 1);
     
     // Calculate expected ball position based on trajectory
-    const expectedBallY = ball.position.y + (ball.velocity.y * 10);
+    // ENHANCED: Use more velocity for prediction to react earlier
+    const velocityMultiplier = 15; // Increased from 10 to 15 for earlier reaction
+    const expectedBallY = ball.position.y + (ball.velocity.y * velocityMultiplier);
     
     // Apply ELO-based speed multiplier
     const eloSpeedMultiplier = calculateGoalkeeperSpeedMultiplier(player.teamElo, opposingTeamElo);
     
-    // FIXED: Greatly reduce goalkeeper forward movement and ensure they return to goal line
+    // ENHANCED: Significantly increase the detection range for balls coming toward goal
     const ballIsVeryClose = isLeftSide 
-      ? ball.position.x < 80 && distanceToBall < 80  // Increased detection range from 70 to 80
-      : ball.position.x > PITCH_WIDTH - 80 && distanceToBall < 80;
+      ? ball.position.x < 100 && distanceToBall < 100  // Increased detection range from 80 to 100
+      : ball.position.x > PITCH_WIDTH - 100 && distanceToBall < 100;
       
     // Only allow minimal forward movement when ball is extremely close
     if (ballIsVeryClose && ballMovingTowardGoal) {
       // Maximum forward movement is now very limited but slightly increased
-      const maxAdvance = isLeftSide ? 50 : PITCH_WIDTH - 50; // Increased from 45 to 50
+      const maxAdvance = isLeftSide ? 60 : PITCH_WIDTH - 60; // Increased from 50 to 60
       
       // Calculate target X position (much closer to goal line)
       const targetX = isLeftSide 
-        ? Math.min(ball.position.x - 20, maxAdvance)
-        : Math.max(ball.position.x + 20, maxAdvance);
+        ? Math.min(ball.position.x - 15, maxAdvance) // Moved from 20 to 15 to be more aggressive
+        : Math.max(ball.position.x + 15, maxAdvance);
       
       // Check if goalkeeper is already ahead of the target position
       const isAheadOfTarget = (isLeftSide && player.position.x > targetX) || 
@@ -184,168 +186,190 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
       
       if (isAheadOfTarget) {
         // If ahead of target, move back to goal line quickly
-        moveX = isLeftSide ? -2.0 : 2.0; // Increased from 1.8 to 2.0
+        moveX = isLeftSide ? -2.5 : 2.5; // Increased from 2.0 to 2.5
       } else {
         // Move forward cautiously - slightly increased
-        moveX = Math.sign(targetX - player.position.x) * 0.7 * eloSpeedMultiplier; // Increased from 0.6 to 0.7
+        moveX = Math.sign(targetX - player.position.x) * 0.9 * eloSpeedMultiplier; // Increased from 0.7 to 0.9
       }
     }
     
     // Calculate vertical movement to track the ball or expected ball position
     // If ball is moving fast, anticipate where it will go, with reduced error
-    const isBallMovingFast = Math.abs(ball.velocity.y) > 3;
+    const isBallMovingFast = Math.abs(ball.velocity.y) > 2.5; // Reduced threshold from 3 to 2.5
     // Reduced prediction error for better positioning
-    const predictionError = Math.random() * 8 - 4; // Reduced error range from ±5 to ±4
+    const predictionError = Math.random() * 6 - 3; // Reduced error range from ±4 to ±3
     const targetY = isBallMovingFast ? expectedBallY + predictionError : ball.position.y;
     
-    // MEJORADO: Reducimos el sesgo de centralización para ser más reactivo en los laterales
+    // ENHANCED: Further reduced centering bias for better lateral responsiveness
     const centeringBias = isLeftSide 
-      ? (ball.position.x > 300 ? 0.20 : 0.12) // Reducido de 0.25 a 0.20 y de 0.15 a 0.12
-      : (ball.position.x < PITCH_WIDTH - 300 ? 0.20 : 0.12); // Reducido para mayor reactividad lateral
+      ? (ball.position.x > 300 ? 0.15 : 0.08) // Reduced from 0.20 to 0.15 and from 0.12 to 0.08
+      : (ball.position.x < PITCH_WIDTH - 300 ? 0.15 : 0.08);
     
-    // Ajuste para pelota cercana a los laterales del arco
+    // Adjust for balls near the goal sides
     const distanceFromGoalCenter = Math.abs(ball.position.y - goalCenter);
     const isBallNearGoalSide = distanceFromGoalCenter > GOAL_HEIGHT/3 && distanceFromGoalCenter < GOAL_HEIGHT*1.2;
     
-    // Reducir aún más el sesgo de centralización cuando la pelota está cerca de los laterales del arco
-    const ballSideBias = isBallNearGoalSide ? 0.08 : centeringBias; // Reducido de 0.10 a 0.08
+    // ENHANCED: Further reduced centering bias for lateral balls
+    const ballSideBias = isBallNearGoalSide ? 0.05 : centeringBias; // Reduced from 0.08 to 0.05
     
-    // NUEVO: Más agresivo hacia los laterales cuando la pelota está cerca del arco y en los laterales
+    // More aggressive toward sides when ball is near goal and on sides
     const isCloseToGoal = isLeftSide 
-      ? ball.position.x < 150 // Aumentado de 140 a 150
-      : ball.position.x > PITCH_WIDTH - 150;
+      ? ball.position.x < 170 // Increased from 150 to 170
+      : ball.position.x > PITCH_WIDTH - 170;
       
-    const finalCenteringBias = isCloseToGoal && isBallNearGoalSide ? 0.02 : ballSideBias; // Reducido de 0.03 a 0.02
+    const finalCenteringBias = isCloseToGoal && isBallNearGoalSide ? 0.01 : ballSideBias; // Reduced from 0.02 to 0.01
     
-    // Aplicamos el sesgo ajustado
+    // Apply the adjusted bias
     const centeredTargetY = targetY * (1 - finalCenteringBias) + goalCenter * finalCenteringBias;
     
-    // Ampliamos el rango de movimiento en el eje Y para cubrir mejor los laterales
-    const maxYDistance = GOAL_HEIGHT/2 + 40; // Increased from 30 to 40
+    // ENHANCED: Increased Y movement range to cover sides better
+    const maxYDistance = GOAL_HEIGHT/2 + 50; // Increased from 40 to 50
     const limitedTargetY = Math.max(
       PITCH_HEIGHT/2 - maxYDistance,
       Math.min(PITCH_HEIGHT/2 + maxYDistance, centeredTargetY)
     );
     
-    // MEJORADO: Aumentamos la velocidad de reacción para disparos laterales
+    // ENHANCED: Increased reaction speed for lateral shots
     const yDifference = limitedTargetY - player.position.y;
     
-    // Factor de velocidad vertical basado en la proximidad a los laterales del arco
-    let verticalSpeedMultiplier = 1.5; // Increased from 1.3 to 1.5
+    // Vertical speed factor based on proximity to goal sides
+    let verticalSpeedMultiplier = 1.7; // Increased from 1.5 to 1.7
     
-    // Si la pelota va directo al centro, reducimos velocidad para evitar errores
+    // If ball is going directly to center, reduce speed to avoid errors
     if (ballMovingTowardGoal && Math.abs(ball.position.y - PITCH_HEIGHT/2) < GOAL_HEIGHT/3) {
-      verticalSpeedMultiplier = 1.0; // Increased from 0.9 to 1.0
+      verticalSpeedMultiplier = 1.2; // Increased from 1.0 to 1.2
     } 
-    // Si la pelota va hacia los laterales, aumentamos velocidad
+    // If ball is going to sides, increase speed
     else if (ballMovingTowardGoal && Math.abs(ball.position.y - PITCH_HEIGHT/2) > GOAL_HEIGHT/3) {
-      verticalSpeedMultiplier = 1.8; // Increased from 1.6 to 1.8
+      verticalSpeedMultiplier = 2.0; // Increased from 1.8 to 2.0
       
-      // Extra boost para pelotas muy cercanas a los laterales
+      // Extra boost for balls very close to sides
       if (Math.abs(ball.position.y - PITCH_HEIGHT/2) > GOAL_HEIGHT/2) {
-        verticalSpeedMultiplier = 2.1; // Increased from 1.9 to 2.1
+        verticalSpeedMultiplier = 2.3; // Increased from 2.1 to 2.3
       }
     }
     
-    // NUEVO: Factor de ajuste basado en la velocidad horizontal de la pelota
+    // ENHANCED: Increased adjustment factor based on ball horizontal velocity
     const ballHorizontalVelocity = Math.abs(ball.velocity.x);
-    if (ballHorizontalVelocity > 5 && ballMovingTowardGoal) {
-      // Si la pelota viene rápido y directa, aumentamos más la reactividad
-      verticalSpeedMultiplier *= 1.5; // Increased from 1.4 to 1.5
+    if (ballHorizontalVelocity > 4 && ballMovingTowardGoal) { // Reduced threshold from 5 to 4
+      // If ball is coming fast and direct, increase reactivity even more
+      verticalSpeedMultiplier *= 1.7; // Increased from 1.5 to 1.7
     }
     
     moveY = Math.sign(yDifference) * 
-            Math.min(Math.abs(yDifference) * 0.18 * verticalSpeedMultiplier, 2.2) * // Increased from 0.16 to 0.18 and from 1.9 to 2.2
+            Math.min(Math.abs(yDifference) * 0.22 * verticalSpeedMultiplier, 2.5) * // Increased from 0.18 to 0.22 and from 2.2 to 2.5
             eloSpeedMultiplier;
     
-    // Bias suavizado hacia el centro cuando el portero está lejos
-    if (Math.abs(player.position.y - goalCenter) > 35) { // Increased from 30 to 35
-      const centeringCorrection = Math.sign(goalCenter - player.position.y) * 0.3; // Increased from 0.25 to 0.3
-      moveY = moveY * 0.7 + centeringCorrection; // Changed from 0.75 to 0.7 to prioritize lateral movement
+    // Smoothed bias toward center when goalkeeper is far
+    if (Math.abs(player.position.y - goalCenter) > 35) { // Kept at 35
+      const centeringCorrection = Math.sign(goalCenter - player.position.y) * 0.3; // Kept at 0.3
+      moveY = moveY * 0.6 + centeringCorrection; // Changed from 0.7 to 0.6 to prioritize lateral movement even more
     }
     
-    // Priorizar movimiento vertical cuando la pelota viene directamente al arco
-    if (ballMovingTowardGoal && Math.abs(ball.position.x - player.position.x) < 130) { // Increased from 120 to 130
-      // MEJORADO: Aumentamos prioridad para disparos laterales
+    // Prioritize vertical movement when ball is coming directly to goal
+    if (ballMovingTowardGoal && Math.abs(ball.position.x - player.position.x) < 150) { // Increased from 130 to 150
+      // ENHANCED: Increased priority for lateral shots
       const isLateralShot = Math.abs(ball.position.y - PITCH_HEIGHT/2) > GOAL_HEIGHT/3;
-      const verticalPriorityMultiplier = isLateralShot ? 1.3 : (0.9 + Math.random() * 0.2); // Increased from 1.2 to 1.3 and from 0.8 to 0.9
+      const verticalPriorityMultiplier = isLateralShot ? 1.5 : (1.0 + Math.random() * 0.2); // Increased from 1.3 to 1.5 and from 0.9 to 1.0
       moveY = moveY * verticalPriorityMultiplier * eloSpeedMultiplier;
     }
     
-    // NUEVO: Log para disparos laterales
+    // Log for lateral shots
     if (isBallNearGoalSide && ballMovingTowardGoal && isCloseToGoal) {
       console.log(`GK ${player.team}: LATERAL SHOT RESPONSE - moveY: ${moveY.toFixed(2)}, bias: ${finalCenteringBias.toFixed(2)}`);
     }
     
-    // MODIFICADO: Solo añadir micro-movimientos aleatorios si ya estamos bien posicionados
-    // y no hay otro movimiento significativo
-    if (Math.abs(moveX) < 0.2 && Math.abs(moveY) < 0.2) { // Increased threshold from 0.1 to 0.2
+    // ENHANCED: Increased threshold for micro-movements
+    if (Math.abs(moveX) < 0.3 && Math.abs(moveY) < 0.3) { // Increased threshold from 0.2 to 0.3
       // Try to use neural network again if we're idle
       if (player.brain) {
         const neuralMovement = useNeuralNetworkForGoalkeeper(player, ball, player.brain, true);
         if (neuralMovement) {
-          // Add small random noise to neural output
-          moveX = neuralMovement.x + (Math.random() - 0.5) * 0.2; // Increased from 0.1 to 0.2
-          moveY = neuralMovement.y + (Math.random() - 0.5) * 0.2; // Increased from 0.1 to 0.2
+          // ENHANCED: Increase random noise to neural output
+          moveX = neuralMovement.x * 1.3 + (Math.random() - 0.5) * 0.3; // Increased from 0.2 to 0.3 and added 1.3 multiplier
+          moveY = neuralMovement.y * 1.3 + (Math.random() - 0.5) * 0.3; // Increased from 0.2 to 0.3 and added 1.3 multiplier
           console.log(`GK ${player.team}: IDLE STATE NEURAL DECISION`);
         } else {
-          // Fall back to micro-movements with slightly larger values
-          moveX = (Math.random() - 0.5) * 0.6; // Increased from 0.4 to 0.6
-          moveY = (Math.random() - 0.5) * 0.8; // Increased from 0.5 to 0.8
+          // Fall back to micro-movements with larger values
+          moveX = (Math.random() - 0.5) * 0.8; // Increased from 0.6 to 0.8
+          moveY = (Math.random() - 0.5) * 1.0; // Increased from 0.8 to 1.0
           console.log(`GK ${player.team}: ADDING MICRO-MOVEMENT`);
         }
       } else {
         // No neural network, use random micro-movements
-        moveX = (Math.random() - 0.5) * 0.6; // Increased from 0.4 to 0.6
-        moveY = (Math.random() - 0.5) * 0.8; // Increased from 0.5 to 0.8
+        moveX = (Math.random() - 0.5) * 0.8; // Increased from 0.6 to 0.8
+        moveY = (Math.random() - 0.5) * 1.0; // Increased from 0.8 to 1.0
         console.log(`GK ${player.team}: ADDING MICRO-MOVEMENT (NO NEURAL)`);
       }
     }
+    
+    // ENHANCED: Special case for when ball is heading straight at goalkeeper
+    const ballHeadingDirectlyAtGoalkeeper = 
+      Math.abs(ball.velocity.y) < 2 && 
+      ((isLeftSide && ball.velocity.x < -3) || (!isLeftSide && ball.velocity.x > 3)) &&
+      Math.abs(ball.position.y - player.position.y) < 30;
+    
+    if (ballHeadingDirectlyAtGoalkeeper) {
+      // Add small random vertical movement to avoid predictability
+      const randomYMove = (Math.random() - 0.5) * 1.5; // Small random move
+      moveY = moveY * 0.3 + randomYMove; // Blend current movement with random
+      console.log(`GK ${player.team}: BALL HEADING DIRECTLY AT GOALKEEPER`);
+    }
   }
   
-  // Agregar ruido mínimo final al movimiento - aumentado ligeramente
+  // Add final minimal noise to movement - slightly increased
   moveX = addPositioningNoise(moveX, player.teamElo);
   moveY = addPositioningNoise(moveY, player.teamElo);
   
-  // Reducimos la probabilidad de duda para movimientos más consistentes
-  if (Math.random() < 0.03) { // Reducido de 0.04 a 0.03 (3% probabilidad de duda)
-    moveX *= 0.8; // Increased from 0.7 to 0.8 to make hesitation less severe
-    moveY *= 0.8; // Increased from 0.7 to 0.8
+  // Reduced hesitation probability for more consistent movements
+  if (Math.random() < 0.02) { // Reduced from 0.03 to 0.02 (2% chance of hesitation)
+    moveX *= 0.9; // Increased from 0.8 to 0.9 to make hesitation even less severe
+    moveY *= 0.9; // Increased from 0.8 to 0.9
     console.log(`GK ${player.team}: HESITATION`);
   }
   
-  // Forzar al portero a volver a la línea de gol si está demasiado lejos
-  const maxDistanceFromGoalLine = 55; // Increased from 45 to 55
+  // Force goalkeeper to return to goal line if too far
+  const maxDistanceFromGoalLine = 65; // Increased from 55 to 65
   if (Math.abs(player.position.x - goalLine) > maxDistanceFromGoalLine) {
-    // Anular movimiento para volver a la línea de gol con urgencia
-    moveX = Math.sign(goalLine - player.position.x) * 3.2; // Increased from 2.8 to 3.2
+    // Override movement to return to goal line urgently
+    moveX = Math.sign(goalLine - player.position.x) * 3.5; // Increased from 3.2 to 3.5
     console.log(`GK ${player.team}: EMERGENCY RETURN TO GOAL LINE`);
   }
   
-  // Corrección extra para permanecer cerca del centro del arco cuando está inactivo
-  const isIdle = Math.abs(moveX) < 0.2 && Math.abs(moveY) < 0.2;
+  // Extra correction to stay near goal center when idle
+  const isIdle = Math.abs(moveX) < 0.3 && Math.abs(moveY) < 0.3; // Increased from 0.2 to 0.3
   if (isIdle && Math.abs(player.position.y - goalCenter) > GOAL_HEIGHT/4) {
-    moveY = Math.sign(goalCenter - player.position.y) * 0.7; // Increased from 0.6 to 0.7
+    moveY = Math.sign(goalCenter - player.position.y) * 0.8; // Increased from 0.7 to 0.8
     console.log(`GK ${player.team}: CENTER CORRECTION`);
   }
   
-  // NUEVO: Asegurar un movimiento mínimo para evitar que el portero se vea estático
-  if (Math.abs(moveX) < 0.08 && Math.abs(moveY) < 0.08) { // Reduced threshold from 0.05 to ensure more movement
-    // Si el movimiento es muy pequeño, añadir un pequeño movimiento aleatorio
-    moveX = (Math.random() - 0.5) * 0.5; // Increased from 0.3 to 0.5
-    moveY = (Math.random() - 0.5) * 0.6; // Increased from 0.4 to 0.6
+  // Ensure a minimum movement to avoid looking static
+  if (Math.abs(moveX) < 0.06 && Math.abs(moveY) < 0.06) { // Further reduced threshold from 0.08 to 0.06
+    // If movement is very small, add a small random movement
+    moveX = (Math.random() - 0.5) * 0.7; // Increased from 0.5 to 0.7
+    moveY = (Math.random() - 0.5) * 0.8; // Increased from 0.6 to 0.8
     console.log(`GK ${player.team}: FORCING MINIMUM MOVEMENT`);
   }
   
-  // NUEVO: Ampliar movimientos muy pequeños para más visibilidad
-  if (0.08 <= Math.abs(moveX) && Math.abs(moveX) < 0.15) {
-    moveX *= 1.4; // Boost small movements
+  // Amplify small movements for more visibility
+  if (0.06 <= Math.abs(moveX) && Math.abs(moveX) < 0.15) {
+    moveX *= 1.6; // Increased from 1.4 to 1.6
     console.log(`GK ${player.team}: BOOSTING SMALL X MOVEMENT`);
   }
   
-  if (0.08 <= Math.abs(moveY) && Math.abs(moveY) < 0.15) {
-    moveY *= 1.4; // Boost small movements
+  if (0.06 <= Math.abs(moveY) && Math.abs(moveY) < 0.15) {
+    moveY *= 1.6; // Increased from 1.4 to 1.6
     console.log(`GK ${player.team}: BOOSTING SMALL Y MOVEMENT`);
+  }
+  
+  // ENHANCED: Add special ball velocity response when ball is traveling fast
+  const ballTravelingFast = Math.abs(ball.velocity.x) > 8 || Math.abs(ball.velocity.y) > 8;
+  if (ballTravelingFast && distanceToBall < 200) {
+    // Increase movements to respond to fast ball
+    const responseBoost = 1.3; // 30% boost
+    moveX *= responseBoost;
+    moveY *= responseBoost;
+    console.log(`GK ${player.team}: RESPONDING TO FAST BALL - boost: ${responseBoost.toFixed(1)}x`);
   }
   
   console.log(`GK ${player.team}: movement (${moveX.toFixed(1)},${moveY.toFixed(1)}), distToCenter: ${distanceToCenter.toFixed(0)}, distToGoalLine: ${distanceToGoalLine.toFixed(0)}`);

@@ -1,9 +1,10 @@
+
 import { Position, Player } from '../types/football';
 import { calculateDistance } from './neuralCore';
 
 // Increased radius limits to allow more movement freedom
 const ROLE_RADIUS_LIMITS = {
-  goalkeeper: 90,    // Increased from 70 to 90
+  goalkeeper: 110,    // Increased from 90 to 110
   defender: 150,     // Kept the same
   midfielder: 140,   // Kept the same
   forward: 180       // Kept the same
