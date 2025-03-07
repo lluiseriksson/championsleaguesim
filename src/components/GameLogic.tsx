@@ -39,15 +39,15 @@ const GameLogic: React.FC<GameLogicProps> = ({
   console.log(`GameLogic rendered with players: ${players.length}, tournamentMode: ${tournamentMode}`);
 
   // Find team ELO values for comparison
-  const redTeamElo = players.find(p => p.team === 'red')?.teamElo || 1500;
-  const blueTeamElo = players.find(p => p.team === 'blue')?.teamElo || 1500;
+  const homeTeamElo = players.find(p => p.team === 'red')?.teamElo || 1500;
+  const awayTeamElo = players.find(p => p.team === 'blue')?.teamElo || 1500;
   
   // Default setup: home team (red) always learns, away team (blue) never learns
   const homeTeamLearning = true;
   const awayTeamLearning = false;
   
   // Log ELO comparison for debugging
-  console.log(`Team ELO comparison - Red (Home): ${redTeamElo}, Blue (Away): ${blueTeamElo}`);
+  console.log(`Team ELO comparison - Home Team: ${homeTeamElo}, Away Team: ${awayTeamElo}`);
   console.log(`Learning configuration - Home team: ${homeTeamLearning ? 'YES' : 'NO'}, Away team: ${awayTeamLearning ? 'YES' : 'NO'}`);
 
   // Get team context functions
@@ -141,7 +141,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
     },
     onBallTouch: (player) => {
       lastPlayerTouchRef.current = player;
-      console.log(`Ball touched by ${player.team} ${player.role} #${player.id}`);
+      console.log(`Ball touched by ${player.team === 'red' ? 'home' : 'away'} ${player.role} #${player.id}`);
     },
     tournamentMode
   });

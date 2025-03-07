@@ -33,7 +33,8 @@ export const useModelSaveOnExit = ({
             return true;
           })
           .forEach(player => {
-            logNeuralNetworkStatus(player.team, player.role, player.id, "Saving model on exit");
+            const teamLabel = player.team === 'red' ? 'Home Team' : 'Away Team';
+            logNeuralNetworkStatus(player.team, player.role, player.id, `Saving ${teamLabel} model on exit`);
             
             // Save model to database
             saveModel(player)
@@ -60,7 +61,8 @@ export const useModelSaveOnExit = ({
           );
           
           if (randomPlayer) {
-            console.log(`Saving single random model in tournament mode`);
+            const teamLabel = randomPlayer.team === 'red' ? 'Home Team' : 'Away Team';
+            console.log(`Saving single random model in tournament mode (${teamLabel})`);
             logNeuralNetworkStatus(randomPlayer.team, randomPlayer.role, randomPlayer.id, "Saving random model in tournament mode");
             saveModel(randomPlayer)
               .catch(err => {
