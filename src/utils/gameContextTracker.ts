@@ -1,8 +1,13 @@
+
 import { Player, Ball, NeuralInput, TeamContext, NeuralNet, Position, GOAL_HEIGHT } from '../types/football';
 import { calculateDistance } from './neuralHelpers';
 
 // Maximum number of actions to track in history
 const MAX_ACTION_HISTORY = 20;
+
+// NEW: Track the last few team actions for goal contribution analysis
+const MAX_TEAM_ACTIONS = 8;
+const CONTRIBUTION_WINDOW_MS = 8000; // 8 seconds window for goal contributions
 
 // Initialize action history for a player
 export const initializeActionHistory = (brain: NeuralNet): NeuralNet => {
@@ -16,6 +21,141 @@ export const initializeActionHistory = (brain: NeuralNet): NeuralNet => {
       overall: 0.5
     }
   };
+};
+
+// NEW: Create team action tracker for goal contribution analysis
+export const createTeamActionTracker = () => {
+  return {
+    actions: [] as {
+      playerId: number;
+      playerRole: string;
+      action: string;
+      timestamp: number;
+      position: Position;
+    }[],
+    lastUpdated: Date.now()
+  };
+};
+
+// NEW: Add action to team tracker
+export const trackTeamAction = (
+  tracker: ReturnType<typeof createTeamActionTracker>, 
+  player: Player,
+  action: string
+) => {
+  // Add new action
+  tracker.actions.push({
+    playerId: player.id,
+    playerRole: player.role,
+    action,
+    timestamp: Date.now(),
+    position: { ...player.position }
+  });
+  
+  // Update timestamp
+  tracker.lastUpdated = Date.now();
+  
+  // Limit size and remove old actions
+  const cutoffTime = Date.now() - CONTRIBUTION_WINDOW_MS;
+  tracker.actions = tracker.actions
+    .filter(a => a.timestamp >= cutoffTime)
+    .slice(-MAX_TEAM_ACTIONS);
+  
+  return tracker;
+};
+
+// NEW: Calculate contribution value for a player's action
+export const calculateContributionValue = (
+  action: string,
+  playerRole: string,
+  timeSinceAction: number
+): number => {
+  // Base value depends on action type
+  let baseValue = 0;
+  switch (action) {
+    case 'pass':
+      baseValue = 0.8;
+      break;
+    case 'shoot':
+      baseValue = 1.0;
+      break;
+    case 'intercept':
+      baseValue = 0.7;
+      break;
+    case 'move':
+      baseValue = 0.3;
+      break;
+    default:
+      baseValue = 0.1;
+  }
+  
+  // Role-based multiplier
+  let roleMultiplier = 1.0;
+  switch (playerRole) {
+    case 'forward':
+      roleMultiplier = 1.2;
+      break;
+    case 'midfielder':
+      roleMultiplier = 1.4; // Midfielders get higher multiplier for build-up play
+      break;
+    case 'defender':
+      roleMultiplier = 0.8;
+      break;
+    case 'goalkeeper':
+      roleMultiplier = 0.5;
+      break;
+  }
+  
+  // Time decay - actions closer to goal are worth more
+  // 8 second window for contributions
+  const timeDecay = Math.max(0, 1 - (timeSinceAction / CONTRIBUTION_WINDOW_MS));
+  
+  return baseValue * roleMultiplier * timeDecay;
+};
+
+// NEW: Analyze contribution chain for goal
+export const analyzeGoalContributions = (
+  tracker: ReturnType<typeof createTeamActionTracker>,
+  goalTimestamp: number
+): {
+  playerId: number;
+  contributionValue: number;
+}[] => {
+  const contributions: {
+    playerId: number;
+    contributionValue: number;
+  }[] = [];
+  
+  // Map to track each player's total contribution
+  const playerContributions = new Map<number, number>();
+  
+  // Calculate contribution for each action
+  tracker.actions.forEach(action => {
+    const timeSinceAction = goalTimestamp - action.timestamp;
+    
+    // Only consider actions within contribution window
+    if (timeSinceAction <= CONTRIBUTION_WINDOW_MS) {
+      const value = calculateContributionValue(
+        action.action,
+        action.playerRole,
+        timeSinceAction
+      );
+      
+      // Add to player's total
+      const currentValue = playerContributions.get(action.playerId) || 0;
+      playerContributions.set(action.playerId, currentValue + value);
+    }
+  });
+  
+  // Convert map to array
+  playerContributions.forEach((value, playerId) => {
+    contributions.push({
+      playerId,
+      contributionValue: value
+    });
+  });
+  
+  return contributions;
 };
 
 // Track action outcomes

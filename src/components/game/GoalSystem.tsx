@@ -43,7 +43,14 @@ export const useGoalSystem = ({
     timestamp: 0,
     shotQuality: 0
   });
-
+  
+  // NEW: Track player contribution chain (last 3-5 players involved in build-up)
+  const contributionChainRef = React.useRef<Array<{
+    player: Player;
+    action: 'shoot' | 'pass' | 'intercept' | 'move';
+    timestamp: number;
+  }>>([]);
+  
   // Store the position where the goal was scored
   const goalScoringPositionRef = React.useRef<Position>({ x: 0, y: 0 });
 
@@ -128,6 +135,9 @@ export const useGoalSystem = ({
       shooter.brain.lastShotQuality = shotQuality;
     }
     
+    // Add shooter to contribution chain
+    addToContributionChain(shooter, 'shoot');
+    
     if (!tournamentMode) {
       console.log(`SHOT TRACKED: ${shooter.team} ${shooter.role} #${shooter.id} shot with velocity (${shotVelocity.x.toFixed(1)}, ${shotVelocity.y.toFixed(1)}), quality: ${shotQuality.toFixed(2)}`);
     }
@@ -150,6 +160,9 @@ export const useGoalSystem = ({
       };
     }
     
+    // Add passer to contribution chain
+    addToContributionChain(passer, 'pass');
+    
     if (!tournamentMode) {
       if (targetPlayer) {
         console.log(`PASS TRACKED: ${passer.team} ${passer.role} #${passer.id} passed to ${targetPlayer.team} ${targetPlayer.role} #${targetPlayer.id}`);
@@ -158,6 +171,24 @@ export const useGoalSystem = ({
       }
     }
   }, [tournamentMode]);
+  
+  // NEW: Add player to contribution chain
+  const addToContributionChain = React.useCallback((player: Player, action: 'shoot' | 'pass' | 'intercept' | 'move') => {
+    // Add to contribution chain - only add if this player isn't already the last one added
+    const lastContribution = contributionChainRef.current[contributionChainRef.current.length - 1];
+    if (!lastContribution || lastContribution.player.id !== player.id) {
+      contributionChainRef.current.push({
+        player,
+        action,
+        timestamp: Date.now()
+      });
+      
+      // Keep only the last 5 contributions
+      if (contributionChainRef.current.length > 5) {
+        contributionChainRef.current.shift();
+      }
+    }
+  }, []);
 
   // Check if a goal was scored
   const checkGoal = React.useCallback((position: Position): 'red' | 'blue' | null => {
@@ -187,6 +218,40 @@ export const useGoalSystem = ({
     }
 
     return null;
+  }, [tournamentMode]);
+
+  // NEW: Calculate contribution reward based on role and time elapsed since contribution
+  const calculateContributionReward = React.useCallback((player: Player, contributionTime: number, action: string) => {
+    const timeElapsed = Date.now() - contributionTime;
+    const maxRewardTime = 5000; // 5 seconds
+    
+    // Time decay factor - contributions more than maxRewardTime ms ago get reduced reward
+    const timeFactor = Math.max(0, 1 - (timeElapsed / maxRewardTime));
+    
+    // Role-based reward multipliers - midfielders and forwards get higher rewards
+    let roleMultiplier = 1.0;
+    if (player.role === 'midfielder') {
+      roleMultiplier = 1.5; // Higher reward for midfielders
+    } else if (player.role === 'forward') {
+      roleMultiplier = 2.0; // Even higher reward for forwards
+    }
+    
+    // Action-based reward multipliers
+    let actionMultiplier = 1.0;
+    if (action === 'pass') {
+      actionMultiplier = 1.2; // Higher reward for passes
+    } else if (action === 'shoot') {
+      actionMultiplier = 1.5; // Even higher reward for shots
+    }
+    
+    // Calculate final contribution reward
+    const reward = timeFactor * roleMultiplier * actionMultiplier;
+    
+    if (!tournamentMode && reward > 0.2) {
+      console.log(`${player.team} ${player.role} #${player.id} gets build-up contribution reward: ${reward.toFixed(2)}`);
+    }
+    
+    return Math.max(0, reward);
   }, [tournamentMode]);
 
   // Process goal scoring
@@ -219,6 +284,12 @@ export const useGoalSystem = ({
       if (!tournamentMode) {
         console.log(`Ball position at goal: ${JSON.stringify(ballPositionAtGoal)}`);
         console.log(`Goal scored at position: ${JSON.stringify(goalPosition)}`);
+        
+        // Log contribution chain for debugging
+        console.log(`CONTRIBUTION CHAIN LENGTH: ${contributionChainRef.current.length}`);
+        contributionChainRef.current.forEach((contrib, index) => {
+          console.log(`${index+1}: ${contrib.player.team} ${contrib.player.role} #${contrib.player.id} - ${contrib.action}`);
+        });
       }
       
       // Determine if this was an own goal
@@ -262,6 +333,26 @@ export const useGoalSystem = ({
           if (!tournamentMode) {
             console.log(`Using tracked shot quality ${shotQuality.toFixed(2)} for ${player.team} ${player.role} #${player.id}`);
           }
+        }
+        
+        // NEW: Check if player was part of contribution chain leading to goal
+        let contributionReward = 0;
+        if (player.team === scoringTeam && !isOwnGoal) {
+          // Find all contributions from this player
+          const playerContributions = contributionChainRef.current
+            .filter(contrib => contrib.player.id === player.id);
+          
+          // Sum rewards from all contributions
+          contributionReward = playerContributions.reduce((total, contrib) => {
+            return total + calculateContributionReward(
+              player, 
+              contrib.timestamp, 
+              contrib.action
+            );
+          }, 0);
+          
+          // Cap total contribution reward to prevent excessive values
+          contributionReward = Math.min(contributionReward, 5.0);
         }
         
         // Calculate additional tactical rewards
@@ -308,12 +399,21 @@ export const useGoalSystem = ({
           player,
           playerContext,
           (isLastTouch && (wasLastTouchHelpful || wasLastTouchHarmful)),
-          isOwnGoal && player.team !== scoringTeam // Pass own goal flag to learning function
+          isOwnGoal && player.team !== scoringTeam, // Pass own goal flag to learning function
+          { contributionReward } // Pass contribution reward as part of game context
         );
         
         // Add tactical bonus to cumulative reward if applicable
         if (tacticalBonus > 0 && updatedBrain.cumulativeReward !== undefined) {
           updatedBrain.cumulativeReward += tacticalBonus;
+        }
+        
+        // NEW: Add contribution bonus to cumulative reward if applicable
+        if (contributionReward > 0 && updatedBrain.cumulativeReward !== undefined) {
+          updatedBrain.cumulativeReward += contributionReward;
+          if (!tournamentMode) {
+            console.log(`${player.team} ${player.role} #${player.id} gets total contribution reward: ${contributionReward.toFixed(2)}`);
+          }
         }
         
         return {
@@ -379,9 +479,12 @@ export const useGoalSystem = ({
       // Reset the goal scoring position
       goalScoringPositionRef.current = { x: 0, y: 0 };
       
+      // Reset contribution chain after processing a goal
+      contributionChainRef.current = [];
+      
       return updatedPlayers;
     });
-  }, [ball, getTeamContext, setPlayers, setScore, lastPlayerTouchRef, tournamentMode]);
+  }, [ball, getTeamContext, setPlayers, setScore, lastPlayerTouchRef, tournamentMode, calculateContributionReward]);
 
   return { checkGoal, processGoal, trackShotOnTarget, trackPassAttempt };
 };

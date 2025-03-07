@@ -31,6 +31,12 @@ const STRATEGIC_POSITION_REWARD = 0.6;
 const OPEN_SPACE_REWARD = 0.4;
 const TACTICAL_REWARD_SCALE = 0.8;
 
+// NEW: Rewards for midfielders and forwards contributing to goals
+const MIDFIELDER_CONTRIBUTION_MULTIPLIER = 1.5;
+const FORWARD_CONTRIBUTION_MULTIPLIER = 2.0;
+const BUILD_UP_PLAY_REWARD = 1.8;
+const KEY_PASS_REWARD = 2.5;
+
 // NEW: Penalties for defenders and goalkeepers being out of position when goals are scored
 const GOALKEEPER_GOAL_CONCEDED_MAX_PENALTY = -4.0; // Severe penalty when goalkeeper is far from where goal was scored
 const DEFENDER_GOAL_CONCEDED_MAX_PENALTY = -2.5; // Strong penalty when defender is far from where goal was scored
@@ -199,6 +205,23 @@ export const updatePlayerBrain = (
     rewardFactor += calculatePositioningReward(player, context);
   }
 
+  // NEW: Apply contribution reward for midfielders and forwards who contributed to the goal
+  if (scored && !isOwnGoal && (player.role === 'midfielder' || player.role === 'forward')) {
+    // Get contribution reward from game context if available
+    if (gameContext.contributionReward && gameContext.contributionReward > 0) {
+      const contributionMultiplier = player.role === 'midfielder' 
+        ? MIDFIELDER_CONTRIBUTION_MULTIPLIER 
+        : FORWARD_CONTRIBUTION_MULTIPLIER;
+        
+      const contributionReward = gameContext.contributionReward * contributionMultiplier;
+      
+      // Add contribution reward to total reward factor
+      rewardFactor += contributionReward;
+      
+      console.log(`${player.team} ${player.role} #${player.id} receives build-up play reward: ${contributionReward.toFixed(2)}`);
+    }
+  }
+
   // NEW: Apply stronger penalty for defenders and goalkeepers who are far from where a goal was scored
   if (!scored && (player.role === 'goalkeeper' || player.role === 'defender')) {
     // Only apply this penalty when the opponent scored (and it's not an own goal)
@@ -336,26 +359,23 @@ export const updatePlayerBrain = (
       if (brain.lastShotQuality === undefined) {
         brain.lastShotQuality = 0;
       }
-    } else {
-      // If player didn't shoot, reset shot quality tracking
-      brain.lastShotQuality = 0;
-      
-      // NEW: Reward for successful passes to teammates
-      if (brain.lastAction === 'pass' && !isOwnGoal) {
-        const passDestinationIsTeammate = brain.lastPassOutcome?.success === true;
-        if (passDestinationIsTeammate) {
-          console.log(`${player.team} ${player.role} #${player.id} made a SUCCESSFUL PASS! Reward: ${SUCCESSFUL_PASS_REWARD}`);
-          rewardFactor += SUCCESSFUL_PASS_REWARD;
-        } else {
-          // Penalize giving the ball to an opponent
-          console.log(`${player.team} ${player.role} #${player.id} LOST POSSESSION! Penalty: ${BALL_LOSS_PENALTY}`);
-          rewardFactor += BALL_LOSS_PENALTY;
-        }
-      }
     }
   } else if (brain.lastAction) {
     // If player didn't shoot, reset shot quality tracking
     brain.lastShotQuality = 0;
+    
+    // NEW: Reward for successful passes to teammates
+    if (brain.lastAction === 'pass' && !isOwnGoal) {
+      const passDestinationIsTeammate = brain.lastPassOutcome?.success === true;
+      if (passDestinationIsTeammate) {
+        console.log(`${player.team} ${player.role} #${player.id} made a SUCCESSFUL PASS! Reward: ${SUCCESSFUL_PASS_REWARD}`);
+        rewardFactor += SUCCESSFUL_PASS_REWARD;
+      } else {
+        // Penalize giving the ball to an opponent
+        console.log(`${player.team} ${player.role} #${player.id} LOST POSSESSION! Penalty: ${BALL_LOSS_PENALTY}`);
+        rewardFactor += BALL_LOSS_PENALTY;
+      }
+    }
   }
 
   // Increase own goal penalty
@@ -524,6 +544,17 @@ export const updatePlayerBrain = (
     if (isLastTouchBeforeGoal) {
       rewardFactor += LAST_TOUCH_GOAL_REWARD;
       console.log(`${player.team} ${player.role} #${player.id} gets extra reward for last touch before goal!`);
+    }
+    
+    // NEW: Add role-specific rewards for scoring
+    if (player.role === 'midfielder') {
+      // Midfielders get extra reward for scoring (less common/expected)
+      rewardFactor *= MIDFIELDER_CONTRIBUTION_MULTIPLIER;
+      console.log(`${player.team} midfielder scoring bonus applied: ${rewardFactor.toFixed(2)}`);
+    } else if (player.role === 'forward') {
+      // Forwards get some extra reward for doing their job
+      rewardFactor *= 1.2;
+      console.log(`${player.team} forward scoring bonus applied: ${rewardFactor.toFixed(2)}`);
     }
   } else {
     if (lastAction === 'pass' && calculateDistance(player.position, context.opponentGoal) > 300) {
