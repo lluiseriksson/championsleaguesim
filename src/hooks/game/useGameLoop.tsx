@@ -1,3 +1,4 @@
+
 import { useRef, useEffect, useCallback } from 'react';
 import { Player, Ball, Score } from '../../types/football';
 import useWatchdog from './useWatchdog';
@@ -14,7 +15,7 @@ interface UseGameLoopProps {
   score: Score;
   tournamentMode?: boolean;
   isLowPerformance?: boolean;
-  eloAdvantageMultiplier?: number;
+  teamAdvantageFactors?: { red: number, blue: number };
 }
 
 export const useGameLoop = ({
@@ -29,7 +30,7 @@ export const useGameLoop = ({
   score,
   tournamentMode = false,
   isLowPerformance = false,
-  eloAdvantageMultiplier = 1.0
+  teamAdvantageFactors = { red: 1.0, blue: 1.0 }
 }: UseGameLoopProps) => {
   const requestRef = useRef<number | null>(null);
   const previousTimeRef = useRef<number | null>(null);
