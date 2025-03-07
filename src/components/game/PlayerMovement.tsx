@@ -14,6 +14,9 @@ import { calculateCollisionAvoidance } from '../../hooks/game/useTeamCollisions'
 import { normalizeCoordinates, denormalizeCoordinates, normalizeVelocity } from '../../utils/gamePhysics';
 import { createPlayerBrain } from '../../utils/neuralNetwork';
 
+// Shared brain for all field players
+let sharedFieldPlayerBrain: NeuralNet | null = null;
+
 const createBasicTestInput = (): NeuralInput => {
   return {
     ballX: 0.5,
@@ -66,7 +69,11 @@ const createBasicTestInput = (): NeuralInput => {
     counterAttackPotential: 0.5,
     pressureResistance: 0.5,
     recoveryPosition: 0.5,
-    transitionSpeed: 0.5
+    transitionSpeed: 0.5,
+    playerId: 0.5,
+    playerRoleEncoding: 0.5,
+    playerTeamId: 0.5,
+    playerPositionalRole: 0.5
   };
 };
 
@@ -96,23 +103,40 @@ const usePlayerMovement = ({
   const neuralNetworkCacheRef = React.useRef<Map<number, { timestamp: number, result: { x: number, y: number } | null }>>(new Map());
 
   useEffect(() => {
+    if (!sharedFieldPlayerBrain && gameReady) {
+      console.log("Creating shared neural network for all field players");
+      sharedFieldPlayerBrain = createPlayerBrain();
+    }
+  }, [gameReady]);
+
+  useEffect(() => {
     if (gameReady && players.length > 0) {
       setPlayers(currentPlayers => 
         currentPlayers.map(player => {
-          const validatedPlayer = validatePlayerBrain(player);
-          
-          if (!validatedPlayer.brain || !validatedPlayer.brain.net || !isNetworkValid(validatedPlayer.brain.net)) {
-            console.log(`Re-initializing invalid brain for ${player.team} ${player.role} #${player.id}`);
+          if (player.role === 'goalkeeper') {
+            const validatedPlayer = validatePlayerBrain(player);
+            
+            if (!validatedPlayer.brain || !validatedPlayer.brain.net || !isNetworkValid(validatedPlayer.brain.net)) {
+              console.log(`Re-initializing invalid brain for ${player.team} ${player.role} #${player.id}`);
+              return {
+                ...player,
+                brain: createPlayerBrain(),
+                teamElo: player.teamElo || 2000
+              };
+            }
+            
+            return {
+              ...validatedPlayer,
+              brain: initializePlayerBrainWithHistory(validatedPlayer.brain),
+              teamElo: validatedPlayer.teamElo || 2000
+            };
+          } else {
             return {
               ...player,
-              brain: createPlayerBrain()
+              brain: sharedFieldPlayerBrain || createPlayerBrain(),
+              teamElo: player.teamElo || 2000
             };
           }
-          
-          return {
-            ...validatedPlayer,
-            brain: initializePlayerBrainWithHistory(validatedPlayer.brain)
-          };
         })
       );
     }
@@ -217,6 +241,16 @@ const usePlayerMovement = ({
     };
   };
 
+  const normalizePlayerRoleToValue = (role: string): number => {
+    switch (role) {
+      case 'goalkeeper': return 0;
+      case 'defender': return 0.33;
+      case 'midfielder': return 0.66;
+      case 'forward': return 1;
+      default: return 0.5;
+    }
+  };
+
   const useNeuralNetworkForPlayer = (player: Player, ball: Ball): { x: number, y: number } | null => {
     const cacheKey = player.id;
     const cachedResult = neuralNetworkCacheRef.current.get(cacheKey);
@@ -256,6 +290,13 @@ const usePlayerMovement = ({
       const normalizedBallY = normalizedBallPosition.y / PITCH_HEIGHT;
       const normalizedPlayerX = normalizedPlayerPosition.x / PITCH_WIDTH;
       const normalizedPlayerY = normalizedPlayerPosition.y / PITCH_HEIGHT;
+      
+      const playerId = player.id / 100;
+      const playerRoleEncoding = normalizePlayerRoleToValue(player.role);
+      const playerTeamId = player.team === 'red' ? 0 : 1;
+      const playerPositionalRole = player.role === 'defender' ? 0.2 : 
+                                  player.role === 'midfielder' ? 0.5 : 
+                                  player.role === 'forward' ? 0.8 : 0.5;
       
       const input = {
         ballX: normalizedBallX,
@@ -308,7 +349,11 @@ const usePlayerMovement = ({
         recoveryPosition: 0.5,
         transitionSpeed: 0.5,
         ballVelocityX: normalizedBallVelocity.x / 10,
-        ballVelocityY: normalizedBallVelocity.y / 10
+        ballVelocityY: normalizedBallVelocity.y / 10,
+        playerId,
+        playerRoleEncoding,
+        playerTeamId,
+        playerPositionalRole
       };
       
       const output = player.brain.net.run(input);
@@ -324,6 +369,10 @@ const usePlayerMovement = ({
           moveXMultiplier = 3.5;
           moveYMultiplier = 3.3;
         }
+        
+        const playerIdVariation = (player.id % 10) / 20;
+        moveXMultiplier += playerIdVariation;
+        moveYMultiplier += playerIdVariation;
         
         let moveX = (output.moveX * 2 - 1) * moveXMultiplier;
         let moveY = (output.moveY * 2 - 1) * moveYMultiplier;
@@ -343,8 +392,8 @@ const usePlayerMovement = ({
         moveY = moveY * eloSkillMultiplier;
         
         const decisionQuality = calculateExecutionPrecision(player.teamElo);
-        moveX = applyExecutionNoise(moveX, decisionQuality);
-        moveY = applyExecutionNoise(moveY, decisionQuality);
+        moveX = applyExecutionNoise(moveX, decisionQuality, player.id);
+        moveY = applyExecutionNoise(moveY, decisionQuality, player.id);
         
         const result = { x: moveX, y: moveY };
         
@@ -634,9 +683,10 @@ const calculateExecutionPrecision = (teamElo?: number): number => {
   return precision;
 };
 
-const applyExecutionNoise = (value: number, precision: number): number => {
+const applyExecutionNoise = (value: number, precision: number, playerId: number = 0): number => {
   const noiseAmplitude = 1 - precision;
-  const noise = (Math.random() * 2 - 1) * noiseAmplitude;
+  const playerSeed = (playerId % 100) / 100;
+  const noise = ((Math.random() + playerSeed) % 1 * 2 - 1) * noiseAmplitude;
   return value + noise;
 };
 

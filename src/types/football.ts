@@ -1,4 +1,3 @@
-
 import * as brain from 'brain.js';
 
 export interface Position {
@@ -60,6 +59,7 @@ export interface NeuralInput {
   shootingAngle: number;
   shootingQuality: number;
   
+  // Tactical metrics
   zoneControl: number;           // How well the player's team controls their current zone (0-1)
   passingLanesQuality: number;   // Quality of available passing lanes (0-1)
   spaceCreation: number;         // How well the player is creating/using space (0-1)
@@ -68,14 +68,20 @@ export interface NeuralInput {
   tacticalRole: number;          // Player's current tactical role effectiveness (0-1)
   supportPositioning: number;    // Quality of supporting position for teammates (0-1)
   pressingEfficiency: number;    // Effectiveness of pressing actions (0-1)
-  coverShadow: number;          // How well player cuts passing lanes (0-1)
-  verticalSpacing: number;      // Team's vertical spacing quality (0-1)
-  horizontalSpacing: number;    // Team's horizontal spacing quality (0-1)
-  territorialControl: number;   // Control over current territory (0-1)
+  coverShadow: number;           // How well player cuts passing lanes (0-1)
+  verticalSpacing: number;       // Team's vertical spacing quality (0-1)
+  horizontalSpacing: number;     // Team's horizontal spacing quality (0-1)
+  territorialControl: number;    // Control over current territory (0-1)
   counterAttackPotential: number; // Potential for counter-attack success (0-1)
-  pressureResistance: number;   // Ability to resist opponent pressure (0-1)
-  recoveryPosition: number;     // Quality of position for defensive recovery (0-1)
-  transitionSpeed: number;      // Speed of tactical transitions (0-1)
+  pressureResistance: number;    // Ability to resist opponent pressure (0-1)
+  recoveryPosition: number;      // Quality of position for defensive recovery (0-1)
+  transitionSpeed: number;       // Speed of tactical transitions (0-1)
+  
+  // Player identity parameters for shared network
+  playerId: number;              // Normalized player ID (0-1)
+  playerRoleEncoding: number;    // Role encoding (0-1)
+  playerTeamId: number;          // Team encoding (0-1)
+  playerPositionalRole: number;  // Positional responsibility (0-1)
 }
 
 export interface NeuralOutput {
@@ -214,4 +220,3 @@ export const BALL_RADIUS = 6;
 export const PLAYER_SPEED = 2;
 export const SHOOT_POWER = 15;
 export const PASS_POWER = 8;
-

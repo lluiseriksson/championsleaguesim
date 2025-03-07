@@ -1,4 +1,3 @@
-
 import * as brain from 'brain.js';
 import { NeuralNet, Position, NeuralInput, NeuralOutput, TeamContext, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
 import { createNeuralInput, isNetworkValid } from './neuralHelpers';
@@ -10,7 +9,7 @@ export const createPlayerBrain = (): NeuralNet => {
     console.log("Creating new neural network...");
     
     const net = new brain.NeuralNetwork<NeuralInput, NeuralOutput>({
-      hiddenLayers: [24, 20, 16, 8],
+      hiddenLayers: [28, 24, 20, 16, 8],
       activation: 'leaky-relu',
       learningRate: 0.05,
       momentum: 0.1,
@@ -21,6 +20,11 @@ export const createPlayerBrain = (): NeuralNet => {
     const trainingData = [];
 
     for (let i = 0; i < 20; i++) {
+      const playerId = Math.random();
+      const playerRoleEncoding = Math.random();
+      const playerTeamId = Math.random() > 0.5 ? 1 : 0;
+      const playerPositionalRole = Math.random();
+
       const input: NeuralInput = {
         ballX: Math.random(),
         ballY: Math.random(),
@@ -58,7 +62,6 @@ export const createPlayerBrain = (): NeuralNet => {
         shootingAngle: Math.random(),
         shootingQuality: Math.random(),
         
-        // Add the new tactical metrics
         zoneControl: Math.random(),
         passingLanesQuality: Math.random(),
         spaceCreation: Math.random(),
@@ -74,7 +77,12 @@ export const createPlayerBrain = (): NeuralNet => {
         counterAttackPotential: Math.random(),
         pressureResistance: Math.random(),
         recoveryPosition: Math.random(),
-        transitionSpeed: Math.random()
+        transitionSpeed: Math.random(),
+        
+        playerId,
+        playerRoleEncoding,
+        playerTeamId,
+        playerPositionalRole
       };
 
       const output: NeuralOutput = {
@@ -89,142 +97,11 @@ export const createPlayerBrain = (): NeuralNet => {
     }
 
     for (let i = 0; i < 15; i++) {
-      const input: NeuralInput = {
-        ballX: 0.6 + Math.random() * 0.3,
-        ballY: Math.random(),
-        playerX: 0.6 + Math.random() * 0.3,
-        playerY: Math.random(),
-        ballVelocityX: Math.random() * 0.05,
-        ballVelocityY: (Math.random() * 2 - 1) / 20,
-        distanceToGoal: 0.1 + Math.random() * 0.3,
-        angleToGoal: Math.random() * 0.5,
-        nearestTeammateDistance: 0.3 + Math.random() * 0.7,
-        nearestTeammateAngle: Math.random() * 2 - 1,
-        nearestOpponentDistance: 0.3 + Math.random() * 0.7,
-        nearestOpponentAngle: Math.random() * 2 - 1,
-        isInShootingRange: 1,
-        isInPassingRange: 0,
-        isDefendingRequired: 0,
-        distanceToOwnGoal: 0.7 + Math.random() * 0.3,
-        angleToOwnGoal: Math.random() * 2 - 1,
-        isFacingOwnGoal: 0,
-        isDangerousPosition: 0,
-        isBetweenBallAndOwnGoal: 0,
-        teamElo: 0.6 + Math.random() * 0.3,
-        eloAdvantage: 0.1 + Math.random() * 0.3,
-        gameTime: 0.5 + Math.random() * 0.5,
-        scoreDifferential: -0.2 + Math.random() * 0.4,
-        momentum: 0.6 + Math.random() * 0.4,
-        formationCompactness: 0.3 + Math.random() * 0.4,
-        formationWidth: 0.6 + Math.random() * 0.4,
-        recentSuccessRate: 0.6 + Math.random() * 0.4,
-        possessionDuration: 0.3 + Math.random() * 0.7,
-        distanceFromFormationCenter: 0.6 + Math.random() * 0.4,
-        isInFormationPosition: 0.7 + Math.random() * 0.3,
-        teammateDensity: 0.3 + Math.random() * 0.4,
-        opponentDensity: 0.2 + Math.random() * 0.3,
-        shootingAngle: Math.random(),
-        shootingQuality: Math.random(),
-        
-        // Add the tactical metrics
-        zoneControl: 0.6 + Math.random() * 0.4,
-        passingLanesQuality: 0.5 + Math.random() * 0.5,
-        spaceCreation: 0.4 + Math.random() * 0.6,
-        defensiveSupport: 0.3 + Math.random() * 0.4,
-        pressureIndex: 0.1 + Math.random() * 0.3,
-        tacticalRole: 0.7 + Math.random() * 0.3,
-        supportPositioning: 0.5 + Math.random() * 0.5,
-        pressingEfficiency: 0.3 + Math.random() * 0.3,
-        coverShadow: 0.2 + Math.random() * 0.3,
-        verticalSpacing: 0.4 + Math.random() * 0.6,
-        horizontalSpacing: 0.5 + Math.random() * 0.5,
-        territorialControl: 0.6 + Math.random() * 0.4,
-        counterAttackPotential: 0.7 + Math.random() * 0.3,
-        pressureResistance: 0.7 + Math.random() * 0.3,
-        recoveryPosition: 0.3 + Math.random() * 0.3,
-        transitionSpeed: 0.6 + Math.random() * 0.4
-      };
+      const playerId = Math.random();
+      const playerRoleEncoding = 0.33;
+      const playerTeamId = Math.random() > 0.5 ? 1 : 0;
+      const playerPositionalRole = 0.2;
 
-      const output: NeuralOutput = {
-        moveX: 0.8 + Math.random() * 0.2,
-        moveY: 0.5 + (Math.random() - 0.5) * 0.2,
-        shootBall: 0.8 + Math.random() * 0.2,
-        passBall: Math.random() * 0.2,
-        intercept: Math.random() * 0.1
-      };
-
-      trainingData.push({ input, output });
-    }
-
-    for (let i = 0; i < 15; i++) {
-      const input: NeuralInput = {
-        ballX: Math.random() * 0.3,
-        ballY: Math.random(),
-        playerX: Math.random() * 0.3,
-        playerY: Math.random(),
-        ballVelocityX: -Math.random() * 0.05,
-        ballVelocityY: (Math.random() * 2 - 1) / 20,
-        distanceToGoal: 0.1 + Math.random() * 0.3,
-        angleToGoal: Math.random() * 0.5,
-        nearestTeammateDistance: 0.3 + Math.random() * 0.7,
-        nearestTeammateAngle: Math.random() * 2 - 1,
-        nearestOpponentDistance: 0.3 + Math.random() * 0.7,
-        nearestOpponentAngle: Math.random() * 2 - 1,
-        isInShootingRange: 1,
-        isInPassingRange: 0,
-        isDefendingRequired: 0,
-        distanceToOwnGoal: 0.7 + Math.random() * 0.3,
-        angleToOwnGoal: Math.random() * 2 - 1,
-        isFacingOwnGoal: 0,
-        isDangerousPosition: 0,
-        isBetweenBallAndOwnGoal: 0,
-        teamElo: 0.6 + Math.random() * 0.3,
-        eloAdvantage: 0.1 + Math.random() * 0.3,
-        gameTime: 0.5 + Math.random() * 0.5,
-        scoreDifferential: -0.2 + Math.random() * 0.4,
-        momentum: 0.6 + Math.random() * 0.4,
-        formationCompactness: 0.3 + Math.random() * 0.4,
-        formationWidth: 0.6 + Math.random() * 0.4,
-        recentSuccessRate: 0.6 + Math.random() * 0.4,
-        possessionDuration: 0.3 + Math.random() * 0.7,
-        distanceFromFormationCenter: 0.6 + Math.random() * 0.4,
-        isInFormationPosition: 0.7 + Math.random() * 0.3,
-        teammateDensity: 0.3 + Math.random() * 0.4,
-        opponentDensity: 0.2 + Math.random() * 0.3,
-        shootingAngle: Math.random(),
-        shootingQuality: Math.random(),
-        
-        // Add the tactical metrics
-        zoneControl: 0.6 + Math.random() * 0.4,
-        passingLanesQuality: 0.5 + Math.random() * 0.5,
-        spaceCreation: 0.4 + Math.random() * 0.6,
-        defensiveSupport: 0.3 + Math.random() * 0.4,
-        pressureIndex: 0.1 + Math.random() * 0.3,
-        tacticalRole: 0.7 + Math.random() * 0.3,
-        supportPositioning: 0.5 + Math.random() * 0.5,
-        pressingEfficiency: 0.3 + Math.random() * 0.3,
-        coverShadow: 0.2 + Math.random() * 0.3,
-        verticalSpacing: 0.4 + Math.random() * 0.6,
-        horizontalSpacing: 0.5 + Math.random() * 0.5,
-        territorialControl: 0.6 + Math.random() * 0.4,
-        counterAttackPotential: 0.7 + Math.random() * 0.3,
-        pressureResistance: 0.7 + Math.random() * 0.3,
-        recoveryPosition: 0.3 + Math.random() * 0.3,
-        transitionSpeed: 0.6 + Math.random() * 0.4
-      };
-
-      const output: NeuralOutput = {
-        moveX: Math.random() * 0.2,
-        moveY: 0.5 + (Math.random() - 0.5) * 0.2,
-        shootBall: 0.8 + Math.random() * 0.2,
-        passBall: Math.random() * 0.2,
-        intercept: Math.random() * 0.1
-      };
-
-      trainingData.push({ input, output });
-    }
-
-    for (let i = 0; i < 10; i++) {
       const input: NeuralInput = {
         ballX: Math.random(),
         ballY: Math.random(),
@@ -232,53 +109,57 @@ export const createPlayerBrain = (): NeuralNet => {
         playerY: Math.random(),
         ballVelocityX: (Math.random() * 2 - 1) / 20,
         ballVelocityY: (Math.random() * 2 - 1) / 20,
-        distanceToGoal: 0.7 + Math.random() * 0.3,
+        distanceToGoal: Math.random(),
         angleToGoal: Math.random() * 2 - 1,
-        nearestTeammateDistance: Math.random() * 0.5,
+        nearestTeammateDistance: Math.random(),
         nearestTeammateAngle: Math.random() * 2 - 1,
-        nearestOpponentDistance: 0.3 + Math.random() * 0.7,
+        nearestOpponentDistance: Math.random(),
         nearestOpponentAngle: Math.random() * 2 - 1,
-        isInShootingRange: 0,
-        isInPassingRange: 1,
-        isDefendingRequired: 1,
-        distanceToOwnGoal: Math.random() * 0.3,
+        isInShootingRange: Math.random() > 0.5 ? 1 : 0,
+        isInPassingRange: Math.random() > 0.5 ? 1 : 0,
+        isDefendingRequired: Math.random() > 0.5 ? 1 : 0,
+        distanceToOwnGoal: Math.random(),
         angleToOwnGoal: Math.random() * 2 - 1,
-        isFacingOwnGoal: 1,
-        isDangerousPosition: 1,
-        isBetweenBallAndOwnGoal: 1,
-        teamElo: Math.random() * 0.8,
-        eloAdvantage: -0.2 - Math.random() * 0.3,
+        isFacingOwnGoal: Math.random() > 0.8 ? 1 : 0,
+        isDangerousPosition: Math.random() > 0.8 ? 1 : 0,
+        isBetweenBallAndOwnGoal: Math.random() > 0.8 ? 1 : 0,
+        teamElo: 0.5 + Math.random() * 0.3,
+        eloAdvantage: Math.random() * 0.6 - 0.3,
         gameTime: Math.random(),
-        scoreDifferential: 0.1 + Math.random() * 0.5,
-        momentum: 0.2 + Math.random() * 0.3,
-        formationCompactness: 0.7 + Math.random() * 0.3,
-        formationWidth: 0.3 + Math.random() * 0.3,
-        recentSuccessRate: 0.2 + Math.random() * 0.3,
-        possessionDuration: 0,
-        distanceFromFormationCenter: 0.1 + Math.random() * 0.3,
-        isInFormationPosition: 0.7 + Math.random() * 0.3,
-        teammateDensity: 0.6 + Math.random() * 0.4,
-        opponentDensity: 0.6 + Math.random() * 0.4,
+        scoreDifferential: Math.random() * 2 - 1,
+        momentum: Math.random(),
+        formationCompactness: Math.random(),
+        formationWidth: Math.random(),
+        recentSuccessRate: Math.random(),
+        possessionDuration: Math.random(),
+        distanceFromFormationCenter: Math.random(),
+        isInFormationPosition: Math.random(),
+        teammateDensity: Math.random(),
+        opponentDensity: Math.random(),
         shootingAngle: Math.random(),
         shootingQuality: Math.random(),
         
-        // Add defensive tactical metrics
-        zoneControl: 0.3 + Math.random() * 0.3,
-        passingLanesQuality: 0.2 + Math.random() * 0.3,
-        spaceCreation: 0.2 + Math.random() * 0.3,
-        defensiveSupport: 0.7 + Math.random() * 0.3,
-        pressureIndex: 0.6 + Math.random() * 0.4,
-        tacticalRole: 0.7 + Math.random() * 0.3,
-        supportPositioning: 0.6 + Math.random() * 0.4,
-        pressingEfficiency: 0.6 + Math.random() * 0.4,
-        coverShadow: 0.7 + Math.random() * 0.3,
-        verticalSpacing: 0.3 + Math.random() * 0.3,
-        horizontalSpacing: 0.3 + Math.random() * 0.3,
-        territorialControl: 0.3 + Math.random() * 0.3,
-        counterAttackPotential: 0.1 + Math.random() * 0.3,
-        pressureResistance: 0.2 + Math.random() * 0.4,
-        recoveryPosition: 0.7 + Math.random() * 0.3,
-        transitionSpeed: 0.4 + Math.random() * 0.3
+        zoneControl: Math.random(),
+        passingLanesQuality: Math.random(),
+        spaceCreation: Math.random(),
+        defensiveSupport: Math.random(),
+        pressureIndex: Math.random(),
+        tacticalRole: Math.random(),
+        supportPositioning: Math.random(),
+        pressingEfficiency: Math.random(),
+        coverShadow: Math.random(),
+        verticalSpacing: Math.random(),
+        horizontalSpacing: Math.random(),
+        territorialControl: Math.random(),
+        counterAttackPotential: Math.random(),
+        pressureResistance: Math.random(),
+        recoveryPosition: Math.random(),
+        transitionSpeed: Math.random(),
+        
+        playerId,
+        playerRoleEncoding,
+        playerTeamId,
+        playerPositionalRole
       };
 
       const output: NeuralOutput = {
@@ -293,27 +174,32 @@ export const createPlayerBrain = (): NeuralNet => {
     }
 
     for (let i = 0; i < 15; i++) {
+      const playerId = Math.random();
+      const playerRoleEncoding = 1.0;
+      const playerTeamId = Math.random() > 0.5 ? 1 : 0;
+      const playerPositionalRole = 0.8;
+
       const input: NeuralInput = {
-        ballX: 0.2 + Math.random() * 0.6,
+        ballX: Math.random(),
         ballY: Math.random(),
-        playerX: 0.2 + Math.random() * 0.6,
+        playerX: Math.random(),
         playerY: Math.random(),
         ballVelocityX: (Math.random() * 2 - 1) / 20,
         ballVelocityY: (Math.random() * 2 - 1) / 20,
         distanceToGoal: Math.random(),
         angleToGoal: Math.random() * 2 - 1,
-        nearestTeammateDistance: 0.1 + Math.random() * 0.3,
+        nearestTeammateDistance: Math.random(),
         nearestTeammateAngle: Math.random() * 2 - 1,
-        nearestOpponentDistance: 0.1 + Math.random() * 0.3,
+        nearestOpponentDistance: Math.random(),
         nearestOpponentAngle: Math.random() * 2 - 1,
-        isInShootingRange: 0,
-        isInPassingRange: 0,
-        isDefendingRequired: 0,
+        isInShootingRange: Math.random() > 0.5 ? 1 : 0,
+        isInPassingRange: Math.random() > 0.5 ? 1 : 0,
+        isDefendingRequired: Math.random() > 0.5 ? 1 : 0,
         distanceToOwnGoal: Math.random(),
         angleToOwnGoal: Math.random() * 2 - 1,
-        isFacingOwnGoal: 0,
-        isDangerousPosition: 0,
-        isBetweenBallAndOwnGoal: 0,
+        isFacingOwnGoal: Math.random() > 0.8 ? 1 : 0,
+        isDangerousPosition: Math.random() > 0.8 ? 1 : 0,
+        isBetweenBallAndOwnGoal: Math.random() > 0.8 ? 1 : 0,
         teamElo: 0.5 + Math.random() * 0.3,
         eloAdvantage: Math.random() * 0.6 - 0.3,
         gameTime: Math.random(),
@@ -325,97 +211,109 @@ export const createPlayerBrain = (): NeuralNet => {
         possessionDuration: Math.random(),
         distanceFromFormationCenter: Math.random(),
         isInFormationPosition: Math.random(),
-        teammateDensity: 0.7 + Math.random() * 0.3,
-        opponentDensity: 0.7 + Math.random() * 0.3,
+        teammateDensity: Math.random(),
+        opponentDensity: Math.random(),
         shootingAngle: Math.random(),
         shootingQuality: Math.random(),
         
-        // Add crowded field tactical metrics
-        zoneControl: 0.4 + Math.random() * 0.3,
-        passingLanesQuality: 0.3 + Math.random() * 0.3,
-        spaceCreation: 0.2 + Math.random() * 0.3,
-        defensiveSupport: 0.5 + Math.random() * 0.3,
-        pressureIndex: 0.6 + Math.random() * 0.4,
-        tacticalRole: 0.5 + Math.random() * 0.3,
-        supportPositioning: 0.5 + Math.random() * 0.3,
-        pressingEfficiency: 0.4 + Math.random() * 0.3,
-        coverShadow: 0.4 + Math.random() * 0.3,
-        verticalSpacing: 0.3 + Math.random() * 0.3,
-        horizontalSpacing: 0.3 + Math.random() * 0.3,
-        territorialControl: 0.4 + Math.random() * 0.3,
-        counterAttackPotential: 0.3 + Math.random() * 0.3,
-        pressureResistance: 0.3 + Math.random() * 0.3,
-        recoveryPosition: 0.5 + Math.random() * 0.3,
-        transitionSpeed: 0.4 + Math.random() * 0.3
+        zoneControl: Math.random(),
+        passingLanesQuality: Math.random(),
+        spaceCreation: Math.random(),
+        defensiveSupport: Math.random(),
+        pressureIndex: Math.random(),
+        tacticalRole: Math.random(),
+        supportPositioning: Math.random(),
+        pressingEfficiency: Math.random(),
+        coverShadow: Math.random(),
+        verticalSpacing: Math.random(),
+        horizontalSpacing: Math.random(),
+        territorialControl: Math.random(),
+        counterAttackPotential: Math.random(),
+        pressureResistance: Math.random(),
+        recoveryPosition: Math.random(),
+        transitionSpeed: Math.random(),
+        
+        playerId,
+        playerRoleEncoding,
+        playerTeamId,
+        playerPositionalRole
       };
 
-      const moveAwayAngle = Math.random() * 2 * Math.PI;
       const output: NeuralOutput = {
-        moveX: 0.5 + 0.4 * Math.cos(moveAwayAngle),
-        moveY: 0.5 + 0.4 * Math.sin(moveAwayAngle),
-        shootBall: 0,
-        passBall: 0,
-        intercept: 0
+        moveX: 0.8 + Math.random() * 0.2,
+        moveY: 0.5 + (Math.random() - 0.5) * 0.2,
+        shootBall: 0.8 + Math.random() * 0.2,
+        passBall: Math.random() * 0.2,
+        intercept: Math.random() * 0.1
       };
 
       trainingData.push({ input, output });
     }
 
     for (let i = 0; i < 15; i++) {
+      const playerId = Math.random();
+      const playerRoleEncoding = 0.66;
+      const playerTeamId = Math.random() > 0.5 ? 1 : 0;
+      const playerPositionalRole = 0.5;
+
       const input: NeuralInput = {
-        ballX: 0.3 + Math.random() * 0.4,
+        ballX: Math.random(),
         ballY: Math.random(),
-        playerX: 0.4 + Math.random() * 0.4,
+        playerX: Math.random(),
         playerY: Math.random(),
-        ballVelocityX: Math.random() * 0.05,
+        ballVelocityX: (Math.random() * 2 - 1) / 20,
         ballVelocityY: (Math.random() * 2 - 1) / 20,
-        distanceToGoal: 0.3 + Math.random() * 0.4,
-        angleToGoal: Math.random() * 0.6 - 0.3,
-        nearestTeammateDistance: 0.3 + Math.random() * 0.2,
+        distanceToGoal: Math.random(),
+        angleToGoal: Math.random() * 2 - 1,
+        nearestTeammateDistance: Math.random(),
         nearestTeammateAngle: Math.random() * 2 - 1,
-        nearestOpponentDistance: 0.3 + Math.random() * 0.3,
+        nearestOpponentDistance: Math.random(),
         nearestOpponentAngle: Math.random() * 2 - 1,
-        isInShootingRange: 0,
-        isInPassingRange: 0,
-        isDefendingRequired: 0,
-        distanceToOwnGoal: 0.6 + Math.random() * 0.3,
+        isInShootingRange: Math.random() > 0.5 ? 1 : 0,
+        isInPassingRange: Math.random() > 0.5 ? 1 : 0,
+        isDefendingRequired: Math.random() > 0.5 ? 1 : 0,
+        distanceToOwnGoal: Math.random(),
         angleToOwnGoal: Math.random() * 2 - 1,
-        isFacingOwnGoal: 0,
-        isDangerousPosition: 0,
-        isBetweenBallAndOwnGoal: 0,
-        teamElo: 0.5 + Math.random() * 0.4,
-        eloAdvantage: 0.1 + Math.random() * 0.3,
+        isFacingOwnGoal: Math.random() > 0.8 ? 1 : 0,
+        isDangerousPosition: Math.random() > 0.8 ? 1 : 0,
+        isBetweenBallAndOwnGoal: Math.random() > 0.8 ? 1 : 0,
+        teamElo: 0.5 + Math.random() * 0.3,
+        eloAdvantage: Math.random() * 0.6 - 0.3,
         gameTime: Math.random(),
         scoreDifferential: Math.random() * 2 - 1,
-        momentum: 0.5 + Math.random() * 0.3,
-        formationCompactness: 0.4 + Math.random() * 0.3,
-        formationWidth: 0.5 + Math.random() * 0.3,
-        recentSuccessRate: 0.5 + Math.random() * 0.3,
-        possessionDuration: 0.3 + Math.random() * 0.3,
-        distanceFromFormationCenter: 0.4 + Math.random() * 0.3,
-        isInFormationPosition: Math.random() > 0.7 ? 1 : 0,
-        teammateDensity: 0.3 + Math.random() * 0.3,
-        opponentDensity: 0.3 + Math.random() * 0.3,
+        momentum: Math.random(),
+        formationCompactness: Math.random(),
+        formationWidth: Math.random(),
+        recentSuccessRate: Math.random(),
+        possessionDuration: Math.random(),
+        distanceFromFormationCenter: Math.random(),
+        isInFormationPosition: Math.random(),
+        teammateDensity: Math.random(),
+        opponentDensity: Math.random(),
         shootingAngle: Math.random(),
         shootingQuality: Math.random(),
         
-        // Add midfield tactical metrics
-        zoneControl: 0.5 + Math.random() * 0.3,
-        passingLanesQuality: 0.5 + Math.random() * 0.3,
-        spaceCreation: 0.5 + Math.random() * 0.3,
-        defensiveSupport: 0.4 + Math.random() * 0.3,
-        pressureIndex: 0.4 + Math.random() * 0.3,
-        tacticalRole: 0.6 + Math.random() * 0.3,
-        supportPositioning: 0.5 + Math.random() * 0.3,
-        pressingEfficiency: 0.5 + Math.random() * 0.3,
-        coverShadow: 0.4 + Math.random() * 0.3,
-        verticalSpacing: 0.5 + Math.random() * 0.3,
-        horizontalSpacing: 0.5 + Math.random() * 0.3,
-        territorialControl: 0.5 + Math.random() * 0.3,
-        counterAttackPotential: 0.5 + Math.random() * 0.3,
-        pressureResistance: 0.5 + Math.random() * 0.3,
-        recoveryPosition: 0.5 + Math.random() * 0.3,
-        transitionSpeed: 0.5 + Math.random() * 0.3
+        zoneControl: Math.random(),
+        passingLanesQuality: Math.random(),
+        spaceCreation: Math.random(),
+        defensiveSupport: Math.random(),
+        pressureIndex: Math.random(),
+        tacticalRole: Math.random(),
+        supportPositioning: Math.random(),
+        pressingEfficiency: Math.random(),
+        coverShadow: Math.random(),
+        verticalSpacing: Math.random(),
+        horizontalSpacing: Math.random(),
+        territorialControl: Math.random(),
+        counterAttackPotential: Math.random(),
+        pressureResistance: Math.random(),
+        recoveryPosition: Math.random(),
+        transitionSpeed: Math.random(),
+        
+        playerId,
+        playerRoleEncoding,
+        playerTeamId,
+        playerPositionalRole
       };
 
       const moveTowardGoal = Math.random() > 0.4;
@@ -509,7 +407,6 @@ const createFallbackBrain = (): NeuralNet => {
     shootingAngle: 0.5,
     shootingQuality: 0.5,
     
-    // Add tactical metrics with default values
     zoneControl: 0.5,
     passingLanesQuality: 0.5,
     spaceCreation: 0.5,
@@ -525,7 +422,12 @@ const createFallbackBrain = (): NeuralNet => {
     counterAttackPotential: 0.5,
     pressureResistance: 0.5,
     recoveryPosition: 0.5,
-    transitionSpeed: 0.5
+    transitionSpeed: 0.5,
+    
+    playerId: 0.5,
+    playerRoleEncoding: 0.5,
+    playerTeamId: 0.5,
+    playerPositionalRole: 0.5
   };
 
   const output: NeuralOutput = {
