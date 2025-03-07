@@ -139,7 +139,7 @@ export interface PassOutcome {
 export interface NeuralNet {
   net: brain.NeuralNetwork<NeuralInput, NeuralOutput>;
   lastOutput: { x: number; y: number };
-  lastAction?: 'move' | 'shoot' | 'pass' | 'intercept';
+  lastAction?: 'move' | 'shoot' | 'pass' | 'intercept'; // Updated to include 'shoot'
   lastShotDirection?: Position;
   lastPassOutcome?: PassOutcome;
   // Performance tracking
@@ -214,3 +214,4 @@ export const BALL_RADIUS = 6;
 export const PLAYER_SPEED = 2;
 export const SHOOT_POWER = 15;
 export const PASS_POWER = 8;
+
