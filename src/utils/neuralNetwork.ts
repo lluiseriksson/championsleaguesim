@@ -461,3 +461,24 @@ const createFallbackBrain = (): NeuralNet => {
 export const createUntrained = (): NeuralNet => {
   return createFallbackBrain();
 };
+
+// Initialize a player brain with history (new function needed for PlayerMovement.tsx)
+export const initializePlayerBrainWithHistory = (brain: NeuralNet): NeuralNet => {
+  // If the brain already has history fields, return it as is
+  if (brain.actionHistory) {
+    return brain;
+  }
+  
+  // Initialize history fields if not present
+  return {
+    ...brain,
+    lastAction: brain.lastAction || 'move',
+    actionHistory: brain.actionHistory || [],
+    successRate: brain.successRate || {
+      shoot: 0.5,
+      pass: 0.5,
+      intercept: 0.5,
+      overall: 0.5
+    }
+  };
+};
