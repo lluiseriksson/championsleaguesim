@@ -88,6 +88,12 @@ export function categorizeColor(hexColor: string): ColorCategory {
   const chroma = max - min;
   const lightness = (max + min) / 2;
   
+  // Enhanced white detection
+  // Check if all RGB values are very high and close to each other
+  if (r > 220 && g > 220 && b > 220 && chroma < 30) {
+    return ColorCategory.WHITE;
+  }
+  
   // Stricter gray/black/white detection
   if (chroma < 40) { // Increased from 30
     if (lightness < 50) return ColorCategory.BLACK; // More strict black threshold
@@ -216,6 +222,28 @@ export function areRedColorsTooSimilar(color1: string, color2: string): boolean 
     const redDifference = Math.abs(rgb1.r - rgb2.r);
     // If the red values are within 40 units of each other, consider them too similar
     return redDifference < 40;
+  }
+  
+  return false;
+}
+
+// Add a specific function to check for white kit conflicts
+export function areWhiteColorsTooSimilar(color1: string, color2: string): boolean {
+  const category1 = categorizeColor(color1);
+  const category2 = categorizeColor(color2);
+  
+  if (category1 === ColorCategory.WHITE && category2 === ColorCategory.WHITE) {
+    const rgb1 = parseHexColor(color1);
+    const rgb2 = parseHexColor(color2);
+    
+    // Calculate how similar the brightness and color components are
+    const brightnessDiff = Math.abs(
+      (rgb1.r + rgb1.g + rgb1.b) - (rgb2.r + rgb2.g + rgb2.b)
+    ) / 3;
+    
+    // If the brightness difference is less than 15 on a 0-255 scale,
+    // consider the whites too similar
+    return brightnessDiff < 15;
   }
   
   return false;
