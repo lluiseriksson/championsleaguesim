@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Player, Ball, Score, Position } from '../types/football';
 import { useBallMovementSystem } from './game/BallMovementSystem';
@@ -17,6 +18,7 @@ interface GameLogicProps {
   setScore: React.Dispatch<React.SetStateAction<Score>>;
   updatePlayerPositions: () => void;
   tournamentMode?: boolean;
+  onGoalScored?: (team: 'red' | 'blue') => void; // Add the onGoalScored prop
 }
 
 const GameLogic: React.FC<GameLogicProps> = ({
@@ -27,7 +29,8 @@ const GameLogic: React.FC<GameLogicProps> = ({
   score,
   setScore,
   updatePlayerPositions,
-  tournamentMode = false
+  tournamentMode = false,
+  onGoalScored // Add the prop here
 }) => {
   // Reference to track the last player who touched the ball
   const lastPlayerTouchRef = React.useRef<Player | null>(null);
@@ -115,6 +118,11 @@ const GameLogic: React.FC<GameLogicProps> = ({
       if (scoringTeam) {
         // If a goal is scored, process it immediately
         processGoal(scoringTeam);
+        
+        // Call the onGoalScored callback if provided
+        if (onGoalScored) {
+          onGoalScored(scoringTeam);
+        }
         
         // Handle goal notification and ball reset
         return handleGoalScored(scoringTeam);
