@@ -30,17 +30,17 @@ const addPositioningNoise = (value: number, playerElo?: number): number => {
 };
 
 // Increased chance of using neural network for goalkeeper from 35% to 50% when well positioned
+// and further increased neural network influence
 const useNeuralNetworkForGoalkeeper = (
   player: Player, 
   ball: Ball, 
   brain: NeuralNet,
   isWellPositioned: boolean
 ): { x: number, y: number } | null => {
-  // Use neural network more often when goalkeeper is well positioned
-  // Otherwise keep original 5% chance
-  const neuralNetworkChance = isWellPositioned ? 0.5 : 0.8; // Increased neural network usage (from 0.65/0.90)
-  
-  if (Math.random() < neuralNetworkChance) { // 50% chance when well positioned, 20% otherwise
+  // Significantly increased usage of neural network for goalkeepers
+  const neuralNetworkChance = isWellPositioned ? 0.3 : 0.4; // Decreased chances (from 0.5/0.8) to use neural network more often
+
+  if (Math.random() < neuralNetworkChance) { // 70% chance when well positioned, 60% otherwise
     return null;
   }
   
@@ -86,10 +86,10 @@ const useNeuralNetworkForGoalkeeper = (
     
     // Use the neural network output with enhanced influence when well positioned
     if (output && typeof output.moveX === 'number' && typeof output.moveY === 'number') {
-      // Increase neural network influence when goalkeeper is well-positioned
-      const positionInfluenceMultiplier = isWellPositioned ? 1.0 : 0.4; // Increased from 0.9 to 1.0 and from 0.3 to 0.4
+      // Significantly increased neural network influence for goalkeepers
+      const positionInfluenceMultiplier = isWellPositioned ? 1.8 : 1.0; // Increased from 1.0 to 1.8 and from 0.4 to 1.0
       const moveX = (output.moveX * 2 - 1) * positionInfluenceMultiplier; // Increased influence
-      const moveY = (output.moveY * 2 - 1) * (isWellPositioned ? 1.2 : 0.6); // Increased from 1.0 to 1.2 and from 0.5 to 0.6
+      const moveY = (output.moveY * 2 - 1) * (isWellPositioned ? 2.0 : 1.4); // Increased from 1.2 to 2.0 and from 0.6 to 1.4
       
       console.log(`GK ${player.team}: USING NEURAL NETWORK - influence: ${positionInfluenceMultiplier.toFixed(1)}`);
       return { x: moveX, y: moveY };
@@ -121,6 +121,18 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
   const distanceToGoalLine = Math.abs(player.position.x - goalLine);
   const distanceToCenter = Math.abs(player.position.y - goalCenter);
   
+  // Try neural network first more aggressively
+  if (player.brain) {
+    const neuralMovement = useNeuralNetworkForGoalkeeper(player, ball, player.brain, distanceToGoalLine <= 12 && distanceToCenter <= 25);
+    if (neuralMovement) {
+      // Add minimal randomness to neural network output with boosted values
+      return {
+        x: addPositioningNoise(neuralMovement.x * 1.5, player.teamElo), // Boosted by 50%
+        y: addPositioningNoise(neuralMovement.y * 1.5, player.teamElo)  // Boosted by 50%
+      };
+    }
+  }
+  
   // First, always prioritize returning to goal line if not there
   // MODIFIED: Reduced priority of returning to goal line by increasing threshold
   if (distanceToGoalLine > 5) { // Increased from 3 to 5
@@ -148,8 +160,8 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
       if (neuralMovement) {
         // Add minimal randomness to neural network output
         return {
-          x: addPositioningNoise(neuralMovement.x * 1.2, player.teamElo), // Boosted by 20%
-          y: addPositioningNoise(neuralMovement.y * 1.2, player.teamElo)  // Boosted by 20%
+          x: addPositioningNoise(neuralMovement.x * 1.6, player.teamElo), // Boosted by 60%
+          y: addPositioningNoise(neuralMovement.y * 1.6, player.teamElo)  // Boosted by 60%
         };
       }
     }
@@ -289,8 +301,8 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
         const neuralMovement = useNeuralNetworkForGoalkeeper(player, ball, player.brain, true);
         if (neuralMovement) {
           // ENHANCED: Increase random noise to neural output
-          moveX = neuralMovement.x * 1.5 + (Math.random() - 0.5) * 0.4; // Increased from 1.3 to 1.5 and from 0.3 to 0.4
-          moveY = neuralMovement.y * 1.5 + (Math.random() - 0.5) * 0.4; // Increased from 1.3 to 1.5 and from 0.3 to 0.4
+          moveX = neuralMovement.x * 1.8 + (Math.random() - 0.5) * 0.4; // Increased from 1.5 to 1.8
+          moveY = neuralMovement.y * 1.8 + (Math.random() - 0.5) * 0.4; // Increased from 1.5 to 1.8
           console.log(`GK ${player.team}: IDLE STATE NEURAL DECISION`);
         } else {
           // Fall back to micro-movements with larger values
@@ -333,7 +345,7 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
   }
   
   // MODIFIED: Increased allowable distance from goal line
-  const maxDistanceFromGoalLine = 75; // Increased from 65 to 75
+  const maxDistanceFromGoalLine = 85; // Increased from 75 to 85
   if (Math.abs(player.position.x - goalLine) > maxDistanceFromGoalLine) {
     // Override movement to return to goal line urgently
     moveX = Math.sign(goalLine - player.position.x) * 3.5; // Kept the same
@@ -342,7 +354,7 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
   
   // MODIFIED: Reduced correction to stay near goal center when idle
   const isIdle = Math.abs(moveX) < 0.3 && Math.abs(moveY) < 0.3; // Kept the same
-  if (isIdle && Math.abs(player.position.y - goalCenter) > GOAL_HEIGHT/3) { // Increased from GOAL_HEIGHT/4
+  if (isIdle && Math.abs(player.position.y - goalCenter) > GOAL_HEIGHT/2) { // Increased from GOAL_HEIGHT/3
     moveY = Math.sign(goalCenter - player.position.y) * 0.6; // Reduced from 0.8 to 0.6
     console.log(`GK ${player.team}: CENTER CORRECTION`);
   }

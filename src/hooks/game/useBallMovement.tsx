@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Player, Ball, Position } from '../../types/football';
 import { handleBallPhysics } from './useBallPhysics';
@@ -52,13 +51,14 @@ export const useBallMovement = ({
 
   const updateBallPosition = React.useCallback(() => {
     // Ensure all players are within their radius constraints after ball updates
+    // with more freedom for goalkeepers
     setTimeout(() => {
       players.forEach(player => {
         const fixedPosition = forcePositionWithinRadiusBounds(
           player.position,
           player.targetPosition,
           player.role,
-          player.role === 'goalkeeper'
+          true // Always use neural network adjustment for more freedom
         );
         
         // Only update if the position changed

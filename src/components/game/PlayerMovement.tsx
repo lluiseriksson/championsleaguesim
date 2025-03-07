@@ -392,8 +392,8 @@ const usePlayerMovement = ({
           moveXMultiplier = 3.5;
           moveYMultiplier = 3.3;
         } else if (player.role === 'goalkeeper') {
-          moveXMultiplier = 1.0;
-          moveYMultiplier = 4.0;
+          moveXMultiplier = 3.0;
+          moveYMultiplier = 4.5;
         }
         
         const playerIdVariation = (player.id % 10) / 20;
@@ -449,13 +449,11 @@ const usePlayerMovement = ({
   };
 
   const applyNeuralFineTuning = (player: Player, basePosition: Position): Position => {
-    if (player.role === 'goalkeeper') return basePosition;
-    
     try {
       const neuralOutput = useNeuralNetworkForPlayer(player, ball);
       if (!neuralOutput) return basePosition;
       
-      const fineAdjustmentFactor = 0.05;
+      const fineAdjustmentFactor = player.role === 'goalkeeper' ? 0.15 : 0.05;
       const fineX = neuralOutput.x * fineAdjustmentFactor;
       const fineY = neuralOutput.y * fineAdjustmentFactor;
       
@@ -489,6 +487,56 @@ const usePlayerMovement = ({
               ? currentPlayers.find(p => p.team === 'blue' && p.role === 'goalkeeper')?.teamElo 
               : currentPlayers.find(p => p.team === 'red' && p.role === 'goalkeeper')?.teamElo;
             
+            const neuralMovement = useNeuralNetworkForPlayer(player, ball);
+            if (neuralMovement && Math.random() > 0.2) {
+              const executionPrecision = calculateExecutionPrecision(player.teamElo);
+              let scaledMovement = {
+                x: neuralMovement.x * 0.35 * executionPrecision,
+                y: neuralMovement.y * 0.35 * executionPrecision
+              };
+              
+              let newPosition = {
+                x: player.position.x + scaledMovement.x,
+                y: player.position.y + scaledMovement.y
+              };
+              
+              const goalLine = player.team === 'red' ? 30 : PITCH_WIDTH - 30;
+              const goalCenter = PITCH_HEIGHT / 2;
+              
+              const maxDistanceFromGoalLine = 85;
+              if (Math.abs(newPosition.x - goalLine) > maxDistanceFromGoalLine) {
+                newPosition.x = goalLine + (Math.sign(newPosition.x - goalLine) * maxDistanceFromGoalLine);
+              }
+              
+              const maxYDistance = GOAL_HEIGHT / 2 + 45;
+              newPosition.y = Math.max(goalCenter - maxYDistance, Math.min(goalCenter + maxYDistance, newPosition.y));
+              
+              const completeBrain = ensureCompleteBrain(player.brain);
+              
+              const finalPosition = forcePositionWithinRadiusBounds(
+                newPosition,
+                player.targetPosition,
+                'goalkeeper',
+                true
+              );
+              
+              console.log(`GK ${player.team}: USING NEURAL NETWORK`);
+              
+              return {
+                ...player,
+                proposedPosition: finalPosition,
+                movement: {
+                  x: finalPosition.x - player.position.x,
+                  y: finalPosition.y - player.position.y
+                },
+                brain: {
+                  ...completeBrain,
+                  lastOutput: neuralMovement,
+                  lastAction: 'move' as const
+                }
+              };
+            }
+            
             const movement = moveGoalkeeper(player, ball, opposingTeamElo);
             
             let newPosition = {
@@ -499,12 +547,12 @@ const usePlayerMovement = ({
             const goalLine = player.team === 'red' ? 30 : PITCH_WIDTH - 30;
             const goalCenter = PITCH_HEIGHT / 2;
             
-            const maxDistanceFromGoalLine = 45;
+            const maxDistanceFromGoalLine = 85;
             if (Math.abs(newPosition.x - goalLine) > maxDistanceFromGoalLine) {
               newPosition.x = goalLine + (Math.sign(newPosition.x - goalLine) * maxDistanceFromGoalLine);
             }
             
-            const maxYDistance = GOAL_HEIGHT / 2 + 20;
+            const maxYDistance = GOAL_HEIGHT / 2 + 45;
             newPosition.y = Math.max(goalCenter - maxYDistance, Math.min(goalCenter + maxYDistance, newPosition.y));
             
             const completeBrain = ensureCompleteBrain(player.brain);
@@ -707,54 +755,6 @@ const usePlayerMovement = ({
           collisionAdjustedPosition,
           p.targetPosition,
           p.role,
-          p.role === 'goalkeeper'
-        );
-        
-        const cleanPlayer = {
-          ...p,
-          position: finalPosition,
-          brain: p.brain
-        };
-        
-        const playerWithTempProps: any = cleanPlayer;
-        delete playerWithTempProps.proposedPosition;
-        delete playerWithTempProps.movement;
-        
-        return cleanPlayer as Player;
-      });
-      
-      return processedPlayers;
-    });
-  }, [ball, gameReady, setPlayers, gameTime, score, isLowPerformance, eloAdvantageMultiplier]);
+          true
 
-  return { updatePlayerPositions, formations, possession };
-};
 
-const calculateExecutionPrecision = (teamElo?: number): number => {
-  if (!teamElo) return 1.0;
-  
-  const baseElo = 2000;
-  const basePrecision = 0.7;
-  
-  const eloPrecisionBonus = Math.max(0, (teamElo - baseElo) / 100) * 0.03;
-  const eloPrecisionPenalty = Math.max(0, (baseElo - teamElo) / 100) * 0.025;
-  
-  const precision = teamElo >= baseElo
-    ? Math.min(0.98, basePrecision + eloPrecisionBonus)
-    : Math.max(0.5, basePrecision - eloPrecisionPenalty);
-  
-  return precision;
-};
-
-const applyExecutionNoise = (value: number, precision: number, playerId: number = 0): number => {
-  const noiseAmplitude = 1 - precision;
-  const playerSeed = (playerId % 100) / 100;
-  const noise = ((Math.random() + playerSeed) % 1 * 2 - 1) * noiseAmplitude;
-  return value + noise;
-};
-
-const normalizeValue = (value: number, min: number, max: number): number => {
-  return Math.max(0, Math.min(1, (value - min) / (max - min)));
-};
-
-export default usePlayerMovement;
