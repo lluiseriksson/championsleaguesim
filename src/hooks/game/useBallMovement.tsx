@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Player, Ball, Position, PITCH_WIDTH, PITCH_HEIGHT } from '../../types/football';
 import { handleBallPhysics } from './useBallPhysics';
@@ -13,9 +12,11 @@ import { forcePositionWithinRadiusBounds } from '../../utils/movementConstraints
 
 const FIELD_PADDING = {
   x: 12, // Minimum padding from edge of field
-  goalX: 12, // Increased from 8 to 12 - Minimum distance from goal line (to prevent goalkeepers inside goals)
+  goalX: 15, // Increased from 12 to 15 - Minimum distance from goal line
   y: 12  // Minimum padding from top/bottom edge
 };
+
+const MAX_GOALKEEPER_DISTANCE = 35; // New strict maximum
 
 interface BallMovementProps {
   ball: Ball;
@@ -41,13 +42,11 @@ export const useBallMovement = ({
     fieldPlayers: players.filter(p => p.role !== 'goalkeeper')
   }), [players]);
 
-  // Create ELO advantage tracking for ball movement
   const eloFactorsRef = React.useRef({
     red: 1.0,
     blue: 1.0
   });
 
-  // Update ELO factors when players or multiplier changes
   React.useEffect(() => {
     if (players.length > 0 && eloAdvantageMultiplier > 1) {
       const redPlayers = players.filter(p => p.team === 'red');
@@ -91,10 +90,8 @@ export const useBallMovement = ({
   const updateBallPosition = React.useCallback(() => {
     setTimeout(() => {
       players.forEach(player => {
-        // Apply ELO advantage to player movement
         const eloFactor = player.team === 'red' ? eloFactorsRef.current.red : eloFactorsRef.current.blue;
         
-        // Apply position constraints based on role with ELO factor
         const fixedPosition = forcePositionWithinRadiusBounds(
           player.position,
           player.targetPosition,
@@ -104,25 +101,47 @@ export const useBallMovement = ({
         
         let finalPosition = {...fixedPosition};
         
-        // Enhanced goalkeeper constraints to ensure they stay visible and not in goals
         if (player.role === 'goalkeeper') {
-          if (finalPosition.x < FIELD_PADDING.goalX) {
-            finalPosition.x = FIELD_PADDING.goalX;
-          } else if (finalPosition.x > PITCH_WIDTH - FIELD_PADDING.goalX) {
-            finalPosition.x = PITCH_WIDTH - FIELD_PADDING.goalX;
+          const isLeftSide = player.team === 'red';
+          const goalLine = isLeftSide ? 30 : PITCH_WIDTH - 30;
+          
+          if (isLeftSide) {
+            if (finalPosition.x > goalLine + MAX_GOALKEEPER_DISTANCE) {
+              finalPosition.x = goalLine + MAX_GOALKEEPER_DISTANCE;
+            }
+            if (finalPosition.x < FIELD_PADDING.goalX) {
+              finalPosition.x = FIELD_PADDING.goalX;
+            }
+          } else {
+            if (finalPosition.x < goalLine - MAX_GOALKEEPER_DISTANCE) {
+              finalPosition.x = goalLine - MAX_GOALKEEPER_DISTANCE;
+            }
+            if (finalPosition.x > PITCH_WIDTH - FIELD_PADDING.goalX) {
+              finalPosition.x = PITCH_WIDTH - FIELD_PADDING.goalX;
+            }
+          }
+          
+          const goalCenterY = PITCH_HEIGHT / 2;
+          const maxVerticalDistance = 60;
+          
+          finalPosition.y = Math.max(
+            goalCenterY - maxVerticalDistance, 
+            Math.min(goalCenterY + maxVerticalDistance, finalPosition.y)
+          );
+          
+          if (finalPosition.x !== fixedPosition.x || finalPosition.y !== fixedPosition.y) {
+            console.log(`GK ${player.team}: POSITION CONSTRAINED from (${fixedPosition.x.toFixed(1)},${fixedPosition.y.toFixed(1)}) to (${finalPosition.x.toFixed(1)},${finalPosition.y.toFixed(1)})`);
           }
         }
         
-        // Apply ELO advantage to movement speed if team has an advantage
-        if (eloFactor > 1.0) {
-          // Move faster toward target based on ELO advantage
+        if (eloFactor > 1.0 && player.role !== 'goalkeeper') {
           const speedBoost = Math.min(1.5, eloFactor);
           const dx = player.targetPosition.x - player.position.x;
           const dy = player.targetPosition.y - player.position.y;
           
           if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
             const distance = Math.sqrt(dx * dx + dy * dy);
-            const moveSpeed = Math.min(distance, 2 * speedBoost); // Boost movement speed
+            const moveSpeed = Math.min(distance, 2 * speedBoost);
             
             if (distance > 0) {
               finalPosition.x += (dx / distance) * moveSpeed * 0.2;
@@ -179,7 +198,6 @@ export const useBallMovement = ({
         };
       }
 
-      // Pass ELO factors to handleBallPhysics for advantaged collision handling
       const ballAfterPhysics = handleBallPhysics(
         currentBall,
         newPosition,
@@ -188,7 +206,7 @@ export const useBallMovement = ({
         onBallTouch,
         lastCollisionTimeRef,
         lastKickPositionRef,
-        eloFactorsRef.current // Pass ELO advantage factors as the 8th parameter
+        eloFactorsRef.current
       );
 
       return {
