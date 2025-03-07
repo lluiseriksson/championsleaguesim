@@ -8,13 +8,15 @@ interface GoalNotificationProps {
   totalGoalsRef: React.MutableRefObject<number>;
   ball: Ball;
   setBall: React.Dispatch<React.SetStateAction<Ball>>;
+  setScore?: React.Dispatch<React.SetStateAction<{red: number, blue: number}>>;
 }
 
 export const useGoalNotification = ({
   tournamentMode = false,
   totalGoalsRef,
   ball,
-  setBall
+  setBall,
+  setScore
 }: GoalNotificationProps) => {
   
   const handleGoalScored = React.useCallback((scoringTeam: 'red' | 'blue') => {
@@ -22,6 +24,15 @@ export const useGoalNotification = ({
     
     // Increment the total goals counter
     totalGoalsRef.current += 1;
+    
+    // Update the score if setScore is provided
+    if (setScore) {
+      setScore(prevScore => ({
+        ...prevScore,
+        [scoringTeam]: prevScore[scoringTeam] + 1
+      }));
+      console.log(`Score updated for team ${scoringTeam}`);
+    }
     
     // Show goal notification less frequently in tournament mode
     if (!tournamentMode || totalGoalsRef.current % 250 === 0) {
@@ -55,7 +66,7 @@ export const useGoalNotification = ({
     });
     
     return scoringTeam;
-  }, [tournamentMode, totalGoalsRef, setBall]);
+  }, [tournamentMode, totalGoalsRef, setBall, setScore]);
   
   return { handleGoalScored };
 };

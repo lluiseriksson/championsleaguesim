@@ -17,6 +17,10 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ score, homeTeam = 'Home', a
   // For transliteration if needed (particularly for Russian team names)
   const displayHomeTeam = transliterateRussianName(homeTeam);
   const displayAwayTeam = transliterateRussianName(awayTeam);
+  
+  // Ensure score is displayed correctly by forcing values to numbers
+  const redScore = Number(score.red);
+  const blueScore = Number(score.blue);
 
   return (
     <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white/80 px-4 py-2 rounded-full font-bold text-xl shadow-md z-20 flex items-center">
@@ -26,9 +30,9 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ score, homeTeam = 'Home', a
       >
         {displayHomeTeam}
       </span>
-      <span className="text-black">{score.red}</span>
+      <span className="text-black">{redScore}</span>
       <span className="mx-2">-</span>
-      <span className="text-black">{score.blue}</span>
+      <span className="text-black">{blueScore}</span>
       <span 
         className="ml-2 text-sm font-medium px-2 py-1 rounded"
         style={{ backgroundColor: `${awayTeamColor}40`, color: isDarkColor(awayTeamColor) ? 'white' : 'black' }}

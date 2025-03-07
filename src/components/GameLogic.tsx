@@ -105,12 +105,13 @@ const GameLogic: React.FC<GameLogicProps> = ({
     teamAdvantageFactors
   });
 
-  // Goal notification hook
+  // Goal notification hook with setScore added
   const { handleGoalScored } = useGoalNotification({
     tournamentMode,
     totalGoalsRef,
     ball,
-    setBall
+    setBall,
+    setScore // Pass setScore to the hook
   });
 
   // Ball movement system
