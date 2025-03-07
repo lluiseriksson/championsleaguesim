@@ -1,3 +1,4 @@
+
 import { Player, Ball, PITCH_WIDTH, PITCH_HEIGHT, GOAL_HEIGHT, NeuralNet } from '../types/football';
 import { isNetworkValid } from './neuralHelpers';
 
@@ -181,10 +182,23 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
   const predictionError = Math.random() * 20 - 10; // Changed from ±20 to ±10
   const targetY = isBallMovingFast ? expectedBallY + predictionError : ball.position.y;
   
+  // NEW: Position closer to goal center when ball is far away
+  const centeringBias = isLeftSide 
+    ? (ball.position.x > 300 ? 0.6 : 0.3) 
+    : (ball.position.x < PITCH_WIDTH - 300 ? 0.6 : 0.3);
+  
+  // NEW: More heavily bias toward goal center when ball is far
+  const ballDistanceFromGoal = isLeftSide 
+    ? Math.abs(ball.position.x - 0) 
+    : Math.abs(ball.position.x - PITCH_WIDTH);
+    
+  const goalCenter = PITCH_HEIGHT / 2;
+  const centeredTargetY = targetY * (1 - centeringBias) + goalCenter * centeringBias;
+  
   // Further eliminated random Y offset entirely
   const limitedTargetY = Math.max(
     PITCH_HEIGHT/2 - GOAL_HEIGHT/2 - 10, // Reduced padding from 20 to 10
-    Math.min(PITCH_HEIGHT/2 + GOAL_HEIGHT/2 + 10, targetY) // Reduced padding from 20 to 10
+    Math.min(PITCH_HEIGHT/2 + GOAL_HEIGHT/2 + 10, centeredTargetY) // Reduced padding from 20 to 10
   );
   
   // Calculate vertical movement with increased responsiveness for better positioning
@@ -198,6 +212,12 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
   }
   
   moveY = Math.sign(yDifference) * Math.min(Math.abs(yDifference) * 0.1 * verticalSpeedMultiplier, 1.0) * eloSpeedMultiplier; // Reduced max speed from 1.2 to 1.0
+  
+  // NEW: Additional centering correction - always have a slight bias toward goal center
+  if (Math.abs(player.position.y - goalCenter) > 5) {
+    const centeringCorrection = Math.sign(goalCenter - player.position.y) * 0.2;
+    moveY = moveY * 0.8 + centeringCorrection;
+  }
   
   // Prioritize vertical movement when ball is coming directly at goal
   if (ballMovingTowardGoal && Math.abs(ball.position.x - player.position.x) < 100) {
@@ -223,6 +243,13 @@ export const moveGoalkeeper = (player: Player, ball: Ball, opposingTeamElo?: num
     // Override movement to return to goal line with urgency
     moveX = Math.sign(goalLine - player.position.x) * 2.5 * eloSpeedMultiplier;
     console.log(`GK ${player.team}: EMERGENCY RETURN TO GOAL LINE`);
+  }
+  
+  // NEW: Extra correction to stay near goal center vertically when idle
+  const isIdle = Math.abs(moveX) < 0.2 && Math.abs(moveY) < 0.2;
+  if (isIdle && Math.abs(player.position.y - goalCenter) > GOAL_HEIGHT/4) {
+    moveY = Math.sign(goalCenter - player.position.y) * 0.5;
+    console.log(`GK ${player.team}: CENTER CORRECTION`);
   }
   
   console.log(`GK ${player.team}: movement (${moveX.toFixed(1)},${moveY.toFixed(1)}), ball dist: ${distanceToBall.toFixed(0)}, ELO mult: ${eloSpeedMultiplier.toFixed(2)}`);

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Player, Ball, Position, PITCH_WIDTH, PITCH_HEIGHT, GOAL_HEIGHT, NeuralNet, NeuralInput } from '../../types/football';
 import { moveGoalkeeper } from '../../utils/playerBrain';
@@ -7,13 +6,6 @@ import {
   trackPossession, 
   createGameContext 
 } from '../../utils/gameContextTracker';
-import { initializePlayerBrainWithHistory } from '../../utils/brainTraining';
-import { isNetworkValid } from '../../utils/neuralHelpers';
-import { validatePlayerBrain, createTacticalInput } from '../../utils/neural/networkValidator';
-import { constrainMovementToRadius } from '../../utils/movementConstraints';
-import { calculateCollisionAvoidance } from '../../hooks/game/useTeamCollisions';
-import { normalizeCoordinates, denormalizeCoordinates, normalizeVelocity } from '../../utils/gamePhysics';
-import { createPlayerBrain } from '../../utils/neuralNetwork';
 
 // Shared brain for all field players
 let sharedFieldPlayerBrain: NeuralNet | null = null;
@@ -483,63 +475,27 @@ const usePlayerMovement = ({
         try {
           if (player.role === 'goalkeeper') {
             const teamElo = player.teamElo || 2000;
-            const baseElo = 2000;
-            const eloGoalkeeperMultiplier = teamElo > baseElo 
-              ? 1.0 + Math.min(0.3, (teamElo - baseElo) / 2000 * eloAdvantageMultiplier)
-              : Math.max(0.8, 1.0 - (baseElo - teamElo) / 2000 * eloAdvantageMultiplier);
+            const opposingTeamElo = player.team === 'red' 
+              ? currentPlayers.find(p => p.team === 'blue' && p.role === 'goalkeeper')?.teamElo 
+              : currentPlayers.find(p => p.team === 'red' && p.role === 'goalkeeper')?.teamElo;
             
-            const neuralNetworkThreshold = 0.4;
-            const useNeuralNetwork = Math.random() > neuralNetworkThreshold;
-            const neuralMovement = useNeuralNetwork ? useNeuralNetworkForPlayer(player, ball) : null;
+            const movement = moveGoalkeeper(player, ball, opposingTeamElo);
             
-            if (neuralMovement) {
-              let newPosition = {
-                x: player.position.x + neuralMovement.x * 0.5,
-                y: player.position.y + neuralMovement.y * 0.8
-              };
-              
-              if (player.team === 'red') {
-                newPosition.x = Math.max(25, Math.min(55, newPosition.x));
-              } else {
-                newPosition.x = Math.max(PITCH_WIDTH - 55, Math.min(PITCH_WIDTH - 25, newPosition.x));
-              }
-              
-              const goalCenterY = PITCH_HEIGHT / 2;
-              const maxYDistance = GOAL_HEIGHT / 2 + 20;
-              newPosition.y = Math.max(goalCenterY - maxYDistance, Math.min(goalCenterY + maxYDistance, newPosition.y));
-              
-              const completeBrain = ensureCompleteBrain(player.brain);
-              
-              return {
-                ...player,
-                proposedPosition: newPosition,
-                movement: { 
-                  x: newPosition.x - player.position.x,
-                  y: newPosition.y - player.position.y
-                },
-                brain: {
-                  ...completeBrain,
-                  lastOutput: neuralMovement,
-                  lastAction: 'move' as const
-                }
-              };
-            }
-            
-            const movement = moveGoalkeeper(player, ball, eloGoalkeeperMultiplier);
             let newPosition = {
               x: player.position.x + movement.x,
               y: player.position.y + movement.y
             };
             
-            if (player.team === 'red') {
-              newPosition.x = Math.max(25, Math.min(55, newPosition.x));
-            } else {
-              newPosition.x = Math.max(PITCH_WIDTH - 55, Math.min(PITCH_WIDTH - 25, newPosition.x));
+            const goalLine = player.team === 'red' ? 30 : PITCH_WIDTH - 30;
+            const goalCenter = PITCH_HEIGHT / 2;
+            
+            const maxDistanceFromGoalLine = 45;
+            if (Math.abs(newPosition.x - goalLine) > maxDistanceFromGoalLine) {
+              newPosition.x = goalLine + (Math.sign(newPosition.x - goalLine) * maxDistanceFromGoalLine);
             }
             
-            const goalCenterY = PITCH_HEIGHT / 2;
             const maxYDistance = GOAL_HEIGHT / 2 + 20;
-            newPosition.y = Math.max(goalCenterY - maxYDistance, Math.min(goalCenterY + maxYDistance, newPosition.y));
+            newPosition.y = Math.max(goalCenter - maxYDistance, Math.min(goalCenter + maxYDistance, newPosition.y));
             
             const completeBrain = ensureCompleteBrain(player.brain);
             
