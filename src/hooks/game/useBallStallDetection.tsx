@@ -1,94 +1,57 @@
-import { useRef, useEffect } from 'react';
-import { Ball, Position } from '../../types/football';
-import { applyRandomKick } from '../../utils/gamePhysics';
 
-interface BallStallDetectionProps {
-  ball: Ball;
+import React, { useCallback, useRef } from 'react';
+import { Ball } from '../../types/football';
+import { calculateBallSpeed, applyRandomKick } from './useBallInitialization';
+
+export interface BallStallDetectionProps {
   setBall: React.Dispatch<React.SetStateAction<Ball>>;
-  enabled?: boolean;
-  stallThreshold?: number; // Frames to wait before considering ball stalled
+  tournamentMode?: boolean;
 }
 
-/**
- * Hook to detect and recover from ball movement stalls
- */
-export const useBallStallDetection = ({
-  ball,
+export const useBallStallDetection = ({ 
   setBall,
-  enabled = true,
-  stallThreshold = 60 // 1 second at 60fps
+  tournamentMode = false
 }: BallStallDetectionProps) => {
-  const lastPositionRef = useRef<Position | null>(null);
-  const stallCounterRef = useRef(0);
-  const velocityHistoryRef = useRef<Position[]>([]);
+  // Stall detection system
+  const stallTimeRef = useRef<number>(0);
+  const stallLastSpeedRef = useRef<number>(0);
   
-  // Keep a history of recent velocities
-  const trackVelocity = (velocity: Position) => {
-    velocityHistoryRef.current.push({...velocity});
-    if (velocityHistoryRef.current.length > 10) {
-      velocityHistoryRef.current.shift();
+  // Function to check if ball is stalled (very low velocity for a long time)
+  const checkStall = useCallback((currentBall: Ball, previousBall: Ball): boolean => {
+    const currentSpeed = calculateBallSpeed(currentBall.velocity);
+    const previousSpeed = stallLastSpeedRef.current;
+    
+    // Update speed reference
+    stallLastSpeedRef.current = currentSpeed;
+    
+    // No stall if significant movement
+    if (currentSpeed > 1.2) {
+      stallTimeRef.current = 0;
+      return false;
     }
-  };
-  
-  // Check if velocity is consistently very low
-  const isVelocityStalled = () => {
-    if (velocityHistoryRef.current.length < 5) return false;
     
-    // Check if all recent velocities are very low
-    return velocityHistoryRef.current.every(v => {
-      const speed = Math.sqrt(v.x * v.x + v.y * v.y);
-      return speed < 0.1;
-    });
-  };
-  
-  // Detect if ball position hasn't changed significantly
-  const checkStall = () => {
-    if (!enabled || !ball) return;
-    
-    const currentPosition = ball.position;
-    
-    if (lastPositionRef.current) {
-      const dx = currentPosition.x - lastPositionRef.current.x;
-      const dy = currentPosition.y - lastPositionRef.current.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
+    // Check for persistent low speed
+    if (currentSpeed < 1.2 && Math.abs(currentSpeed - previousSpeed) < 0.3) {
+      stallTimeRef.current++;
       
-      // Track velocity
-      trackVelocity(ball.velocity);
-      
-      // If ball has barely moved
-      if (distance < 0.2 || isVelocityStalled()) {
-        stallCounterRef.current++;
-        
-        if (stallCounterRef.current >= stallThreshold) {
-          console.warn(`Ball appears stalled for ${stallThreshold} frames - applying random kick`);
-          
-          // Reset the counter
-          stallCounterRef.current = 0;
-          
-          // Use the applyRandomKick function from gamePhysics
-          setBall(prev => applyRandomKick(prev, false));
+      // If stalled for ~3 seconds (180 frames at 60fps)
+      if (stallTimeRef.current > 180) {
+        // Apply random kick to get out of stall
+        if (!tournamentMode) {
+          console.log("Ball stalled for too long, applying random kick");
         }
-      } else {
-        // Ball is moving normally, reset counter
-        stallCounterRef.current = 0;
+        
+        setBall(prev => applyRandomKick(prev, tournamentMode));
+        stallTimeRef.current = 0;
+        return true;
       }
+    } else {
+      // Reset if there's variation in speed
+      stallTimeRef.current = 0;
     }
     
-    lastPositionRef.current = {...currentPosition};
-  };
-  
-  // Set up the detector
-  useEffect(() => {
-    if (!enabled) return;
-    
-    const intervalId = setInterval(checkStall, 1000 / 60); // 60fps check
-    
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [enabled, ball]);
+    return false;
+  }, [setBall, tournamentMode]);
   
   return { checkStall };
 };
-
-export default useBallStallDetection;

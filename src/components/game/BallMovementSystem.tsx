@@ -38,7 +38,7 @@ export const useBallMovementSystem = ({
   });
   
   // Ball stall detection
-  const { checkForStalledBall } = useBallStallDetection({ 
+  const { checkStall } = useBallStallDetection({ 
     setBall, 
     tournamentMode 
   });
@@ -106,7 +106,7 @@ export const useBallMovementSystem = ({
     }
     
     // Then check for stalled ball (very low velocity for a long time)
-    if (checkForStalledBall(updatedBall, ball)) {
+    if (checkStall(updatedBall, ball)) {
       return; // Ball was stalled and has been reset
     }
     
@@ -130,7 +130,7 @@ export const useBallMovementSystem = ({
     setBall,
     players,
     onBallTouch,
-    checkForStalledBall,
+    checkStall,
     handleGoalCheck,
     lastCollisionTimeRef,
     tournamentMode,
