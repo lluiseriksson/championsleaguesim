@@ -34,7 +34,7 @@ export const useAdjustedPlayerRadius = (player: Player, allPlayers: Player[]): n
   );
   
   // Apply adjustment to player's radius
-  return player.radius + radiusAdjustment;
+  return Math.max(player.radius + radiusAdjustment, player.radius * 0.75); // Don't reduce below 75% of base radius
 };
 
 // Re-export the hook as useBallMovementSystem for backwards compatibility
