@@ -126,7 +126,11 @@ export const createSpecializedNetwork = (
       counterAttackPotential: 0.5,
       pressureResistance: 0.5,
       recoveryPosition: 0.5,
-      transitionSpeed: 0.5
+      transitionSpeed: 0.5,
+      playerId: Math.random(),
+      playerRoleEncoding: Math.random(),
+      playerTeamId: Math.random() > 0.5 ? 1 : 0,
+      playerPositionalRole: Math.random()
     };
     
     const output: NeuralOutput = {
@@ -340,7 +344,11 @@ export const selectSpecializedNetwork = (
         counterAttackPotential: 0.5,
         pressureResistance: 0.5,
         recoveryPosition: 0.5,
-        transitionSpeed: 0.5
+        transitionSpeed: 0.5,
+        playerId: 0.5,
+        playerRoleEncoding: 0.5,
+        playerTeamId: 0.5,
+        playerPositionalRole: 0.5
       };
 
       const situationData = {

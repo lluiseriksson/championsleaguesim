@@ -48,7 +48,10 @@ export const createNeuralInput = (
     scoreDifferential?: number,
     possession?: { team: string, duration: number },
     teamFormation?: Position[],
-    actionHistory?: Array<{ action: string, success: boolean, timestamp: number }>
+    actionHistory?: Array<{ action: string, success: boolean, timestamp: number }>,
+    playerId?: number,
+    playerRole?: string,
+    playerTeam?: string
   } = {}
 ): NeuralInput => {
   const normalizedBall = normalizePosition(ball.position);
@@ -176,6 +179,19 @@ export const createNeuralInput = (
     pressureResistance: 1 - calculatePressureIndex(player, opponents),
     recoveryPosition: 0.5, // Default value
     transitionSpeed: 0.5 // Default value
+    
+    // Add the required player identity parameters
+    playerId: gameContext.playerId !== undefined ? gameContext.playerId / 100 : 0.5,
+    playerRoleEncoding: gameContext.playerRole === 'goalkeeper' ? 0 : 
+                         gameContext.playerRole === 'defender' ? 0.33 : 
+                         gameContext.playerRole === 'midfielder' ? 0.66 : 
+                         gameContext.playerRole === 'forward' ? 1 : 0.5,
+    playerTeamId: gameContext.playerTeam === 'red' ? 0 : 
+                  gameContext.playerTeam === 'blue' ? 1 : 0.5,
+    playerPositionalRole: gameContext.playerRole === 'goalkeeper' ? 0 : 
+                          gameContext.playerRole === 'defender' ? 0.2 : 
+                          gameContext.playerRole === 'midfielder' ? 0.5 : 
+                          gameContext.playerRole === 'forward' ? 0.8 : 0.5
   };
 };
 

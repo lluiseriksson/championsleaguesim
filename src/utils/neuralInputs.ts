@@ -1,4 +1,3 @@
-
 import { Ball, Player, TeamContext, NeuralInput, Position, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
 import { calculateDistance, normalizeValue } from './neuralCore';
 import { calculateShotQuality } from './playerBrain';
@@ -286,7 +285,15 @@ export const calculateNetworkInputs = (ball: Ball, player: Player, context: Team
     counterAttackPotential: calculateCounterAttackPotential(player, ball, context),
     pressureResistance: 1 - pressureIndex,
     recoveryPosition: calculateRecoveryPosition(player, ball, context),
-    transitionSpeed: calculateTransitionSpeed(player, ball)
+    transitionSpeed: calculateTransitionSpeed(player, ball),
+    playerId: player.id / 100,
+    playerRoleEncoding: player.role === 'goalkeeper' ? 0 : 
+                       player.role === 'defender' ? 0.33 : 
+                       player.role === 'midfielder' ? 0.66 : 1,
+    playerTeamId: player.team === 'red' ? 0 : 1,
+    playerPositionalRole: player.role === 'goalkeeper' ? 0 : 
+                         player.role === 'defender' ? 0.2 : 
+                         player.role === 'midfielder' ? 0.5 : 0.8
   };
 };
 
