@@ -47,6 +47,13 @@ export const useModelSyncSystem = ({
       const blueElo = bluePlayers.length > 0 && bluePlayers[0].teamElo ? bluePlayers[0].teamElo : 2000;
       
       teamElosRef.current = { red: redElo, blue: blueElo };
+      
+      // DRASTIC IMPROVEMENT: Log the ELO difference for transparency
+      const eloDifference = Math.abs(redElo - blueElo);
+      console.log(`Team ELOs - Red: ${redElo}, Blue: ${blueElo}, Difference: ${eloDifference}`);
+      if (eloDifference > 200) {
+        console.log(`SIGNIFICANT ELO ADVANTAGE DETECTED: ${eloDifference} points`);
+      }
     }
   }, [players]);
   
@@ -170,41 +177,98 @@ export const useModelSyncSystem = ({
             return player;
           }
           
+          // DRASTIC IMPROVEMENT: Apply much stronger ELO-based learning advantage
+          // Apply massive learning boost to higher ELO teams
+          const opponentTeamElo = player.team === 'red' ? teamElosRef.current.blue : teamElosRef.current.red;
+          const playerTeamElo = player.team === 'red' ? teamElosRef.current.red : teamElosRef.current.blue;
+          
+          // Calculate ELO difference and normalize to a factor
+          const eloDifference = playerTeamElo - opponentTeamElo;
+          
+          // DRASTIC IMPROVEMENT: Much stronger learning rate adjustment based on ELO
+          // Higher ELO teams now learn MUCH faster than before
+          const learningAdvantage = eloDifference > 0 ? 
+            Math.min(3.0, 1 + ((eloDifference) / 500)) : // Halved from 1000 to 500 - stronger effect
+            Math.max(0.5, 1 + ((eloDifference) / 800)); // Disadvantage for lower ELO teams
+          
+          console.log(`${player.team} player learning advantage: ${learningAdvantage.toFixed(2)} (ELO diff: ${eloDifference})`);
+          
           if (player.brain?.experienceReplay?.capacity > 0) {
-            // Apply ELO-based learning advantage
-            const opponentTeamElo = player.team === 'red' ? teamElosRef.current.blue : teamElosRef.current.red;
-            const playerTeamElo = player.team === 'red' ? teamElosRef.current.red : teamElosRef.current.blue;
-            const learningAdvantage = playerTeamElo > opponentTeamElo ? 
-              Math.min(1.5, 1 + ((playerTeamElo - opponentTeamElo) / 1000)) : 1.0;
+            // DRASTIC IMPROVEMENT: Enhanced brain learning parameters
             
+            // Calculate reward multiplier based on ELO advantage
+            const rewardMultiplier = Math.max(0.5, learningAdvantage);
+            
+            // Boost learning stage (neural network learning rate) based on ELO
+            const learningStageBoost = Math.min(1, (player.brain.learningStage || 0.1) * learningAdvantage);
+            
+            // DRASTIC IMPROVEMENT: Apply high-ELO bonus to rewards
+            // Higher ELO teams get larger rewards for the same actions
+            const lastRewardWithBonus = (player.brain.lastReward || 0) * rewardMultiplier;
+            
+            // Apply cumulative reward bonus with stronger effect for higher ELO
+            const cumulativeRewardBonus = playerTeamElo > 2200 ? 1.5 : 
+                                        playerTeamElo > 2000 ? 1.2 : 1.0;
+            
+            const enhancedCumulativeReward = (player.brain.cumulativeReward || 0) * 
+                                           rewardMultiplier * 
+                                           cumulativeRewardBonus;
+            
+            // DRASTIC IMPROVEMENT: High ELO teams can get occasional memory boosts
+            // (larger experience replay buffer to remember more training examples)
+            let experienceReplayCapacity = player.brain.experienceReplay.capacity;
+            
+            if (playerTeamElo > 2200 && Math.random() < 0.3) {
+              // Boost capacity for high ELO teams occasionally
+              experienceReplayCapacity = Math.min(200, experienceReplayCapacity + 10);
+              console.log(`${player.team} high-ELO player got memory capacity boost: ${experienceReplayCapacity}`);
+            }
+            
+            // Construct the enhanced brain with all improvements
             return {
               ...player,
               brain: {
                 ...player.brain,
-                learningStage: Math.min(1, (player.brain.learningStage || 0.1) * learningAdvantage),
-                lastReward: (player.brain.lastReward || 0) * learningAdvantage,
-                cumulativeReward: (player.brain.cumulativeReward || 0) * learningAdvantage
+                learningStage: learningStageBoost,
+                lastReward: lastRewardWithBonus,
+                cumulativeReward: enhancedCumulativeReward,
+                experienceReplay: {
+                  ...player.brain.experienceReplay,
+                  capacity: experienceReplayCapacity
+                },
+                // DRASTIC IMPROVEMENT: ELO-based learning optimization
+                learningRate: Math.min(0.3, 0.05 + (learningAdvantage - 1) * 0.1),
+                momentumFactor: Math.min(0.3, 0.1 + (rewardMultiplier - 1) * 0.1)
               }
             };
           }
           
           enhancedPlayers++;
           
+          // Create new brain with ELO-optimized parameters
           return {
             ...player,
             brain: {
               ...player.brain,
-              experienceReplay: player.brain?.experienceReplay || createExperienceReplay(100),
-              learningStage: player.brain?.learningStage || 0.1,
+              experienceReplay: player.brain?.experienceReplay || createExperienceReplay(
+                // DRASTIC IMPROVEMENT: Starting capacity based on ELO
+                playerTeamElo > 2200 ? 150 : 
+                playerTeamElo > 2000 ? 120 : 100
+              ),
+              learningStage: player.brain?.learningStage || 
+                            (playerTeamElo > 2200 ? 0.2 : 0.1), // Higher starting point for high ELO
               lastReward: player.brain?.lastReward || 0,
-              cumulativeReward: player.brain?.cumulativeReward || 0
+              cumulativeReward: player.brain?.cumulativeReward || 0,
+              // DRASTIC IMPROVEMENT: ELO-based starting parameters
+              learningRate: playerTeamElo > 2200 ? 0.15 : 0.1,
+              momentumFactor: playerTeamElo > 2200 ? 0.2 : 0.1
             }
           };
         })
       );
       
       if (enhancedPlayers > 0 && !tournamentMode) {
-        toast.info(`Enhanced learning for ${enhancedPlayers} players`, {
+        toast.info(`Enhanced learning for ${enhancedPlayers} players with ELO advantages`, {
           duration: 3000,
           position: 'bottom-right'
         });

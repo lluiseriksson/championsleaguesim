@@ -14,7 +14,7 @@ export function handleBallPhysics(
   onBallTouch: (player: Player) => void,
   lastCollisionTimeRef: React.MutableRefObject<number>,
   lastKickPositionRef: React.MutableRefObject<Position | null>,
-  eloFactors?: { red: number, blue: number } // Added ELO factors parameter as optional
+  eloFactors?: { red: number, blue: number }
 ): Ball {
   // Check for boundary collisions (top and bottom)
   let newVelocity = { ...currentBall.velocity };
@@ -48,17 +48,59 @@ export function handleBallPhysics(
     currentTime,
     lastCollisionTimeRef,
     lastKickPositionRef,
-    eloFactors // Pass ELO factors to collision handler
+    eloFactors
   );
 
-  // Apply velocity adjustments
-  newVelocity = applyVelocityAdjustments(newVelocity);
+  // Apply velocity adjustments with potential ELO factors
+  newVelocity = applyVelocityAdjustmentsWithElo(newVelocity, eloFactors);
 
   return {
     position: newPosition,
     velocity: newVelocity,
     bounceDetection: bounceDetectionRef
   };
+}
+
+function applyVelocityAdjustmentsWithElo(velocity: Position, eloFactors?: { red: number, blue: number }): Position {
+  // First apply standard physics
+  let adjustedVelocity = applyVelocityAdjustments(velocity);
+  
+  // If no ELO factors, just return standard physics
+  if (!eloFactors) {
+    return adjustedVelocity;
+  }
+  
+  // Otherwise calculate which team has current possession/advantage based on ball direction
+  const movingTowardRed = adjustedVelocity.x < 0;
+  const movingTowardBlue = adjustedVelocity.x > 0;
+  
+  if (movingTowardRed && eloFactors.blue > 1.2) {
+    // Ball moving toward red goal and blue has advantage - enhance the ball speed
+    const speedBoost = Math.min(1.15, 1 + (eloFactors.blue - 1) * 0.25);
+    adjustedVelocity.x *= speedBoost;
+    
+    // Slightly reduce friction for advantaged team
+    adjustedVelocity.x *= 1.03;
+    adjustedVelocity.y *= 1.03;
+  } 
+  else if (movingTowardBlue && eloFactors.red > 1.2) {
+    // Ball moving toward blue goal and red has advantage - enhance the ball speed
+    const speedBoost = Math.min(1.15, 1 + (eloFactors.red - 1) * 0.25);
+    adjustedVelocity.x *= speedBoost;
+    
+    // Slightly reduce friction for advantaged team
+    adjustedVelocity.x *= 1.03;
+    adjustedVelocity.y *= 1.03;
+  }
+  else if ((movingTowardRed && eloFactors.red > 1.2) || 
+           (movingTowardBlue && eloFactors.blue > 1.2)) {
+    // Ball moving toward defended goal and defenders have high ELO
+    // Increase friction slightly to make it harder to score
+    adjustedVelocity.x *= 0.98;
+    adjustedVelocity.y *= 0.98;
+  }
+  
+  return adjustedVelocity;
 }
 
 function handlePlayerCollisions(
@@ -71,25 +113,29 @@ function handlePlayerCollisions(
   currentTime: number,
   lastCollisionTimeRef: React.MutableRefObject<number>,
   lastKickPositionRef: React.MutableRefObject<Position | null>,
-  eloFactors?: { red: number, blue: number } // Added ELO factors parameter as optional
+  eloFactors?: { red: number, blue: number }
 ): Position {
   // Get current time to prevent multiple collisions
   const collisionCooldown = 150; // ms
   const goalkeeperCollisionCooldown = 100; // shorter cooldown for goalkeepers
 
-  // Standard goalkeeper collision detection
+  // DRASTIC IMPROVEMENT: Enhanced goalkeeper collision detection with ELO factors
   if (currentTime - lastCollisionTimeRef.current > goalkeeperCollisionCooldown) {
     for (const goalkeeper of goalkeepers) {
-      const collision = checkCollision(newPosition, goalkeeper.position, true);
+      const eloFactor = eloFactors && goalkeeper.team ? eloFactors[goalkeeper.team] : 1.0;
+      
+      // DRASTIC IMPROVEMENT: Higher ELO goalkeepers have larger effective reach
+      const enhancedCollisionRadius = eloFactor > 1.0;
+      const radiusMultiplier = enhancedCollisionRadius ? Math.min(1.4, eloFactor * 1.2) : 1.0;
+      
+      const collision = checkCollision(newPosition, goalkeeper.position, true, radiusMultiplier);
       
       if (collision) {
         onBallTouch(goalkeeper);
         lastCollisionTimeRef.current = currentTime;
         lastKickPositionRef.current = { ...newPosition };
         
-        // Apply ELO advantage to goalkeeper collision if available
-        const eloFactor = eloFactors && goalkeeper.team ? eloFactors[goalkeeper.team] : 1.0;
-        
+        // Apply ELO advantage to goalkeeper collision
         newVelocity = calculateNewVelocity(
           newPosition,
           goalkeeper.position,
@@ -97,15 +143,45 @@ function handlePlayerCollisions(
           true
         );
         
-        // Enhance goalkeeper's effectiveness based on team's ELO advantage
-        if (eloFactor > 1.0) {
-          // Stronger deflection for advantaged team's goalkeeper
-          const deflectionBoost = Math.min(1.3, eloFactor);
-          newVelocity.x *= deflectionBoost;
-          newVelocity.y *= deflectionBoost;
+        // DRASTIC IMPROVEMENT: Much stronger goalkeeper effectiveness for high ELO teams
+        // Base deflection enhancement on ELO factor
+        const deflectionBoost = Math.min(1.8, eloFactor * 1.5); // Up from 1.3 max
+        newVelocity.x *= deflectionBoost;
+        newVelocity.y *= deflectionBoost;
+        
+        // DRASTIC IMPROVEMENT: High ELO goalkeepers clear ball toward opponents' half
+        if (eloFactor > 1.3 && Math.random() < 0.6) {
+          // Determine which direction to clear (away from own goal)
+          const clearToRight = goalkeeper.team === 'red';
+          
+          // Calculate clearing angle - aim for opponent's half but away from center
+          const clearingAngleY = (Math.random() * 0.8 - 0.4) * Math.PI; // -0.4π to 0.4π
+          const clearingPower = 12 + Math.random() * 6; // 12-18 power
+          
+          // Set clearing vector
+          if (clearToRight) {
+            newVelocity.x = Math.abs(clearingPower * Math.cos(clearingAngleY));
+          } else {
+            newVelocity.x = -Math.abs(clearingPower * Math.cos(clearingAngleY));
+          }
+          newVelocity.y = clearingPower * Math.sin(clearingAngleY);
+          
+          console.log(`High ELO goalkeeper (${goalkeeper.team}) made a strategic clearance!`);
         }
         
-        console.log("Goalkeeper collision detected");
+        // DRASTIC IMPROVEMENT: Low ELO goalkeepers sometimes fumble the ball
+        if (eloFactor < 0.85 && Math.random() < 0.3) {
+          // Weak, unpredictable clearance
+          const fumbleAngle = Math.random() * Math.PI * 2;
+          const fumblePower = 3 + Math.random() * 4; // 3-7 power
+          
+          newVelocity.x = fumblePower * Math.cos(fumbleAngle);
+          newVelocity.y = fumblePower * Math.sin(fumbleAngle);
+          
+          console.log(`Low ELO goalkeeper (${goalkeeper.team}) fumbled the ball!`);
+        }
+        
+        console.log(`Goalkeeper collision detected with ELO factor: ${eloFactor.toFixed(2)}`);
         break;
       }
     }
@@ -122,7 +198,7 @@ function handlePlayerCollisions(
       currentTime,
       lastCollisionTimeRef,
       lastKickPositionRef,
-      eloFactors // Pass ELO factors to field player collision handler
+      eloFactors
     );
   }
 
