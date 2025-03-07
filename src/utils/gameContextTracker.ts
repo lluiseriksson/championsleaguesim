@@ -5,7 +5,7 @@ import { calculateDistance } from './neuralHelpers';
 // Maximum number of actions to track in history
 const MAX_ACTION_HISTORY = 20;
 
-// NEW: Track the last few team actions for goal contribution analysis
+// Track the last few team actions for goal contribution analysis
 const MAX_TEAM_ACTIONS = 8;
 const CONTRIBUTION_WINDOW_MS = 8000; // 8 seconds window for goal contributions
 
@@ -23,7 +23,7 @@ export const initializeActionHistory = (brain: NeuralNet): NeuralNet => {
   };
 };
 
-// NEW: Create team action tracker for goal contribution analysis
+// Create team action tracker for goal contribution analysis
 export const createTeamActionTracker = () => {
   return {
     actions: [] as {
@@ -32,12 +32,13 @@ export const createTeamActionTracker = () => {
       action: string;
       timestamp: number;
       position: Position;
+      teamElo?: number;
     }[],
     lastUpdated: Date.now()
   };
 };
 
-// NEW: Add action to team tracker
+// Add action to team tracker
 export const trackTeamAction = (
   tracker: ReturnType<typeof createTeamActionTracker>, 
   player: Player,
@@ -49,7 +50,8 @@ export const trackTeamAction = (
     playerRole: player.role,
     action,
     timestamp: Date.now(),
-    position: { ...player.position }
+    position: { ...player.position },
+    teamElo: player.teamElo
   });
   
   // Update timestamp
@@ -64,11 +66,12 @@ export const trackTeamAction = (
   return tracker;
 };
 
-// NEW: Calculate contribution value for a player's action
+// Calculate contribution value for a player's action with ELO consideration
 export const calculateContributionValue = (
   action: string,
   playerRole: string,
-  timeSinceAction: number
+  timeSinceAction: number,
+  teamElo?: number
 ): number => {
   // Base value depends on action type
   let baseValue = 0;
@@ -110,10 +113,13 @@ export const calculateContributionValue = (
   // 8 second window for contributions
   const timeDecay = Math.max(0, 1 - (timeSinceAction / CONTRIBUTION_WINDOW_MS));
   
-  return baseValue * roleMultiplier * timeDecay;
+  // NEW: ELO-based multiplier - higher ELO teams get bigger contributions
+  const eloMultiplier = teamElo ? Math.min(1.5, 1 + ((teamElo - 2000) / 1000)) : 1.0;
+  
+  return baseValue * roleMultiplier * timeDecay * eloMultiplier;
 };
 
-// NEW: Analyze contribution chain for goal
+// Analyze contribution chain for goal with ELO weighting
 export const analyzeGoalContributions = (
   tracker: ReturnType<typeof createTeamActionTracker>,
   goalTimestamp: number
@@ -138,7 +144,8 @@ export const analyzeGoalContributions = (
       const value = calculateContributionValue(
         action.action,
         action.playerRole,
-        timeSinceAction
+        timeSinceAction,
+        action.teamElo
       );
       
       // Add to player's total

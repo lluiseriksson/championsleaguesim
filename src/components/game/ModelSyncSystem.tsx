@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Player } from '../../types/football';
 import { saveModel } from '../../utils/neural/modelPersistence';
@@ -32,6 +33,22 @@ export const useModelSyncSystem = ({
   const [isLowPerformance, setIsLowPerformance] = useState(false);
   const lastFrameTimeRef = useRef(Date.now());
   const frameTimesRef = useRef<number[]>([]);
+  
+  // Track team ELOs to apply advantages to learning
+  const teamElosRef = useRef<{ red: number; blue: number }>({ red: 2000, blue: 2000 });
+  
+  // Update team ELOs when players change
+  React.useEffect(() => {
+    if (players.length > 0) {
+      const redPlayers = players.filter(p => p.team === 'red');
+      const bluePlayers = players.filter(p => p.team === 'blue');
+      
+      const redElo = redPlayers.length > 0 && redPlayers[0].teamElo ? redPlayers[0].teamElo : 2000;
+      const blueElo = bluePlayers.length > 0 && bluePlayers[0].teamElo ? bluePlayers[0].teamElo : 2000;
+      
+      teamElosRef.current = { red: redElo, blue: blueElo };
+    }
+  }, [players]);
   
   const incrementSyncCounter = () => {
     syncCounter.current += 1;
@@ -154,7 +171,21 @@ export const useModelSyncSystem = ({
           }
           
           if (player.brain?.experienceReplay?.capacity > 0) {
-            return player;
+            // Apply ELO-based learning advantage
+            const opponentTeamElo = player.team === 'red' ? teamElosRef.current.blue : teamElosRef.current.red;
+            const playerTeamElo = player.team === 'red' ? teamElosRef.current.red : teamElosRef.current.blue;
+            const learningAdvantage = playerTeamElo > opponentTeamElo ? 
+              Math.min(1.5, 1 + ((playerTeamElo - opponentTeamElo) / 1000)) : 1.0;
+            
+            return {
+              ...player,
+              brain: {
+                ...player.brain,
+                learningStage: Math.min(1, (player.brain.learningStage || 0.1) * learningAdvantage),
+                lastReward: (player.brain.lastReward || 0) * learningAdvantage,
+                cumulativeReward: (player.brain.cumulativeReward || 0) * learningAdvantage
+              }
+            };
           }
           
           enhancedPlayers++;

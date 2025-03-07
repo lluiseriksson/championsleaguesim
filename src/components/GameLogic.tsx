@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Player, Ball, Score, Position } from '../types/football';
 import { useBallMovementSystem } from './game/BallMovementSystem';
@@ -46,8 +45,8 @@ const GameLogic: React.FC<GameLogicProps> = ({
   
   const eloAdvantageMultiplier = React.useMemo(() => {
     const eloDiff = Math.abs(redTeamElo - blueTeamElo);
-    // Stronger multiplier effect - previously this was a much smaller number
-    return Math.min(1.5, 1 + (eloDiff / 1000));
+    // Significantly increased multiplier effect - making ELO differences more impactful
+    return Math.min(2.5, 1 + (eloDiff / 600));
   }, [redTeamElo, blueTeamElo]);
   
   console.log(`GameLogic rendered with players: ${players.length}, tournamentMode: ${tournamentMode}`);
