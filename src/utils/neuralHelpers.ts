@@ -517,7 +517,12 @@ export const isNetworkValid = (net: brain.NeuralNetwork<NeuralInput, NeuralOutpu
       counterAttackPotential: 0.5,
       pressureResistance: 0.5,
       recoveryPosition: 0.5,
-      transitionSpeed: 0.5
+      transitionSpeed: 0.5,
+      // Add the missing player identity parameters
+      playerId: 0.5,
+      playerRoleEncoding: 0.5,
+      playerTeamId: 0.5,
+      playerPositionalRole: 0.5
     };
 
     // Run the network with test input and check if output is valid
