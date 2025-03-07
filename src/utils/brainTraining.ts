@@ -1,4 +1,4 @@
-import { NeuralNet, Player, TeamContext, Ball } from '../types/football';
+import { NeuralNet, Player, TeamContext, Ball, Position } from '../types/football';
 import { saveModel } from './neuralModelService';
 import { calculateNetworkInputs } from './neuralInputs';
 import { calculateDistance } from './neuralCore';
@@ -336,23 +336,26 @@ export const updatePlayerBrain = (
       if (brain.lastShotQuality === undefined) {
         brain.lastShotQuality = 0;
       }
+    } else {
+      // If player didn't shoot, reset shot quality tracking
+      brain.lastShotQuality = 0;
+      
+      // NEW: Reward for successful passes to teammates
+      if (brain.lastAction === 'pass' && !isOwnGoal) {
+        const passDestinationIsTeammate = brain.lastPassOutcome?.success === true;
+        if (passDestinationIsTeammate) {
+          console.log(`${player.team} ${player.role} #${player.id} made a SUCCESSFUL PASS! Reward: ${SUCCESSFUL_PASS_REWARD}`);
+          rewardFactor += SUCCESSFUL_PASS_REWARD;
+        } else {
+          // Penalize giving the ball to an opponent
+          console.log(`${player.team} ${player.role} #${player.id} LOST POSSESSION! Penalty: ${BALL_LOSS_PENALTY}`);
+          rewardFactor += BALL_LOSS_PENALTY;
+        }
+      }
     }
   } else if (brain.lastAction) {
     // If player didn't shoot, reset shot quality tracking
     brain.lastShotQuality = 0;
-    
-    // NEW: Reward for successful passes to teammates
-    if (brain.lastAction === 'pass' && !isOwnGoal) {
-      const passDestinationIsTeammate = brain.lastPassOutcome?.success === true;
-      if (passDestinationIsTeammate) {
-        console.log(`${player.team} ${player.role} #${player.id} made a SUCCESSFUL PASS! Reward: ${SUCCESSFUL_PASS_REWARD}`);
-        rewardFactor += SUCCESSFUL_PASS_REWARD;
-      } else {
-        // Penalize giving the ball to an opponent
-        console.log(`${player.team} ${player.role} #${player.id} LOST POSSESSION! Penalty: ${BALL_LOSS_PENALTY}`);
-        rewardFactor += BALL_LOSS_PENALTY;
-      }
-    }
   }
 
   // Increase own goal penalty
