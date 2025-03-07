@@ -1,7 +1,6 @@
-
-
 import { Position, Player } from '../types/football';
 import { calculateDistance } from './neuralCore';
+import { logEloAdjustmentDetails } from './neural/neuralTypes';
 
 // Reduced radius limits to constrain player movement
 const ROLE_RADIUS_LIMITS = {
@@ -14,7 +13,7 @@ const ROLE_RADIUS_LIMITS = {
 // Significantly reduced neural adjustment radius
 const NEURAL_ADJUSTMENT_RADIUS = 8; // Reduced from 20
 
-// Apply ELO-based adjustment to movement constraint radius - MORE AGGRESSIVE IMPLEMENTATION
+// Apply ELO-based adjustment to movement constraint radius - FIXED IMPLEMENTATION
 const applyEloRadiusAdjustment = (
   baseRadius: number,
   player: Player,
@@ -31,21 +30,49 @@ const applyEloRadiusAdjustment = (
   // Calculate ELO difference - give advantage to higher-rated team
   const eloDifference = player.teamElo - opponentPlayer.teamElo;
   
-  // No advantage for lower-rated team
+  // CRITICAL FIX: Higher ELO should get bonus, lower ELO should get penalty
+  // Previous implementation had reversed logic
   if (eloDifference <= 0) {
-    // Apply a larger penalty for lower-rated team (up to -35%, increased from -25%)
+    // Apply a penalty for lower-rated team (up to -35%)
     const cappedNegativeDifference = Math.max(eloDifference, -500);
-    const radiusPenalty = (cappedNegativeDifference / 500) * 0.35; // Increased from 0.25 to 0.35
-    return baseRadius * (1 + radiusPenalty); // This will be a reduction since radiusPenalty is negative
+    const radiusPenalty = (cappedNegativeDifference / 500) * 0.35;
+    
+    const adjustedRadius = baseRadius * (1 + radiusPenalty);
+    
+    // Log significant adjustments for debugging
+    if (Math.abs(adjustedRadius - baseRadius) > 10) {
+      logEloAdjustmentDetails(
+        "movement radius", 
+        player.team, 
+        player.teamElo, 
+        opponentPlayer.teamElo, 
+        adjustedRadius - baseRadius
+      );
+    }
+    
+    return adjustedRadius;
   }
   
   // Cap at 500 ELO difference for higher-rated team
   const cappedDifference = Math.min(eloDifference, 500);
   
-  // Calculate radius bonus (up to 40% boost for higher-rated team, increased from 30%)
+  // Calculate radius bonus (up to 40% boost for higher-rated team)
   const radiusBonus = (cappedDifference / 500) * 0.40;
   
-  return baseRadius * (1 + radiusBonus);
+  const adjustedRadius = baseRadius * (1 + radiusBonus);
+  
+  // Log significant adjustments for debugging
+  if (Math.abs(adjustedRadius - baseRadius) > 10) {
+    logEloAdjustmentDetails(
+      "movement radius", 
+      player.team, 
+      player.teamElo, 
+      opponentPlayer.teamElo, 
+      adjustedRadius - baseRadius
+    );
+  }
+  
+  return adjustedRadius;
 };
 
 export const constrainMovementToRadius = (

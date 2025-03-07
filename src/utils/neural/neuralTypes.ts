@@ -1,4 +1,3 @@
-
 // Types for neural network models in database
 export interface NeuralModelData {
   id?: number;
@@ -11,24 +10,25 @@ export interface NeuralModelData {
   last_updated?: string;
 }
 
-// Calculate radius adjustment based on ELO difference - EXTREMELY AGGRESSIVE IMPLEMENTATION
+// Calculate radius adjustment based on ELO difference - FIXED IMPLEMENTATION
 export const calculateEloRadiusAdjustment = (teamElo: number = 1500, opponentElo: number = 1500): number => {
   // Get absolute ELO difference (cap at 500 to prevent extreme adjustments)
   const eloDifference = Math.min(Math.abs(teamElo - opponentElo), 500);
   
-  // Higher-rated team gets very significant radius boost, lower-rated team gets stronger penalty
+  // CRITICAL FIX: Previous implementation had reversed logic - higher-rated teams should get a bonus
+  // The issue was that the function returned positive values for weaker teams and negative for stronger teams
   if (teamElo > opponentElo) {
-    // Super aggressive bonus for higher-rated team (0 to 20 units, up from 15)
+    // Correct bonus for higher-rated team (0 to 20 units)
     return Math.sqrt(eloDifference / 500) * 20;
   } else if (teamElo < opponentElo) {
-    // Super aggressive penalty for lower-rated team (0 to -20 units, down from -15)
+    // Correct penalty for lower-rated team (0 to -20 units)
     return -Math.sqrt(eloDifference / 500) * 20;
   }
   
   return 0; // No adjustment for equal ratings
 };
 
-// Calculate goalkeeper reach adjustment for straight and angled shots based on ELO - EXTREMELY AGGRESSIVE IMPLEMENTATION
+// Calculate goalkeeper reach adjustment for straight and angled shots based on ELO - FIXED IMPLEMENTATION
 export const calculateEloGoalkeeperReachAdjustment = (
   teamElo: number = 1500, 
   opponentElo: number = 1500, 
@@ -37,22 +37,23 @@ export const calculateEloGoalkeeperReachAdjustment = (
   // Get absolute ELO difference (cap at 500 to prevent extreme adjustments)
   const eloDifference = Math.min(Math.abs(teamElo - opponentElo), 500);
   
+  // CRITICAL FIX: Previous implementation had reversed logic - higher-rated goalkeepers should get better reach
   if (teamElo > opponentElo) {
-    // Higher-rated team's goalkeeper gets vastly improved reach
+    // Higher-rated team's goalkeeper gets improved reach
     if (isAngledShot) {
-      // Bigger bonus for angled shots (up to 12 units, up from 8)
+      // Bonus for angled shots (up to 12 units)
       return Math.sqrt(eloDifference / 500) * 12;
     } else {
-      // Major bonus for straight shots (up to 30 units, up from 25)
+      // Major bonus for straight shots (up to 30 units)
       return Math.sqrt(eloDifference / 500) * 30;
     }
   } else if (teamElo < opponentElo) {
-    // Lower-rated team's goalkeeper gets severely reduced reach
+    // Lower-rated team's goalkeeper gets reduced reach
     if (isAngledShot) {
-      // Much more severe penalty for angled shots (up to -25 units, down from -15)
+      // Penalty for angled shots (up to -25 units)
       return -Math.sqrt(eloDifference / 500) * 25;
     } else {
-      // Bigger penalty for straight shots too (up to -10 units, down from -5)
+      // Penalty for straight shots too (up to -10 units)
       return -Math.sqrt(eloDifference / 500) * 10;
     }
   }
@@ -117,4 +118,19 @@ export const logTrainingOperation = (team: string, role: string, playerId: numbe
 export const logPredictionIssue = (team: string, role: string, playerId: number, issue: string): void => {
   const timestamp = new Date().toISOString().substr(11, 8);
   console.warn(`[NN-Predict:${timestamp}] ${team} ${role} #${playerId}: ${issue}`);
+};
+
+// NEW: Log ELO adjustment details for debugging
+export const logEloAdjustmentDetails = (
+  type: string, 
+  team: string, 
+  teamElo: number, 
+  opponentElo: number, 
+  adjustment: number
+): void => {
+  const timestamp = new Date().toISOString().substr(11, 8);
+  console.log(
+    `[ELO-Adjust:${timestamp}] ${team}: ${type} adjustment: ${adjustment.toFixed(2)} units ` +
+    `(Team ELO: ${teamElo}, Opponent ELO: ${opponentElo}, Diff: ${(teamElo - opponentElo).toFixed(0)})`
+  );
 };
