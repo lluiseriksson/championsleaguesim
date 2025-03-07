@@ -29,6 +29,10 @@ export const useGoalSystem = ({
   tournamentMode = false,
   teamElos = { red: 2000, blue: 2000 }
 }: GoalSystemProps) => {
+  // NEW: Add cooldown for goal processing to prevent multiple goals being processed
+  const lastGoalProcessedTimeRef = React.useRef<number>(0);
+  const goalProcessCooldown = 3000; // 3 seconds cooldown
+  
   // Track the last player action for reward assignment
   const lastActionRef = React.useRef<{
     player: Player | null;
@@ -256,6 +260,20 @@ export const useGoalSystem = ({
 
   // Process goal scoring
   const processGoal = React.useCallback((scoringTeam: 'red' | 'blue') => {
+    const currentTime = Date.now();
+    
+    // Check if we're still in the goal processing cooldown period
+    const timeSinceLastGoal = currentTime - lastGoalProcessedTimeRef.current;
+    if (timeSinceLastGoal < goalProcessCooldown) {
+      if (!tournamentMode) {
+        console.log(`Goal processing skipped - cooldown active (${timeSinceLastGoal}ms / ${goalProcessCooldown}ms)`);
+      }
+      return;
+    }
+    
+    // Set the cooldown timestamp
+    lastGoalProcessedTimeRef.current = currentTime;
+    
     if (!tournamentMode) {
       console.log(`GOAL! Team ${scoringTeam} scored!`);
     }
@@ -488,3 +506,4 @@ export const useGoalSystem = ({
 
   return { checkGoal, processGoal, trackShotOnTarget, trackPassAttempt };
 };
+

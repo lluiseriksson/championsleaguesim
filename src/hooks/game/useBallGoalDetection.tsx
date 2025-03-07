@@ -16,6 +16,10 @@ export const useBallGoalDetection = ({
   const gameStartTimeRef = React.useRef<number>(Date.now());
   const minPlayTimeBeforeGoal = 1500; // 1.5 seconds grace period
   
+  // NEW: Add goal cooldown to prevent multiple goal detections
+  const lastGoalTimeRef = React.useRef<number>(0);
+  const goalCooldownPeriod = 3000; // 3 seconds cooldown between goals
+  
   // NEW: Track if ball was close to goal for near miss detection
   const nearMissRef = React.useRef<{
     detected: boolean;
@@ -86,6 +90,17 @@ export const useBallGoalDetection = ({
     const timeSinceStart = currentTime - gameStartTimeRef.current;
     const allowGoalDetection = timeSinceStart > minPlayTimeBeforeGoal;
     
+    // NEW: Check if we're still in the goal cooldown period
+    const timeSinceLastGoal = currentTime - lastGoalTimeRef.current;
+    const isInGoalCooldown = timeSinceLastGoal < goalCooldownPeriod;
+    
+    if (isInGoalCooldown) {
+      if (!tournamentMode) {
+        console.log(`Goal detection blocked - cooldown active (${timeSinceLastGoal}ms / ${goalCooldownPeriod}ms)`);
+      }
+      return { goalScored: null, updatedBall: currentBall };
+    }
+    
     // Check if a goal was scored
     let goalScored = null;
     
@@ -104,6 +119,9 @@ export const useBallGoalDetection = ({
       if (!tournamentMode) {
         console.log(`Goal detected for team ${goalScored}`);
       }
+      
+      // NEW: Set the cooldown timestamp
+      lastGoalTimeRef.current = currentTime;
       
       // Reset ball position to center with a significant initial velocity
       const updatedBall = {
@@ -139,6 +157,9 @@ export const useBallGoalDetection = ({
   // Add a reset method for game start/restart
   const resetGameClock = React.useCallback(() => {
     gameStartTimeRef.current = Date.now();
+    // Also reset the goal cooldown timer when game restarts
+    lastGoalTimeRef.current = 0;
+    
     if (!tournamentMode) {
       console.log("Goal detection grace period started");
     }
