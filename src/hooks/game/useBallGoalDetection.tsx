@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Ball, Position, PITCH_WIDTH, PITCH_HEIGHT, GOAL_HEIGHT } from '../../types/football';
 
@@ -15,7 +16,7 @@ export const useBallGoalDetection = ({
   const gameStartTimeRef = React.useRef<number>(Date.now());
   const minPlayTimeBeforeGoal = 1500; // 1.5 seconds grace period
   
-  // NEW: Add goal cooldown to prevent multiple goal detections
+  // Add goal cooldown to prevent multiple goal detections
   const lastGoalTimeRef = React.useRef<number>(0);
   const goalCooldownPeriod = 3000; // 3 seconds cooldown between goals
   
@@ -29,7 +30,7 @@ export const useBallGoalDetection = ({
   });
   const goalkeeperSaveCooldown = 1000; // 1 second cooldown after goalkeeper touch
   
-  // NEW: Track if ball was close to goal for near miss detection
+  // Track if ball was close to goal for near miss detection
   const nearMissRef = React.useRef<{
     detected: boolean;
     team: 'red' | 'blue' | null;
@@ -110,7 +111,7 @@ export const useBallGoalDetection = ({
     const timeSinceStart = currentTime - gameStartTimeRef.current;
     const allowGoalDetection = timeSinceStart > minPlayTimeBeforeGoal;
     
-    // NEW: Check if we're still in the goal cooldown period
+    // Check if we're still in the goal cooldown period
     const timeSinceLastGoal = currentTime - lastGoalTimeRef.current;
     const isInGoalCooldown = timeSinceLastGoal < goalCooldownPeriod;
     
@@ -154,16 +155,17 @@ export const useBallGoalDetection = ({
         console.log(`Goal detected for team ${goalScored}`);
       }
       
-      // NEW: Set the cooldown timestamp
+      // Set the cooldown timestamp
       lastGoalTimeRef.current = currentTime;
       
-      // Reset ball position to center with a significant initial velocity
+      // IMPROVED: Reset ball position to center with stronger initial velocity
+      // and make sure it's completely outside the goal area
       const updatedBall = {
         ...currentBall,
         position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
         velocity: { 
-          x: goalScored === 'red' ? 5 : -5, 
-          y: (Math.random() - 0.5) * 5
+          x: goalScored === 'red' ? -5 : 5, // Stronger kick away from the goal
+          y: (Math.random() - 0.5) * 5 
         },
         bounceDetection: {
           consecutiveBounces: 0,
@@ -177,6 +179,39 @@ export const useBallGoalDetection = ({
       gameStartTimeRef.current = currentTime;
       
       return { goalScored, updatedBall };
+    }
+    
+    // IMPROVED: If the ball is inside the goal but no goal was detected (possibly due to cooldown),
+    // force it out to prevent it from getting stuck
+    if (!goalScored) {
+      const isInsideLeftGoal = newPosition.x < 5 && 
+                              Math.abs(newPosition.y - PITCH_HEIGHT/2) < GOAL_HEIGHT/2;
+      const isInsideRightGoal = newPosition.x > PITCH_WIDTH - 5 && 
+                               Math.abs(newPosition.y - PITCH_HEIGHT/2) < GOAL_HEIGHT/2;
+      
+      if (isInsideLeftGoal || isInsideRightGoal) {
+        // If ball is stuck in goal but we can't count it as a goal due to cooldowns,
+        // force it out of the goal area with a bounce effect
+        const updatedBall = {
+          ...currentBall,
+          position: { 
+            // Move ball away from goal line
+            x: isInsideLeftGoal ? 15 : PITCH_WIDTH - 15,
+            y: newPosition.y
+          },
+          velocity: {
+            // Add bounce velocity away from goal
+            x: isInsideLeftGoal ? 3 : -3,
+            y: currentBall.velocity ? currentBall.velocity.y * 0.8 : 0
+          }
+        };
+        
+        if (!tournamentMode) {
+          console.log(`Ball was stuck in ${isInsideLeftGoal ? 'left' : 'right'} goal - forcing it out`);
+        }
+        
+        return { goalScored: null, updatedBall };
+      }
     }
     
     // If no goal, check for near miss if ball has velocity

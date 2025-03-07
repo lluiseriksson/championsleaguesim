@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { toast } from 'sonner';
-import { Ball } from '../../types/football';
+import { Ball, PITCH_WIDTH, PITCH_HEIGHT } from '../../types/football';
 
 interface GoalNotificationProps {
   tournamentMode?: boolean;
@@ -37,13 +37,22 @@ export const useGoalNotification = ({
       }
     }
     
-    // Reset ball position to center after goal
+    // IMPROVED: Reset ball position to center after goal with stronger velocity
+    // to prevent it from getting stuck in the goal
     setBall(prev => ({
       ...prev,
-      position: { x: 800/2, y: 500/2 },
+      position: { x: PITCH_WIDTH/2, y: PITCH_HEIGHT/2 },
       velocity: { 
-        x: scoringTeam === 'red' ? -1 : 1, // Fix: Ensure ball moves toward the team that conceded
-        y: Math.random() * 2 - 1 
+        // Strong initial kick toward the team that conceded
+        x: scoringTeam === 'red' ? -3 : 3, 
+        y: (Math.random() * 2 - 1) * 2 
+      },
+      // Reset bounce detection to prevent issues after goal
+      bounceDetection: {
+        consecutiveBounces: 0,
+        lastBounceTime: 0,
+        lastBounceSide: '',
+        sideEffect: false
       }
     }));
     

@@ -36,8 +36,31 @@ export function handleBallPhysics(
   newVelocity = handleTopBottomBoundaries(newPosition, newVelocity, bounceDetectionRef, currentTime, bounceCooldown);
   newVelocity = handleLeftRightBoundaries(newPosition, newVelocity, bounceDetectionRef, currentTime, bounceCooldown);
 
-  // Ensure ball stays within the pitch boundaries
+  // IMPROVED: Ensure ball stays within the pitch boundaries with a stronger constraint
+  // This helps prevent the ball from getting stuck inside goals
   newPosition = constrainBallPosition(newPosition, BALL_RADIUS, PITCH_WIDTH, PITCH_HEIGHT);
+
+  // Check if ball is too close to goal line and force it away if needed
+  const goalY = PITCH_HEIGHT / 2;
+  const goalTop = goalY - 92; // GOAL_HEIGHT/2
+  const goalBottom = goalY + 92; // GOAL_HEIGHT/2
+  
+  // If ball is inside goal area but very close to goal line, push it out slightly
+  if (newPosition.x < BALL_RADIUS * 1.5 && newPosition.y >= goalTop && newPosition.y <= goalBottom) {
+    // Ball too close to left goal line - push it rightward
+    newPosition.x = BALL_RADIUS * 1.5;
+    if (newVelocity.x < 0) {
+      // Reverse direction if moving toward goal
+      newVelocity.x = Math.abs(newVelocity.x) * 0.5;
+    }
+  } else if (newPosition.x > PITCH_WIDTH - BALL_RADIUS * 1.5 && newPosition.y >= goalTop && newPosition.y <= goalBottom) {
+    // Ball too close to right goal line - push it leftward
+    newPosition.x = PITCH_WIDTH - BALL_RADIUS * 1.5;
+    if (newVelocity.x > 0) {
+      // Reverse direction if moving toward goal
+      newVelocity.x = -Math.abs(newVelocity.x) * 0.5;
+    }
+  }
 
   // Handle player collisions, starting with goalkeepers
   const { velocity: goalkeeperVelocity, collisionOccurred: goalkeeperCollision, position: goalkeeperAdjustedPosition } = handleGoalkeeperCollisions(
