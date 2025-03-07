@@ -1,4 +1,3 @@
-
 import { Player, Position } from '../../types/football';
 import { checkCollision, calculateNewVelocity } from '../../utils/gamePhysics';
 
@@ -20,10 +19,11 @@ export function handleFieldPlayerCollisions(
     const enhancedCollisionRadius = eloFactor > 1.0;
     
     // Higher ELO players can reach the ball from slightly further away
-    // Fixed: Removed the fourth parameter and adjusted the call to match the function signature
+    // Fixed: Using the correct parameter order (position1, position2, isGoalkeeper, radiusMultiplier)
     const collision = checkCollision(
       newPosition, 
       player.position, 
+      false, // This is a field player, not a goalkeeper
       enhancedCollisionRadius ? (eloFactor * 1.2) : 1.0 // Up to 20% larger reach
     );
     

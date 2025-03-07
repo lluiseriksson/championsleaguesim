@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Player, Ball, Position, BALL_RADIUS, PITCH_WIDTH, PITCH_HEIGHT, PLAYER_RADIUS } from '../../types/football';
 import { handleFieldPlayerCollisions } from './collisionHandlers';
@@ -132,7 +133,8 @@ function handlePlayerCollisions(
       const collision = checkCollision(
         newPosition, 
         goalkeeper.position, 
-        true
+        true, // This is a goalkeeper
+        radiusMultiplier // Apply the ELO-based radius multiplier
       );
       
       if (collision) {
