@@ -18,10 +18,12 @@ export function handleGoalkeeperCollisions(
 ): {
   velocity: Position;
   collisionOccurred: boolean;
+  position: Position; // Add position to the return type to allow position corrections
 } {
   // Get current time to prevent multiple collisions
   const goalkeeperCollisionCooldown = 100; // shorter cooldown for goalkeepers
   let collisionOccurred = false;
+  let modifiedPosition = { ...newPosition }; // Initialize with the input position
   
   if (currentTime - lastCollisionTimeRef.current > goalkeeperCollisionCooldown) {
     for (const goalkeeper of goalkeepers) {
@@ -61,6 +63,22 @@ export function handleGoalkeeperCollisions(
         newVelocity.x *= deflectionBoost;
         newVelocity.y *= deflectionBoost;
         
+        // IMPORTANT: Move the ball slightly away from the goal line when goalkeeper saves it
+        // This prevents the ball from registering as a goal
+        const isLeftGoalkeeper = goalkeeper.team === 'red';
+        if (isLeftGoalkeeper) {
+          // For left side goalkeeper, move ball slightly right if it's too close to left edge
+          if (modifiedPosition.x < 40) {
+            modifiedPosition.x = Math.max(modifiedPosition.x, 45);
+          }
+        } else {
+          // For right side goalkeeper, move ball slightly left if it's too close to right edge
+          const rightEdge = 800; // PITCH_WIDTH
+          if (modifiedPosition.x > rightEdge - 40) {
+            modifiedPosition.x = Math.min(modifiedPosition.x, rightEdge - 45);
+          }
+        }
+        
         // DRASTIC IMPROVEMENT: High ELO goalkeepers clear ball toward opponents' half
         if (eloFactor > 1.3 && Math.random() < 0.6) {
           // Determine which direction to clear (away from own goal)
@@ -99,6 +117,7 @@ export function handleGoalkeeperCollisions(
 
   return {
     velocity: newVelocity,
-    collisionOccurred
+    collisionOccurred,
+    position: modifiedPosition // Return the potentially adjusted position
   };
 }

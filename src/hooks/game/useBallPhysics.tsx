@@ -40,7 +40,7 @@ export function handleBallPhysics(
   newPosition = constrainBallPosition(newPosition, BALL_RADIUS, PITCH_WIDTH, PITCH_HEIGHT);
 
   // Handle player collisions, starting with goalkeepers
-  const { velocity: goalkeeperVelocity, collisionOccurred: goalkeeperCollision } = handleGoalkeeperCollisions(
+  const { velocity: goalkeeperVelocity, collisionOccurred: goalkeeperCollision, position: goalkeeperAdjustedPosition } = handleGoalkeeperCollisions(
     newPosition,
     newVelocity,
     currentBall.velocity,
@@ -52,9 +52,10 @@ export function handleBallPhysics(
     eloFactors
   );
   
-  // Update velocity from goalkeeper collision if it occurred
+  // Update position and velocity from goalkeeper collision if it occurred
   if (goalkeeperCollision) {
     newVelocity = goalkeeperVelocity;
+    newPosition = goalkeeperAdjustedPosition; // Use the adjusted position
   } 
   // Otherwise check field player collisions if no goalkeeper collision
   else if (currentTime - lastCollisionTimeRef.current > 150) { // 150ms cooldown

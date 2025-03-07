@@ -32,7 +32,7 @@ export const useBallMovementSystem = ({
   const lastKickPositionRef = useRef<Position | null>(null);
   
   // Goal detection system
-  const { handleGoalCheck, nearMissRef } = useBallGoalDetection({ 
+  const { handleGoalCheck, nearMissRef, trackGoalkeeperTouch } = useBallGoalDetection({ 
     checkGoal, 
     tournamentMode 
   });
@@ -45,6 +45,17 @@ export const useBallMovementSystem = ({
   
   // Ball collision tracking
   const { lastCollisionTimeRef } = useBallCollisionTracking();
+  
+  // Enhanced ball touch handler that can identify goalkeeper touches
+  const handleBallTouch = useCallback((player: Player) => {
+    // Call the original onBallTouch function
+    onBallTouch(player);
+    
+    // If the player is a goalkeeper, track the touch for goal detection prevention
+    if (player.role === 'goalkeeper') {
+      trackGoalkeeperTouch(player.team);
+    }
+  }, [onBallTouch, trackGoalkeeperTouch]);
   
   // Main function to update ball position based on its velocity
   const updateBallPosition = useCallback(() => {
@@ -84,7 +95,7 @@ export const useBallMovementSystem = ({
       newPosition,
       goalkeepers,
       fieldPlayers,
-      onBallTouch,
+      handleBallTouch, // Use enhanced handler that can track goalkeeper touches
       lastCollisionTimeRef,
       lastKickPositionRef,
       teamAdvantageFactors
@@ -132,6 +143,8 @@ export const useBallMovementSystem = ({
     onBallTouch,
     checkStall,
     handleGoalCheck,
+    trackGoalkeeperTouch,
+    handleBallTouch,
     lastCollisionTimeRef,
     tournamentMode,
     teamAdvantageFactors

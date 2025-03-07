@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Ball, Position, PITCH_WIDTH, PITCH_HEIGHT, GOAL_HEIGHT } from '../../types/football';
 
@@ -19,6 +18,16 @@ export const useBallGoalDetection = ({
   // NEW: Add goal cooldown to prevent multiple goal detections
   const lastGoalTimeRef = React.useRef<number>(0);
   const goalCooldownPeriod = 3000; // 3 seconds cooldown between goals
+  
+  // Track last known goalkeeper touch to prevent goals right after goalkeeper touches
+  const lastGoalkeeperTouchRef = React.useRef<{
+    time: number;
+    team: 'red' | 'blue' | null;
+  }>({
+    time: 0,
+    team: null
+  });
+  const goalkeeperSaveCooldown = 1000; // 1 second cooldown after goalkeeper touch
   
   // NEW: Track if ball was close to goal for near miss detection
   const nearMissRef = React.useRef<{
@@ -80,6 +89,17 @@ export const useBallGoalDetection = ({
     return false;
   }, [tournamentMode]);
   
+  // Track when a goalkeeper touches the ball
+  const trackGoalkeeperTouch = React.useCallback((team: 'red' | 'blue') => {
+    lastGoalkeeperTouchRef.current = {
+      time: Date.now(),
+      team
+    };
+    if (!tournamentMode) {
+      console.log(`Goalkeeper ${team} touched the ball - preventing goal detection for 1 second`);
+    }
+  }, [tournamentMode]);
+  
   const handleGoalCheck = React.useCallback((
     currentBall: Ball, 
     newPosition: Position
@@ -94,10 +114,24 @@ export const useBallGoalDetection = ({
     const timeSinceLastGoal = currentTime - lastGoalTimeRef.current;
     const isInGoalCooldown = timeSinceLastGoal < goalCooldownPeriod;
     
+    // Check if we're in goalkeeper save cooldown
+    const timeSinceGoalkeeperTouch = currentTime - lastGoalkeeperTouchRef.current.time;
+    const isInGoalkeeperCooldown = timeSinceGoalkeeperTouch < goalkeeperSaveCooldown;
+    
+    // Log goalkeeper cooldown status if active
+    if (isInGoalkeeperCooldown && !tournamentMode) {
+      console.log(`Goal detection blocked - goalkeeper save cooldown (${timeSinceGoalkeeperTouch}ms / ${goalkeeperSaveCooldown}ms)`);
+    }
+    
     if (isInGoalCooldown) {
       if (!tournamentMode) {
         console.log(`Goal detection blocked - cooldown active (${timeSinceLastGoal}ms / ${goalCooldownPeriod}ms)`);
       }
+      return { goalScored: null, updatedBall: currentBall };
+    }
+    
+    // Don't register a goal during goalkeeper save cooldown
+    if (isInGoalkeeperCooldown) {
       return { goalScored: null, updatedBall: currentBall };
     }
     
@@ -159,6 +193,11 @@ export const useBallGoalDetection = ({
     gameStartTimeRef.current = Date.now();
     // Also reset the goal cooldown timer when game restarts
     lastGoalTimeRef.current = 0;
+    // Reset goalkeeper touch tracking
+    lastGoalkeeperTouchRef.current = {
+      time: 0,
+      team: null
+    };
     
     if (!tournamentMode) {
       console.log("Goal detection grace period started");
@@ -170,5 +209,10 @@ export const useBallGoalDetection = ({
     resetGameClock();
   }, [resetGameClock]);
   
-  return { handleGoalCheck, nearMissRef, resetGameClock };
+  return { 
+    handleGoalCheck, 
+    nearMissRef, 
+    resetGameClock,
+    trackGoalkeeperTouch 
+  };
 };
