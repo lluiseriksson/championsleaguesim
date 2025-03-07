@@ -1,3 +1,4 @@
+
 import { Position, NeuralInput, NeuralOutput, TeamContext, PITCH_WIDTH, PITCH_HEIGHT, SituationContext } from '../types/football';
 import * as brain from 'brain.js';
 import { calculateShotQuality } from './playerBrain';
@@ -178,7 +179,7 @@ export const createNeuralInput = (
     counterAttackPotential: 0.5, // Default value
     pressureResistance: 1 - calculatePressureIndex(player, opponents),
     recoveryPosition: 0.5, // Default value
-    transitionSpeed: 0.5 // Default value
+    transitionSpeed: 0.5, // Default value
     
     // Add the required player identity parameters
     playerId: gameContext.playerId !== undefined ? gameContext.playerId / 100 : 0.5,
