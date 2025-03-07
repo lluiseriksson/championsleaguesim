@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 
 interface MatchTimerProps {
@@ -12,7 +11,7 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
   onTimeEnd,
   goldenGoal = false
 }) => {
-  // Instead of counting down, we'll track elapsed time
+  // Track elapsed time in real seconds
   const [elapsedTime, setElapsedTime] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const lastTickTimeRef = useRef<number>(Date.now());
@@ -30,13 +29,13 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
   // Function to tick the timer, with safeguards against missed frames
   const tick = () => {
     const now = Date.now();
-    const delta = Math.floor((now - lastTickTimeRef.current) / 1000);
+    const deltaSeconds = (now - lastTickTimeRef.current) / 1000;
     
     // If more than 5 seconds passed between ticks, something went wrong (tab inactive, etc.)
     // In that case, use a value based on real time to prevent huge jumps
-    const increment = delta > 5 ? 
-      Math.min(5, Math.floor((now - lastTickTimeRef.current) / 1000)) : 
-      delta > 0 ? delta : 1;
+    const increment = deltaSeconds > 5 ? 
+      Math.min(5, (now - lastTickTimeRef.current) / 1000) : 
+      deltaSeconds;
     
     lastTickTimeRef.current = now;
     
@@ -44,7 +43,7 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
       const newTime = prev + increment;
       // Log when we're approaching the end time
       if (initialTime - newTime <= 5 && initialTime - newTime > 0) {
-        console.log(`Approaching end time: ${newTime}/${initialTime}`);
+        console.log(`Approaching end time: ${newTime.toFixed(1)}/${initialTime}`);
       }
       return newTime;
     });
@@ -71,13 +70,13 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
   useEffect(() => {
     if (goldenGoal && goldenGoalStartTimeRef.current === 0) {
       goldenGoalStartTimeRef.current = elapsedTime;
-      console.log('Golden goal started at elapsed time:', goldenGoalStartTimeRef.current);
+      console.log('Golden goal started at elapsed time:', goldenGoalStartTimeRef.current.toFixed(1));
     } else if (!goldenGoal) {
       goldenGoalStartTimeRef.current = 0;
     }
   }, [goldenGoal, elapsedTime]);
 
-  // Main timer effect with additional resilience
+  // Main timer effect with additional resilience - use a more accurate timing mechanism
   useEffect(() => {
     // Clear any existing interval
     if (timerRef.current) {
@@ -92,35 +91,44 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
       onTimeEnd();
     }
 
-    // Create a reliable timer using both interval and timeout as backup
-    const startTimer = () => {
-      // Use a more frequent interval (200ms) for better reliability
+    // Create a reliable timer using requestAnimationFrame for smoother updates
+    let frameId: number;
+    const animationFrame = () => {
+      try {
+        tick();
+        frameId = requestAnimationFrame(animationFrame);
+      } catch (error) {
+        console.error("Error in timer tick:", error);
+        intervalErrorCountRef.current++;
+        
+        // If we get too many errors, revert to interval as fallback
+        if (intervalErrorCountRef.current > 5) {
+          console.warn("Reverting to interval timer due to animation frame errors");
+          cancelAnimationFrame(frameId);
+          startIntervalTimer();
+          intervalErrorCountRef.current = 0;
+        } else {
+          frameId = requestAnimationFrame(animationFrame);
+        }
+      }
+    };
+    
+    // Fallback to interval timer if needed
+    const startIntervalTimer = () => {
       timerRef.current = setInterval(() => {
         try {
           tick();
         } catch (error) {
-          console.error("Error in timer tick:", error);
-          intervalErrorCountRef.current++;
-          
-          // If we get too many errors, reset the interval
-          if (intervalErrorCountRef.current > 5) {
-            console.warn("Resetting problematic timer interval");
-            if (timerRef.current) {
-              clearInterval(timerRef.current);
-              timerRef.current = null;
-              // Restart with a new interval
-              startTimer();
-            }
-            intervalErrorCountRef.current = 0;
-          }
+          console.error("Error in interval timer tick:", error);
         }
-      }, 200);
+      }, 100); // Update 10 times per second for smoother display
     };
     
     // In regular mode: start timer if we haven't reached the end time
     // In golden goal mode: always keep the timer running
     if (elapsedTime < initialTime || goldenGoal) {
-      startTimer();
+      // Start with requestAnimationFrame for smoother updates
+      frameId = requestAnimationFrame(animationFrame);
       
       // Add a backup system to ensure time progresses
       const backupTimerId = setTimeout(() => {
@@ -136,6 +144,7 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
       }, 3000);
       
       return () => {
+        cancelAnimationFrame(frameId);
         if (timerRef.current) {
           clearInterval(timerRef.current);
           timerRef.current = null;
@@ -146,6 +155,9 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
 
     // Cleanup function
     return () => {
+      if (frameId) {
+        cancelAnimationFrame(frameId);
+      }
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
