@@ -119,7 +119,7 @@ export const updatePlayerBrain = (
       player,
       ballWithDetails,
       context,
-      brain.lastAction as 'move' | 'pass' | 'shoot' | 'intercept'
+      brain.lastAction
     );
     
     // Add weighted tactical reward to total reward
@@ -224,7 +224,7 @@ export const updatePlayerBrain = (
         brain.lastShotQuality = 0;
       }
     }
-  } else if (brain.lastAction && brain.lastAction !== 'shoot') {
+  } else if (brain.lastAction) {
     // If player didn't shoot, reset shot quality tracking
     brain.lastShotQuality = 0;
     
