@@ -1,4 +1,4 @@
-import { Position, Player } from '../types/football';
+import { Position, Player, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
 import { calculateDistance } from './neuralCore';
 
 // Increased radius limits to allow more movement freedom
@@ -11,6 +11,13 @@ const ROLE_RADIUS_LIMITS = {
 
 // Increased neural adjustment radius for more freedom
 const NEURAL_ADJUSTMENT_RADIUS = 25; // Increased from 16 to 25
+
+// Field boundary constants for player containment
+const FIELD_PADDING = {
+  x: 12, // Minimum padding from edge of field
+  goalX: 8, // Minimum distance from goal line (to prevent players going inside goals)
+  y: 12  // Minimum padding from top/bottom edge
+};
 
 // New function to force a position within boundaries
 export const forcePositionWithinRadiusBounds = (
@@ -32,19 +39,41 @@ export const forcePositionWithinRadiusBounds = (
   // Calculate distance from tactical position
   const distanceFromTarget = calculateDistance(position, targetPosition);
   
+  // First ensure the position is within the field boundaries
+  let constrainedPosition = {
+    x: Math.max(FIELD_PADDING.x, Math.min(PITCH_WIDTH - FIELD_PADDING.x, position.x)),
+    y: Math.max(FIELD_PADDING.y, Math.min(PITCH_HEIGHT - FIELD_PADDING.y, position.y))
+  };
+  
+  // Special handling for goalkeepers to ensure they're not inside the goals
+  if (role === 'goalkeeper') {
+    if (position.x < FIELD_PADDING.goalX) {
+      constrainedPosition.x = FIELD_PADDING.goalX;
+    } else if (position.x > PITCH_WIDTH - FIELD_PADDING.goalX) {
+      constrainedPosition.x = PITCH_WIDTH - FIELD_PADDING.goalX;
+    }
+  }
+  
+  // If within radius, return the position (after boundary constraints)
   if (distanceFromTarget <= maxRadius) {
-    return position;
+    return constrainedPosition;
   }
   
   // If outside radius, force to the radius boundary
   const angle = Math.atan2(
-    position.y - targetPosition.y,
-    position.x - targetPosition.x
+    constrainedPosition.y - targetPosition.y,
+    constrainedPosition.x - targetPosition.x
   );
   
-  return {
+  const radiusBoundPosition = {
     x: targetPosition.x + Math.cos(angle) * maxRadius,
     y: targetPosition.y + Math.sin(angle) * maxRadius
+  };
+  
+  // Apply boundary constraints to the radius-constrained position
+  return {
+    x: Math.max(FIELD_PADDING.x, Math.min(PITCH_WIDTH - FIELD_PADDING.x, radiusBoundPosition.x)),
+    y: Math.max(FIELD_PADDING.y, Math.min(PITCH_HEIGHT - FIELD_PADDING.y, radiusBoundPosition.y))
   };
 }
 
@@ -73,22 +102,43 @@ export const constrainMovementToRadius = (
     ? (baseMaxRadius * 1.15 * randomFactor) + extraRadius // Reduced from 1.3
     : (baseMaxRadius * randomFactor) + extraRadius;
   
+  // First ensure the position is within the field boundaries
+  let constrainedPosition = {
+    x: Math.max(FIELD_PADDING.x, Math.min(PITCH_WIDTH - FIELD_PADDING.x, proposedPosition.x)),
+    y: Math.max(FIELD_PADDING.y, Math.min(PITCH_HEIGHT - FIELD_PADDING.y, proposedPosition.y))
+  };
+  
+  // Special handling for goalkeepers to ensure they're not inside the goals
+  if (role === 'goalkeeper') {
+    if (constrainedPosition.x < FIELD_PADDING.goalX) {
+      constrainedPosition.x = FIELD_PADDING.goalX;
+    } else if (constrainedPosition.x > PITCH_WIDTH - FIELD_PADDING.goalX) {
+      constrainedPosition.x = PITCH_WIDTH - FIELD_PADDING.goalX;
+    }
+  }
+  
   // Calculate distance from tactical position
-  const distanceFromTarget = calculateDistance(proposedPosition, targetPosition);
+  const distanceFromTarget = calculateDistance(constrainedPosition, targetPosition);
   
   if (distanceFromTarget <= maxRadius) {
-    return proposedPosition;
+    return constrainedPosition;
   }
   
   // If outside radius, constrain to the radius boundary
   const angle = Math.atan2(
-    proposedPosition.y - targetPosition.y,
-    proposedPosition.x - targetPosition.x
+    constrainedPosition.y - targetPosition.y,
+    constrainedPosition.x - targetPosition.x
   );
   
-  return {
+  const radiusBoundPosition = {
     x: targetPosition.x + Math.cos(angle) * maxRadius,
     y: targetPosition.y + Math.sin(angle) * maxRadius
+  };
+  
+  // Apply boundary constraints to the radius-constrained position
+  return {
+    x: Math.max(FIELD_PADDING.x, Math.min(PITCH_WIDTH - FIELD_PADDING.x, radiusBoundPosition.x)),
+    y: Math.max(FIELD_PADDING.y, Math.min(PITCH_HEIGHT - FIELD_PADDING.y, radiusBoundPosition.y))
   };
 };
 
