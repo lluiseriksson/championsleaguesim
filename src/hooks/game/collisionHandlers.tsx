@@ -20,10 +20,10 @@ export function handleFieldPlayerCollisions(
     const enhancedCollisionRadius = eloFactor > 1.0;
     
     // Higher ELO players can reach the ball from slightly further away
+    // Fixed: Removed the fourth parameter and adjusted the call to match the function signature
     const collision = checkCollision(
       newPosition, 
       player.position, 
-      false,
       enhancedCollisionRadius ? (eloFactor * 1.2) : 1.0 // Up to 20% larger reach
     );
     

@@ -1,4 +1,3 @@
-
 import { Position, PLAYER_RADIUS, BALL_RADIUS, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
 
 const MAX_BALL_SPEED = 18; // Keeping higher speed for powerful shots
@@ -78,15 +77,22 @@ const limitSpeed = (velocity: Position): Position => {
   return velocity;
 };
 
-export const checkCollision = (ballPos: Position, playerPos: Position, isGoalkeeper: boolean = false): boolean => {
+// Updated checkCollision function to accept an optional radiusMultiplier parameter
+export const checkCollision = (
+  ballPos: Position, 
+  playerPos: Position, 
+  isGoalkeeper: boolean = false,
+  radiusMultiplier: number = 1.0
+): boolean => {
   const dx = ballPos.x - playerPos.x;
   const dy = ballPos.y - playerPos.y;
   const distance = Math.sqrt(dx * dx + dy * dy);
   
-  // Different reach for goalkeepers (23) vs regular players (15)
+  // Different reach for goalkeepers (40) vs regular players (15)
+  // Apply the radius multiplier to adjust reach based on ELO or other factors
   const playerReach = isGoalkeeper 
-    ? 40 - BALL_RADIUS  // 40 units for goalkeepers
-    : 15 - BALL_RADIUS; // 15 units for field players
+    ? (40 - BALL_RADIUS) * radiusMultiplier  // 40 units for goalkeepers, adjusted by multiplier
+    : (15 - BALL_RADIUS) * radiusMultiplier; // 15 units for field players, adjusted by multiplier
   
   // Add a small buffer to prevent the ball from getting stuck
   return distance <= (BALL_RADIUS + playerReach + 0.5);

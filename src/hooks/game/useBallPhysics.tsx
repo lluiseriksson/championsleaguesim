@@ -128,7 +128,12 @@ function handlePlayerCollisions(
       const enhancedCollisionRadius = eloFactor > 1.0;
       const radiusMultiplier = enhancedCollisionRadius ? Math.min(1.4, eloFactor * 1.2) : 1.0;
       
-      const collision = checkCollision(newPosition, goalkeeper.position, true, radiusMultiplier);
+      // Fixed: Removed the fourth parameter and adjusted the call to match the function signature
+      const collision = checkCollision(
+        newPosition, 
+        goalkeeper.position, 
+        true
+      );
       
       if (collision) {
         onBallTouch(goalkeeper);
