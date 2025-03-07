@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
@@ -60,7 +59,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   const [players, setPlayers] = useState<Player[]>([]);
   const [ball, setBall] = useState<Ball>({
     position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
-    velocity: { x: Math.random() > 0.5 ? 3 : -3, y: (Math.random() - 0.5) * 3 },
+    velocity: { x: Math.random() > 0.5 ? 2 : -2, y: (Math.random() - 0.5) * 1.5 },
     bounceDetection: {
       consecutiveBounces: 0,
       lastBounceTime: 0,
@@ -249,6 +248,18 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
     
     const validatedPlayers = newPlayers.map(player => validatePlayerBrain(player));
     setPlayers(validatedPlayers);
+    
+    // Reset ball position properly with a safe initial velocity
+    setBall({
+      position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
+      velocity: { x: Math.random() > 0.5 ? 2 : -2, y: (Math.random() - 0.5) * 1.5 },
+      bounceDetection: {
+        consecutiveBounces: 0,
+        lastBounceTime: 0,
+        lastBounceSide: '',
+        sideEffect: false
+      }
+    });
   };
   
   const { updatePlayerPositions } = usePlayerMovement({ 

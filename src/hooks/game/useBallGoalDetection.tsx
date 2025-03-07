@@ -12,6 +12,10 @@ export const useBallGoalDetection = ({
   tournamentMode = false 
 }: BallGoalDetectionProps) => {
   
+  // Prevent immediate goals when game starts
+  const gameStartTimeRef = React.useRef<number>(Date.now());
+  const minPlayTimeBeforeGoal = 1500; // 1.5 seconds grace period
+  
   // NEW: Track if ball was close to goal for near miss detection
   const nearMissRef = React.useRef<{
     detected: boolean;
@@ -76,8 +80,24 @@ export const useBallGoalDetection = ({
     currentBall: Ball, 
     newPosition: Position
   ): { goalScored: 'red' | 'blue' | null; updatedBall: Ball } => {
+    const currentTime = Date.now();
+    
+    // Check if enough time has passed since game start
+    const timeSinceStart = currentTime - gameStartTimeRef.current;
+    const allowGoalDetection = timeSinceStart > minPlayTimeBeforeGoal;
+    
     // Check if a goal was scored
-    const goalScored = checkGoal(newPosition);
+    let goalScored = null;
+    
+    if (allowGoalDetection) {
+      goalScored = checkGoal(newPosition);
+    } else if (!tournamentMode) {
+      // Still check goal for debugging but don't count it
+      const wouldBeGoal = checkGoal(newPosition);
+      if (wouldBeGoal) {
+        console.log(`IGNORED early goal for ${wouldBeGoal} - game just started (${timeSinceStart}ms)`);
+      }
+    }
     
     if (goalScored) {
       // Log less in tournament mode to reduce memory usage
@@ -101,6 +121,9 @@ export const useBallGoalDetection = ({
         }
       };
       
+      // Reset the game start timer after a goal
+      gameStartTimeRef.current = currentTime;
+      
       return { goalScored, updatedBall };
     }
     
@@ -113,5 +136,18 @@ export const useBallGoalDetection = ({
     return { goalScored: null, updatedBall: currentBall };
   }, [checkGoal, checkNearMiss, tournamentMode]);
   
-  return { handleGoalCheck, nearMissRef };
+  // Add a reset method for game start/restart
+  const resetGameClock = React.useCallback(() => {
+    gameStartTimeRef.current = Date.now();
+    if (!tournamentMode) {
+      console.log("Goal detection grace period started");
+    }
+  }, [tournamentMode]);
+  
+  // Initialize timer on component mount
+  React.useEffect(() => {
+    resetGameClock();
+  }, [resetGameClock]);
+  
+  return { handleGoalCheck, nearMissRef, resetGameClock };
 };
