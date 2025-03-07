@@ -1,17 +1,16 @@
-
 import { Position, Player } from '../types/football';
 import { calculateDistance } from './neuralCore';
 
-// Reduced radius limits to constrain player movement
+// Increased radius limits to allow more movement freedom
 const ROLE_RADIUS_LIMITS = {
-  goalkeeper: 70,    // Reduced from 90
-  defender: 150,     // Reduced from 210
-  midfielder: 140,   // Reduced from 200
-  forward: 180       // Reduced from 270
+  goalkeeper: 90,    // Increased from 70 to 90
+  defender: 150,     // Kept the same
+  midfielder: 140,   // Kept the same
+  forward: 180       // Kept the same
 };
 
 // Significantly reduced neural adjustment radius
-const NEURAL_ADJUSTMENT_RADIUS = 8; // Reduced from 20
+const NEURAL_ADJUSTMENT_RADIUS = 8; // Kept the same
 
 export const constrainMovementToRadius = (
   currentPosition: Position,
