@@ -31,6 +31,11 @@ const STRATEGIC_POSITION_REWARD = 0.6;
 const OPEN_SPACE_REWARD = 0.4;
 const TACTICAL_REWARD_SCALE = 0.8;
 
+// NEW: Penalties for defenders and goalkeepers being out of position when goals are scored
+const GOALKEEPER_GOAL_CONCEDED_MAX_PENALTY = -4.0; // Severe penalty when goalkeeper is far from where goal was scored
+const DEFENDER_GOAL_CONCEDED_MAX_PENALTY = -2.5; // Strong penalty when defender is far from where goal was scored
+const GOAL_POSITION_DISTANCE_THRESHOLD = 150; // Distance threshold in pixels
+
 // Improved shot reward parameters
 const ON_TARGET_SHOT_REWARD = 1.8; // Increased from 1.2 to better reward on-target shots
 const SHOT_OFF_TARGET_PENALTY = -1.2; // Increased penalty for off-target shots
@@ -145,6 +150,32 @@ const calculatePositioningReward = (player: Player, context: TeamContext): numbe
   return reward;
 };
 
+// NEW: Calculate penalty for defenders and goalkeepers based on distance from goal scoring position
+const calculateDefensivePositionPenalty = (
+  player: Player, 
+  goalPosition: Position, 
+  playerPosition: Position
+): number => {
+  // Calculate distance from where the goal was scored
+  const distanceFromGoal = calculateDistance(playerPosition, goalPosition);
+  
+  // Set base penalty based on role
+  const maxPenalty = player.role === 'goalkeeper' 
+    ? GOALKEEPER_GOAL_CONCEDED_MAX_PENALTY 
+    : DEFENDER_GOAL_CONCEDED_MAX_PENALTY;
+  
+  // Calculate penalty factor based on distance (closer = less penalty, farther = more penalty)
+  // The penalty increases as distance increases, up to the maximum threshold
+  const penaltyFactor = Math.min(1.0, distanceFromGoal / GOAL_POSITION_DISTANCE_THRESHOLD);
+  
+  // Calculate final penalty (negative value)
+  const penalty = maxPenalty * penaltyFactor;
+  
+  console.log(`${player.team} ${player.role} out of position penalty: ${penalty.toFixed(2)} (distance from goal: ${distanceFromGoal.toFixed(2)}px)`);
+  
+  return penalty;
+};
+
 export const updatePlayerBrain = (
   brain: NeuralNet, 
   scored: boolean, 
@@ -166,6 +197,25 @@ export const updatePlayerBrain = (
   // Add positional rewards
   if (!scored && !isOwnGoal) {
     rewardFactor += calculatePositioningReward(player, context);
+  }
+
+  // NEW: Apply stronger penalty for defenders and goalkeepers who are far from where a goal was scored
+  if (!scored && (player.role === 'goalkeeper' || player.role === 'defender')) {
+    // Only apply this penalty when the opponent scored (and it's not an own goal)
+    if (!isOwnGoal) {
+      // Use ball position as a proxy for where the goal was scored
+      const goalScoringPosition = ball.position;
+      
+      // Calculate and apply the defensive position penalty
+      const defensivePenalty = calculateDefensivePositionPenalty(
+        player,
+        goalScoringPosition,
+        player.position
+      );
+      
+      // Add the penalty to the reward factor
+      rewardFactor += defensivePenalty;
+    }
   }
 
   // Add tactical rewards
@@ -325,8 +375,18 @@ export const updatePlayerBrain = (
         const saveReward = 1.0;
         rewardFactor = saveReward;
       } else {
-        console.log(`${player.team} goalkeeper penalty: ${scaledPenalty.toFixed(2)} (distance: ${distanceToBall.toFixed(2)}px)`);
-        rewardFactor = scaledPenalty;
+        // NEW: Apply stronger penalty based on distance from where goal was scored
+        const defensivePositionPenalty = calculateDefensivePositionPenalty(
+          player,
+          ball.position, // Use ball position as proxy for goal scoring position
+          player.position
+        );
+        
+        // Use the more severe of the two penalties
+        const finalPenalty = Math.min(scaledPenalty, defensivePositionPenalty);
+        console.log(`${player.team} goalkeeper final penalty: ${finalPenalty.toFixed(2)}`);
+        
+        rewardFactor = finalPenalty;
       }
       
       try {

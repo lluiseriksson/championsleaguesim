@@ -44,6 +44,9 @@ export const useGoalSystem = ({
     shotQuality: 0
   });
 
+  // Store the position where the goal was scored
+  const goalScoringPositionRef = React.useRef<Position>({ x: 0, y: 0 });
+
   // NEW: Calculate shot quality for reward purposes
   const calculateShotQuality = React.useCallback((shooter: Player, shotVelocity: Position) => {
     // Get opponent goal
@@ -164,6 +167,9 @@ export const useGoalSystem = ({
 
     // Add more detailed logging for goal detection (limited in tournament mode)
     if (position.x <= BALL_RADIUS && position.y >= goalTop && position.y <= goalBottom) {
+      // Store the position where the goal was scored
+      goalScoringPositionRef.current = { ...position };
+      
       if (!tournamentMode) {
         console.log("GOAL DETECTED: Blue team scored!", { position, goalTop, goalBottom });
       }
@@ -171,6 +177,9 @@ export const useGoalSystem = ({
     }
     
     if (position.x >= PITCH_WIDTH - BALL_RADIUS && position.y >= goalTop && position.y <= goalBottom) {
+      // Store the position where the goal was scored
+      goalScoringPositionRef.current = { ...position };
+      
       if (!tournamentMode) {
         console.log("GOAL DETECTED: Red team scored!", { position, goalTop, goalBottom });
       }
@@ -204,8 +213,12 @@ export const useGoalSystem = ({
       const ballPreviousPositionAtGoal = ball.previousPosition || {...ball.position};
       const ballVelocityAtGoal = ball.velocity || { x: 0, y: 0 };
       
+      // Use the stored goal scoring position
+      const goalPosition = {...goalScoringPositionRef.current};
+      
       if (!tournamentMode) {
         console.log(`Ball position at goal: ${JSON.stringify(ballPositionAtGoal)}`);
+        console.log(`Goal scored at position: ${JSON.stringify(goalPosition)}`);
       }
       
       // Determine if this was an own goal
@@ -362,6 +375,9 @@ export const useGoalSystem = ({
 
       // Reset the reference to the last player who touched the ball
       lastPlayerTouchRef.current = null;
+      
+      // Reset the goal scoring position
+      goalScoringPositionRef.current = { x: 0, y: 0 };
       
       return updatedPlayers;
     });
