@@ -85,29 +85,27 @@ export const checkCollision = (ballPos: Position, playerPos: Position, isGoalkee
   
   // Use provided playerRadius instead of fixed PLAYER_RADIUS to account for ELO adjustments
   // Field players have 15 units of reach for interacting with the ball
-  // For goalkeepers, use 15 units for non-angled shots, plus 0.5x extension for angled shots
   const fieldPlayerReach = 15 - BALL_RADIUS; // 15 units total minus ball radius
-  const goalkeeperBaseReach = 15 - BALL_RADIUS; // Now 15 units minus ball radius for non-angled shots
   
-  // For goalkeepers, check if it's an angled shot moving toward goal
+  // For goalkeepers, check if it's an angled shot
   if (isGoalkeeper) {
-    const isLeftGoalkeeper = playerPos.x < PITCH_WIDTH / 2;
     const ballAngle = Math.atan2(dy, dx);
     const isAngledShot = Math.abs(ballAngle) > Math.PI/8;
     
-    // Base reach for non-angled shots is now 15 units
-    let reach = goalkeeperBaseReach;
-    
-    // Add 0.5x extension for angled shots moving toward goal
     if (isAngledShot) {
-      reach *= 1.5; // 0.5x extension (1 + 0.5 = 1.5)
+      // Keep angled shot collision detection as is (15 units minus ball radius)
+      const goalkeeperAngledReach = 15 - BALL_RADIUS;
+      return distance <= (BALL_RADIUS + goalkeeperAngledReach + (playerRadius - PLAYER_RADIUS));
+    } else {
+      // For straight shots, base reach is now 0
+      // ELO-based adjustments are handled separately in calculateEloGoalkeeperReachAdjustment
+      const goalkeeperStraightReach = 0;
+      return distance <= (BALL_RADIUS + goalkeeperStraightReach + (playerRadius - PLAYER_RADIUS));
     }
-    
-    return distance <= (BALL_RADIUS + reach + (playerRadius - PLAYER_RADIUS));
   }
   
   // For field players, use the extended 15-unit reach
-  const reach = isGoalkeeper ? goalkeeperBaseReach : fieldPlayerReach;
+  const reach = fieldPlayerReach;
   
   // Add a small buffer to prevent the ball from getting stuck
   // Include the difference between adjusted radius and standard radius
@@ -238,3 +236,4 @@ export const calculateNewVelocity = (
   
   return limitSpeed(newVelocity);
 };
+

@@ -27,6 +27,38 @@ export const calculateEloRadiusAdjustment = (teamElo: number = 1500, opponentElo
   return 0; // No adjustment for equal ratings
 };
 
+// Calculate goalkeeper reach adjustment for straight and angled shots based on ELO
+export const calculateEloGoalkeeperReachAdjustment = (
+  teamElo: number = 1500, 
+  opponentElo: number = 1500, 
+  isAngledShot: boolean = false
+): number => {
+  // Get absolute ELO difference (cap at 500 to prevent extreme adjustments)
+  const eloDifference = Math.min(Math.abs(teamElo - opponentElo), 500);
+  
+  if (teamElo > opponentElo) {
+    // Higher-rated team's goalkeeper gets bonus reach
+    if (isAngledShot) {
+      // No additional bonus for angled shots (already have advantage)
+      return 0;
+    } else {
+      // Significant bonus for straight shots (up to 20 units)
+      return Math.sqrt(eloDifference / 500) * 20;
+    }
+  } else if (teamElo < opponentElo) {
+    // Lower-rated team's goalkeeper gets penalty only for angled shots
+    if (isAngledShot) {
+      // Penalty for angled shots (up to -10 units)
+      return -Math.sqrt(eloDifference / 500) * 10;
+    } else {
+      // No penalty for straight shots (already difficult)
+      return 0;
+    }
+  }
+  
+  return 0; // No adjustment for equal ratings
+};
+
 // Format and log ELO advantages
 export const logEloAdvantage = (homeTeam: string, homeElo: number, awayTeam: string, awayElo: number): void => {
   const eloDifference = Math.abs(homeElo - awayElo);

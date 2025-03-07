@@ -4,6 +4,7 @@ import { handleFieldPlayerCollisions } from './collisionHandlers';
 import { checkCollision, calculateNewVelocity } from '../../utils/gamePhysics';
 import { handleTopBottomBoundaries, handleLeftRightBoundaries } from './boundaryCollisions';
 import { applyVelocityAdjustments, constrainBallPosition } from './velocityUtils';
+import { useGoalkeeperReachAdjustment } from '../../components/game/BallMovementSystem';
 
 // Handle collisions and physics for the ball
 export function handleBallPhysics(
@@ -77,7 +78,24 @@ function handlePlayerCollisions(
   // Standard goalkeeper collision detection
   if (currentTime - lastCollisionTimeRef.current > goalkeeperCollisionCooldown) {
     for (const goalkeeper of goalkeepers) {
-      const collision = checkCollision(newPosition, goalkeeper.position, true);
+      // Calculate if this is an angled shot
+      const dx = newPosition.x - goalkeeper.position.x;
+      const dy = newPosition.y - goalkeeper.position.y;
+      const ballAngle = Math.atan2(dy, dx);
+      const isAngledShot = Math.abs(ballAngle) > Math.PI/8;
+      
+      // Check collision with adjusted reach based on ELO difference and shot angle
+      const eloReachAdjustment = useGoalkeeperReachAdjustment(goalkeeper, [...goalkeepers, ...fieldPlayers], isAngledShot);
+      
+      // Add the ELO-based reach adjustment to the goalkeeper for collision detection
+      // This effectively gives the higher-rated goalkeeper more reach for straight shots
+      // and reduces reach for lower-rated goalkeepers on angled shots
+      const adjustedGoalkeeper = {
+        ...goalkeeper,
+        radius: goalkeeper.radius + eloReachAdjustment
+      };
+      
+      const collision = checkCollision(newPosition, adjustedGoalkeeper.position, true, adjustedGoalkeeper.radius);
       
       if (collision) {
         onBallTouch(goalkeeper);
@@ -88,10 +106,11 @@ function handlePlayerCollisions(
           newPosition,
           goalkeeper.position,
           currentVelocity,
-          true
+          true,
+          isAngledShot // Pass the angled shot flag to calculateNewVelocity
         );
         
-        console.log("Goalkeeper collision detected");
+        console.log(`Goalkeeper collision detected: ${isAngledShot ? 'angled shot' : 'straight shot'}, ELO adjustment: ${eloReachAdjustment.toFixed(2)}`);
         break;
       }
     }

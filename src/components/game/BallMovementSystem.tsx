@@ -1,7 +1,7 @@
 import React from 'react';
 import { Player, Ball, Position } from '../../types/football';
 import { useBallMovement } from '../../hooks/game/useBallMovement';
-import { calculateEloRadiusAdjustment } from '../../utils/neural/neuralTypes';
+import { calculateEloRadiusAdjustment, calculateEloGoalkeeperReachAdjustment } from '../../utils/neural/neuralTypes';
 
 interface BallMovementSystemProps {
   ball: Ball;
@@ -35,6 +35,33 @@ export const useAdjustedPlayerRadius = (player: Player, allPlayers: Player[]): n
   // Apply adjustment to player's radius
   // Don't let the radius go below 50% of base for significant penalties
   return Math.max(player.radius + radiusAdjustment, player.radius * 0.5);
+};
+
+// Custom hook to calculate goalkeeper reach adjustment based on ELO and shot angle
+export const useGoalkeeperReachAdjustment = (
+  player: Player, 
+  allPlayers: Player[], 
+  isAngledShot: boolean = false
+): number => {
+  // Only apply to goalkeepers
+  if (player.role !== 'goalkeeper') return 0;
+  
+  // Get ELO ratings for both teams
+  const redTeamPlayer = allPlayers.find(p => p.team === 'red' && p.teamElo !== undefined);
+  const blueTeamPlayer = allPlayers.find(p => p.team === 'blue' && p.teamElo !== undefined);
+  
+  // Default to no adjustment if ELO info is unavailable
+  if (!redTeamPlayer?.teamElo || !blueTeamPlayer?.teamElo) return 0;
+
+  const redTeamElo = redTeamPlayer.teamElo;
+  const blueTeamElo = blueTeamPlayer.teamElo;
+  
+  // Calculate reach adjustment based on ELO difference and shot angle
+  return calculateEloGoalkeeperReachAdjustment(
+    player.team === 'red' ? redTeamElo : blueTeamElo,
+    player.team === 'red' ? blueTeamElo : redTeamElo,
+    isAngledShot
+  );
 };
 
 // Re-export the hook as useBallMovementSystem for backwards compatibility
