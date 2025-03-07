@@ -1,3 +1,4 @@
+
 import { useRef, useEffect, useCallback } from 'react';
 import { Player, Ball, Score } from '../../types/football';
 
@@ -48,17 +49,21 @@ export const useGameLoop = ({
     
     frameCountRef.current += 1;
     
+    // Primary game logic updates
     updatePlayerPositions();
     updateBallPosition();
     incrementSyncCounter();
     
+    // Performance checks (less frequent)
     if (frameCountRef.current % 30 === 0 && checkPerformance) {
       checkPerformance();
     }
     
+    // Adjust sync and learning intervals based on performance 
     const syncInterval = isLowPerformance ? 120 : 60;
     const learningInterval = isLowPerformance ? 300 : 180;
     
+    // Only perform sync and learning on specific frames to improve performance
     if (frameCountRef.current % syncInterval === 0) {
       try {
         syncModels();
@@ -75,6 +80,7 @@ export const useGameLoop = ({
       }
     }
     
+    // Reset frame counter to prevent overflow
     if (frameCountRef.current >= 600) {
       frameCountRef.current = 0;
     }

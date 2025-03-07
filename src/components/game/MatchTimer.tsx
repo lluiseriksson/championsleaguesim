@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 
 interface MatchTimerProps {
@@ -38,6 +39,10 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
     
     setElapsedTime(prev => {
       const newTime = prev + increment;
+      // Log when we're approaching the end time
+      if (initialTime - newTime <= 5 && initialTime - newTime > 0) {
+        console.log(`Approaching end time: ${newTime}/${initialTime}`);
+      }
       return newTime;
     });
   };
@@ -68,7 +73,7 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
     }
   }, [goldenGoal, elapsedTime]);
 
-  // Main timer effect
+  // Main timer effect - Fixed to ensure it runs until initialTime is reached
   useEffect(() => {
     // Clear any existing interval
     if (timerRef.current) {
@@ -86,9 +91,8 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
     // In regular mode: start timer if we haven't reached the end time
     // In golden goal mode: always keep the timer running
     if (elapsedTime < initialTime || goldenGoal) {
-      // Use a more frequent interval (500ms) for better reliability
-      // and to recover more quickly from potential browser throttling
-      timerRef.current = setInterval(tick, 500);
+      // Use a more frequent interval (250ms) for better reliability
+      timerRef.current = setInterval(tick, 250);
     }
 
     // Cleanup function
@@ -117,8 +121,8 @@ const MatchTimer: React.FC<MatchTimerProps> = ({
   if (goldenGoal) {
     const extraTimeElapsed = elapsedTime - goldenGoalStartTimeRef.current;
     const extraTimeScaled = Math.floor((extraTimeElapsed / initialTime) * 90);
-    const extraMinutes = Math.floor(extraTimeScaled / 60);
-    const extraSeconds = extraTimeScaled % 60;
+    const extraMinutes = Math.floor(extraTimeScaled);
+    const extraSeconds = Math.floor((extraTimeScaled % 1) * 60);
     
     formattedTime = `90+${extraMinutes}:${extraSeconds < 10 ? '0' : ''}${extraSeconds}`;
   } else {
