@@ -32,17 +32,17 @@ const applyEloRadiusAdjustment = (
   
   // No advantage for lower-rated team
   if (eloDifference <= 0) {
-    // Apply a small penalty for lower-rated team (up to -10%)
+    // Apply a larger penalty for lower-rated team (up to -25%)
     const cappedNegativeDifference = Math.max(eloDifference, -500);
-    const radiusPenalty = (cappedNegativeDifference / 500) * 0.10;
+    const radiusPenalty = (cappedNegativeDifference / 500) * 0.25; // Increased from 0.10 to 0.25
     return baseRadius * (1 + radiusPenalty); // This will be a reduction since radiusPenalty is negative
   }
   
   // Cap at 500 ELO difference for higher-rated team
   const cappedDifference = Math.min(eloDifference, 500);
   
-  // Calculate radius bonus (up to 15% boost for higher-rated team)
-  const radiusBonus = (cappedDifference / 500) * 0.15;
+  // Calculate radius bonus (up to 30% boost for higher-rated team, increased from 15%)
+  const radiusBonus = (cappedDifference / 500) * 0.30;
   
   return baseRadius * (1 + radiusBonus);
 };

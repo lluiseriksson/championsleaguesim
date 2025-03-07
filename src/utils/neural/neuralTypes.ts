@@ -1,4 +1,3 @@
-
 // Types for neural network models in database
 export interface NeuralModelData {
   id?: number;
@@ -18,12 +17,11 @@ export const calculateEloRadiusAdjustment = (teamElo: number = 1500, opponentElo
   
   // Higher-rated team gets radius boost, lower-rated team gets penalty
   if (teamElo > opponentElo) {
-    // Calculate bonus for higher-rated team (0 to 3 units)
-    return Math.sqrt(eloDifference / 500) * 3;
+    // Calculate bonus for higher-rated team (0 to 10 units)
+    return Math.sqrt(eloDifference / 500) * 10;
   } else if (teamElo < opponentElo) {
-    // Calculate penalty for lower-rated team (0 to -1.5 units)
-    // Using half the positive adjustment to ensure playability
-    return -Math.sqrt(eloDifference / 500) * 1.5;
+    // Calculate penalty for lower-rated team (0 to -10 units)
+    return -Math.sqrt(eloDifference / 500) * 10;
   }
   
   return 0; // No adjustment for equal ratings

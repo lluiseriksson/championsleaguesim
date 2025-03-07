@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Player, Ball, Position } from '../../types/football';
 import { useBallMovement } from '../../hooks/game/useBallMovement';
@@ -34,7 +33,8 @@ export const useAdjustedPlayerRadius = (player: Player, allPlayers: Player[]): n
   );
   
   // Apply adjustment to player's radius
-  return Math.max(player.radius + radiusAdjustment, player.radius * 0.75); // Don't reduce below 75% of base radius
+  // Don't let the radius go below 50% of base for significant penalties
+  return Math.max(player.radius + radiusAdjustment, player.radius * 0.5);
 };
 
 // Re-export the hook as useBallMovementSystem for backwards compatibility
