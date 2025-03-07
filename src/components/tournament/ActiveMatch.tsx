@@ -23,7 +23,7 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
         homeTeam={activeMatch.teamA.name}
         awayTeam={activeMatch.teamB.name}
         onMatchComplete={onMatchComplete}
-        matchDuration={120} // 2 minute match duration (increased from 60)
+        matchDuration={60} // Reverted back to 1 minute match duration
       />
     </div>
   );
