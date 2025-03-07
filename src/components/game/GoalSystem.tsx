@@ -15,6 +15,7 @@ interface GoalSystemProps {
   ball: Ball;
   lastPlayerTouchRef: React.MutableRefObject<Player | null>;
   tournamentMode?: boolean;
+  teamElos?: { red: number, blue: number };
 }
 
 // Return a hook with goal-related functions instead of a React component
@@ -25,7 +26,8 @@ export const useGoalSystem = ({
   getTeamContext, 
   ball,
   lastPlayerTouchRef,
-  tournamentMode = false
+  tournamentMode = false,
+  teamElos = { red: 2000, blue: 2000 }
 }: GoalSystemProps) => {
   // Track the last player action for reward assignment
   const lastActionRef = React.useRef<{

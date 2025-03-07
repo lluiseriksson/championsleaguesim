@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Player, Ball, Position } from '../../types/football';
 import { handleBallPhysics } from './useBallPhysics';
@@ -17,6 +16,7 @@ interface BallMovementProps {
   checkGoal: (position: Position) => 'red' | 'blue' | null;
   onBallTouch: (player: Player) => void;
   tournamentMode?: boolean;
+  eloAdvantageMultiplier?: number;
 }
 
 export const useBallMovement = ({ 
@@ -25,7 +25,8 @@ export const useBallMovement = ({
   players, 
   checkGoal, 
   onBallTouch,
-  tournamentMode = false
+  tournamentMode = false,
+  eloAdvantageMultiplier = 1.0
 }: BallMovementProps) => {
   // Memoize player categorization
   const { goalkeepers, fieldPlayers } = React.useMemo(() => ({

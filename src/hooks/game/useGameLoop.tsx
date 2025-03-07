@@ -1,4 +1,3 @@
-
 import { useRef, useEffect, useCallback } from 'react';
 import { Player, Ball, Score } from '../../types/football';
 import useWatchdog from './useWatchdog';
@@ -15,6 +14,7 @@ interface UseGameLoopProps {
   score: Score;
   tournamentMode?: boolean;
   isLowPerformance?: boolean;
+  eloAdvantageMultiplier?: number;
 }
 
 export const useGameLoop = ({
@@ -28,7 +28,8 @@ export const useGameLoop = ({
   ball,
   score,
   tournamentMode = false,
-  isLowPerformance = false
+  isLowPerformance = false,
+  eloAdvantageMultiplier = 1.0
 }: UseGameLoopProps) => {
   const requestRef = useRef<number | null>(null);
   const previousTimeRef = useRef<number | null>(null);
@@ -39,25 +40,20 @@ export const useGameLoop = ({
   const isActiveRef = useRef<boolean>(true);
   const executingFrameRef = useRef<boolean>(false);
   
-  // Setup our independent watchdog to detect stalled game loops
   const handleWatchdogTimeout = useCallback(() => {
     console.warn("Game loop watchdog triggered - attempting recovery");
     
-    // If we're currently in a frame execution that's not finishing, reset
     if (executingFrameRef.current) {
       console.warn("Frame execution appears stuck - forcing reset");
       executingFrameRef.current = false;
     }
     
-    // Reset animation frame if active
     if (requestRef.current !== null) {
       cancelAnimationFrame(requestRef.current);
     }
     
-    // Reset time references
     previousTimeRef.current = null;
     
-    // Restart the game loop
     if (isActiveRef.current) {
       console.log("Restarting game loop after watchdog recovery");
       requestRef.current = requestAnimationFrame(gameLoop);
@@ -65,7 +61,7 @@ export const useGameLoop = ({
   }, []);
   
   const { petWatchdog } = useWatchdog({
-    timeout: 5000,  // 5 seconds without a frame is definitely frozen
+    timeout: 5000,
     onTimeout: handleWatchdogTimeout,
     description: 'Game Loop',
     enabled: true
@@ -74,7 +70,6 @@ export const useGameLoop = ({
   const gameLoop = useCallback((time: number) => {
     if (!isActiveRef.current) return;
     
-    // Mark that we're executing a frame and pet the watchdog
     executingFrameRef.current = true;
     petWatchdog();
     
@@ -124,10 +119,8 @@ export const useGameLoop = ({
     } catch (error) {
       console.error("Error in game loop:", error);
     } finally {
-      // Mark that we've finished this frame
       executingFrameRef.current = false;
       
-      // Request next frame if we're still active
       if (isActiveRef.current) {
         requestRef.current = requestAnimationFrame(gameLoop);
       }
@@ -143,7 +136,6 @@ export const useGameLoop = ({
     petWatchdog
   ]);
   
-  // Handle visibility change to prevent performance issues when tab is inactive
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden) {

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Player } from '../../types/football';
 import { saveModel } from '../../utils/neural/modelPersistence';
@@ -17,12 +16,14 @@ interface ModelSyncSystemProps {
   players: Player[];
   setPlayers: React.Dispatch<React.SetStateAction<Player[]>>;
   tournamentMode?: boolean;
+  eloAdvantageMultiplier?: number;
 }
 
 export const useModelSyncSystem = ({ 
   players, 
   setPlayers,
-  tournamentMode = false
+  tournamentMode = false,
+  eloAdvantageMultiplier = 1.0
 }: ModelSyncSystemProps) => {
   const syncCounter = useRef(0);
   const learningCheckCounter = useRef(0);
