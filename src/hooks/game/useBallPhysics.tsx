@@ -7,6 +7,25 @@ import { applyVelocityAdjustmentsWithElo } from './physics/eloPhysics';
 import { handleGoalkeeperCollisions } from './physics/goalkeeperCollisions';
 import { handleEnhancedFieldPlayerCollisions } from './physics/fieldPlayerCollisions';
 
+// Helper function to check if ball is in goal area
+const isInGoalArea = (position: Position): boolean => {
+  const goalY = PITCH_HEIGHT / 2;
+  const goalTop = goalY - 92; // GOAL_HEIGHT/2
+  const goalBottom = goalY + 92; // GOAL_HEIGHT/2
+  
+  // Check if in left goal area
+  const inLeftGoal = position.x <= BALL_RADIUS * 2 && 
+                    position.y >= goalTop && 
+                    position.y <= goalBottom;
+  
+  // Check if in right goal area
+  const inRightGoal = position.x >= PITCH_WIDTH - BALL_RADIUS * 2 && 
+                     position.y >= goalTop && 
+                     position.y <= goalBottom;
+  
+  return inLeftGoal || inRightGoal;
+};
+
 // Handle collisions and physics for the ball
 export function handleBallPhysics(
   currentBall: Ball,
@@ -32,27 +51,35 @@ export function handleBallPhysics(
   const currentTime = performance.now();
   const bounceCooldown = 1000; // 1 second between bounce counts
   
-  // Handle boundary collisions using the dedicated functions
-  newVelocity = handleTopBottomBoundaries(newPosition, newVelocity, bounceDetectionRef, currentTime, bounceCooldown);
+  // NEW: Check if the ball is in a goal area - if so, don't apply boundary collisions
+  const ballInGoalArea = isInGoalArea(newPosition);
   
-  // MEJORADO: No aplicar rebotes en las líneas de gol dentro del área de portería
-  // Sólo rebotará en las líneas laterales si está fuera del área de portería
-  const goalY = PITCH_HEIGHT / 2;
-  const goalTop = goalY - 92; // GOAL_HEIGHT/2
-  const goalBottom = goalY + 92; // GOAL_HEIGHT/2
+  // Only handle top/bottom boundaries if not in goal area OR if in goal area but hitting top/bottom
+  if (!ballInGoalArea || (newPosition.y <= BALL_RADIUS || newPosition.y >= PITCH_HEIGHT - BALL_RADIUS)) {
+    newVelocity = handleTopBottomBoundaries(newPosition, newVelocity, bounceDetectionRef, currentTime, bounceCooldown);
+  }
   
-  // Solo aplicar rebotes en líneas laterales si no está en el área de portería
-  if (!(newPosition.y >= goalTop && newPosition.y <= goalBottom && 
-       (newPosition.x <= BALL_RADIUS * 2 || newPosition.x >= PITCH_WIDTH - BALL_RADIUS * 2))) {
+  // IMPROVED: Only handle left/right boundaries if not in goal area
+  if (!ballInGoalArea) {
+    // Only apply side bounces if not in the goal area
     newVelocity = handleLeftRightBoundaries(newPosition, newVelocity, bounceDetectionRef, currentTime, bounceCooldown);
+  } else {
+    // If in goal area, reduce velocity significantly to help ball stop in goal
+    newVelocity.x *= 0.1;
+    newVelocity.y *= 0.5;
+    
+    // If very close to goal line, stop completely to ensure ball stays in goal
+    if (newPosition.x <= BALL_RADIUS || newPosition.x >= PITCH_WIDTH - BALL_RADIUS) {
+      newVelocity.x = 0;
+      newVelocity.y = 0;
+    }
   }
 
-  // IMPROVED: Ensure ball stays within the pitch boundaries with a stronger constraint
-  // This helps prevent the ball from getting stuck inside goals - EXCEPTO en el área de portería
-  if (!(newPosition.y >= goalTop && newPosition.y <= goalBottom)) {
+  // IMPROVED: Only constrain ball within pitch if not in goal area
+  if (!ballInGoalArea) {
     newPosition = constrainBallPosition(newPosition, BALL_RADIUS, PITCH_WIDTH, PITCH_HEIGHT);
   } else {
-    // Para el área de portería, solo aplicar restricción vertical pero no horizontal
+    // For the goal area, only apply vertical constraint but not horizontal
     if (newPosition.y < BALL_RADIUS) {
       newPosition.y = BALL_RADIUS;
     } else if (newPosition.y > PITCH_HEIGHT - BALL_RADIUS) {
@@ -99,7 +126,10 @@ export function handleBallPhysics(
   }
 
   // Apply velocity adjustments with potential ELO factors
-  newVelocity = applyVelocityAdjustmentsWithElo(newVelocity, eloFactors);
+  // Only if not in goal area - preserve slow/stopped motion in goal
+  if (!ballInGoalArea) {
+    newVelocity = applyVelocityAdjustmentsWithElo(newVelocity, eloFactors);
+  }
 
   return {
     position: newPosition,

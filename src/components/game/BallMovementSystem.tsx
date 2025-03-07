@@ -1,3 +1,4 @@
+
 import React, { useCallback, useRef } from 'react';
 import { Ball, Player, Position } from '../../types/football';
 import { handleBallPhysics } from '../../hooks/game/useBallPhysics';
@@ -5,6 +6,7 @@ import { useBallStallDetection } from '../../hooks/game/useBallStallDetection';
 import { useBallGoalDetection } from '../../hooks/game/useBallGoalDetection';
 import { useBallCollisionTracking } from '../../hooks/game/useBallCollisionTracking';
 import { checkBallStuckInPlace, applyRandomKick, calculateBallSpeed } from '../../hooks/game/useBallInitialization';
+import { useGoalNotification } from '../../hooks/game/useGoalNotification';
 
 interface BallMovementSystemProps {
   ball: Ball;
@@ -30,6 +32,15 @@ export const useBallMovementSystem = ({
   const noMovementTimeRef = useRef<number>(0);
   const stallDetectionRef = useRef<number>(0);
   const lastKickPositionRef = useRef<Position | null>(null);
+  const totalGoalsRef = useRef<number>(0);
+  
+  // Goal notification with celebration and reset
+  const { handleGoalScored, checkAndResetBall, isInGoalCelebrationRef } = useGoalNotification({
+    tournamentMode,
+    totalGoalsRef,
+    ball,
+    setBall
+  });
   
   // Goal detection system
   const { handleGoalCheck, nearMissRef, trackGoalkeeperTouch } = useBallGoalDetection({ 
@@ -59,6 +70,14 @@ export const useBallMovementSystem = ({
   
   // Main function to update ball position based on its velocity
   const updateBallPosition = useCallback(() => {
+    // First check if we need to reset the ball after goal celebration
+    if (isInGoalCelebrationRef.current) {
+      const resetPerformed = checkAndResetBall();
+      if (resetPerformed) {
+        return null; // Ball was reset, no need to continue with physics
+      }
+    }
+    
     // Don't update if no velocity
     if (!ball.velocity) return;
     
@@ -127,6 +146,11 @@ export const useBallMovementSystem = ({
       updatedBall.position
     );
     
+    // If a goal was scored, handle the goal notification and celebration
+    if (goalScored) {
+      handleGoalScored(goalScored);
+    }
+    
     setBall(prev => ({
       ...prev,
       position: ballAfterGoalCheck.position,
@@ -147,7 +171,10 @@ export const useBallMovementSystem = ({
     handleBallTouch,
     lastCollisionTimeRef,
     tournamentMode,
-    teamAdvantageFactors
+    teamAdvantageFactors,
+    handleGoalScored,
+    checkAndResetBall,
+    isInGoalCelebrationRef
   ]);
 
   return { updateBallPosition };

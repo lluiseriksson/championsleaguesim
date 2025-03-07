@@ -89,8 +89,20 @@ const GameLogic: React.FC<GameLogicProps> = ({
     teamAdvantageFactors
   });
 
-  // Goal notification system
-  const { totalGoalsRef } = useGameLoop({
+  // Goal notification hook with setScore added
+  const { handleGoalScored } = useGoalNotification({
+    tournamentMode,
+    totalGoalsRef,
+    ball,
+    setBall,
+    setScore  // Make sure setScore is passed here
+  });
+
+  // Track total goals scored
+  const totalGoalsRef = React.useRef<number>(0);
+
+  // Update game loop with goal notification hook
+  const gameLoopProps = {
     players,
     updatePlayerPositions: () => updatePlayerPositions(),
     updateBallPosition: () => {}, // Will be overridden below
@@ -103,18 +115,12 @@ const GameLogic: React.FC<GameLogicProps> = ({
     tournamentMode,
     isLowPerformance,
     teamAdvantageFactors
-  });
+  };
 
-  // Goal notification hook with setScore added
-  const { handleGoalScored } = useGoalNotification({
-    tournamentMode,
-    totalGoalsRef,
-    ball,
-    setBall,
-    setScore // Pass setScore to the hook
-  });
+  // Run game loop with actual functions and performance monitoring
+  useGameLoop(gameLoopProps);
 
-  // Ball movement system
+  // Ball movement system with proper integration
   const { updateBallPosition } = useBallMovementSystem({
     ball,
     setBall,
@@ -130,8 +136,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
           onGoalScored(scoringTeam);
         }
         
-        // Handle goal notification and ball reset
-        return handleGoalScored(scoringTeam);
+        return scoringTeam;
       }
       return null;
     },
@@ -140,22 +145,6 @@ const GameLogic: React.FC<GameLogicProps> = ({
       console.log(`Ball touched by ${player.team} ${player.role} #${player.id}`);
     },
     tournamentMode,
-    teamAdvantageFactors
-  });
-
-  // Run game loop with actual functions and performance monitoring
-  useGameLoop({
-    players,
-    updatePlayerPositions,
-    updateBallPosition,
-    incrementSyncCounter,
-    syncModels,
-    checkLearningProgress,
-    checkPerformance,
-    ball,
-    score,
-    tournamentMode,
-    isLowPerformance,
     teamAdvantageFactors
   });
 

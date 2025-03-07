@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Ball, Position, PITCH_WIDTH, PITCH_HEIGHT, GOAL_HEIGHT } from '../../types/football';
 
@@ -39,6 +38,17 @@ export const useBallGoalDetection = ({
     detected: false,
     team: null,
     timestamp: 0
+  });
+  
+  // NEW: Track if ball is already in goal (for stopping it inside the goal)
+  const ballInGoalRef = React.useRef<{
+    inGoal: boolean;
+    team: 'red' | 'blue' | null;
+    entryTime: number;
+  }>({
+    inGoal: false,
+    team: null,
+    entryTime: 0
   });
   
   // Calculate if a shot was a near miss
@@ -101,6 +111,29 @@ export const useBallGoalDetection = ({
     }
   }, [tournamentMode]);
   
+  // Check if the ball is inside a goal but not counted yet
+  const isInsideGoalArea = React.useCallback((position: Position): { inside: boolean, team: 'red' | 'blue' | null } => {
+    const goalY = PITCH_HEIGHT / 2;
+    const goalTop = goalY - GOAL_HEIGHT / 2;
+    const goalBottom = goalY + GOAL_HEIGHT / 2;
+    
+    // Check if inside left goal (blue team goal)
+    if (position.x <= 0 && 
+        position.y >= goalTop && 
+        position.y <= goalBottom) {
+      return { inside: true, team: 'blue' };
+    }
+    
+    // Check if inside right goal (red team goal)
+    if (position.x >= PITCH_WIDTH && 
+        position.y >= goalTop && 
+        position.y <= goalBottom) {
+      return { inside: true, team: 'red' };
+    }
+    
+    return { inside: false, team: null };
+  }, []);
+  
   const handleGoalCheck = React.useCallback((
     currentBall: Ball, 
     newPosition: Position
@@ -128,6 +161,19 @@ export const useBallGoalDetection = ({
       if (!tournamentMode) {
         console.log(`Goal detection blocked - cooldown active (${timeSinceLastGoal}ms / ${goalCooldownPeriod}ms)`);
       }
+      
+      // NEW: If the ball is already in the goal during cooldown, keep it there with no velocity
+      if (ballInGoalRef.current.inGoal) {
+        // Keep the ball inside the goal with zero velocity
+        return { 
+          goalScored: null, 
+          updatedBall: {
+            ...currentBall,
+            velocity: { x: 0, y: 0 } // Stop ball movement inside goal
+          } 
+        };
+      }
+      
       return { goalScored: null, updatedBall: currentBall };
     }
     
@@ -136,19 +182,50 @@ export const useBallGoalDetection = ({
       return { goalScored: null, updatedBall: currentBall };
     }
     
+    // NEW: Check if the ball has just entered a goal
+    const goalAreaCheck = isInsideGoalArea(newPosition);
+    if (goalAreaCheck.inside && !ballInGoalRef.current.inGoal) {
+      // Ball just entered the goal area
+      ballInGoalRef.current = {
+        inGoal: true,
+        team: goalAreaCheck.team,
+        entryTime: currentTime
+      };
+      
+      if (!tournamentMode) {
+        console.log(`Ball entered ${goalAreaCheck.team} goal area`);
+      }
+      
+      // Stop the ball inside the goal
+      const updatedBall = {
+        ...currentBall,
+        position: newPosition,
+        velocity: { x: 0, y: 0 } // Stop the ball
+      };
+      
+      return { goalScored: null, updatedBall };
+    }
+    
     // Check if a goal was scored
     let goalScored = null;
     
     if (allowGoalDetection) {
-      // MEJORADO: Usar la posición actual y algunas posiciones anteriores para una detección más precisa
+      // IMPROVED: Check for goal with current position
       goalScored = checkGoal(newPosition);
       
-      // Si no se detectó gol, comprobar si las posiciones anteriores indicarían un gol 
-      // (por si la pelota pasó rápidamente a través de la portería)
+      // If no goal detected directly, check if ball is already in goal area
+      if (!goalScored && ballInGoalRef.current.inGoal) {
+        goalScored = ballInGoalRef.current.team;
+        if (!tournamentMode) {
+          console.log(`GOAL DETECTED from ball already in goal area: ${goalScored}`);
+        }
+      }
+      
+      // If still no goal detected, check with retrospective analysis
       if (!goalScored && currentBall.previousPosition) {
         const prevPosition = currentBall.previousPosition;
         
-        // Comprobar si la trayectoria de la pelota atravesó la línea de gol
+        // Check if the trajectory of the ball crossed the goal line
         if (newPosition.x < 0 && prevPosition.x > 0 && 
             Math.abs(newPosition.y - PITCH_HEIGHT/2) < GOAL_HEIGHT/2) {
           goalScored = 'blue';
@@ -177,60 +254,76 @@ export const useBallGoalDetection = ({
       // Set the cooldown timestamp
       lastGoalTimeRef.current = currentTime;
       
-      // Reset ball position to center with completely random direction
-      // to prevent predictable patterns after goals
+      // Keep the ball where it is with zero velocity for the goal celebration
       const updatedBall = {
         ...currentBall,
-        position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
-        velocity: { 
-          x: (Math.random() * 8) - 4, // Fully random direction
-          y: (Math.random() * 8) - 4  // Fully random direction
-        },
-        bounceDetection: {
-          consecutiveBounces: 0,
-          lastBounceTime: 0,
-          lastBounceSide: '',
-          sideEffect: false
-        }
+        velocity: { x: 0, y: 0 } // Stop ball movement for celebration
       };
       
       // Reset the game start timer after a goal
       gameStartTimeRef.current = currentTime;
       
+      // Reset the ball in goal flag
+      ballInGoalRef.current = {
+        inGoal: false,
+        team: null,
+        entryTime: 0
+      };
+      
       return { goalScored, updatedBall };
     }
     
-    // IMPROVED: If the ball is inside the goal but no goal was detected (possibly due to cooldown),
-    // force it out to prevent it from getting stuck
-    if (!goalScored) {
-      const isInsideLeftGoal = newPosition.x < 5 && 
-                              Math.abs(newPosition.y - PITCH_HEIGHT/2) < GOAL_HEIGHT/2;
-      const isInsideRightGoal = newPosition.x > PITCH_WIDTH - 5 && 
-                               Math.abs(newPosition.y - PITCH_HEIGHT/2) < GOAL_HEIGHT/2;
-      
-      if (isInsideLeftGoal || isInsideRightGoal) {
-        // If ball is stuck in goal but we can't count it as a goal due to cooldowns,
-        // force it out of the goal area with a bounce effect
-        const updatedBall = {
+    // If the ball was in goal but no goal was scored (possibly due to cooldown),
+    // keep it in the goal with zero velocity
+    if (ballInGoalRef.current.inGoal) {
+      return { 
+        goalScored: null, 
+        updatedBall: {
           ...currentBall,
-          position: { 
-            // Move ball away from goal line
-            x: isInsideLeftGoal ? 15 : PITCH_WIDTH - 15,
-            y: newPosition.y
-          },
-          velocity: {
-            // Add bounce velocity away from goal
-            x: isInsideLeftGoal ? 3 : -3,
-            y: currentBall.velocity ? currentBall.velocity.y * 0.8 : 0
-          }
-        };
-        
-        if (!tournamentMode) {
-          console.log(`Ball was stuck in ${isInsideLeftGoal ? 'left' : 'right'} goal - forcing it out`);
+          velocity: { x: 0, y: 0 } // Ensure ball stays still in goal
         }
-        
-        return { goalScored: null, updatedBall };
+      };
+    }
+    
+    // IMPROVED: Check for ball stuck in goal but not counted as goal yet
+    const isInsideLeftGoal = newPosition.x < 5 && 
+                            Math.abs(newPosition.y - PITCH_HEIGHT/2) < GOAL_HEIGHT/2;
+    const isInsideRightGoal = newPosition.x > PITCH_WIDTH - 5 && 
+                             Math.abs(newPosition.y - PITCH_HEIGHT/2) < GOAL_HEIGHT/2;
+    
+    if (isInsideLeftGoal || isInsideRightGoal) {
+      // If ball is very close to or inside goal but not registered as a goal yet
+      // (possibly due to cooldowns), treat it as "in goal" and stop it
+      const scoringTeam = isInsideLeftGoal ? 'blue' : 'red';
+      
+      // Mark ball as in goal
+      ballInGoalRef.current = {
+        inGoal: true,
+        team: scoringTeam,
+        entryTime: currentTime
+      };
+      
+      if (!tournamentMode) {
+        console.log(`Ball stopped inside ${scoringTeam} goal area`);
       }
+      
+      // Stop the ball's movement and keep it at current position
+      const updatedBall = {
+        ...currentBall,
+        velocity: { x: 0, y: 0 }
+      };
+      
+      return { goalScored: null, updatedBall };
+    }
+    
+    // Reset ball in goal flag if ball is outside goal areas
+    if (ballInGoalRef.current.inGoal && !isInsideLeftGoal && !isInsideRightGoal &&
+        !goalAreaCheck.inside) {
+      ballInGoalRef.current = {
+        inGoal: false,
+        team: null,
+        entryTime: 0
+      };
     }
     
     // If no goal, check for near miss if ball has velocity
@@ -240,7 +333,7 @@ export const useBallGoalDetection = ({
     }
     
     return { goalScored: null, updatedBall: currentBall };
-  }, [checkGoal, checkNearMiss, tournamentMode]);
+  }, [checkGoal, checkNearMiss, tournamentMode, isInsideGoalArea]);
   
   // Add a reset method for game start/restart
   const resetGameClock = React.useCallback(() => {
