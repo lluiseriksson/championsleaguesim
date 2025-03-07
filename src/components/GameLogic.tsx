@@ -41,6 +41,9 @@ const GameLogic: React.FC<GameLogicProps> = ({
   // Reference to track the last player who touched the ball
   const lastPlayerTouchRef = React.useRef<Player | null>(null);
   
+  // Track total goals scored - MOVED THIS REF DECLARATION UP
+  const totalGoalsRef = React.useRef<number>(0);
+  
   // Get team ELO ratings using our utility function
   const teamElos = React.useMemo(() => 
     getTeamEloRatings(players), 
@@ -97,9 +100,6 @@ const GameLogic: React.FC<GameLogicProps> = ({
     setBall,
     setScore  // Make sure setScore is passed here
   });
-
-  // Track total goals scored
-  const totalGoalsRef = React.useRef<number>(0);
 
   // Update game loop with goal notification hook
   const gameLoopProps = {
