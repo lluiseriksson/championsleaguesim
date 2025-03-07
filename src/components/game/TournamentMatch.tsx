@@ -69,6 +69,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
     }
   });
   
+  // Fix: Initialize score to 0-0 explicitly 
   const [score, setScore] = useState<Score>({ red: 0, blue: 0 });
   const [gameStarted, setGameStarted] = useState(false);
   const [matchEnded, setMatchEnded] = useState(false);
@@ -101,7 +102,10 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       
       initializePlayers(awayTeamKitType);
       
+      // Fix: Don't start the game immediately, add a small delay
       setTimeout(() => {
+        // Reset score to 0-0 explicitly before starting the game
+        setScore({ red: 0, blue: 0 });
         setGameStarted(true);
       }, 1000);
     }
@@ -314,6 +318,8 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
             ? (newScore as (prev: Score) => Score)(score)
             : newScore;
             
+          console.log(`Score update - Current: ${score.red}-${score.blue}, New: ${currentScore.red}-${currentScore.blue}`);
+          
           if (currentScore.red > score.red) {
             handleGoalScored('red');
           } else if (currentScore.blue > score.blue) {

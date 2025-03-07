@@ -42,7 +42,7 @@ export const useGoalNotification = ({
       ...prev,
       position: { x: 800/2, y: 500/2 },
       velocity: { 
-        x: Math.random() * 2 - 1, 
+        x: scoringTeam === 'red' ? -1 : 1, // Fix: Ensure ball moves toward the team that conceded
         y: Math.random() * 2 - 1 
       }
     }));
