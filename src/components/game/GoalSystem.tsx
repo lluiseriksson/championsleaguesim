@@ -115,6 +115,11 @@ export const useGoalSystem = ({
     if (shooter.brain) {
       // Make sure we're adding the property safely
       shooter.brain.lastShotDirection = shotVelocity;
+      
+      // Initialize lastShotQuality if it doesn't exist
+      if (shooter.brain.lastShotQuality === undefined) {
+        shooter.brain.lastShotQuality = 0;
+      }
       shooter.brain.lastShotQuality = shotQuality;
     }
     
@@ -273,6 +278,10 @@ export const useGoalSystem = ({
         
         // Add shot quality to the brain for goal/no goal learning
         if (player.brain) {
+          // Initialize lastShotQuality if it doesn't exist
+          if (player.brain.lastShotQuality === undefined) {
+            player.brain.lastShotQuality = 0;
+          }
           player.brain.lastShotQuality = shotQuality;
         }
         

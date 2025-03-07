@@ -187,7 +187,15 @@ export const updatePlayerBrain = (
           }
           
           // Check if it was likely saved by goalkeeper
-          const goalKeeper = context.opponents.find(opp => opp.role === 'goalkeeper');
+          const goalKeeper = context.opponents.find(opp => {
+            // This is a Position, so we can't access role directly
+            // We need to find a different way to identify the goalkeeper
+            // For now, we'll assume the goalkeeper is usually positioned
+            // near their own goal
+            const distanceToOwnGoal = calculateDistance(opp, context.ownGoal);
+            return distanceToOwnGoal < 100; // Goalkeeper is likely close to their goal
+          });
+          
           if (goalKeeper) {
             const keeperDistance = calculateDistance(ball.position, goalKeeper);
             if (keeperDistance < 40) {
@@ -212,11 +220,11 @@ export const updatePlayerBrain = (
       }
       
       // Store shot quality for future reference
-      if (!brain.lastShotQuality) {
+      if (brain.lastShotQuality === undefined) {
         brain.lastShotQuality = 0;
       }
     }
-  } else if (brain.lastAction !== 'shoot') {
+  } else if (brain.lastAction && brain.lastAction !== 'shoot') {
     // If player didn't shoot, reset shot quality tracking
     brain.lastShotQuality = 0;
     
@@ -552,6 +560,7 @@ export const updatePlayerBrain = (
   }
 };
 
+// Update this function to properly initialize goalStreak and lastShotQuality
 export const initializePlayerBrainWithHistory = (brain: NeuralNet): NeuralNet => {
   if (!brain.actionHistory) {
     brain = {

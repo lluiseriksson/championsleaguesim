@@ -167,6 +167,10 @@ export interface NeuralNet {
   metaNetwork?: SpecializedNeuralNet;
   currentSpecialization?: NetworkSpecialization;
   lastSituationContext?: SituationContext;
+  
+  // Add new properties for shot quality tracking and goal streaks
+  lastShotQuality?: number;     // Track the quality of the last shot (0-1)
+  goalStreak?: number;          // Track consecutive goals for bonus rewards
 }
 
 export type KitType = 'home' | 'away' | 'third';
