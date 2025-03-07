@@ -13,13 +13,18 @@ export function applyVelocityAdjustments(velocity: Position): Position {
     y: velocity.y * 0.998  // Reduced from 0.995
   };
   
-  // Never let the ball stop completely
+  // Stronger minimum speed enforcement
   const newSpeed = Math.sqrt(adjustedVelocity.x * adjustedVelocity.x + adjustedVelocity.y * adjustedVelocity.y);
   if (newSpeed < MIN_BALL_SPEED && newSpeed > 0) {
     // Maintain direction but increase speed to minimum
     const factor = MIN_BALL_SPEED / Math.max(0.01, newSpeed); // Prevent division by zero
     adjustedVelocity.x *= factor;
     adjustedVelocity.y *= factor;
+    
+    // Add slight random variation to prevent predictable paths
+    const randomFactor = 1 + (Math.random() * 0.1 - 0.05); // +/- 5% randomness
+    adjustedVelocity.x *= randomFactor;
+    adjustedVelocity.y *= randomFactor;
   }
   
   return adjustedVelocity;

@@ -64,13 +64,13 @@ const limitSpeed = (velocity: Position): Position => {
     };
   }
   
-  // ALWAYS apply minimum speed unless the ball should be completely stopped
-  // (which should only happen at game reset/initialization)
-  if (speed < MIN_BALL_SPEED && speed > 0) {
+  // ALWAYS enforce minimum speed unless the ball is stopped
+  if (speed < MIN_BALL_SPEED && speed > 0.1) {
     const factor = MIN_BALL_SPEED / speed;
+    // More aggressive enforcement of minimum speed
     return {
-      x: velocity.x * factor,
-      y: velocity.y * factor
+      x: velocity.x * factor * 1.05, // Add 5% extra to overcome friction
+      y: velocity.y * factor * 1.05  // Add 5% extra to overcome friction
     };
   }
   
@@ -211,7 +211,7 @@ export const calculateNewVelocity = (
   );
   
   // Higher base speed for all balls - even higher for more powerful shots
-  const adjustedSpeed = Math.max(10, speed * 1.5);  // Increased from 9 to 10 and from 1.4 to 1.5
+  const adjustedSpeed = Math.max(MIN_BALL_SPEED * 1.2, speed * 1.5);  // Increased from base 10 to MIN_BALL_SPEED * 1.2
   
   // Add directional bias to reflection angle
   const reflectionAngle = angle + (angle - incidentAngle) + directionalBias;
