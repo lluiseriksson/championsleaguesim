@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 import { Ball, Position } from '../../types/football';
 
@@ -47,4 +45,3 @@ export const applyRandomKick = (currentBall: Ball, tournamentMode: boolean): Bal
 export const calculateBallSpeed = (velocity: Position): number => {
   return Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
 };
-

@@ -65,14 +65,8 @@ export const useBallStallDetection = ({
           // Reset the counter
           stallCounterRef.current = 0;
           
-          // Apply a random kick to unstick the ball
-          setBall(prev => ({
-            ...prev,
-            velocity: {
-              x: (Math.random() - 0.5) * 10,
-              y: (Math.random() - 0.5) * 10
-            }
-          }));
+          // Use the applyRandomKick function from gamePhysics
+          setBall(prev => applyRandomKick(prev, false));
         }
       } else {
         // Ball is moving normally, reset counter

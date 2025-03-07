@@ -123,6 +123,23 @@ export const addRandomEffect = (velocity: Position): Position => {
   };
 };
 
+export const applyRandomKick = (currentBall: any, tournamentMode: boolean = false): any => {
+  // Log less in tournament mode to reduce memory usage
+  if (!tournamentMode) {
+    console.log("Ball stuck in place or zero velocity, giving it a random kick");
+  }
+  
+  // Increased random kick velocity by ~20% (from 6 to 7.2 max range)
+  return {
+    ...currentBall,
+    position: currentBall.position,
+    velocity: {
+      x: (Math.random() * 7.2) - 3.6,
+      y: (Math.random() * 7.2) - 3.6
+    }
+  };
+};
+
 export const calculateNewVelocity = (
   ballPosition: Position,
   playerPosition: Position,
