@@ -129,12 +129,72 @@ const saveCurrentGameData = async (player: Player): Promise<void> => {
   
   try {
     // Create a sample game instance from current player state
+    const inputs = player.brain.actionHistory?.[player.brain.actionHistory.length - 1]?.context as NeuralInput;
+    
+    // FIX: Ensure we have a valid NeuralInput object by providing defaults for all required properties
+    const defaultInputs: NeuralInput = {
+      ballX: 0.5,
+      ballY: 0.5,
+      playerX: 0.5,
+      playerY: 0.5,
+      ballVelocityX: 0,
+      ballVelocityY: 0,
+      distanceToGoal: 0.5,
+      angleToGoal: 0,
+      nearestTeammateDistance: 0.5,
+      nearestTeammateAngle: 0,
+      nearestOpponentDistance: 0.5,
+      nearestOpponentAngle: 0,
+      isInShootingRange: 0,
+      isInPassingRange: 0,
+      isDefendingRequired: 0,
+      distanceToOwnGoal: 0.5,
+      angleToOwnGoal: 0,
+      isFacingOwnGoal: 0,
+      isDangerousPosition: 0,
+      isBetweenBallAndOwnGoal: 0,
+      teamElo: 0.5,
+      eloAdvantage: 0,
+      gameTime: 0.5,
+      scoreDifferential: 0,
+      momentum: 0.5,
+      formationCompactness: 0.5,
+      formationWidth: 0.5,
+      recentSuccessRate: 0.5,
+      possessionDuration: 0,
+      distanceFromFormationCenter: 0.5,
+      isInFormationPosition: 1,
+      teammateDensity: 0.5,
+      opponentDensity: 0.5,
+      shootingAngle: 0.5,
+      shootingQuality: 0.5,
+      zoneControl: 0.5,
+      passingLanesQuality: 0.5,
+      spaceCreation: 0.5,
+      defensiveSupport: 0.5,
+      pressureIndex: 0.5,
+      tacticalRole: 0.5,
+      supportPositioning: 0.5,
+      pressingEfficiency: 0.5,
+      coverShadow: 0.5,
+      verticalSpacing: 0.5,
+      horizontalSpacing: 0.5,
+      territorialControl: 0.5,
+      counterAttackPotential: 0.5,
+      pressureResistance: 0.5,
+      recoveryPosition: 0.5,
+      transitionSpeed: 0.5
+    };
+    
+    // Merge the actual inputs with default values to ensure all required properties exist
+    const validInputs: NeuralInput = inputs ? { ...defaultInputs, ...inputs } : defaultInputs;
+    
     const gameInstance: Partial<GameInstance> = {
       team: player.team,
       role: player.role,
       action: player.brain.lastAction,
-      // Use simplified version of inputs to avoid DB size issues
-      inputs: player.brain.actionHistory?.[player.brain.actionHistory.length - 1]?.context as NeuralInput || {},
+      // Use validated inputs to avoid type errors
+      inputs: validInputs,
       outputs: {
         moveX: player.brain.lastOutput.x || 0,
         moveY: player.brain.lastOutput.y || 0,
