@@ -1,9 +1,9 @@
-
 import { teamKitColors } from './teamColorsData';
 import { categorizeColor, ColorCategory } from './colorUtils';
 import { getTeamKitColor } from './kitAccessors';
 import { KitType } from './kitTypes';
 import { toast } from 'sonner';
+import { areWhiteColorsTooSimilar } from './colorUtils';
 
 // Known problematic team combinations that require special handling
 const CONFLICTING_TEAM_PAIRS = [
@@ -91,6 +91,19 @@ export const performFinalKitCheck = (
     return false;
   }
   
+  // Get the primary colors for both kits
+  const homePrimaryColor = getTeamKitColor(homeTeam, 'home');
+  const awayPrimaryColor = getTeamKitColor(awayTeam, awayTeamKit);
+  
+  // Check for white kit conflicts (e.g., Juventus vs Sheffield United)
+  if (areWhiteColorsTooSimilar(homePrimaryColor, awayPrimaryColor)) {
+    console.warn(`⚠️ WHITE KIT CONFLICT DETECTED: ${homeTeam} vs ${awayTeam}`);
+    toast.error(`White kit conflict detected!`, {
+      description: `Both ${homeTeam} and ${awayTeam} have similar white kits. Resolving automatically...`
+    });
+    return false;
+  }
+  
   const homeIsRed = teamHasRedPrimaryColor(homeTeam, 'home');
   const awayIsRed = teamHasRedPrimaryColor(awayTeam, awayTeamKit);
   
@@ -115,6 +128,16 @@ export const performFinalKitCheck = (
     console.warn(`⚠️ SPECIAL CASE KIT CONFLICT: ${homeTeam} vs ${awayTeam}`);
     toast.error(`Kit conflict between ${homeTeam} and ${awayTeam}!`, {
       description: "Teams have similar color combinations. Resolving automatically..."
+    });
+    return false;
+  }
+  
+  // Add Juventus vs Sheffield United to special case conflicts
+  if ((homeTeam === 'Juventus' && awayTeam === 'Sheffield United') || 
+      (homeTeam === 'Sheffield United' && awayTeam === 'Juventus')) {
+    console.warn(`⚠️ SPECIAL CASE KIT CONFLICT: ${homeTeam} vs ${awayTeam}`);
+    toast.error(`Kit conflict between ${homeTeam} and ${awayTeam}!`, {
+      description: "Both teams have similar white/black kits. Resolving automatically..."
     });
     return false;
   }

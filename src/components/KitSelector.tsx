@@ -12,6 +12,9 @@ import {
   areTeamsInConflictList 
 } from '../types/kits/kitConflictChecker';
 import { Button } from './ui/button';
+import { areWhiteColorsTooSimilar } from '../types/kits/colorUtils';
+import { categorizeColor, ColorCategory } from '../types/kits/colorUtils';
+import { getTeamKitColor } from '../types/kits/kitAccessors';
 
 const KitSelector: React.FC = () => {
   const [homeTeam, setHomeTeam] = useState<string>('Liverpool');
@@ -54,6 +57,28 @@ const KitSelector: React.FC = () => {
           <p className="text-xs">
             {homeTeam} and {awayTeam} have similar kit colors that would cause confusion.
             In a real match, {awayTeam} would need to use their third kit.
+          </p>
+        </div>
+      );
+    }
+    
+    // Check for white kit conflicts - NEW!
+    const homePrimaryColor = getTeamKitColor(homeTeam, 'home');
+    const awayPrimaryColor = getTeamKitColor(awayTeam, kitResult.awayTeamKitType);
+    
+    const homeCategory = categorizeColor(homePrimaryColor);
+    const awayCategory = categorizeColor(awayPrimaryColor);
+    
+    const bothWhite = homeCategory === ColorCategory.WHITE && awayCategory === ColorCategory.WHITE;
+    const whiteConflict = areWhiteColorsTooSimilar(homePrimaryColor, awayPrimaryColor);
+    
+    if (bothWhite && whiteConflict) {
+      return (
+        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-800">
+          <p className="text-sm font-semibold mb-1">⚠️ White Kit Conflict!</p>
+          <p className="text-xs">
+            Both {homeTeam} and {awayTeam} have white primary colors in their selected kits.
+            This would cause confusion during a match.
           </p>
         </div>
       );

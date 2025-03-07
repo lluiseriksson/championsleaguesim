@@ -1,3 +1,4 @@
+
 import { KitType, TeamKit } from './kitTypes';
 import { teamKitColors } from './teamColorsData';
 import { 
@@ -8,7 +9,8 @@ import {
   ColorCategory,
   getEnhancedColorDistance,
   areColorsSufficientlyDifferent,
-  areRedColorsTooSimilar
+  areRedColorsTooSimilar,
+  areWhiteColorsTooSimilar
 } from './colorUtils';
 import { 
   teamHasRedPrimaryColor, 
@@ -71,6 +73,13 @@ const teamConflictOverrides: Record<string, Record<string, KitType>> = {
   },
   'Forest': {
     'Espanyol': 'third'
+  },
+  // Add Juventus vs Sheffield United conflict
+  'Juventus': {
+    'Sheffield United': 'third'
+  },
+  'Sheffield United': {
+    'Juventus': 'third'
   }
 };
 
