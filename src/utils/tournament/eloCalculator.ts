@@ -62,7 +62,7 @@ export const shouldUseGoldenGoal = (teamAElo: number, teamBElo: number): boolean
   return Math.random() < goldenGoalProbability;
 };
 
-// Calculate training effectiveness based on ELO differences
+// NEW: Calculate training effectiveness based on ELO differences
 export const calculateExpectedTrainingEffectiveness = (
   trainingTeamElo: number, 
   nonTrainingTeamElo: number
@@ -81,7 +81,7 @@ export const calculateExpectedTrainingEffectiveness = (
   return Math.min(1.5, 1.0 + (Math.abs(eloDifference) / 300));
 };
 
-// Determine if training is beneficial for a specific team
+// NEW: Determine if training is beneficial for a specific team
 export const isTrainingBeneficial = (
   teamElo: number,
   avgOpponentElo: number,
@@ -89,90 +89,23 @@ export const isTrainingBeneficial = (
 ): { 
   isBeneficial: boolean,
   expectedEffectiveness: number,
-  actualEffectiveness: number,
-  effectivenessRatio: number,
-  confidence: number
+  actualEffectiveness: number 
 } => {
   const expectedEffectiveness = calculateExpectedTrainingEffectiveness(teamElo, avgOpponentElo);
   
   // Expected win rate based on ELO
   const expectedWinRate = calculateWinProbability(teamElo, avgOpponentElo);
   
-  // Calculate actual effectiveness as ratio between actual win rate and expected win rate
+  // Training should improve win rate above baseline ELO prediction
+  const improvementThreshold = 1.05; // 5% improvement considered beneficial
+  
+  // Training is beneficial if actual win rate exceeds expected win rate by improvement threshold
   const actualEffectiveness = actualWinRate / expectedWinRate;
-  
-  // Calculate ratio between actual and expected effectiveness
-  const effectivenessRatio = actualEffectiveness / expectedEffectiveness;
-  
-  // Determine confidence based on sample size (assuming matches data is passed)
-  // More matches = higher confidence in the results
-  const matchesCount = Math.min(20, actualWinRate > 0 ? 10 : 5); // Estimate based on having a win rate
-  const confidence = Math.min(0.95, matchesCount / 20);
-  
-  // Training is beneficial if effectiveness ratio exceeds threshold
-  const benefitThreshold = 0.95; // 95% of expected effectiveness is still considered beneficial
-  const isBeneficial = effectivenessRatio >= benefitThreshold;
+  const isBeneficial = actualEffectiveness >= improvementThreshold;
   
   return {
     isBeneficial,
     expectedEffectiveness,
-    actualEffectiveness,
-    effectivenessRatio,
-    confidence
-  };
-};
-
-// Calculate comparative performance between training and non-training neural networks
-export const compareTrainingPerformance = (
-  trainingTeamResults: { wins: number, matches: number },
-  nonTrainingTeamResults: { wins: number, matches: number },
-  trainingTeamElo: number,
-  nonTrainingTeamElo: number
-): {
-  trainingWinRate: number,
-  nonTrainingWinRate: number,
-  expectedTrainingWinRate: number,
-  expectedNonTrainingWinRate: number,
-  trainingEfficiency: number,
-  nonTrainingEfficiency: number,
-  comparisonRatio: number,
-  isTrainingEffective: boolean
-} => {
-  // Calculate actual win rates
-  const trainingWinRate = trainingTeamResults.matches > 0 ? 
-    trainingTeamResults.wins / trainingTeamResults.matches : 0;
-  
-  const nonTrainingWinRate = nonTrainingTeamResults.matches > 0 ? 
-    nonTrainingTeamResults.wins / nonTrainingTeamResults.matches : 0;
-  
-  // Calculate expected win rates based on ELO
-  const expectedTrainingWinRate = calculateWinProbability(trainingTeamElo, nonTrainingTeamElo);
-  const expectedNonTrainingWinRate = calculateWinProbability(nonTrainingTeamElo, trainingTeamElo);
-  
-  // Calculate efficiency (actual win rate / expected win rate)
-  const trainingEfficiency = expectedTrainingWinRate > 0 ? 
-    trainingWinRate / expectedTrainingWinRate : 0;
-  
-  const nonTrainingEfficiency = expectedNonTrainingWinRate > 0 ? 
-    nonTrainingWinRate / expectedNonTrainingWinRate : 0;
-  
-  // Compare training team's efficiency to non-training team's efficiency
-  // Values > 1 indicate training is effective
-  const comparisonRatio = nonTrainingEfficiency > 0 ? 
-    trainingEfficiency / nonTrainingEfficiency : 
-    trainingEfficiency > 0 ? 2.0 : 1.0;
-  
-  // Determine if training is effective (if the ratio exceeds threshold)
-  const isTrainingEffective = comparisonRatio >= 1.05; // 5% improvement threshold
-  
-  return {
-    trainingWinRate,
-    nonTrainingWinRate,
-    expectedTrainingWinRate,
-    expectedNonTrainingWinRate,
-    trainingEfficiency,
-    nonTrainingEfficiency,
-    comparisonRatio,
-    isTrainingEffective
+    actualEffectiveness
   };
 };
