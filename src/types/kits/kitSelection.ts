@@ -9,7 +9,8 @@ import {
   getEnhancedColorDistance,
   areColorsSufficientlyDifferent,
   areRedColorsTooSimilar,
-  areWhiteColorsTooSimilar
+  areWhiteColorsTooSimilar,
+  detectSpecificColorToneConflict
 } from './colorUtils';
 import { 
   teamHasRedPrimaryColor,
@@ -53,7 +54,8 @@ const teamConflictOverrides: Record<string, Record<string, KitType>> = {
   },
   'FC København': {
     'AC Milan': 'away',
-    'Bayern Munich': 'away'
+    'Bayern Munich': 'away',
+    'Brest': 'third'
   },
   'Liverpool': {
     'Manchester United': 'third',
@@ -108,6 +110,9 @@ const teamConflictOverrides: Record<string, Record<string, KitType>> = {
   },
   'Celta': {
     'Girona': 'third'
+  },
+  'Brest': {
+    'FC København': 'third'
   }
 };
 

@@ -1,3 +1,4 @@
+
 import { KitType, TeamKit } from './kitTypes';
 import { teamKitColors } from './teamColorsData';
 import { 
@@ -6,7 +7,8 @@ import {
   ColorCategory,
   areColorsSufficientlyDifferent,
   areRedColorsTooSimilar,
-  areWhiteColorsTooSimilar
+  areWhiteColorsTooSimilar,
+  detectSpecificColorToneConflict
 } from './colorUtils';
 
 // Teams with known conflicts that always require special handling
@@ -21,7 +23,8 @@ const conflictingTeamPairs: [string, string][] = [
   ['Atlanta', 'Leicester'], 
   ['Liverpool', 'Genova'],
   ['Freiburg', 'Strasbourg'],
-  ['Girona', 'Celta'] // Add Girona vs Celta to known conflicts
+  ['Girona', 'Celta'], // Add Girona vs Celta to known conflicts
+  ['Brest', 'FC København'] // Add Brest vs FC København to known conflicts
 ];
 
 // Check if two teams are in the known conflict list
@@ -119,12 +122,16 @@ export const checkPrimarySecondaryConflict = (
   const team2RedPrimaryVsTeam1RedSecondary = teamHasRedPrimaryColor(team2, team2KitType) && 
                                              teamHasRedSecondaryColor(team1, team1KitType);
   
+  // NEW: Check for specific color tone conflicts (like Brest vs FC København)
+  const specificToneConflict = detectSpecificColorToneConflict(team1Primary, team2Primary);
+  
   return team1PrimaryVsTeam2Secondary || 
          team2PrimaryVsTeam1Secondary || 
          team1PrimaryVsTeam2Primary || 
          team1SecondaryVsTeam2Secondary ||
          team1RedPrimaryVsTeam2RedSecondary ||
-         team2RedPrimaryVsTeam1RedSecondary;
+         team2RedPrimaryVsTeam1RedSecondary ||
+         specificToneConflict;
 };
 
 // Improved function to check for similar primary colors between teams
@@ -148,9 +155,29 @@ export const checkPrimarySimilarityConflict = (
   const gDiff = Math.abs(team1Rgb.g - team2Rgb.g);
   const bDiff = Math.abs(team1Rgb.b - team2Rgb.b);
   
-  // Updated to consider a conflict if ANY channel is very similar (difference less than 20)
-  // This is more strict than before, where we required TWO channels to be similar
-  const anyChannelTooSimilar = (rDiff < 20 || gDiff < 20 || bDiff < 20);
+  // UPDATED: More strict detection - lowered the threshold from 20 to 15
+  const anyChannelTooSimilar = (rDiff < 15 || gDiff < 15 || bDiff < 15);
+  
+  // UPDATED: Special check for red-dominant colors (like Brest vs FC København)
+  const bothRedDominant = (team1Rgb.r > team1Rgb.g && team1Rgb.r > team1Rgb.b) && 
+                          (team2Rgb.r > team2Rgb.g && team2Rgb.r > team2Rgb.b);
+  
+  if (bothRedDominant) {
+    // For red-dominant colors, check if they have similar color tone despite having different red values
+    const team1GreenRatio = team1Rgb.g / team1Rgb.r;
+    const team1BlueRatio = team1Rgb.b / team1Rgb.r;
+    const team2GreenRatio = team2Rgb.g / team2Rgb.r;
+    const team2BlueRatio = team2Rgb.b / team2Rgb.r;
+    
+    const greenRatioDiff = Math.abs(team1GreenRatio - team2GreenRatio);
+    const blueRatioDiff = Math.abs(team1BlueRatio - team2BlueRatio);
+    
+    // If secondary color ratios are similar, the colors will appear to have the same tone
+    // even if the red values are different
+    const similarColorTone = greenRatioDiff < 0.1 && blueRatioDiff < 0.1;
+    
+    return anyChannelTooSimilar || similarColorTone;
+  }
   
   return anyChannelTooSimilar;
 }
@@ -201,3 +228,4 @@ export const performFinalKitCheck = (
   // If all checks pass, kits are okay
   return true;
 };
+

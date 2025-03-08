@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   teamKitColors, 
@@ -179,6 +180,11 @@ const KitSelector: React.FC = () => {
     setHomeTeam('Girona');
     setAwayTeam('Celta');
   };
+  
+  const testBrestVsFCKobenhavn = () => {
+    setHomeTeam('Brest');
+    setAwayTeam('FC København');
+  };
 
   return (
     <div className="p-4 bg-white rounded-lg shadow-md">
@@ -212,7 +218,7 @@ const KitSelector: React.FC = () => {
         </div>
       </div>
       
-      <div className="grid grid-cols-6 gap-2 mb-4">
+      <div className="grid grid-cols-7 gap-2 mb-4">
         <Button 
           variant="outline" 
           onClick={testSevillaVsCrvenaZvezda}
@@ -259,6 +265,14 @@ const KitSelector: React.FC = () => {
           className="w-full text-xs"
         >
           Girona vs Celta
+        </Button>
+        
+        <Button 
+          variant="outline" 
+          onClick={testBrestVsFCKobenhavn}
+          className="w-full text-xs"
+        >
+          Brest vs FC København
         </Button>
       </div>
       

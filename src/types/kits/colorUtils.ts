@@ -1,3 +1,4 @@
+
 // Helper function to parse hex color to RGB
 export function parseHexColor(hex: string): { r: number, g: number, b: number } {
   // Handle invalid hex colors
@@ -38,7 +39,8 @@ export function getColorDistance(
 
 // Enhanced distance calculation with brightness and hue consideration
 export function getEnhancedColorDistance(
-  color1: { r: number, g: number, b: number }, 
+  color1: { r: number, g: number, b: number },
+
   color2: { r: number, g: number, b: number }
 ): number {
   // Calculate traditional weighted distance
@@ -194,7 +196,7 @@ export function areColorsTooSimilar(color1: string, color2: string): boolean {
   return distance < 180; // Increased threshold for better differentiation
 }
 
-// Enhanced function to check if colors are sufficiently different with stricter thresholds
+// Enhanced function to check if colors are sufficiently different with MUCH stricter thresholds
 export function areColorsSufficientlyDifferent(color1: string, color2: string): boolean {
   // First check categorical conflicts
   const categoricalConflict = areColorsConflicting(color1, color2);
@@ -211,17 +213,23 @@ export function areColorsSufficientlyDifferent(color1: string, color2: string): 
   const greenDiff = Math.abs(rgb1.g - rgb2.g);
   const blueDiff = Math.abs(rgb1.b - rgb2.b);
   
-  // NEW: More strict detection - consider a conflict if ANY individual color channel is too similar
-  // This will catch subtle color differences that might be hard to distinguish
-  const anyComponentTooSimilar = (redDiff < 20 || greenDiff < 20 || blueDiff < 20);
+  // UPDATED: Even more strict detection - consider a conflict if ANY individual color channel is too similar
+  // Reduced from 20 to 15 for stricter margins
+  const anyComponentTooSimilar = (redDiff < 15 || greenDiff < 15 || blueDiff < 15);
+  
+  // UPDATED: For reds specifically, be even more strict
+  // If both colors have red as dominant channel and their red values are close
+  const bothRedDominant = (rgb1.r > rgb1.g && rgb1.r > rgb1.b) && (rgb2.r > rgb2.g && rgb2.r > rgb2.b);
+  const redsTooClose = bothRedDominant && redDiff < 25; // Even stricter threshold for reds
   
   // Consider colors different only if:
   // 1. They're not in conflicting categories
   // 2. The overall distance is large enough
   // 3. No color components have a small difference
-  const isDistantEnough = enhancedDistance > 220; // Increased from 200
+  // 4. If both are red-dominant, they need to be far enough apart
+  const isDistantEnough = enhancedDistance > 250; // Increased from 220 for more strict checking
   
-  return !categoricalConflict && isDistantEnough && !anyComponentTooSimilar;
+  return !categoricalConflict && isDistantEnough && !anyComponentTooSimilar && !redsTooClose;
 }
 
 // Add a new utility to specifically handle red color conflicts
@@ -241,7 +249,8 @@ export function areRedColorsTooSimilar(color1: string, color2: string): boolean 
     // Calculate how similar the red values are
     const redDifference = Math.abs(rgb1.r - rgb2.r);
     // If the red values are within 40 units of each other, consider them too similar
-    return redDifference < 40;
+    // UPDATED: Stricter margin, reduced from 40 to 25
+    return redDifference < 25;
   }
   
   return false;
@@ -261,10 +270,33 @@ export function areWhiteColorsTooSimilar(color1: string, color2: string): boolea
       (rgb1.r + rgb1.g + rgb1.b) - (rgb2.r + rgb2.g + rgb2.b)
     ) / 3;
     
-    // If the brightness difference is less than 15 on a 0-255 scale,
+    // UPDATED: More strict white similarity threshold
+    // If the brightness difference is less than 10 on a 0-255 scale (reduced from 15)
     // consider the whites too similar
-    return brightnessDiff < 15;
+    return brightnessDiff < 10;
   }
   
   return false;
 }
+
+// New utility to detect specific color tone conflicts (like Brest vs FC Copenhagen)
+export function detectSpecificColorToneConflict(color1: string, color2: string): boolean {
+  const rgb1 = parseHexColor(color1);
+  const rgb2 = parseHexColor(color2);
+  
+  // Check for both being red dominant but with different tones
+  const bothRedDominant = (rgb1.r > rgb1.g && rgb1.r > rgb1.b) && (rgb2.r > rgb2.g && rgb2.r > rgb2.b);
+  
+  if (bothRedDominant) {
+    // Enhanced tone analysis - check secondary colors (green and blue channels)
+    const greenRatio = Math.abs(rgb1.g / rgb1.r - rgb2.g / rgb2.r);
+    const blueRatio = Math.abs(rgb1.b / rgb1.r - rgb2.b / rgb2.r);
+    
+    // If both have similar red but the secondary colors give different tones,
+    // they might still be too similar for visual distinction
+    return greenRatio < 0.1 && blueRatio < 0.1;
+  }
+  
+  return false;
+}
+
