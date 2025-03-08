@@ -1,4 +1,3 @@
-
 import { Position, Player, PLAYER_RADIUS, BALL_RADIUS, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
 import { calculateDistance } from './neuralCore';
 
@@ -305,7 +304,13 @@ export const updatePosition = (position: Position, velocity: Position): Position
   };
 };
 
-// Fixing the function signature to match how it's being called
+/**
+ * Checks if a ball position collides with the boundaries and returns updated position and velocity
+ * @param position Current position of the ball
+ * @param velocity Current velocity of the ball
+ * @param radius Radius of the ball for collision detection
+ * @returns Object containing updated position and velocity after boundary collision check
+ */
 export const checkBoundaryCollision = (
   position: Position, 
   velocity: Position, 
