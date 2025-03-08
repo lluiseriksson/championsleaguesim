@@ -1,3 +1,4 @@
+
 import { Position, Player, PLAYER_RADIUS, BALL_RADIUS, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
 import { calculateDistance } from './neuralCore';
 
@@ -251,5 +252,93 @@ export const applyBallAcceleration = (velocity: { x: number; y: number }, positi
   return {
     x: velocity.x,
     y: velocity.y
+  };
+};
+
+// Add the missing exports for BallMovementSystem
+export const simulateBounce = (velocity: Position, normal: Position): Position => {
+  // Calculate dot product of velocity and normal
+  const dot = velocity.x * normal.x + velocity.y * normal.y;
+  
+  // Calculate reflection vector: r = v - 2(v·n)n
+  return {
+    x: velocity.x - 2 * dot * normal.x,
+    y: velocity.y - 2 * dot * normal.y
+  };
+};
+
+export const calculateRebound = (
+  playerPosition: Position, 
+  playerVelocity: Position, 
+  ballPosition: Position, 
+  ballVelocity: Position
+): Position => {
+  // Direction from player to ball
+  const dx = ballPosition.x - playerPosition.x;
+  const dy = ballPosition.y - playerPosition.y;
+  
+  // Normalize direction vector
+  const distance = Math.sqrt(dx * dx + dy * dy);
+  const nx = dx / distance;
+  const ny = dy / distance;
+  
+  // Calculate dot product for relative velocity
+  const vx = ballVelocity.x - playerVelocity.x;
+  const vy = ballVelocity.y - playerVelocity.y;
+  const dotProduct = vx * nx + vy * ny;
+  
+  // Calculate impulse with elasticity
+  const elasticity = 1.2; // Slightly bouncy
+  const impulse = -dotProduct * elasticity;
+  
+  // Apply impulse vector
+  return {
+    x: ballVelocity.x + impulse * nx,
+    y: ballVelocity.y + impulse * ny
+  };
+};
+
+export const updatePosition = (position: Position, velocity: Position): Position => {
+  return {
+    x: position.x + velocity.x,
+    y: position.y + velocity.y
+  };
+};
+
+export const checkBoundaryCollision = (
+  position: Position, 
+  velocity: Position, 
+  radius: number
+): { position: Position; velocity: Position } => {
+  let newPosition = { ...position };
+  let newVelocity = { ...velocity };
+  
+  // Check left boundary
+  if (newPosition.x < radius) {
+    newPosition.x = radius;
+    newVelocity.x = -newVelocity.x * 0.8; // Damping factor
+  }
+  
+  // Check right boundary
+  if (newPosition.x > PITCH_WIDTH - radius) {
+    newPosition.x = PITCH_WIDTH - radius;
+    newVelocity.x = -newVelocity.x * 0.8; // Damping factor
+  }
+  
+  // Check top boundary
+  if (newPosition.y < radius) {
+    newPosition.y = radius;
+    newVelocity.y = -newVelocity.y * 0.8; // Damping factor
+  }
+  
+  // Check bottom boundary
+  if (newPosition.y > PITCH_HEIGHT - radius) {
+    newPosition.y = PITCH_HEIGHT - radius;
+    newVelocity.y = -newVelocity.y * 0.8; // Damping factor
+  }
+  
+  return { 
+    position: newPosition, 
+    velocity: newVelocity 
   };
 };

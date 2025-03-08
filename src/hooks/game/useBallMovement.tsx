@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Player, Ball, Position } from '../../types/football';
-import { handleBallPhysics } from './useBallPhysics';
+import { useBallPhysics, handleBallPhysics } from './useBallPhysics';
 import { useBallCollisionTracking } from './useBallCollisionTracking';
 import { useBallGoalDetection } from './useBallGoalDetection';
 import { 
