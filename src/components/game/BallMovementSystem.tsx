@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Ball, Player, Position, BALL_RADIUS } from '../../types/football';
 import { calculateDistance } from '../../utils/neuralCore';
@@ -128,6 +129,8 @@ export const useBallMovement = ({
         }
       }
       
+      // Fixed: Passing only position and velocity to checkBoundaryCollision,
+      // and BALL_RADIUS as it's needed by the function
       const { position: boundedPosition, velocity: boundedVelocity } = 
         checkBoundaryCollision(newPosition, newVelocity, BALL_RADIUS);
       

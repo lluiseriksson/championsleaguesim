@@ -24,7 +24,7 @@ export const useBallPhysics = ({ ball, setBall, players }: BallPhysicsProps) => 
         y: prevBall.position.y + prevBall.velocity.y
       };
 
-      // Check for collisions with the boundaries
+      // Fixed: Passing correct arguments to checkBoundaryCollision
       const { position, velocity } = checkBoundaryCollision(
         newPosition, 
         prevBall.velocity,
@@ -141,7 +141,8 @@ export const useBallPhysics = ({ ball, setBall, players }: BallPhysicsProps) => 
     
     // If no collision, check boundary
     if (!collidedWithPlayer) {
-      const boundary = checkBoundaryCollision(newPosition, newVelocity, BALL_RADIUS);
+      // Fixed: Passing correct arguments to checkBoundaryCollision
+      const boundary = checkBoundaryCollision(updatedPosition, updatedVelocity, BALL_RADIUS);
       updatedPosition = boundary.position;
       updatedVelocity = boundary.velocity;
     }
