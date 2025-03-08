@@ -38,24 +38,14 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
       />
       
       <div className="mb-6 flex items-center justify-between">
-        {currentRound <= 7 ? (
-          <TournamentControls
-            currentRound={currentRound}
-            autoSimulation={autoSimulation}
-            simulationPaused={simulationPaused}
-            resetTournament={resetTournament}
-            startAutoSimulation={startAutoSimulation}
-            randomizeRound={randomizeCurrentRound}
-          />
-        ) : (
-          <TournamentControls
-            currentRound={currentRound}
-            autoSimulation={autoSimulation}
-            simulationPaused={simulationPaused}
-            resetTournament={resetTournament}
-            startAutoSimulation={startAutoSimulation}
-          />
-        )}
+        <TournamentControls
+          currentRound={currentRound}
+          autoSimulation={autoSimulation}
+          simulationPaused={simulationPaused}
+          resetTournament={resetTournament}
+          startAutoSimulation={startAutoSimulation}
+          randomizeRound={randomizeCurrentRound}
+        />
       </div>
       
       {playingMatch && activeMatch && activeMatch.teamA && activeMatch.teamB && !embeddedMode ? (
