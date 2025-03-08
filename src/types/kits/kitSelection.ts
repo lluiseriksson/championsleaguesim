@@ -81,6 +81,13 @@ const teamConflictOverrides: Record<string, Record<string, KitType>> = {
   },
   'Crvena Zvezda': {
     'Sevilla': 'third'
+  },
+  // Add Leverkusen and Monza conflict
+  'Leverkusen': {
+    'Monza': 'third'
+  },
+  'Monza': {
+    'Leverkusen': 'third'
   }
 };
 

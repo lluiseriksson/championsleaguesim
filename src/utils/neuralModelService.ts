@@ -11,6 +11,13 @@ import {
 } from './neural/modelStatistics';
 import { trainFromPreviousGames, syncPlayerHistoricalData } from './neural/historicalTraining';
 import { getTeamElo } from './tournament/eloRatings';
+import { areTeamsInConflictList } from '../types/kits/kitConflictChecker';
+
+// Export kit conflict checking as part of the neural model service
+// This helps AI understand when visual confusion might impact game outcome
+export const checkKitConflict = (homeTeam: string, awayTeam: string): boolean => {
+  return areTeamsInConflictList(homeTeam, awayTeam);
+};
 
 // Export all functions
 export {

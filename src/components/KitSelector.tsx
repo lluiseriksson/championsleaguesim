@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   teamKitColors, 
@@ -11,7 +10,8 @@ import {
   teamHasRedPrimaryColor,
   teamHasWhitePrimaryColor,
   areTeamsInConflictList,
-  checkWhiteKitConflict
+  checkWhiteKitConflict,
+  checkPrimarySecondaryConflict
 } from '../types/kits/kitConflictChecker';
 import { Button } from './ui/button';
 
@@ -92,6 +92,26 @@ const KitSelector: React.FC = () => {
       );
     }
     
+    // Check for primary-secondary color conflicts
+    const primarySecondaryConflict = checkPrimarySecondaryConflict(
+      homeTeam, 
+      awayTeam, 
+      'home', 
+      kitResult.awayTeamKitType
+    );
+    
+    if (primarySecondaryConflict) {
+      return (
+        <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md text-amber-800">
+          <p className="text-sm font-semibold mb-1">⚠️ Primary-Secondary Color Conflict!</p>
+          <p className="text-xs">
+            The primary color of one team is too similar to the secondary color of the other team,
+            which could cause confusion during the match.
+          </p>
+        </div>
+      );
+    }
+    
     const kitCheckPassed = performFinalKitCheck(homeTeam, awayTeam, kitResult.awayTeamKitType);
     
     if (!kitCheckPassed) {
@@ -120,6 +140,12 @@ const KitSelector: React.FC = () => {
   const testSevillaVsCrvenaZvezda = () => {
     setHomeTeam('Sevilla');
     setAwayTeam('Crvena Zvezda');
+  };
+  
+  // Test Leverkusen vs Monza
+  const testLeverkusenVsMonza = () => {
+    setHomeTeam('Leverkusen');
+    setAwayTeam('Monza');
   };
 
   return (
@@ -154,13 +180,21 @@ const KitSelector: React.FC = () => {
         </div>
       </div>
       
-      <div className="mb-4">
+      <div className="grid grid-cols-2 gap-4 mb-4">
         <Button 
           variant="outline" 
           onClick={testSevillaVsCrvenaZvezda}
           className="w-full"
         >
-          Test Sevilla vs Crvena Zvezda Conflict
+          Test Sevilla vs Crvena Zvezda
+        </Button>
+        
+        <Button 
+          variant="outline" 
+          onClick={testLeverkusenVsMonza}
+          className="w-full"
+        >
+          Test Leverkusen vs Monza
         </Button>
       </div>
       
@@ -191,6 +225,13 @@ const KitSelector: React.FC = () => {
                 ></div>
                 <span className="text-xs">Outfield</span>
               </div>
+              <div className="text-center">
+                <div 
+                  className="w-12 h-12 rounded-full mb-1 border border-gray-300" 
+                  style={{ backgroundColor: teamKitColors[homeTeam]?.home?.secondary || '#CCCCCC' }}
+                ></div>
+                <span className="text-xs">Secondary</span>
+              </div>
             </div>
             
             <h4 className="font-medium mb-2">Away Team Selected Kits</h4>
@@ -208,6 +249,13 @@ const KitSelector: React.FC = () => {
                   style={{ backgroundColor: getKitColor(awayTeam, kitResult.awayTeamKitType, 'defender') }}
                 ></div>
                 <span className="text-xs">Outfield</span>
+              </div>
+              <div className="text-center">
+                <div 
+                  className="w-12 h-12 rounded-full mb-1 border border-gray-300" 
+                  style={{ backgroundColor: teamKitColors[awayTeam]?.[kitResult.awayTeamKitType]?.secondary || '#CCCCCC' }}
+                ></div>
+                <span className="text-xs">Secondary</span>
               </div>
             </div>
           </div>
