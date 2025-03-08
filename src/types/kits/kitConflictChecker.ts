@@ -94,6 +94,15 @@ export const checkPrimarySecondaryConflict = (
   return team1PrimaryVsTeam2Secondary || team2PrimaryVsTeam1Secondary;
 };
 
+// Resolve kit conflict by selecting an alternative kit
+export const resolveKitConflict = (homeTeam: string, awayTeam: string): KitType => {
+  // Default to 'third' kit in case of conflict
+  // This is a simplified approach; in a more complex system we might
+  // dynamically select the kit that creates the least amount of conflict
+  console.log(`Resolving kit conflict between ${homeTeam} and ${awayTeam} - using third kit`);
+  return 'third';
+};
+
 // Comprehensive kit conflict check
 export const performFinalKitCheck = (
   homeTeam: string, 
