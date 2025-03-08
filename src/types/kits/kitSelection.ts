@@ -46,7 +46,11 @@ const teamConflictOverrides: Record<string, Record<string, KitType>> = {
     'Las Palmas': 'third'
   },
   'Las Palmas': {
-    'Leeds United': 'third'
+    'Leeds United': 'third',
+    'Fulham': 'third'
+  },
+  'Fulham': {
+    'Las Palmas': 'third'
   },
   'AC Milan': {
     'FC København': 'third',

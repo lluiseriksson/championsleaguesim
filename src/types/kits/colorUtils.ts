@@ -1,4 +1,3 @@
-
 // Helper function to parse hex color to RGB
 export function parseHexColor(hex: string): { r: number, g: number, b: number } {
   // Handle invalid hex colors
@@ -90,16 +89,16 @@ export function categorizeColor(hexColor: string): ColorCategory {
   const chroma = max - min;
   const lightness = (max + min) / 2;
   
-  // Enhanced white detection
+  // Enhanced white detection with even stricter thresholds
   // Check if all RGB values are very high and close to each other
-  if (r > 220 && g > 220 && b > 220 && chroma < 30) {
+  if (r > 220 && g > 220 && b > 220 && chroma < 25) {
     return ColorCategory.WHITE;
   }
   
   // Stricter gray/black/white detection
-  if (chroma < 40) { // Increased from 30
-    if (lightness < 50) return ColorCategory.BLACK; // More strict black threshold
-    if (lightness > 180) return ColorCategory.WHITE; // More strict white threshold
+  if (chroma < 40) {
+    if (lightness < 50) return ColorCategory.BLACK;
+    if (lightness > 180) return ColorCategory.WHITE;
     return ColorCategory.GRAY;
   }
   
@@ -256,7 +255,7 @@ export function areRedColorsTooSimilar(color1: string, color2: string): boolean 
   return false;
 }
 
-// Add a specific function to check for white kit conflicts
+// Add a more strict function to check for white kit conflicts
 export function areWhiteColorsTooSimilar(color1: string, color2: string): boolean {
   const category1 = categorizeColor(color1);
   const category2 = categorizeColor(color2);
@@ -270,10 +269,10 @@ export function areWhiteColorsTooSimilar(color1: string, color2: string): boolea
       (rgb1.r + rgb1.g + rgb1.b) - (rgb2.r + rgb2.g + rgb2.b)
     ) / 3;
     
-    // UPDATED: More strict white similarity threshold
-    // If the brightness difference is less than 10 on a 0-255 scale (reduced from 15)
+    // UPDATED: Even more strict white similarity threshold
+    // If the brightness difference is less than 8 on a 0-255 scale (reduced from 10)
     // consider the whites too similar
-    return brightnessDiff < 10;
+    return brightnessDiff < 8;
   }
   
   return false;
@@ -299,4 +298,3 @@ export function detectSpecificColorToneConflict(color1: string, color2: string):
   
   return false;
 }
-

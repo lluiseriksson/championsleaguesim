@@ -1,4 +1,3 @@
-
 import { KitType, TeamKit } from './kitTypes';
 import { teamKitColors } from './teamColorsData';
 import { 
@@ -23,8 +22,9 @@ const conflictingTeamPairs: [string, string][] = [
   ['Atlanta', 'Leicester'], 
   ['Liverpool', 'Genova'],
   ['Freiburg', 'Strasbourg'],
-  ['Girona', 'Celta'], // Add Girona vs Celta to known conflicts
-  ['Brest', 'FC København'] // Add Brest vs FC København to known conflicts
+  ['Girona', 'Celta'], 
+  ['Brest', 'FC København'],
+  ['Fulham', 'Las Palmas'] // Add Fulham vs Las Palmas to known conflicts
 ];
 
 // Check if two teams are in the known conflict list
@@ -228,4 +228,3 @@ export const performFinalKitCheck = (
   // If all checks pass, kits are okay
   return true;
 };
-
