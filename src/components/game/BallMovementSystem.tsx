@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Ball, Player, Position, BALL_RADIUS } from '../../types/football';
 import { calculateDistance } from '../../utils/neuralCore';
@@ -129,7 +128,6 @@ export const useBallMovement = ({
         }
       }
       
-      // Fixed: Call checkBoundaryCollision with the correct number of arguments (3 parameters)
       const { position: boundedPosition, velocity: boundedVelocity } = 
         checkBoundaryCollision(newPosition, newVelocity, BALL_RADIUS);
       
