@@ -1,3 +1,4 @@
+
 import { useCallback } from 'react';
 import { Ball, Player, Position, BALL_RADIUS } from '../../types/football';
 import { calculateDistance } from '../../utils/neuralCore';
@@ -23,6 +24,7 @@ export const useBallPhysics = ({ ball, setBall, players }: BallPhysicsProps) => 
         y: prevBall.position.y + prevBall.velocity.y
       };
 
+      // Fixed: Pass only the required parameters (position, velocity, radius)
       const { position, velocity } = checkBoundaryCollision(
         newPosition, 
         prevBall.velocity,
@@ -129,6 +131,7 @@ export const useBallPhysics = ({ ball, setBall, players }: BallPhysicsProps) => 
     }
     
     if (!collidedWithPlayer) {
+      // Fixed: Pass only the required parameters (position, velocity, radius)
       const boundary = checkBoundaryCollision(updatedPosition, updatedVelocity, BALL_RADIUS);
       updatedPosition = boundary.position;
       updatedVelocity = boundary.velocity;
