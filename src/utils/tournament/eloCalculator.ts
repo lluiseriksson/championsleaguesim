@@ -1,3 +1,4 @@
+
 /**
  * Utility functions for ELO-based calculations in the tournament
  */
@@ -59,4 +60,52 @@ export const shouldUseGoldenGoal = (teamAElo: number, teamBElo: number): boolean
   const goldenGoalProbability = Math.max(0, 0.3 - eloDifference / 500);
   
   return Math.random() < goldenGoalProbability;
+};
+
+// NEW: Calculate training effectiveness based on ELO differences
+export const calculateExpectedTrainingEffectiveness = (
+  trainingTeamElo: number, 
+  nonTrainingTeamElo: number
+): number => {
+  // Calculate how much benefit training should provide based on ELO gap
+  const eloDifference = trainingTeamElo - nonTrainingTeamElo;
+  
+  // If team is already stronger, training should have diminishing returns
+  if (eloDifference > 0) {
+    // Diminishing returns for already stronger teams
+    return Math.max(0.8, 1.0 - (eloDifference / 500)); 
+  }
+  
+  // If team is weaker, training should be more effective
+  // The weaker the team, the more room for improvement
+  return Math.min(1.5, 1.0 + (Math.abs(eloDifference) / 300));
+};
+
+// NEW: Determine if training is beneficial for a specific team
+export const isTrainingBeneficial = (
+  teamElo: number,
+  avgOpponentElo: number,
+  actualWinRate: number
+): { 
+  isBeneficial: boolean,
+  expectedEffectiveness: number,
+  actualEffectiveness: number 
+} => {
+  const expectedEffectiveness = calculateExpectedTrainingEffectiveness(teamElo, avgOpponentElo);
+  
+  // Expected win rate based on ELO
+  const expectedWinRate = calculateWinProbability(teamElo, avgOpponentElo);
+  
+  // Training should improve win rate above baseline ELO prediction
+  const improvementThreshold = 1.05; // 5% improvement considered beneficial
+  
+  // Training is beneficial if actual win rate exceeds expected win rate by improvement threshold
+  const actualEffectiveness = actualWinRate / expectedWinRate;
+  const isBeneficial = actualEffectiveness >= improvementThreshold;
+  
+  return {
+    isBeneficial,
+    expectedEffectiveness,
+    actualEffectiveness
+  };
 };

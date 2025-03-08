@@ -1,7 +1,10 @@
-
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Player } from '../../types/football';
-import { saveModel } from '../../utils/neural/modelPersistence';
+import { 
+  saveModel, 
+  recordTrainingEffectiveness, 
+  isNeuralTrainingEffective 
+} from '../../utils/neuralModelService';
 import { createExperienceReplay } from '../../utils/experienceReplay';
 import { toast } from 'sonner';
 import { validatePlayerBrain } from '../../utils/neural/networkValidator';
@@ -11,6 +14,7 @@ const DEFAULT_SYNC_INTERVAL = 1800; // 30 seconds at 60fps (was 600)
 const TOURNAMENT_SYNC_INTERVAL = 7200; // 120 seconds at 60fps (doubled from 3600)
 
 const LEARNING_CHECK_INTERVAL = 3600; // 60 seconds at 60fps
+const EFFECTIVENESS_CHECK_INTERVAL = 7200; // 120 seconds at 60fps
 
 const PERFORMANCE_CHECK_INTERVAL = 300; // 5 seconds at 60fps
 const HISTORICAL_TRAINING_INTERVAL = 5400; // 90 seconds at 60fps
@@ -19,22 +23,29 @@ interface ModelSyncSystemProps {
   players: Player[];
   setPlayers: React.Dispatch<React.SetStateAction<Player[]>>;
   tournamentMode?: boolean;
+  matchResult?: { winner: string | null, score: { red: number, blue: number } } | null;
 }
 
 export const useModelSyncSystem = ({ 
   players, 
   setPlayers,
-  tournamentMode = false
+  tournamentMode = false,
+  matchResult = null
 }: ModelSyncSystemProps) => {
   const syncCounter = useRef(0);
   const learningCheckCounter = useRef(0);
   const performanceCheckCounter = useRef(0);
   const historicalTrainingCounter = useRef(0);
+  const effectivenessCheckCounter = useRef(0);
   const [lastSyncTime, setLastSyncTime] = useState(Date.now());
   const [isLowPerformance, setIsLowPerformance] = useState(false);
   const lastFrameTimeRef = useRef(Date.now());
   const frameTimesRef = useRef<number[]>([]);
   const [hasPerformedHistoricalTraining, setHasPerformedHistoricalTraining] = useState(false);
+  const [trainingEffectiveness, setTrainingEffectiveness] = useState<{
+    redTeam: { isEffective: boolean, ratio: number } | null,
+    blueTeam: { isEffective: boolean, ratio: number } | null
+  }>({ redTeam: null, blueTeam: null });
   
   // Find the team with higher ELO rating
   const redTeamElo = players.find(p => p.team === 'red')?.teamElo || 1500;
@@ -51,11 +62,32 @@ export const useModelSyncSystem = ({
   console.log(`Team ELO comparison - Red Team: ${redTeamElo}, Blue Team: ${blueTeamElo}`);
   console.log(`Learning configuration - Higher ELO team (${higherEloTeam}): ${higherEloTeamShouldLearn ? 'YES' : 'NO'}, Lower ELO team (${lowerEloTeam}): ${lowerEloTeamShouldLearn ? 'YES' : 'NO'}`);
   
+  // NEW: Track match results for training effectiveness
+  useEffect(() => {
+    if (matchResult && matchResult.winner) {
+      // Determine which team was learning
+      const trainingTeam = higherEloTeam;
+      const nonTrainingTeam = lowerEloTeam;
+      
+      // Record the outcome for effectiveness tracking
+      recordTrainingEffectiveness(
+        trainingTeam,
+        nonTrainingTeam,
+        matchResult.winner
+      ).then(success => {
+        if (success) {
+          console.log(`Recorded match result for training effectiveness: ${trainingTeam} (training) vs ${nonTrainingTeam}, winner: ${matchResult.winner}`);
+        }
+      });
+    }
+  }, [matchResult, higherEloTeam, lowerEloTeam]);
+  
   const incrementSyncCounter = () => {
     syncCounter.current += 1;
     learningCheckCounter.current += 1;
     performanceCheckCounter.current += 1;
     historicalTrainingCounter.current += 1;
+    effectivenessCheckCounter.current += 1;
     
     const now = Date.now();
     const frameTime = now - lastFrameTimeRef.current;
@@ -66,6 +98,56 @@ export const useModelSyncSystem = ({
       frameTimesRef.current.shift();
     }
   };
+  
+  // NEW: Check training effectiveness periodically
+  const checkTrainingEffectiveness = React.useCallback(async () => {
+    if (effectivenessCheckCounter.current < EFFECTIVENESS_CHECK_INTERVAL) {
+      return;
+    }
+    
+    effectivenessCheckCounter.current = 0;
+    
+    try {
+      // Check effectiveness for both teams
+      const redTeamEffectiveness = await isNeuralTrainingEffective('red');
+      const blueTeamEffectiveness = await isNeuralTrainingEffective('blue');
+      
+      setTrainingEffectiveness({
+        redTeam: { 
+          isEffective: redTeamEffectiveness.isEffective,
+          ratio: redTeamEffectiveness.ratio
+        },
+        blueTeam: { 
+          isEffective: blueTeamEffectiveness.isEffective,
+          ratio: blueTeamEffectiveness.ratio
+        }
+      });
+      
+      // Log effectiveness results
+      console.log('Training effectiveness check:');
+      console.log(`Red team: ${redTeamEffectiveness.isEffective ? 'EFFECTIVE' : 'NOT EFFECTIVE'} (ratio: ${redTeamEffectiveness.ratio.toFixed(2)}, confidence: ${(redTeamEffectiveness.confidence * 100).toFixed(0)}%)`);
+      console.log(`Blue team: ${blueTeamEffectiveness.isEffective ? 'EFFECTIVE' : 'NOT EFFECTIVE'} (ratio: ${blueTeamEffectiveness.ratio.toFixed(2)}, confidence: ${(blueTeamEffectiveness.confidence * 100).toFixed(0)}%)`);
+      
+      // Show toast notification for ineffective training with sufficient confidence
+      if (!tournamentMode) {
+        if (!redTeamEffectiveness.isEffective && redTeamEffectiveness.confidence > 0.5) {
+          toast.warning('Red team training not effective', {
+            description: `Win ratio: ${redTeamEffectiveness.ratio.toFixed(2)} (below threshold)`,
+            duration: 4000,
+          });
+        }
+        
+        if (!blueTeamEffectiveness.isEffective && blueTeamEffectiveness.confidence > 0.5) {
+          toast.warning('Blue team training not effective', {
+            description: `Win ratio: ${blueTeamEffectiveness.ratio.toFixed(2)} (below threshold)`,
+            duration: 4000,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error checking training effectiveness:', error);
+    }
+  }, [tournamentMode]);
   
   const checkPerformance = React.useCallback(() => {
     if (performanceCheckCounter.current >= PERFORMANCE_CHECK_INTERVAL) {
@@ -116,6 +198,21 @@ export const useModelSyncSystem = ({
           // Use team's ELO status to determine learning, not color
           if (p.team === higherEloTeam && !higherEloTeamShouldLearn) return false;
           if (p.team === lowerEloTeam && !lowerEloTeamShouldLearn) return false;
+          
+          // NEW: Check if team's training is effective
+          const teamEffectiveness = p.team === 'red' ? 
+            trainingEffectiveness.redTeam : 
+            trainingEffectiveness.blueTeam;
+            
+          // If we have effectiveness data and training is not effective, reduce sync probability
+          if (teamEffectiveness && !teamEffectiveness.isEffective) {
+            // With poor effectiveness, only sync 30% of the time
+            if (Math.random() > 0.3) {
+              console.log(`Skipping sync for ${p.team} ${p.role} due to ineffective training`);
+              return false;
+            }
+          }
+          
           return true;
         });
         
@@ -161,7 +258,7 @@ export const useModelSyncSystem = ({
       
       syncCounter.current = 0;
     }
-  }, [players, setPlayers, tournamentMode, lastSyncTime, isLowPerformance, higherEloTeam, lowerEloTeam, higherEloTeamShouldLearn, lowerEloTeamShouldLearn]);
+  }, [players, setPlayers, tournamentMode, lastSyncTime, isLowPerformance, higherEloTeam, lowerEloTeam, higherEloTeamShouldLearn, lowerEloTeamShouldLearn, trainingEffectiveness]);
   
   const checkLearningProgress = React.useCallback(() => {
     if (isLowPerformance && Math.random() > 0.2) {
@@ -212,7 +309,7 @@ export const useModelSyncSystem = ({
       learningCheckCounter.current = 0;
     }
   }, [setPlayers, tournamentMode, isLowPerformance, higherEloTeam, lowerEloTeam, higherEloTeamShouldLearn, lowerEloTeamShouldLearn]);
-
+  
   const performHistoricalTraining = React.useCallback(async () => {
     if (tournamentMode || (isLowPerformance && Math.random() > 0.1)) {
       return;
@@ -269,6 +366,8 @@ export const useModelSyncSystem = ({
     checkLearningProgress,
     checkPerformance,
     performHistoricalTraining,
+    checkTrainingEffectiveness,
+    trainingEffectiveness,
     isLowPerformance
   };
 };

@@ -1,4 +1,5 @@
-import React, { useRef } from 'react';
+
+import React, { useRef, useState, useEffect } from 'react';
 import { Player, Ball, Score, Position } from '../types/football';
 import { useBallMovementSystem } from './game/BallMovementSystem';
 import { useModelSyncSystem } from './game/ModelSyncSystem';
@@ -34,6 +35,34 @@ const GameLogic: React.FC<GameLogicProps> = ({
   
   // Control the frequency of historical training
   const historicalTrainingCountRef = useRef(0);
+  
+  // NEW: Track match result for training effectiveness
+  const [matchResult, setMatchResult] = useState<{ 
+    winner: string | null, 
+    score: { red: number, blue: number } 
+  } | null>(null);
+  
+  // Watch for score changes to update match result
+  useEffect(() => {
+    // Only update if we have a significant score difference
+    if (score.red >= 3 && score.red > score.blue + 1) {
+      setMatchResult({
+        winner: 'red',
+        score: { ...score }
+      });
+    } else if (score.blue >= 3 && score.blue > score.red + 1) {
+      setMatchResult({
+        winner: 'blue',
+        score: { ...score }
+      });
+    } else if (score.red >= 1 && score.blue >= 1) {
+      // If scores are close, set as a draw
+      setMatchResult({
+        winner: null, // draw
+        score: { ...score }
+      });
+    }
+  }, [score]);
   
   console.log(`GameLogic rendered with players: ${players.length}, tournamentMode: ${tournamentMode}`);
 
@@ -74,11 +103,14 @@ const GameLogic: React.FC<GameLogicProps> = ({
     checkLearningProgress,
     checkPerformance,
     performHistoricalTraining,
+    checkTrainingEffectiveness,
+    trainingEffectiveness,
     isLowPerformance
   } = useModelSyncSystem({
     players,
     setPlayers,
-    tournamentMode
+    tournamentMode,
+    matchResult
   });
 
   // Create a throttled version of the historical training function
@@ -112,6 +144,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
     checkLearningProgress,
     checkPerformance,
     performHistoricalTraining: throttledHistoricalTraining,
+    checkTrainingEffectiveness, // NEW: Add training effectiveness check
     ball,
     score,
     tournamentMode,
@@ -159,6 +192,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
     checkLearningProgress,
     checkPerformance,
     performHistoricalTraining: throttledHistoricalTraining,
+    checkTrainingEffectiveness, // NEW: Add training effectiveness check
     ball,
     score,
     tournamentMode,

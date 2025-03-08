@@ -2,7 +2,13 @@
 // Re-export all neural network service functionality from specialized modules
 import { saveModel, loadModel, saveTrainingSession, loadSpecializedNetworks } from './neural/modelPersistence';
 import { getBestModel, combineModels } from './neural/modelOptimization';
-import { getModelStats, compareModelPerformance } from './neural/modelStatistics';
+import { 
+  getModelStats, 
+  compareModelPerformance, 
+  recordTrainingEffectiveness,
+  getTrainingEffectiveness,
+  isNeuralTrainingEffective
+} from './neural/modelStatistics';
 import { trainFromPreviousGames, syncPlayerHistoricalData } from './neural/historicalTraining';
 import { getTeamElo } from './tournament/eloRatings';
 
@@ -21,6 +27,9 @@ export {
   // Statistics functions
   getModelStats,
   compareModelPerformance,
+  recordTrainingEffectiveness,
+  getTrainingEffectiveness,
+  isNeuralTrainingEffective,
   
   // Historical training functions
   trainFromPreviousGames,
