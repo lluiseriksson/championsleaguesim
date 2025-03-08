@@ -2,11 +2,10 @@ import { useCallback } from 'react';
 import { Ball, Player, Position, BALL_RADIUS } from '../../types/football';
 import { calculateDistance } from '../../utils/neuralCore';
 import { 
-  applyFriction,
-  addRandomEffect,
-  checkCollision,
-  calculateNewVelocity,
-  checkBoundaryCollision
+  simulateBounce,
+  calculateRebound,
+  updatePosition,
+  checkBoundaryCollision,
 } from '../../utils/gamePhysics';
 
 interface BallPhysicsProps {
@@ -23,38 +22,32 @@ export const useBallPhysics = ({ ball, setBall, players }: BallPhysicsProps) => 
         y: prevBall.position.y + prevBall.velocity.y
       };
 
-      const { position, velocity } = checkBoundaryCollision(
-        newPosition, 
-        prevBall.velocity,
-        BALL_RADIUS
+      // Check for collisions with the boundaries
+      const { x, y, velocityX, velocityY } = checkBoundaryCollision(
+        newPosition.x, 
+        newPosition.y, 
+        prevBall.velocity.x, 
+        prevBall.velocity.y,
+        BALL_RADIUS, // Ball radius
+        800, // Pitch width
+        600  // Pitch height
       );
+
+      newPosition = { x, y };
 
       return {
         ...prevBall,
-        position: position,
-        velocity: velocity
+        position: newPosition,
+        velocity: { x: velocityX, y: velocityY }
       };
     });
   }, [setBall]);
 
   const handlePlayerBallCollision = useCallback((player: Player) => {
     setBall(prevBall => {
-      const distance = calculateDistance(
-        player.position.x,
-        player.position.y,
-        prevBall.position.x,
-        prevBall.position.y
-      );
-      
-      if (distance <= player.radius + BALL_RADIUS) {
-        const playerVelocity = { x: 0, y: 0 };
-        const newVelocity = calculateNewVelocity(
-          prevBall.position,
-          player.position,
-          prevBall.velocity,
-          player.role === 'goalkeeper'
-        );
-        
+      const distance = calculateDistance(player.position, prevBall.position);
+      if (distance <= player.size + BALL_RADIUS) {
+        const newVelocity = calculateRebound(player.position, player.velocity, prevBall.position, prevBall.velocity);
         return {
           ...prevBall,
           velocity: newVelocity
@@ -66,87 +59,26 @@ export const useBallPhysics = ({ ball, setBall, players }: BallPhysicsProps) => 
 
   const detectCollisions = useCallback(() => {
     players.forEach(player => {
-      const distance = calculateDistance(
-        player.position.x,
-        player.position.y,
-        ball.position.x,
-        ball.position.y
-      );
-      
-      if (distance <= player.radius + BALL_RADIUS) {
+      const distance = calculateDistance(player.position, ball.position);
+      if (distance <= player.size + BALL_RADIUS) {
         handlePlayerBallCollision(player);
       }
     });
   }, [players, ball, handlePlayerBallCollision]);
 
-  const handleBallPhysics = useCallback((
-    currentBall: Ball,
-    newPosition: Position,
-    goalkeepers: Player[],
-    fieldPlayers: Player[],
-    onBallTouch: (player: Player) => void,
-    lastCollisionTimeRef: React.MutableRefObject<number>,
-    lastKickPositionRef: React.MutableRefObject<Position>
-  ) => {
-    const newVelocity = applyFriction(currentBall.velocity, 0.98);
-    
-    let collidedWithPlayer = false;
-    let updatedVelocity = { ...newVelocity };
-    let updatedPosition = { ...newPosition };
-    
-    for (const player of [...goalkeepers, ...fieldPlayers]) {
-      if (checkCollision(newPosition, player.position, player.role === 'goalkeeper', player.radius)) {
-        collidedWithPlayer = true;
-        onBallTouch(player);
-        
-        updatedVelocity = calculateNewVelocity(
-          newPosition,
-          player.position,
-          newVelocity,
-          player.role === 'goalkeeper'
-        );
-        
-        const dx = newPosition.x - player.position.x;
-        const dy = newPosition.y - player.position.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        if (distance > 0) {
-          const nx = dx / distance;
-          const ny = dy / distance;
-          const minDistance = player.radius + BALL_RADIUS + 1;
-          
-          updatedPosition = {
-            x: player.position.x + nx * minDistance,
-            y: player.position.y + ny * minDistance
-          };
-        }
-        
-        lastCollisionTimeRef.current = Date.now();
-        lastKickPositionRef.current = { ...updatedPosition };
-        
-        break;
-      }
-    }
-    
-    if (!collidedWithPlayer) {
-      const boundary = checkBoundaryCollision(updatedPosition, updatedVelocity, BALL_RADIUS);
-      updatedPosition = boundary.position;
-      updatedVelocity = boundary.velocity;
-    }
-    
-    return {
-      ...currentBall,
-      position: updatedPosition,
-      velocity: updatedVelocity
-    };
-  }, []);
+  // Add the handleBallPhysics function to fix the import error
+  const handleBallPhysics = useCallback(() => {
+    detectCollisions();
+    updateBallPosition();
+  }, [detectCollisions, updateBallPosition]);
 
   return {
     detectCollisions,
     handlePlayerBallCollision,
     updateBallPhysics: updateBallPosition,
-    handleBallPhysics
+    handleBallPhysics // Export the function
   };
 };
 
-export default useBallPhysics;
+// Export the handleBallPhysics function to fix the import error in useBallMovement.tsx
+export { useBallPhysics };

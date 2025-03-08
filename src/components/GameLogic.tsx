@@ -1,7 +1,7 @@
 
 import React, { useRef, useState } from 'react';
 import { Player, Ball, Score, Position } from '../types/football';
-import { useBallMovement } from './game/BallMovementSystem';
+import { useBallMovementSystem } from './game/BallMovementSystem';
 import { useModelSyncSystem } from './game/ModelSyncSystem';
 import { useGoalSystem } from './game/GoalSystem';
 import { useGameLoop } from '../hooks/game/useGameLoop';
@@ -137,7 +137,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
   });
 
   // Ball movement system
-  const { updateBallPosition } = useBallMovement({
+  const { updateBallPosition } = useBallMovementSystem({
     ball,
     setBall,
     players,
