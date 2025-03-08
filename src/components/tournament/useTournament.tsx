@@ -64,7 +64,8 @@ export const useTournament = (embeddedMode = false) => {
           setSimulationPaused(true);
           timeoutId = setTimeout(() => {
             setSimulationPaused(false);
-          }, 3000);
+            simulateNextMatch();
+          }, 1500);
         } else if (currentRound === 7 && allRoundMatchesPlayed) {
           const winner = matches.find(m => m.round === 7)?.winner;
           toast.success(`Tournament Complete!`, {
@@ -76,11 +77,11 @@ export const useTournament = (embeddedMode = false) => {
       }
     };
     
-    const baseDelay = 800;
-    const maxAdditionalDelay = 1500;
-    const additionalDelay = Math.min(maxAdditionalDelay, matchesPlayed * 30);
+    const baseDelay = 600;
+    const maxAdditionalDelay = 1000;
+    const additionalDelay = Math.min(maxAdditionalDelay, matchesPlayed * 20);
     
-    const totalDelay = Math.min(5000, baseDelay + additionalDelay);
+    const totalDelay = Math.min(3000, baseDelay + additionalDelay);
     
     timeoutId = setTimeout(simulateNextMatch, totalDelay);
     
@@ -406,22 +407,36 @@ export const useTournament = (embeddedMode = false) => {
     setMatchesPlayed(prev => prev + 1);
     
     if (autoSimulation) {
-      const pauseTime = Math.min(2000, 800 + matchesPlayed * 10);
+      const pauseTime = Math.min(1000, 500 + matchesPlayed * 5);
       
       setSimulationPaused(true);
       setTimeout(() => {
         setSimulationPaused(false);
       }, pauseTime);
     }
-  }, [activeMatch, matches, currentRound, autoSimulation, matchesPlayed]);
+  }, [activeMatch, matches, autoSimulation, matchesPlayed]);
 
   const startAutoSimulation = useCallback(() => {
     setAutoSimulation(true);
     setSimulationPaused(false);
+    
+    const nextMatch = matches.find(m => 
+      m.round === currentRound && 
+      !m.played && 
+      m.teamA && 
+      m.teamB
+    );
+    
+    if (nextMatch) {
+      setTimeout(() => {
+        playMatch(nextMatch);
+      }, 100);
+    }
+    
     toast.success("Auto Simulation Started", {
       description: "Tournament will progress automatically"
     });
-  }, []);
+  }, [matches, currentRound, playMatch]);
 
   const getWinner = useCallback(() => {
     return matches.find(m => m.round === 7)?.winner;
