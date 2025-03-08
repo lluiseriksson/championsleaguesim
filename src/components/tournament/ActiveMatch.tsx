@@ -19,6 +19,12 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
 
   return (
     <div className="mb-10 p-4 bg-gray-50 rounded-lg shadow-md">
+      <button 
+        onClick={onBackClick}
+        className="mb-4 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md text-gray-800 transition-colors"
+      >
+        ← Back to Tournament
+      </button>
       <TournamentMatch 
         homeTeam={activeMatch.teamA.name}
         awayTeam={activeMatch.teamB.name}

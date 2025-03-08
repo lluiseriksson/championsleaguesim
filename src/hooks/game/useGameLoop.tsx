@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { Player, Ball, Score } from '../../types/football';
 
@@ -10,11 +11,12 @@ interface GameLoopProps {
   checkLearningProgress: () => void;
   checkPerformance: () => void;
   performHistoricalTraining: () => void;
-  checkTrainingEffectiveness?: () => void; // NEW: Add optional training effectiveness check
+  checkTrainingEffectiveness?: () => void;
   ball: Ball;
   score: Score;
   tournamentMode?: boolean;
   isLowPerformance?: boolean;
+  gameEnded?: boolean; // NEW: Add gameEnded flag to stop the game loop
 }
 
 export const useGameLoop = ({
@@ -30,7 +32,8 @@ export const useGameLoop = ({
   ball,
   score,
   tournamentMode,
-  isLowPerformance
+  isLowPerformance,
+  gameEnded = false // NEW: Default to false
 }: GameLoopProps) => {
   const [gameActive, setGameActive] = useState(true);
   const totalGoalsRef = useRef(0);
@@ -38,6 +41,14 @@ export const useGameLoop = ({
   useEffect(() => {
     console.log(`GameLoop - Goals scored: ${totalGoalsRef.current}`);
   }, [totalGoalsRef.current]);
+
+  // NEW: Update gameActive when gameEnded changes
+  useEffect(() => {
+    if (gameEnded) {
+      console.log('Game ended, stopping game loop');
+      setGameActive(false);
+    }
+  }, [gameEnded]);
 
   useEffect(() => {
     setGameActive(true);
@@ -47,7 +58,10 @@ export const useGameLoop = ({
   }, []);
 
   useEffect(() => {
-    if (!gameActive) return;
+    if (!gameActive) {
+      console.log('Game loop inactive - no animation frames will be requested');
+      return;
+    }
 
     let animationFrameId: number;
     let lastFrameTime = performance.now();
@@ -55,6 +69,12 @@ export const useGameLoop = ({
     let frameCount = 0;
 
     const gameLoop = (currentTime: number) => {
+      // Check if game is still active before continuing
+      if (!gameActive) {
+        console.log('Game loop terminated during frame');
+        return;
+      }
+
       // Calculate frame delta time for consistent movement
       deltaTime = currentTime - lastFrameTime;
       lastFrameTime = currentTime;
@@ -104,8 +124,12 @@ export const useGameLoop = ({
       // Increment frame counter
       frameCount++;
 
-      // Continue the game loop
-      animationFrameId = requestAnimationFrame(gameLoop);
+      // Continue the game loop if still active
+      if (gameActive && !gameEnded) {
+        animationFrameId = requestAnimationFrame(gameLoop);
+      } else {
+        console.log('Game loop terminating - gameActive:', gameActive, 'gameEnded:', gameEnded);
+      }
     };
 
     // Start the game loop
@@ -115,6 +139,7 @@ export const useGameLoop = ({
     return () => {
       if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
+        console.log('Cleaning up game loop animation frame');
       }
     };
   }, [
@@ -127,8 +152,9 @@ export const useGameLoop = ({
     checkLearningProgress,
     checkPerformance,
     performHistoricalTraining,
-    checkTrainingEffectiveness, // NEW: Add checkTrainingEffectiveness to dependencies
-    isLowPerformance
+    checkTrainingEffectiveness,
+    isLowPerformance,
+    gameEnded // NEW: Add gameEnded to dependencies
   ]);
 
   return { totalGoalsRef };

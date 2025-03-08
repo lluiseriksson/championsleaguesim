@@ -17,6 +17,7 @@ interface BallMovementProps {
   checkGoal: (position: Position) => 'red' | 'blue' | null;
   onBallTouch: (player: Player) => void;
   tournamentMode?: boolean;
+  gameEnded?: boolean; // NEW: Add gameEnded prop
 }
 
 export const useBallMovement = ({ 
@@ -25,7 +26,8 @@ export const useBallMovement = ({
   players, 
   checkGoal, 
   onBallTouch,
-  tournamentMode = false
+  tournamentMode = false,
+  gameEnded = false // NEW: Default to false
 }: BallMovementProps) => {
   // Memoize player categorization
   const { goalkeepers, fieldPlayers } = React.useMemo(() => ({
@@ -52,6 +54,11 @@ export const useBallMovement = ({
   const previousBallPositionRef = React.useRef<Position>({ ...ball.position });
 
   const updateBallPosition = React.useCallback(() => {
+    // If the game has ended, don't update ball position
+    if (gameEnded) {
+      return;
+    }
+
     setBall(currentBall => {
       // Store current position as previous before updating
       const previousPosition = { ...currentBall.position };
@@ -128,7 +135,8 @@ export const useBallMovement = ({
     fieldPlayers, 
     onBallTouch, 
     tournamentMode, 
-    handleGoalCheck
+    handleGoalCheck,
+    gameEnded // NEW: Add gameEnded to dependencies
   ]);
 
   return { updateBallPosition };

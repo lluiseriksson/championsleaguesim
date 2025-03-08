@@ -18,6 +18,7 @@ interface GameLogicProps {
   setScore: React.Dispatch<React.SetStateAction<Score>>;
   updatePlayerPositions: () => void;
   tournamentMode?: boolean;
+  matchEnded?: boolean; // NEW: Add matchEnded prop
 }
 
 const GameLogic: React.FC<GameLogicProps> = ({
@@ -28,7 +29,8 @@ const GameLogic: React.FC<GameLogicProps> = ({
   score,
   setScore,
   updatePlayerPositions,
-  tournamentMode = false
+  tournamentMode = false,
+  matchEnded = false // NEW: Default to false
 }) => {
   // Reference to track the last player who touched the ball
   const lastPlayerTouchRef = useRef<Player | null>(null);
@@ -64,7 +66,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
     }
   }, [score]);
   
-  console.log(`GameLogic rendered with players: ${players.length}, tournamentMode: ${tournamentMode}`);
+  console.log(`GameLogic rendered with players: ${players.length}, tournamentMode: ${tournamentMode}, matchEnded: ${matchEnded}`);
 
   // Find team ELO values for comparison
   const homeTeamElo = players.find(p => p.team === 'red')?.teamElo || 1500;
@@ -144,11 +146,12 @@ const GameLogic: React.FC<GameLogicProps> = ({
     checkLearningProgress,
     checkPerformance,
     performHistoricalTraining: throttledHistoricalTraining,
-    checkTrainingEffectiveness, // NEW: Add training effectiveness check
+    checkTrainingEffectiveness,
     ball,
     score,
     tournamentMode,
-    isLowPerformance
+    isLowPerformance,
+    gameEnded: matchEnded // NEW: Pass matchEnded to useGameLoop
   });
 
   // Goal notification hook
@@ -165,6 +168,11 @@ const GameLogic: React.FC<GameLogicProps> = ({
     setBall,
     players,
     checkGoal: (position) => {
+      // Don't check for goals if match has ended
+      if (matchEnded) {
+        return null;
+      }
+
       const scoringTeam = checkGoal(position);
       if (scoringTeam) {
         // If a goal is scored, process it immediately
@@ -192,11 +200,12 @@ const GameLogic: React.FC<GameLogicProps> = ({
     checkLearningProgress,
     checkPerformance,
     performHistoricalTraining: throttledHistoricalTraining,
-    checkTrainingEffectiveness, // NEW: Add training effectiveness check
+    checkTrainingEffectiveness,
     ball,
     score,
     tournamentMode,
-    isLowPerformance
+    isLowPerformance,
+    gameEnded: matchEnded // NEW: Pass matchEnded to useGameLoop
   });
 
   // Save models on component unmount
