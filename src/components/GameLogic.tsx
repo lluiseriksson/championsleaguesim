@@ -1,5 +1,5 @@
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Player, Ball, Score, Position } from '../types/football';
 import { useBallMovementSystem } from './game/BallMovementSystem';
 import { useModelSyncSystem } from './game/ModelSyncSystem';
@@ -8,6 +8,8 @@ import { useGameLoop } from '../hooks/game/useGameLoop';
 import { useGoalNotification } from '../hooks/game/useGoalNotification';
 import { useModelSaveOnExit } from '../hooks/game/useModelSaveOnExit';
 import { useTeamContext } from '../hooks/game/useTeamContext';
+import { usePerformanceTrackingSystem } from './game/PerformanceTrackingSystem';
+import PerformanceDisplay from './PerformanceDisplay';
 
 interface GameLogicProps {
   players: Player[];
@@ -36,6 +38,9 @@ const GameLogic: React.FC<GameLogicProps> = ({
   // Control the frequency of historical training
   const historicalTrainingCountRef = useRef(0);
   
+  // State to control visibility of performance metrics
+  const [showPerformanceMetrics, setShowPerformanceMetrics] = useState(!tournamentMode);
+  
   console.log(`GameLogic rendered with players: ${players.length}, tournamentMode: ${tournamentMode}`);
 
   // Find team ELO values for comparison
@@ -62,6 +67,14 @@ const GameLogic: React.FC<GameLogicProps> = ({
     ball,
     lastPlayerTouchRef,
     tournamentMode
+  });
+
+  // Performance tracking system
+  const { redTeamMetrics, blueTeamMetrics, recordAction } = usePerformanceTrackingSystem({
+    players,
+    ball,
+    score,
+    lastPlayerTouchRef
   });
 
   // Model synchronization system with tournament mode flag and performance monitoring
@@ -143,7 +156,11 @@ const GameLogic: React.FC<GameLogicProps> = ({
       lastPlayerTouchRef.current = player;
       console.log(`Ball touched by ${player.team === 'red' ? 'home' : 'away'} ${player.role} #${player.id}`);
     },
-    tournamentMode
+    tournamentMode,
+    onAction: (player, actionType, success) => {
+      // Record the action for performance tracking
+      recordAction(player, actionType, success);
+    }
   });
 
   // Run game loop with actual functions and performance monitoring
@@ -170,7 +187,36 @@ const GameLogic: React.FC<GameLogicProps> = ({
     awayTeamLearning
   });
 
-  return null;
+  // Toggle performance metrics display
+  const togglePerformanceMetrics = () => {
+    setShowPerformanceMetrics(prev => !prev);
+  };
+
+  return (
+    <div>
+      {!tournamentMode && (
+        <div className="absolute top-4 right-4 z-10">
+          <button 
+            onClick={togglePerformanceMetrics}
+            className="px-3 py-1 bg-slate-800 text-white text-xs rounded shadow hover:bg-slate-700 transition-colors"
+          >
+            {showPerformanceMetrics ? "Hide" : "Show"} Performance
+          </button>
+        </div>
+      )}
+      
+      {showPerformanceMetrics && (
+        <div className="absolute top-12 right-4 z-10 w-72 md:w-96 bg-white/90 rounded shadow-lg border border-gray-200">
+          <PerformanceDisplay 
+            redTeamMetrics={redTeamMetrics}
+            blueTeamMetrics={blueTeamMetrics}
+            homeTeamLearning={homeTeamLearning}
+            awayTeamLearning={awayTeamLearning}
+          />
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default GameLogic;
