@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Match, TournamentTeam } from '../../types/tournament';
 import { teamKitColors } from '../../types/teamKits';
@@ -59,12 +58,12 @@ export const useTournament = (embeddedMode = false) => {
             }`
           });
           
-          setCurrentRound(prevRound => prevRound + 1);
+          const nextRound = currentRound + 1;
+          setCurrentRound(nextRound);
           
           setSimulationPaused(true);
           timeoutId = setTimeout(() => {
             setSimulationPaused(false);
-            simulateNextMatch();
           }, 3000);
         } else if (currentRound === 7 && allRoundMatchesPlayed) {
           const winner = matches.find(m => m.round === 7)?.winner;
@@ -78,9 +77,12 @@ export const useTournament = (embeddedMode = false) => {
     };
     
     const baseDelay = 800;
-    const additionalDelay = Math.min(1500, matchesPlayed * 30);
+    const maxAdditionalDelay = 1500;
+    const additionalDelay = Math.min(maxAdditionalDelay, matchesPlayed * 30);
     
-    timeoutId = setTimeout(simulateNextMatch, baseDelay + additionalDelay);
+    const totalDelay = Math.min(5000, baseDelay + additionalDelay);
+    
+    timeoutId = setTimeout(simulateNextMatch, totalDelay);
     
     return () => {
       clearTimeout(timeoutId);
@@ -404,24 +406,18 @@ export const useTournament = (embeddedMode = false) => {
     setMatchesPlayed(prev => prev + 1);
     
     if (autoSimulation) {
+      const pauseTime = Math.min(2000, 800 + matchesPlayed * 10);
+      
       setSimulationPaused(true);
-      
-      const pauseTime = Math.min(2000, 1000 + matchesPlayed * 20);
-      
       setTimeout(() => {
         setSimulationPaused(false);
-        const nextMatch = updatedMatches.find(
-          m => m.round === currentRound && !m.played && m.teamA && m.teamB
-        );
-        if (nextMatch) {
-          playMatch(nextMatch);
-        }
       }, pauseTime);
     }
   }, [activeMatch, matches, currentRound, autoSimulation, matchesPlayed]);
 
   const startAutoSimulation = useCallback(() => {
     setAutoSimulation(true);
+    setSimulationPaused(false);
     toast.success("Auto Simulation Started", {
       description: "Tournament will progress automatically"
     });
