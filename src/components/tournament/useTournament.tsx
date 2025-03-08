@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { Match, TournamentTeam } from '../../types/tournament';
 import { teamKitColors } from '../../types/teamKits';
@@ -339,6 +340,7 @@ export const useTournament = (embeddedMode = false) => {
       .every(m => m.played);
     
     if (allRoundMatchesPlayed && currentRound < 7) {
+      const nextRound = currentRound + 1;
       setCurrentRound(nextRound);
       toast.success(`Advanced to ${
         nextRound === 2 ? "Round of 64" : 
