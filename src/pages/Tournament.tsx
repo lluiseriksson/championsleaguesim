@@ -62,20 +62,22 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
       ) : null}
       
       <div className="overflow-x-auto">
-        <TournamentBracket 
-          matches={matches} 
-          onMatchClick={(match) => {
-            if (!autoSimulation && match.teamA && match.teamB && !match.played) {
-              if (embeddedMode) {
-                simulateSingleMatch(match);
-              } else {
-                playMatch(match);
+        <div className="flex justify-start">
+          <TournamentBracket 
+            matches={matches} 
+            onMatchClick={(match) => {
+              if (!autoSimulation && match.teamA && match.teamB && !match.played) {
+                if (embeddedMode) {
+                  simulateSingleMatch(match);
+                } else {
+                  playMatch(match);
+                }
               }
-            }
-          }}
-          showFullBracket={true}
-          winnerTeam={winner}
-        />
+            }}
+            showFullBracket={true}
+            winnerTeam={winner}
+          />
+        </div>
       </div>
     </div>
   );

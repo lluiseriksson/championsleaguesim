@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { getTeamKitColor, KitType } from '../types/teamKits';
 import { Match, TournamentTeam } from '../types/tournament';
@@ -104,9 +103,9 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
     : roundMatches.slice(0, 7); // Show all rounds
 
   return (
-    <div className="tournament-bracket flex overflow-x-auto min-w-full" style={{ minWidth: '1600px' }}>
+    <div className="tournament-bracket flex overflow-x-auto" style={{ width: 'max-content', alignSelf: 'flex-start' }}>
       {displayRounds.map((matches, roundIndex) => (
-        <div key={roundIndex} className="round-column flex-1 px-2 min-w-[200px]">
+        <div key={roundIndex} className="round-column px-2 min-w-[200px] flex-shrink-0">
           <h3 className={`text-center font-semibold mb-4 ${roundIndex === 6 ? "text-amber-600 text-xl" : ""}`}>
             {roundIndex === 0 ? "Round of 128" : 
              roundIndex === 1 ? "Round of 64" : 
