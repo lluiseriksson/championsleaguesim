@@ -20,7 +20,7 @@ const TournamentHeader: React.FC<TournamentHeaderProps> = ({
       return roundNames[currentRound] || "Tournament in Progress";
     } else {
       const winner = getWinner();
-      return winner ? `Tournament Complete` : "Tournament Complete";
+      return winner ? `Tournament Complete - Winner: ${winner.name}` : "Tournament Complete";
     }
   };
 

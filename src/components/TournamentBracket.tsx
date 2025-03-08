@@ -8,14 +8,12 @@ interface TournamentBracketProps {
   matches: Match[];
   onMatchClick?: (match: Match) => void;
   showFullBracket?: boolean;
-  winnerTeam?: TournamentTeam; // Add prop to receive the winner
 }
 
 const TournamentBracket: React.FC<TournamentBracketProps> = ({ 
   matches, 
   onMatchClick,
-  showFullBracket = false,
-  winnerTeam // Add winner team prop
+  showFullBracket = false
 }) => {
   // Group matches by round
   const roundMatches = Array.from({ length: 7 }, (_, i) => {
@@ -185,6 +183,15 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
                   {match.played && match.goldenGoal && (
                     <div className="absolute -left-1 -top-1 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center text-white text-xs font-bold" title="Golden Goal">
                       ⚽
+                    </div>
+                  )}
+                  
+                  {match.played && match.winner && match.round === 7 && (
+                    <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 bg-amber-100 px-3 py-1 rounded-full border border-amber-300 shadow-sm">
+                      <span className="text-amber-800 font-bold flex items-center gap-1">
+                        <Trophy size={14} className="text-amber-600" />
+                        Champion: {getDisplayTeamName(match.winner)}
+                      </span>
                     </div>
                   )}
                 </div>

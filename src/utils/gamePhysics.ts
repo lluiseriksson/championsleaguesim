@@ -236,20 +236,3 @@ export const calculateNewVelocity = (
   
   return limitSpeed(newVelocity);
 };
-
-// Add the missing functions that BallMovementSystem imports
-export const applyFriction = (velocity: { x: number; y: number }, frictionFactor: number) => {
-  return {
-    x: velocity.x * frictionFactor,
-    y: velocity.y * frictionFactor
-  };
-};
-
-export const applyBallAcceleration = (velocity: { x: number; y: number }, position: { x: number; y: number }) => {
-  // Apply slight acceleration based on ball position (can be customized)
-  // This function can be enhanced to add wind effects, field gradient, etc.
-  return {
-    x: velocity.x,
-    y: velocity.y
-  };
-};
