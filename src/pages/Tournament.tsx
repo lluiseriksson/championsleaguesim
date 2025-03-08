@@ -30,8 +30,6 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
     setCurrentRound
   } = useTournament(embeddedMode);
 
-  const winner = getWinner();
-
   return (
     <div className="container mx-auto px-4 py-8">
       <TournamentHeader 
@@ -74,7 +72,6 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
             }
           }}
           showFullBracket={true}
-          winnerTeam={winner}
         />
       </div>
     </div>
