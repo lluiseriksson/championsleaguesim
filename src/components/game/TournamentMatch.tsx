@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
@@ -98,9 +99,9 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       
       setKitConflictResolved(true);
       
-      // During initialization, we'll determine which team gets higher ELO
-      // We'll randomize it but with a bias toward the home team
-      const homeTeamGetsHigherElo = Math.random() < 0.6; // 60% chance home team gets higher ELO
+      // Randomly determine which team gets higher ELO - COMPLETELY RANDOM (50/50)
+      // No bias toward home team
+      const homeTeamGetsHigherElo = Math.random() < 0.5; // 50% chance either team gets higher ELO
       
       // Calculate ELO values with significant difference to ensure learning effect is visible
       const higherElo = 2000;
