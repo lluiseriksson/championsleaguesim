@@ -65,9 +65,9 @@ export const useBallMovement = ({
       // Update last position reference
       lastPositionRef.current = { ...currentBall.position };
       
-      // If ball is stuck, give it a random kick
+      // If ball is stuck, give it a random kick and simulate player F
       if (isStuck) {
-        const kickedBall = applyRandomKick(currentBall, tournamentMode);
+        const kickedBall = applyRandomKick(currentBall, tournamentMode, onBallTouch);
         return {
           ...kickedBall,
           previousPosition: previousPosition
@@ -75,9 +75,9 @@ export const useBallMovement = ({
       }
       
       // If ball has zero velocity (should only happen at game start/reset),
-      // give it a small push in a random direction
+      // give it a small push in a random direction and simulate player F
       if (currentSpeed === 0) {
-        const kickedBall = applyRandomKick(currentBall, tournamentMode);
+        const kickedBall = applyRandomKick(currentBall, tournamentMode, onBallTouch);
         return {
           ...kickedBall,
           previousPosition: previousPosition

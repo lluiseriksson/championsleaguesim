@@ -15,6 +15,9 @@ export function handleFieldPlayerCollisions(
   lastKickPositionRef: React.MutableRefObject<Position | null>
 ): Position {
   for (const player of fieldPlayers) {
+    // Skip virtual players like Player F in the physics engine
+    if (player.isVirtual) continue;
+    
     const collision = checkCollision(newPosition, player.position, false); // Explicitly pass false for isGoalkeeper
     
     if (collision) {
