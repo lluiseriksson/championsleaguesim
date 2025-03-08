@@ -82,7 +82,7 @@ export const useBallPhysics = ({ ball, setBall, players }: BallPhysicsProps) => 
     });
   }, [players, ball, handlePlayerBallCollision]);
 
-  // Add the handleBallPhysics function to fix the import error
+  // Implement the handleBallPhysics function within the hook
   const handleBallPhysics = useCallback((
     currentBall: Ball,
     newPosition: Position,
@@ -161,5 +161,5 @@ export const useBallPhysics = ({ ball, setBall, players }: BallPhysicsProps) => 
   };
 };
 
-// Export handleBallPhysics function for use in useBallMovement
-export { handleBallPhysics };
+// Make sure to export the handleBallPhysics as part of the hook's return value
+export default useBallPhysics;

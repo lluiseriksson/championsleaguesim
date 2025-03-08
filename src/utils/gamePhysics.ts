@@ -1,4 +1,3 @@
-
 import { Position, Player, PLAYER_RADIUS, BALL_RADIUS, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
 import { calculateDistance } from './neuralCore';
 
