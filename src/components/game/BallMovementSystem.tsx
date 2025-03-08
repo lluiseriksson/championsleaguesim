@@ -15,6 +15,16 @@ interface BallMovementSystemProps {
   onAction?: (player: Player, actionType: string, success: boolean) => void;
 }
 
+export const useGoalkeeperReachAdjustment = (
+  goalkeeper: Player,
+  allPlayers: Player[],
+  isAngledShot: boolean
+): number => {
+  // This is a placeholder implementation for the goalkeeper reach adjustment
+  // The real implementation would use ELO ratings to determine reach
+  return 0;
+};
+
 export const useBallMovementSystem = ({
   ball,
   setBall,

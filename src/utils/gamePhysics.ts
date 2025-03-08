@@ -236,3 +236,16 @@ export const calculateNewVelocity = (
   
   return limitSpeed(newVelocity);
 };
+
+export const applyFriction = (velocity: Position, frictionFactor: number): Position => {
+  return {
+    x: velocity.x * frictionFactor,
+    y: velocity.y * frictionFactor
+  };
+};
+
+export const applyBallAcceleration = (velocity: Position, position: Position): Position => {
+  // This function can be used to apply specific acceleration effects based on position
+  // For now, just return the velocity unchanged
+  return { ...velocity };
+};
