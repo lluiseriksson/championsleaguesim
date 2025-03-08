@@ -1,3 +1,4 @@
+
 import { NeuralNet, Player, TeamContext, Ball, Position } from '../types/football';
 import { calculateDistance } from './neuralCore';
 import { isPassingLaneOpen } from './movementConstraints';
@@ -154,7 +155,8 @@ export const calculateReceivingPositionQuality = (
   teammatePositions: Position[],
   opponentPositions: Position[],
   ownGoal: Position,
-  opponentGoal: Position
+  opponentGoal: Position,
+  playerTeam?: 'red' | 'blue' // Added optional team parameter
 ): number => {
   // Distance from ball - moderate distance is good for receiving passes
   const distanceToBall = calculateDistance(playerPosition, ballPosition);
@@ -185,8 +187,10 @@ export const calculateReceivingPositionQuality = (
   const goalProximityScore = Math.max(0, 1 - distanceToGoal / maxPitchLength);
   
   // NEW: Add bias against positions that would require backward passes
-  if ((playerPosition.team === 'red' && playerPosition.x < ballPosition.x - 20) ||
-      (playerPosition.team === 'blue' && playerPosition.x > ballPosition.x + 20)) {
+  // Fixed: check for player team as a parameter instead of property on Position
+  if (playerTeam && (
+      (playerTeam === 'red' && playerPosition.x < ballPosition.x - 20) ||
+      (playerTeam === 'blue' && playerPosition.x > ballPosition.x + 20))) {
     // Penalize positions that would require a backward pass to reach
     return Math.max(0, distanceScore * 0.7 + spaceScore * 0.3 + goalProximityScore * 0.1 - 0.1);
   }
@@ -244,18 +248,13 @@ export const shouldRequestPass = (
   
   // NEW: Add direction check - don't request pass if you're behind the ball carrier 
   // (would require backward pass)
-  const ballCarrier = teammates.find(p => 
-    calculateDistance(p.position, ballPosition) < 30
-  );
-  
-  if (ballCarrier) {
-    const isPositionedBackward = 
-      (player.team === 'red' && player.position.x < ballCarrier.position.x - 30) ||
-      (player.team === 'blue' && player.position.x > ballCarrier.position.x + 30);
-      
-    if (isPositionedBackward) {
-      return false; // Don't request pass if positioned behind ball carrier
-    }
+  // Fixed: Remove duplicate declaration of ballCarrier
+  const isPositionedBackward = 
+    (player.team === 'red' && player.position.x < ballCarrier.position.x - 30) ||
+    (player.team === 'blue' && player.position.x > ballCarrier.position.x + 30);
+    
+  if (isPositionedBackward) {
+    return false; // Don't request pass if positioned behind ball carrier
   }
   
   return isInSpace && isAdvancedPosition;
@@ -275,7 +274,8 @@ export const findOptimalPassReceivingPosition = (
     teammates,
     opponents,
     { x: 0, y: 0 }, // Dummy value, not used in the function
-    opponentGoal
+    opponentGoal,
+    player.team  // Pass the team from the player object
   );
   
   // If already in a good position, don't move much
@@ -305,7 +305,8 @@ export const findOptimalPassReceivingPosition = (
       teammates,
       opponents,
       { x: 0, y: 0 }, // Dummy value, not used in the function
-      opponentGoal
+      opponentGoal,
+      player.team  // Pass the team from the player object
     );
     
     if (quality > bestQuality) {
