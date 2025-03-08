@@ -203,17 +203,24 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
     for (let i = 0; i < redTeamPositions.length; i++) {
       const pos = redTeamPositions[i];
       const role = pos.role as Player['role'];
+      const position = { x: pos.x, y: pos.y };
       
       newPlayers.push({
         id: i + 1,
-        position: { x: pos.x, y: pos.y },
+        position: position,
+        velocity: { x: 0, y: 0 },
+        force: { x: 0, y: 0 },
         role: role,
         team: 'red',
         brain: redTeamBrains[i],
-        targetPosition: { x: pos.x, y: pos.y },
+        targetPosition: position,
         teamName: homeTeam,
         teamElo: homeTeamElo,
         kitType: 'home',
+        kit: 'default',
+        name: `Red${i+1}`,
+        goals: 0,
+        assists: 0,
         radius: PLAYER_RADIUS
       });
     }
@@ -236,6 +243,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
     for (let i = 0; i < blueTeamPositions.length; i++) {
       const pos = blueTeamPositions[i];
       const role = pos.role as Player['role'];
+      const position = { x: pos.x, y: pos.y };
       
       // Use corresponding brain from red team
       const mirroredBrain = redTeamBrains[i];
@@ -243,14 +251,20 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       
       newPlayers.push({
         id: i + 12,
-        position: { x: pos.x, y: pos.y },
+        position: position,
+        velocity: { x: 0, y: 0 },
+        force: { x: 0, y: 0 },
         role: role,
         team: 'blue',
         brain: mirroredBrain,
-        targetPosition: { x: pos.x, y: pos.y },
+        targetPosition: position,
         teamName: awayTeam,
         teamElo: awayTeamElo,
         kitType: awayTeamKitType,
+        kit: 'default',
+        name: `Blue${i+1}`,
+        goals: 0,
+        assists: 0,
         radius: PLAYER_RADIUS
       });
     }
@@ -344,3 +358,4 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
 };
 
 export default TournamentMatch;
+

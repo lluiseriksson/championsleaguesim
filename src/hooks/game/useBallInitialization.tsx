@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Ball, Position, PITCH_WIDTH, PITCH_HEIGHT, Player } from '../../types/football';
 
@@ -54,12 +53,14 @@ const isPointingTowardGoal = (position: Position, velocity: Position): boolean =
 
 // Create a virtual player F for random kicks
 export const createPlayerF = (ballPosition: Position): Player => {
+  const position = {
+    x: ballPosition.x + (Math.random() * 20) - 10,
+    y: ballPosition.y + (Math.random() * 20) - 10
+  };
+  
   return {
     id: 99,
-    position: {
-      x: ballPosition.x + (Math.random() * 20) - 10,
-      y: ballPosition.y + (Math.random() * 20) - 10
-    },
+    position: position,
     velocity: { x: 0, y: 0 },
     team: Math.random() > 0.5 ? 'red' : 'blue',
     kit: 'default',
@@ -70,7 +71,8 @@ export const createPlayerF = (ballPosition: Position): Player => {
     name: 'F',
     goals: 0,
     assists: 0,
-    isVirtual: true
+    isVirtual: true,
+    targetPosition: position // Use the same position as targetPosition
   };
 };
 

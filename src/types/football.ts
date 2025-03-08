@@ -185,7 +185,7 @@ export interface Player {
   assists: number;
   isVirtual?: boolean;
   radius: number;
-  targetPosition?: Position;
+  targetPosition: Position;  // Changed from optional to required
   teamName?: string;  
   kitType?: KitType;  
   teamElo?: number;   

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Player, PITCH_WIDTH, PITCH_HEIGHT, KitType, PLAYER_RADIUS } from '../../types/football';
 import { createPlayerBrain } from '../../utils/playerBrain';
@@ -83,6 +84,7 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
         for (let i = 0; i < redTeamPositions.length; i++) {
           const pos = redTeamPositions[i];
           const role = pos.role as Player['role'];
+          const position = { x: pos.x, y: pos.y };
           
           let brain;
           if (role === 'goalkeeper') {
@@ -98,13 +100,19 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
           
           initialPlayers.push({
             id: i + 1,
-            position: { x: pos.x, y: pos.y },
+            position: position,
+            velocity: { x: 0, y: 0 },
+            force: { x: 0, y: 0 },
             role: role,
             team: 'red',
             brain: brain,
-            targetPosition: { x: pos.x, y: pos.y },
+            targetPosition: position,
             teamName: homeTeamName,
             kitType: 'home' as KitType,
+            kit: 'default',
+            name: `Red${i+1}`,
+            goals: 0,
+            assists: 0,
             radius: PLAYER_RADIUS
           });
         }
@@ -126,6 +134,7 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
         for (let i = 0; i < blueTeamPositions.length; i++) {
           const pos = blueTeamPositions[i];
           const role = pos.role as Player['role'];
+          const position = { x: pos.x, y: pos.y };
           
           let brain;
           if (role === 'goalkeeper') {
@@ -141,13 +150,19 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
           
           initialPlayers.push({
             id: i + 12,
-            position: { x: pos.x, y: pos.y },
+            position: position,
+            velocity: { x: 0, y: 0 },
+            force: { x: 0, y: 0 },
             role: role,
             team: 'blue',
             brain: brain,
-            targetPosition: { x: pos.x, y: pos.y },
+            targetPosition: position,
             teamName: awayTeamName,
             kitType: awayTeamKitType as KitType,
+            kit: 'default',
+            name: `Blue${i+1}`,
+            goals: 0,
+            assists: 0,
             radius: PLAYER_RADIUS
           });
         }
