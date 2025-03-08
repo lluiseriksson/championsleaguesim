@@ -20,7 +20,12 @@ export const determineWinnerByElo = (teamAElo: number, teamBElo: number): 'A' | 
 };
 
 // Generate realistic score based on ELO difference
-export const generateScore = (winnerElo: number, loserElo: number): { winner: number, loser: number } => {
+export const generateScore = (winnerElo: number, loserElo: number, isGoldenGoal: boolean = false): { winner: number, loser: number } => {
+  // If it's a golden goal situation, always return a 1-0 score
+  if (isGoldenGoal) {
+    return { winner: 1, loser: 0 };
+  }
+  
   // Base scores
   const eloDifference = Math.abs(winnerElo - loserElo);
   

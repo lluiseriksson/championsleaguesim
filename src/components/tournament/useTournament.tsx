@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { Match, TournamentTeam } from '../../types/tournament';
 import { teamKitColors } from '../../types/teamKits';
@@ -288,7 +289,11 @@ export const useTournament = (embeddedMode = false) => {
           ? matchToUpdate.teamB.eloRating 
           : matchToUpdate.teamA.eloRating;
         
-        const { winner: winnerGoals, loser: loserGoals } = generateScore(winnerElo, loserElo);
+        const { winner: winnerGoals, loser: loserGoals } = generateScore(
+          winnerElo, 
+          loserElo,
+          useGoldenGoal // Pass the golden goal flag to the score generator
+        );
         
         if (winner.id === matchToUpdate.teamA.id) {
           matchToUpdate.score = {
