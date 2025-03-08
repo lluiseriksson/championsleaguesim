@@ -1,4 +1,3 @@
-
 import { KitType, TeamKit } from './kitTypes';
 import { teamKitColors } from './teamColorsData';
 import { 
@@ -103,6 +102,12 @@ const teamConflictOverrides: Record<string, Record<string, KitType>> = {
   },
   'Strasbourg': {
     'Freiburg': 'third'
+  },
+  'Girona': {
+    'Celta': 'third'
+  },
+  'Celta': {
+    'Girona': 'third'
   }
 };
 

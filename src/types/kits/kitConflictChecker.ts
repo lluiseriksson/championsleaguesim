@@ -20,7 +20,8 @@ const conflictingTeamPairs: [string, string][] = [
   ['Bayern Munich', 'FC København'],
   ['Atlanta', 'Leicester'], 
   ['Liverpool', 'Genova'],
-  ['Freiburg', 'Strasbourg']
+  ['Freiburg', 'Strasbourg'],
+  ['Girona', 'Celta'] // Add Girona vs Celta to known conflicts
 ];
 
 // Check if two teams are in the known conflict list
@@ -126,6 +127,38 @@ export const checkPrimarySecondaryConflict = (
          team2RedPrimaryVsTeam1RedSecondary;
 };
 
+// Improved function to check for similar primary colors between teams
+export const checkPrimarySimilarityConflict = (
+  team1: string,
+  team2: string,
+  team1KitType: KitType,
+  team2KitType: KitType
+): boolean => {
+  if (!teamKitColors[team1] || !teamKitColors[team2]) return false;
+  
+  const team1Primary = teamKitColors[team1][team1KitType].primary;
+  const team2Primary = teamKitColors[team2][team2KitType].primary;
+  
+  // Parse colors to check RGB values directly
+  const team1Rgb = parseHexColor(team1Primary);
+  const team2Rgb = parseHexColor(team2Primary);
+  
+  // Calculate the difference in each RGB channel
+  const rDiff = Math.abs(team1Rgb.r - team2Rgb.r);
+  const gDiff = Math.abs(team1Rgb.g - team2Rgb.g);
+  const bDiff = Math.abs(team1Rgb.b - team2Rgb.b);
+  
+  // If two of the three channels are very similar (difference less than 30),
+  // consider it a conflict even if the third channel has some difference
+  const twoChannelsSimilar = (
+    (rDiff < 30 && gDiff < 30) || 
+    (rDiff < 30 && bDiff < 30) || 
+    (gDiff < 30 && bDiff < 30)
+  );
+  
+  return twoChannelsSimilar;
+}
+
 // Resolve kit conflict by selecting an alternative kit
 export const resolveKitConflict = (homeTeam: string, awayTeam: string): KitType => {
   // Default to 'third' kit in case of conflict
@@ -161,6 +194,11 @@ export const performFinalKitCheck = (
   
   // Check for primary-secondary conflicts with enhanced detection
   if (checkPrimarySecondaryConflict(homeTeam, awayTeam, 'home', awayKitType)) {
+    return false;
+  }
+  
+  // NEW: Check for similar primary colors
+  if (checkPrimarySimilarityConflict(homeTeam, awayTeam, 'home', awayKitType)) {
     return false;
   }
   

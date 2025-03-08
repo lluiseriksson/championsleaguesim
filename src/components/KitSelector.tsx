@@ -47,7 +47,6 @@ const KitSelector: React.FC = () => {
   const checkForKitConflict = () => {
     if (!homeTeam || !awayTeam || !kitResult) return null;
     
-    // Check for teams in known conflict list
     const isKnownConflict = areTeamsInConflictList(homeTeam, awayTeam);
     
     if (isKnownConflict) {
@@ -62,7 +61,6 @@ const KitSelector: React.FC = () => {
       );
     }
     
-    // Check for white kit conflicts
     const whiteKitConflict = checkWhiteKitConflict(homeTeam, awayTeam, kitResult.awayTeamKitType);
     
     if (whiteKitConflict) {
@@ -77,7 +75,6 @@ const KitSelector: React.FC = () => {
       );
     }
     
-    // Check for red kit conflicts
     const homeIsRed = teamHasRedPrimaryColor(homeTeam, 'home');
     const awayIsRed = teamHasRedPrimaryColor(awayTeam, kitResult.awayTeamKitType);
     
@@ -93,7 +90,6 @@ const KitSelector: React.FC = () => {
       );
     }
     
-    // NEW: Check specifically for red primary vs red secondary
     const homeHasRedPrimary = teamHasRedPrimaryColor(homeTeam, 'home');
     const awayHasRedSecondary = teamHasRedSecondaryColor(awayTeam, kitResult.awayTeamKitType);
     const awayHasRedPrimary = teamHasRedPrimaryColor(awayTeam, kitResult.awayTeamKitType);
@@ -111,7 +107,6 @@ const KitSelector: React.FC = () => {
       );
     }
     
-    // Check for primary-secondary color conflicts
     const primarySecondaryConflict = checkPrimarySecondaryConflict(
       homeTeam, 
       awayTeam, 
@@ -169,7 +164,7 @@ const KitSelector: React.FC = () => {
     setHomeTeam('Atlanta');
     setAwayTeam('Leicester');
   };
-
+  
   const testLiverpoolVsGenova = () => {
     setHomeTeam('Liverpool');
     setAwayTeam('Genova');
@@ -178,6 +173,11 @@ const KitSelector: React.FC = () => {
   const testFreiburgVsStrasbourg = () => {
     setHomeTeam('Freiburg');
     setAwayTeam('Strasbourg');
+  };
+  
+  const testGironaVsCelta = () => {
+    setHomeTeam('Girona');
+    setAwayTeam('Celta');
   };
 
   return (
@@ -212,7 +212,7 @@ const KitSelector: React.FC = () => {
         </div>
       </div>
       
-      <div className="grid grid-cols-5 gap-2 mb-4">
+      <div className="grid grid-cols-6 gap-2 mb-4">
         <Button 
           variant="outline" 
           onClick={testSevillaVsCrvenaZvezda}
@@ -251,6 +251,14 @@ const KitSelector: React.FC = () => {
           className="w-full text-xs"
         >
           Freiburg vs Strasbourg
+        </Button>
+        
+        <Button 
+          variant="outline" 
+          onClick={testGironaVsCelta}
+          className="w-full text-xs"
+        >
+          Girona vs Celta
         </Button>
       </div>
       
