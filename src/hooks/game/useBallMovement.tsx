@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Player, Ball, Position } from '../../types/football';
-import { useBallPhysics, handleBallPhysics } from './useBallPhysics';
+import { useBallPhysics } from './useBallPhysics';
 import { useBallCollisionTracking } from './useBallCollisionTracking';
 import { useBallGoalDetection } from './useBallGoalDetection';
 import { 
@@ -32,6 +32,9 @@ export const useBallMovement = ({
     goalkeepers: players.filter(p => p.role === 'goalkeeper'),
     fieldPlayers: players.filter(p => p.role !== 'goalkeeper')
   }), [players]);
+
+  // Use ball physics hook and get handleBallPhysics
+  const { handleBallPhysics } = useBallPhysics({ ball, setBall, players });
 
   // Use collision tracking hook
   const { 
@@ -122,7 +125,12 @@ export const useBallMovement = ({
     fieldPlayers, 
     onBallTouch, 
     tournamentMode, 
-    handleGoalCheck
+    handleGoalCheck,
+    handleBallPhysics,
+    lastCollisionTimeRef,
+    lastKickPositionRef,
+    lastPositionRef,
+    noMovementTimeRef
   ]);
 
   return { updateBallPosition };
