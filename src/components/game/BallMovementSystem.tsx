@@ -283,11 +283,9 @@ export const useBallMovementSystem = ({
 };
 
 export const useGoalkeeperReachAdjustment = () => {
-  return {
-    calculateEloGoalkeeperReachAdjustment: (elo: number) => {
-      const baseReach = 0;
-      const eloFactor = Math.max(0, (elo - 1500) / 1000);
-      return baseReach + (eloFactor * 3);
-    }
+  return (elo: number) => {
+    const baseReach = 0;
+    const eloFactor = Math.max(0, (elo - 1500) / 1000);
+    return baseReach + (eloFactor * 3);
   };
 };
