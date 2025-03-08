@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Ball, Position, PITCH_WIDTH, PITCH_HEIGHT, Player } from '../../types/football';
 
@@ -92,13 +93,14 @@ export const applyRandomKick = (
   currentBall: Ball, 
   tournamentMode: boolean, 
   onBallTouch?: (player: Player) => void,
-  kickingTeam?: 'red' | 'blue', // Add parameter for the team that should kick
-  isKickoff: boolean = false // Add parameter to indicate if this is a kickoff
+  kickingTeam?: 'red' | 'blue',
+  isKickoff: boolean = false
 ): Ball => {
   if (!tournamentMode) {
     console.log(`${isKickoff ? "Kickoff" : "Ball stuck in place or zero velocity"}, giving it a random kick from player F`);
   }
   
+  // Create player F at the exact center for kickoffs
   const playerF = createPlayerF(currentBall.position, kickingTeam, isKickoff);
   
   if (onBallTouch) {
