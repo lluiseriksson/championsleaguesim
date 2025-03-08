@@ -3,6 +3,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Trophy } from 'lucide-react';
 import { TournamentTeam } from '../../types/tournament';
+import { getTeamKitColor } from '../../types/teamKits';
 
 interface TournamentHeaderProps {
   currentRound: number;
@@ -23,6 +24,11 @@ const TournamentHeader: React.FC<TournamentHeaderProps> = ({
     }
   };
 
+  const winner = getWinner();
+  const showTrophy = winner !== undefined;
+  
+  const winnerColor = winner ? getTeamKitColor(winner.name, 'home') : '#FFC107';
+
   return (
     <>
       <h1 className="text-3xl font-bold mb-6 text-center">Champions League Simulator</h1>
@@ -30,10 +36,20 @@ const TournamentHeader: React.FC<TournamentHeaderProps> = ({
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-xl font-semibold">{getTournamentStatus()}</h2>
         
-        {currentRound > 7 && getWinner() && (
-          <div className="flex items-center text-amber-500 font-bold gap-2">
-            <Trophy className="h-6 w-6" />
-            <span>Champion: {getWinner()?.name}</span>
+        {showTrophy && (
+          <div className="flex items-center gap-2 animate-fade-in">
+            <div className="bg-gradient-to-b from-amber-200 to-amber-500 p-4 rounded-lg shadow-lg flex items-center justify-center">
+              <Trophy className="h-8 w-8 text-amber-800" strokeWidth={1.5} />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-amber-500 font-bold text-lg">Champion</span>
+              <span 
+                className="font-bold text-xl"
+                style={{ color: winnerColor }}
+              >
+                {winner.name}
+              </span>
+            </div>
           </div>
         )}
       </div>

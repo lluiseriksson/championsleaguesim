@@ -1,6 +1,7 @@
 import React from 'react';
 import { getTeamKitColor, KitType } from '../types/teamKits';
 import { Match, TournamentTeam } from '../types/tournament';
+import { Trophy } from 'lucide-react';
 
 interface TournamentBracketProps {
   matches: Match[];
@@ -103,65 +104,98 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
     <div className="tournament-bracket flex overflow-x-auto min-w-full" style={{ minWidth: '1600px' }}>
       {displayRounds.map((matches, roundIndex) => (
         <div key={roundIndex} className="round-column flex-1 px-2 min-w-[200px]">
-          <h3 className="text-center font-semibold mb-4">
+          <h3 className={`text-center font-semibold mb-4 ${roundIndex === 6 ? "text-amber-600 text-xl" : ""}`}>
             {roundIndex === 0 ? "Round of 128" : 
              roundIndex === 1 ? "Round of 64" : 
              roundIndex === 2 ? "Round of 32" : 
              roundIndex === 3 ? "Round of 16" : 
              roundIndex === 4 ? "Quarter-finals" : 
-             roundIndex === 5 ? "Semi-finals" : "Final"}
+             roundIndex === 5 ? "Semi-finals" : 
+             roundIndex === 6 ? (
+               <span className="flex items-center justify-center gap-2">
+                 <Trophy className="h-5 w-5 text-amber-600" />
+                 Final
+                 <Trophy className="h-5 w-5 text-amber-600" />
+               </span>
+             ) : "Unknown Round"}
           </h3>
           
           <div className={`flex flex-col gap-${7 - roundIndex} justify-around h-auto`} 
                style={{ gap: `${Math.pow(2, roundIndex + 1) * 2}px` }}>
             
-            {matches.map(match => (
-              <div 
-                key={match.id} 
-                className={`match-container relative p-2 border rounded-md shadow-sm mb-1 ${getMatchClass(match)} ${match.teamA && match.teamB && !match.played ? 'cursor-pointer hover:bg-gray-50 transition-colors' : ''}`}
-                onClick={() => handleMatchClick(match)}
-              >
+            {matches.map(match => {
+              const isFinalMatch = match.round === 7;
+              
+              return (
                 <div 
-                  className={`team-entry p-2 rounded flex justify-between items-center mb-1 ${isWinner(match, match.teamA) ? 'bg-green-50' : ''}`}
-                  style={getTeamColorStyle(match.teamA)}
+                  key={match.id} 
+                  className={`match-container relative p-2 border rounded-md shadow-sm mb-1 
+                    ${getMatchClass(match)} 
+                    ${match.teamA && match.teamB && !match.played ? 'cursor-pointer hover:bg-gray-50 transition-colors' : ''}
+                    ${isFinalMatch ? 'border-amber-400 border-2 shadow-md' : ''}
+                  `}
+                  onClick={() => handleMatchClick(match)}
                 >
-                  <span className="font-medium truncate max-w-[65%]">
-                    {getDisplayTeamName(match.teamA)}
-                  </span>
-                  <div className="flex items-center gap-2 justify-end">
-                    {match.played && match.score && (
-                      <span className="text-sm font-bold text-left">{match.score.teamA}</span>
-                    )}
+                  <div 
+                    className={`team-entry p-2 rounded flex justify-between items-center mb-1 
+                      ${isWinner(match, match.teamA) ? 'bg-green-50' : ''}
+                      ${isFinalMatch && isWinner(match, match.teamA) ? 'bg-amber-50' : ''}
+                    `}
+                    style={getTeamColorStyle(match.teamA)}
+                  >
+                    <span className="font-medium truncate max-w-[65%]">
+                      {getDisplayTeamName(match.teamA)}
+                    </span>
+                    <div className="flex items-center gap-2 justify-end">
+                      {match.played && match.score && (
+                        <span className="text-sm font-bold text-left">{match.score.teamA}</span>
+                      )}
+                    </div>
                   </div>
+                  
+                  <div 
+                    className={`team-entry p-2 rounded flex justify-between items-center 
+                      ${isWinner(match, match.teamB) ? 'bg-green-50' : ''}
+                      ${isFinalMatch && isWinner(match, match.teamB) ? 'bg-amber-50' : ''}
+                    `}
+                    style={getTeamColorStyle(match.teamB)}
+                  >
+                    <span className="font-medium truncate max-w-[65%]">
+                      {getDisplayTeamName(match.teamB)}
+                    </span>
+                    <div className="flex items-center gap-2 justify-end">
+                      {match.played && match.score && (
+                        <span className="text-sm font-bold text-left">{match.score.teamB}</span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {match.played && match.winner && (
+                    <div className={`absolute -right-1 -top-1 w-6 h-6 
+                      ${isFinalMatch ? 'bg-amber-500' : 'bg-green-500'} 
+                      rounded-full flex items-center justify-center text-white text-xs font-bold`}
+                    >
+                      {isFinalMatch ? '🏆' : '✓'}
+                    </div>
+                  )}
+                  
+                  {match.played && match.goldenGoal && (
+                    <div className="absolute -left-1 -top-1 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center text-white text-xs font-bold" title="Golden Goal">
+                      ⚽
+                    </div>
+                  )}
+                  
+                  {isFinalMatch && match.played && match.winner && (
+                    <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 bg-amber-100 px-3 py-1 rounded-full border border-amber-300 shadow-sm">
+                      <span className="text-amber-800 font-bold flex items-center gap-1">
+                        <Trophy size={14} className="text-amber-600" />
+                        Champion: {getDisplayTeamName(match.winner)}
+                      </span>
+                    </div>
+                  )}
                 </div>
-                
-                <div 
-                  className={`team-entry p-2 rounded flex justify-between items-center ${isWinner(match, match.teamB) ? 'bg-green-50' : ''}`}
-                  style={getTeamColorStyle(match.teamB)}
-                >
-                  <span className="font-medium truncate max-w-[65%]">
-                    {getDisplayTeamName(match.teamB)}
-                  </span>
-                  <div className="flex items-center gap-2 justify-end">
-                    {match.played && match.score && (
-                      <span className="text-sm font-bold text-left">{match.score.teamB}</span>
-                    )}
-                  </div>
-                </div>
-                
-                {match.played && match.winner && (
-                  <div className="absolute -right-1 -top-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                    ✓
-                  </div>
-                )}
-                
-                {match.played && match.goldenGoal && (
-                  <div className="absolute -left-1 -top-1 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center text-white text-xs font-bold" title="Golden Goal">
-                    ⚽
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       ))}
