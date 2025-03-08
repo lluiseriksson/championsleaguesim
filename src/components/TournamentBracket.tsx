@@ -102,10 +102,10 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
     : roundMatches.slice(0, 7); // Show all rounds
 
   return (
-    <div className="tournament-bracket flex overflow-x-auto min-w-full" style={{ minWidth: '1600px' }}>
+    <div className="tournament-bracket flex justify-start overflow-x-auto w-full" style={{ maxWidth: '100%' }}>
       {displayRounds.map((matches, roundIndex) => (
-        <div key={roundIndex} className="round-column flex-1 px-2 min-w-[200px]">
-          <h3 className={`text-center font-semibold mb-4 ${roundIndex === 6 ? "text-amber-600 text-xl" : ""}`}>
+        <div key={roundIndex} className="round-column flex-shrink-0 px-1 md:px-2" style={{ width: '180px' }}>
+          <h3 className={`text-center font-semibold mb-4 text-sm ${roundIndex === 6 ? "text-amber-600 text-lg" : ""}`}>
             {roundIndex === 0 ? "Round of 128" : 
              roundIndex === 1 ? "Round of 64" : 
              roundIndex === 2 ? "Round of 32" : 
@@ -113,10 +113,10 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
              roundIndex === 4 ? "Quarter-finals" : 
              roundIndex === 5 ? "Semi-finals" : 
              roundIndex === 6 ? (
-               <span className="flex items-center justify-center gap-2">
-                 <Trophy className="h-5 w-5 text-amber-600" />
+               <span className="flex items-center justify-center gap-1">
+                 <Trophy className="h-4 w-4 text-amber-600" />
                  Final
-                 <Trophy className="h-5 w-5 text-amber-600" />
+                 <Trophy className="h-4 w-4 text-amber-600" />
                </span>
              ) : "Unknown Round"}
           </h3>
@@ -130,7 +130,7 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
               return (
                 <div 
                   key={match.id} 
-                  className={`match-container relative p-2 border rounded-md shadow-sm mb-1 
+                  className={`match-container relative p-1 border rounded-md shadow-sm mb-1 
                     ${getMatchClass(match)} 
                     ${match.teamA && match.teamB && !match.played ? 'cursor-pointer hover:bg-gray-50 transition-colors' : ''}
                     ${isFinalMatch ? 'border-amber-400 border-2 shadow-md' : ''}
@@ -138,7 +138,7 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
                   onClick={() => handleMatchClick(match)}
                 >
                   <div 
-                    className={`team-entry p-2 rounded flex justify-between items-center mb-1 
+                    className={`team-entry p-1 rounded flex justify-between items-center mb-1 text-xs
                       ${isWinner(match, match.teamA) ? 'bg-green-50' : ''}
                       ${isFinalMatch && isWinner(match, match.teamA) ? 'bg-amber-50' : ''}
                     `}
@@ -147,15 +147,15 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
                     <span className="font-medium truncate max-w-[65%]">
                       {getDisplayTeamName(match.teamA)}
                     </span>
-                    <div className="flex items-center gap-2 justify-end">
+                    <div className="flex items-center gap-1 justify-end">
                       {match.played && match.score && (
-                        <span className="text-sm font-bold text-left">{match.score.teamA}</span>
+                        <span className="text-xs font-bold text-left">{match.score.teamA}</span>
                       )}
                     </div>
                   </div>
                   
                   <div 
-                    className={`team-entry p-2 rounded flex justify-between items-center 
+                    className={`team-entry p-1 rounded flex justify-between items-center text-xs
                       ${isWinner(match, match.teamB) ? 'bg-green-50' : ''}
                       ${isFinalMatch && isWinner(match, match.teamB) ? 'bg-amber-50' : ''}
                     `}
@@ -164,15 +164,15 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
                     <span className="font-medium truncate max-w-[65%]">
                       {getDisplayTeamName(match.teamB)}
                     </span>
-                    <div className="flex items-center gap-2 justify-end">
+                    <div className="flex items-center gap-1 justify-end">
                       {match.played && match.score && (
-                        <span className="text-sm font-bold text-left">{match.score.teamB}</span>
+                        <span className="text-xs font-bold text-left">{match.score.teamB}</span>
                       )}
                     </div>
                   </div>
                   
                   {match.played && match.winner && (
-                    <div className={`absolute -right-1 -top-1 w-6 h-6 
+                    <div className={`absolute -right-1 -top-1 w-5 h-5 
                       ${isFinalMatch ? 'bg-amber-500' : 'bg-green-500'} 
                       rounded-full flex items-center justify-center text-white text-xs font-bold`}
                     >
@@ -181,7 +181,7 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
                   )}
                   
                   {match.played && match.goldenGoal && (
-                    <div className="absolute -left-1 -top-1 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center text-white text-xs font-bold" title="Golden Goal">
+                    <div className="absolute -left-1 -top-1 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center text-white text-xs font-bold" title="Golden Goal">
                       ⚽
                     </div>
                   )}

@@ -31,21 +31,23 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
   } = useTournament(embeddedMode);
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <TournamentHeader 
-        currentRound={currentRound}
-        getWinner={getWinner}
-      />
-      
-      <div className="mb-6 flex items-center justify-between">
-        <TournamentControls
+    <div className="container mx-auto px-1 py-4 max-w-full">
+      <div className="text-left">
+        <TournamentHeader 
           currentRound={currentRound}
-          autoSimulation={autoSimulation}
-          simulationPaused={simulationPaused}
-          resetTournament={resetTournament}
-          startAutoSimulation={startAutoSimulation}
-          randomizeRound={randomizeCurrentRound}
+          getWinner={getWinner}
         />
+      
+        <div className="mb-4 flex items-center justify-between">
+          <TournamentControls
+            currentRound={currentRound}
+            autoSimulation={autoSimulation}
+            simulationPaused={simulationPaused}
+            resetTournament={resetTournament}
+            startAutoSimulation={startAutoSimulation}
+            randomizeRound={randomizeCurrentRound}
+          />
+        </div>
       </div>
       
       {playingMatch && activeMatch && activeMatch.teamA && activeMatch.teamB && !embeddedMode ? (
