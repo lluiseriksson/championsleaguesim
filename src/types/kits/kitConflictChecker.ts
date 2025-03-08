@@ -1,4 +1,3 @@
-
 import { KitType, TeamKit } from './kitTypes';
 import { teamKitColors } from './teamColorsData';
 import { 
@@ -20,7 +19,8 @@ const conflictingTeamPairs: [string, string][] = [
   ['Liverpool', 'Manchester United'],
   ['Bayern Munich', 'FC København'],
   ['Atlanta', 'Leicester'], 
-  ['Liverpool', 'Genova'] // Add Liverpool vs Genova to known conflicts
+  ['Liverpool', 'Genova'],
+  ['Freiburg', 'Strasbourg']
 ];
 
 // Check if two teams are in the known conflict list
