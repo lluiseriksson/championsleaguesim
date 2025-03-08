@@ -1,3 +1,4 @@
+
 import { Position, Player, PLAYER_RADIUS, BALL_RADIUS, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
 import { calculateDistance } from './neuralCore';
 
@@ -234,5 +235,29 @@ export const calculateNewVelocity = (
     console.log(`Emergency direction correction applied for ${team} team!`);
   }
   
+  return limitSpeed(newVelocity);
+};
+
+// Add the missing functions
+export const applyFriction = (velocity: Position, frictionFactor: number = 0.98): Position => {
+  return {
+    x: velocity.x * frictionFactor,
+    y: velocity.y * frictionFactor
+  };
+};
+
+export const applyBallAcceleration = (velocity: Position, position: Position): Position => {
+  // Simple implementation - can be expanded with more complex physics if needed
+  // For now, we'll just apply a small random acceleration to add some unpredictability
+  const randomXAcc = (Math.random() - 0.5) * 0.08;
+  const randomYAcc = (Math.random() - 0.5) * 0.08;
+  
+  // Calculate new velocity with acceleration
+  const newVelocity = {
+    x: velocity.x + randomXAcc,
+    y: velocity.y + randomYAcc
+  };
+  
+  // Apply speed limits
   return limitSpeed(newVelocity);
 };
