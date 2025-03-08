@@ -25,7 +25,7 @@ export const useTournament = (embeddedMode = false) => {
   }, [initialized]);
 
   useEffect(() => {
-    if (!autoSimulation || playingMatch || currentRound > 7 || simulationPaused) return;
+    if (!autoSimulation || playingMatch || currentRound > 7) return;
     
     let timeoutId: NodeJS.Timeout;
     
@@ -48,24 +48,24 @@ export const useTournament = (embeddedMode = false) => {
         const allRoundMatchesPlayed = roundMatches.every(m => m.played);
         
         if (allRoundMatchesPlayed && currentRound < 7) {
+          const nextRoundNumber = currentRound + 1;
+          
           toast.success(`Round ${currentRound} completed!`, {
             description: `Advancing to ${
-              currentRound === 1 ? "Round of 64" : 
-              currentRound === 2 ? "Round of 32" : 
-              currentRound === 3 ? "Round of 16" : 
-              currentRound === 4 ? "Quarter-finals" : 
-              currentRound === 5 ? "Semi-finals" : "Final"
+              nextRoundNumber === 2 ? "Round of 64" : 
+              nextRoundNumber === 3 ? "Round of 32" : 
+              nextRoundNumber === 4 ? "Round of 16" : 
+              nextRoundNumber === 5 ? "Quarter-finals" : 
+              nextRoundNumber === 6 ? "Semi-finals" : "Final"
             }`
           });
           
-          const nextRound = currentRound + 1;
-          setCurrentRound(nextRound);
+          setCurrentRound(nextRoundNumber);
           
-          setSimulationPaused(true);
+          // Use a much shorter timeout to advance to the next round
           timeoutId = setTimeout(() => {
-            setSimulationPaused(false);
             simulateNextMatch();
-          }, 1500);
+          }, 300);
         } else if (currentRound === 7 && allRoundMatchesPlayed) {
           const winner = matches.find(m => m.round === 7)?.winner;
           toast.success(`Tournament Complete!`, {
@@ -77,18 +77,15 @@ export const useTournament = (embeddedMode = false) => {
       }
     };
     
-    const baseDelay = 600;
-    const maxAdditionalDelay = 1000;
-    const additionalDelay = Math.min(maxAdditionalDelay, matchesPlayed * 20);
-    
-    const totalDelay = Math.min(3000, baseDelay + additionalDelay);
+    // Use a fixed short delay to keep simulation moving quickly
+    const totalDelay = 400;
     
     timeoutId = setTimeout(simulateNextMatch, totalDelay);
     
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [autoSimulation, playingMatch, currentRound, matches, simulationPaused, matchesPlayed]);
+  }, [autoSimulation, playingMatch, currentRound, matches, matchesPlayed]);
 
   const initializeTournament = useCallback(() => {
     const tournamentTeams: TournamentTeam[] = Object.entries(teamKitColors).map(([name, colors], index) => ({
@@ -374,9 +371,6 @@ export const useTournament = (embeddedMode = false) => {
       ? currentMatch.teamA 
       : currentMatch.teamB;
     
-    const homeTeam = currentMatch.teamA;
-    const awayTeam = currentMatch.teamB;
-    
     currentMatch.score = {
       teamA: finalScore.red,
       teamB: finalScore.blue
@@ -406,20 +400,14 @@ export const useTournament = (embeddedMode = false) => {
     setPlayingMatch(false);
     setMatchesPlayed(prev => prev + 1);
     
-    if (autoSimulation) {
-      const pauseTime = Math.min(1000, 500 + matchesPlayed * 5);
-      
-      setSimulationPaused(true);
-      setTimeout(() => {
-        setSimulationPaused(false);
-      }, pauseTime);
-    }
-  }, [activeMatch, matches, autoSimulation, matchesPlayed]);
+    // Don't pause after match completion during auto simulation
+    // This keeps the tournament flowing
+  }, [activeMatch, matches]);
 
   const startAutoSimulation = useCallback(() => {
     setAutoSimulation(true);
-    setSimulationPaused(false);
     
+    // Ensure we have a match to simulate immediately
     const nextMatch = matches.find(m => 
       m.round === currentRound && 
       !m.played && 
@@ -428,9 +416,10 @@ export const useTournament = (embeddedMode = false) => {
     );
     
     if (nextMatch) {
+      // Start simulating immediately
       setTimeout(() => {
         playMatch(nextMatch);
-      }, 100);
+      }, 50);
     }
     
     toast.success("Auto Simulation Started", {
