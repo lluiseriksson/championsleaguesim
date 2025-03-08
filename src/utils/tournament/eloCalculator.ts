@@ -1,4 +1,3 @@
-
 /**
  * Utility functions for ELO-based calculations in the tournament
  */
@@ -30,11 +29,13 @@ export const generateScore = (winnerElo: number, loserElo: number, isGoldenGoal:
   const eloDifference = Math.abs(winnerElo - loserElo);
   
   // Calculate base goal difference based on ELO difference
-  // Higher ELO difference leads to higher goal difference
-  const baseGoalDiff = Math.min(Math.floor(eloDifference / 150), 5);
+  // Higher ELO difference leads to higher goal difference but with realistic scaling
+  // With real ELO values, differences are more subtle
+  const baseGoalDiff = Math.min(Math.floor(eloDifference / 100), 4);
   
   // Winner will score at least 1 goal
-  const winnerGoals = 1 + Math.floor(Math.random() * 3) + (Math.random() < 0.7 ? baseGoalDiff : 0);
+  // More goals for higher ELO teams but keep it realistic
+  const winnerGoals = 1 + Math.floor(Math.random() * 3) + (Math.random() < 0.6 ? Math.floor(baseGoalDiff / 2) : 0);
   
   // Loser might score 0 or more goals, but less than winner
   let loserGoals = Math.max(0, winnerGoals - baseGoalDiff - Math.floor(Math.random() * 2));
@@ -54,7 +55,8 @@ export const shouldUseGoldenGoal = (teamAElo: number, teamBElo: number): boolean
   const eloDifference = Math.abs(teamAElo - teamBElo);
   
   // If teams are closely matched (small ELO difference), higher chance of golden goal
-  const goldenGoalProbability = Math.max(0, 0.4 - eloDifference / 1000);
+  // With real ELO values, we need to adjust the scaling
+  const goldenGoalProbability = Math.max(0, 0.3 - eloDifference / 500);
   
   return Math.random() < goldenGoalProbability;
 };

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
@@ -11,6 +10,7 @@ import { KitType } from '../../types/kits/kitTypes';
 import GameLogic from '../GameLogic';
 import { createPlayerBrain } from '../../utils/neuralNetwork';
 import { validatePlayerBrain } from '../../utils/neural/networkValidator';
+import { getTeamElo } from '../../utils/tournament/eloRatings';
 
 const transliterateRussianName = (name: string): string => {
   const cyrillicToLatin: Record<string, string> = {
@@ -99,19 +99,15 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       
       setKitConflictResolved(true);
       
-      // Randomly determine which team gets higher ELO - COMPLETELY RANDOM (50/50)
-      // No bias toward home team
-      const homeTeamGetsHigherElo = Math.random() < 0.5; // 50% chance either team gets higher ELO
+      // Get actual ELO ratings for both teams using the ratings table
+      const homeTeamElo = getTeamElo(homeTeam);
+      const awayTeamElo = getTeamElo(awayTeam);
       
-      // Calculate ELO values with significant difference to ensure learning effect is visible
-      const higherElo = 2000;
-      const lowerElo = 1500;
+      console.log(`Team ELO ratings - ${homeTeam}: ${homeTeamElo}, ${awayTeam}: ${awayTeamElo}`);
       
-      const homeTeamElo = homeTeamGetsHigherElo ? higherElo : lowerElo;
-      const awayTeamElo = homeTeamGetsHigherElo ? lowerElo : higherElo;
-      
-      console.log(`Team ELO assignment - ${homeTeam}: ${homeTeamElo}, ${awayTeam}: ${awayTeamElo}`);
-      console.log(`${homeTeamGetsHigherElo ? 'Home' : 'Away'} team has higher ELO and will use trained models`);
+      // Determine which team has the higher ELO (will use neural networks)
+      const homeTeamHasHigherElo = homeTeamElo > awayTeamElo;
+      console.log(`${homeTeamHasHigherElo ? 'Home' : 'Away'} team has higher ELO and will use trained models`);
       
       initializePlayers(awayTeamKitType, homeTeamElo, awayTeamElo);
       

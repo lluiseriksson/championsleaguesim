@@ -5,6 +5,7 @@ import { Score } from '../../types/football';
 import { toast } from 'sonner';
 import { clearKitSelectionCache } from '../../types/kits';
 import { determineWinnerByElo, generateScore, shouldUseGoldenGoal } from '../../utils/tournament/eloCalculator';
+import { teamEloRatings } from '../../utils/tournament/eloRatings';
 
 export const useTournament = (embeddedMode = false) => {
   const [teams, setTeams] = useState<TournamentTeam[]>([]);
@@ -86,13 +87,16 @@ export const useTournament = (embeddedMode = false) => {
   }, [autoSimulation, playingMatch, currentRound, matches, matchesPlayed]);
 
   const initializeTournament = useCallback(() => {
-    const tournamentTeams: TournamentTeam[] = Object.entries(teamKitColors).map(([name, colors], index) => ({
-      id: index + 1,
-      name,
-      seed: index + 1,
-      eloRating: 2000 - index * 4,
-      kitColors: colors
-    })).slice(0, 128);
+    const tournamentTeams: TournamentTeam[] = Object.entries(teamKitColors)
+      .map(([name, colors]) => ({
+        id: Math.floor(Math.random() * 100000),
+        name,
+        seed: Math.floor(Math.random() * 128) + 1,
+        eloRating: teamEloRatings[name] || 1600,
+        kitColors: colors
+      }))
+      .sort((a, b) => b.eloRating - a.eloRating)
+      .slice(0, 128);
 
     setTeams(tournamentTeams);
 
@@ -137,7 +141,7 @@ export const useTournament = (embeddedMode = false) => {
     setCurrentRound(1);
     
     toast.success("Tournament initialized", {
-      description: "128 teams ready for the competition"
+      description: "128 teams ready for the competition with real-world ELO ratings"
     });
   }, []);
 
