@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Match, TournamentTeam } from '../../types/tournament';
 import { teamKitColors } from '../../types/teamKits';
@@ -63,7 +62,6 @@ export const useTournament = (embeddedMode = false) => {
           
           setCurrentRound(nextRoundNumber);
           
-          // Use a much shorter timeout to advance to the next round
           timeoutId = setTimeout(() => {
             simulateNextMatch();
           }, 300);
@@ -78,7 +76,6 @@ export const useTournament = (embeddedMode = false) => {
       }
     };
     
-    // Use a fixed short delay to keep simulation moving quickly
     const totalDelay = 400;
     
     timeoutId = setTimeout(simulateNextMatch, totalDelay);
@@ -194,7 +191,11 @@ export const useTournament = (embeddedMode = false) => {
       ? currentMatch.teamB.eloRating 
       : currentMatch.teamA.eloRating;
     
-    const { winner: winnerGoals, loser: loserGoals } = generateScore(winnerElo, loserElo);
+    const { winner: winnerGoals, loser: loserGoals } = generateScore(
+      winnerElo, 
+      loserElo, 
+      useGoldenGoal
+    );
     
     if (winner.id === currentMatch.teamA.id) {
       currentMatch.score = {
@@ -208,7 +209,14 @@ export const useTournament = (embeddedMode = false) => {
       };
     }
     
-    if (currentMatch.round < 7) {
+    currentMatch.played = true;
+    currentMatch.winner = winner;
+    
+    if (currentMatch.round === 7) {
+      toast.success("Tournament Complete!", {
+        description: `Champion: ${winner.name}`
+      });
+    } else if (currentMatch.round < 7) {
       const nextRoundPosition = Math.ceil(currentMatch.position / 2);
       const nextMatch = updatedMatches.find(
         m => m.round === currentMatch.round + 1 && m.position === nextRoundPosition
@@ -292,7 +300,7 @@ export const useTournament = (embeddedMode = false) => {
         const { winner: winnerGoals, loser: loserGoals } = generateScore(
           winnerElo, 
           loserElo,
-          useGoldenGoal // Pass the golden goal flag to the score generator
+          useGoldenGoal
         );
         
         if (winner.id === matchToUpdate.teamA.id) {
@@ -385,7 +393,11 @@ export const useTournament = (embeddedMode = false) => {
     currentMatch.played = true;
     currentMatch.goldenGoal = wasGoldenGoal;
     
-    if (currentMatch.round < 7) {
+    if (currentMatch.round === 7) {
+      toast.success("Tournament Complete!", {
+        description: `Champion: ${winner.name}`
+      });
+    } else if (currentMatch.round < 7) {
       const nextRoundPosition = Math.ceil(currentMatch.position / 2);
       const nextMatch = updatedMatches.find(
         m => m.round === currentMatch.round + 1 && m.position === nextRoundPosition
@@ -404,15 +416,11 @@ export const useTournament = (embeddedMode = false) => {
     setActiveMatch(null);
     setPlayingMatch(false);
     setMatchesPlayed(prev => prev + 1);
-    
-    // Don't pause after match completion during auto simulation
-    // This keeps the tournament flowing
   }, [activeMatch, matches]);
 
   const startAutoSimulation = useCallback(() => {
     setAutoSimulation(true);
     
-    // Ensure we have a match to simulate immediately
     const nextMatch = matches.find(m => 
       m.round === currentRound && 
       !m.played && 
@@ -421,7 +429,6 @@ export const useTournament = (embeddedMode = false) => {
     );
     
     if (nextMatch) {
-      // Start simulating immediately
       setTimeout(() => {
         playMatch(nextMatch);
       }, 50);
@@ -433,7 +440,8 @@ export const useTournament = (embeddedMode = false) => {
   }, [matches, currentRound, playMatch]);
 
   const getWinner = useCallback(() => {
-    return matches.find(m => m.round === 7)?.winner;
+    const finalMatch = matches.find(m => m.round === 7);
+    return finalMatch?.played ? finalMatch?.winner : undefined;
   }, [matches]);
 
   return {
