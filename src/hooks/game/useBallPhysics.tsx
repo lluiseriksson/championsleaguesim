@@ -1,83 +1,72 @@
-
 import { useCallback } from 'react';
 import { Ball, Player, Position, BALL_RADIUS } from '../../types/football';
 import { calculateDistance } from '../../utils/neuralCore';
-import { useGoalkeeperReachAdjustment } from '../../components/game/BallMovementSystem';
+import { 
+  simulateBounce,
+  calculateRebound,
+  updatePosition,
+  checkBoundaryCollision,
+} from '../../utils/gamePhysics';
 
 interface BallPhysicsProps {
   ball: Ball;
+  setBall: React.Dispatch<React.SetStateAction<Ball>>;
   players: Player[];
-  updateBallPosition: () => void;
 }
 
-export const useBallPhysics = ({ ball, players, updateBallPosition }: BallPhysicsProps) => {
-  // Get the goalkeeper reach adjustment function
-  const calculateEloGoalkeeperReachAdjustment = useGoalkeeperReachAdjustment();
+export const useBallPhysics = ({ ball, setBall, players }: BallPhysicsProps) => {
+  const updateBallPosition = useCallback(() => {
+    setBall(prevBall => {
+      let newPosition = {
+        x: prevBall.position.x + prevBall.velocity.x,
+        y: prevBall.position.y + prevBall.velocity.y
+      };
 
-  const detectCollisions = useCallback(() => {
-    // No players or no ball movement, skip calculation
-    if (!players.length || (ball.velocity.x === 0 && ball.velocity.y === 0)) {
-      return;
-    }
-    
-    for (const player of players) {
-      const distanceToBall = calculateDistance(player.position, ball.position);
-      
-      // Goalkeeper has extra reach based on ELO
-      let extraReach = 0;
-      if (player.role === 'goalkeeper' && player.teamElo) {
-        extraReach = calculateEloGoalkeeperReachAdjustment(player.teamElo);
-      }
-      
-      // Check if player collides with ball
-      const collisionThreshold = player.radius + BALL_RADIUS + extraReach;
-      
-      if (distanceToBall <= collisionThreshold) {
-        // Handle collision logic here
-        handlePlayerBallCollision(player);
-        break; // Only one player can touch the ball at a time
-      }
-    }
-  }, [ball, players, calculateEloGoalkeeperReachAdjustment]);
+      // Check for collisions with the boundaries
+      const { x, y, velocityX, velocityY } = checkBoundaryCollision(
+        newPosition.x, 
+        newPosition.y, 
+        prevBall.velocity.x, 
+        prevBall.velocity.y,
+        BALL_RADIUS, // Ball radius
+        800, // Pitch width
+        600  // Pitch height
+      );
+
+      newPosition = { x, y };
+
+      return {
+        ...prevBall,
+        position: newPosition,
+        velocity: { x: velocityX, y: velocityY }
+      };
+    });
+  }, [setBall]);
 
   const handlePlayerBallCollision = useCallback((player: Player) => {
-    // Custom collision response logic
-    if (player.role === 'goalkeeper') {
-      // Goalkeepers can catch the ball
-      if (Math.random() < 0.6) {
-        // Calculate catch probability based on ELO
-        let catchProbability = 0.6;
-        
-        if (player.teamElo) {
-          // Higher ELO improves catching ability
-          const eloBonus = calculateEloGoalkeeperReachAdjustment(player.teamElo);
-          catchProbability += eloBonus / 10; // Convert reach bonus to probability bonus
-        }
-        
-        if (Math.random() < catchProbability) {
-          // Ball is caught and stopped
-          stopBall();
-        }
+    setBall(prevBall => {
+      const distance = calculateDistance(player.position, prevBall.position);
+      if (distance <= player.size + BALL_RADIUS) {
+        const newVelocity = calculateRebound(player.position, player.velocity, prevBall.position, prevBall.velocity);
+        return {
+          ...prevBall,
+          velocity: newVelocity
+        };
       }
-    } else {
-      // Regular players deflect the ball
-      deflectBall(player);
-    }
-  }, [calculateEloGoalkeeperReachAdjustment]);
+      return prevBall;
+    });
+  }, [setBall]);
 
-  const stopBall = useCallback(() => {
-    // Logic to stop the ball
-    // This is just a placeholder - actual implementation would update the ball state
-    console.log('Ball stopped');
-  }, []);
+  const detectCollisions = useCallback(() => {
+    players.forEach(player => {
+      const distance = calculateDistance(player.position, ball.position);
+      if (distance <= player.size + BALL_RADIUS) {
+        handlePlayerBallCollision(player);
+      }
+    });
+  }, [players, ball, handlePlayerBallCollision]);
 
-  const deflectBall = useCallback((player: Player) => {
-    // Logic to deflect the ball based on player position and momentum
-    // This is just a placeholder - actual implementation would update the ball state
-    console.log(`Ball deflected by ${player.team} ${player.role}`);
-  }, []);
-
-  // Export handleBallPhysics function to fix the import error
+  // Add the handleBallPhysics function to fix the import error
   const handleBallPhysics = useCallback(() => {
     detectCollisions();
     updateBallPosition();
@@ -87,6 +76,9 @@ export const useBallPhysics = ({ ball, players, updateBallPosition }: BallPhysic
     detectCollisions,
     handlePlayerBallCollision,
     updateBallPhysics: updateBallPosition,
-    handleBallPhysics
+    handleBallPhysics // Export the function
   };
 };
+
+// Export the handleBallPhysics function to fix the import error in useBallMovement.tsx
+export { useBallPhysics };

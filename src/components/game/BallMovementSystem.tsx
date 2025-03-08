@@ -1,291 +1,146 @@
-import { useCallback } from 'react';
-import { Player, Ball, Position, PLAYER_RADIUS, BALL_RADIUS, SHOOT_POWER, PASS_POWER } from '../../types/football';
+import React from 'react';
+import { Ball, Player, Position, BALL_RADIUS } from '../../types/football';
 import { calculateDistance } from '../../utils/neuralCore';
-import { calculateNetworkInputs } from '../../utils/neuralInputs';
-import { applyBallAcceleration, applyFriction } from '../../utils/gamePhysics';
-import { isNetworkValid } from '../../utils/neuralHelpers';
+import { 
+  simulateBounce,
+  calculateRebound,
+  updatePosition,
+  checkBoundaryCollision,
+} from '../../utils/gamePhysics';
 
 interface BallMovementSystemProps {
   ball: Ball;
   setBall: React.Dispatch<React.SetStateAction<Ball>>;
   players: Player[];
-  checkGoal: (position: Position) => 'red' | 'blue' | null;
-  onBallTouch?: (player: Player) => void;
-  tournamentMode?: boolean;
-  onAction?: (player: Player, actionType: string, success: boolean) => void;
 }
 
-export const useBallMovementSystem = ({
-  ball,
-  setBall,
-  players,
-  checkGoal,
-  onBallTouch,
-  tournamentMode = false,
-  onAction
-}: BallMovementSystemProps) => {
-  const BALL_POSSESSION_THRESHOLD = PLAYER_RADIUS + BALL_RADIUS + 5;
-  
-  const isPlayerCloseToTheBall = useCallback((player: Player): boolean => {
-    const distance = calculateDistance(player.position, ball.position);
-    return distance <= BALL_POSSESSION_THRESHOLD;
-  }, [ball]);
-
-  const findClosestPlayer = useCallback((): Player | null => {
-    let closestPlayer: Player | null = null;
-    let minDistance = Number.MAX_VALUE;
-    
-    for (const player of players) {
-      const distance = calculateDistance(player.position, ball.position);
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestPlayer = player;
-      }
-    }
-    
-    return minDistance <= BALL_POSSESSION_THRESHOLD ? closestPlayer : null;
-  }, [players, ball]);
-
-  const handlePlayerShot = useCallback((player: Player, direction: Position): void => {
-    let velocityX = direction.x * SHOOT_POWER;
-    let velocityY = direction.y * SHOOT_POWER;
-    
-    velocityX += (Math.random() - 0.5) * 2;
-    velocityY += (Math.random() - 0.5) * 2;
-    
-    setBall(prevBall => ({
-      ...prevBall,
-      velocity: { x: velocityX, y: velocityY },
-      previousPosition: prevBall.position
-    }));
-    
-    if (player.brain) {
-      player.brain.lastAction = 'shoot';
-      player.brain.lastOutput = { x: direction.x, y: direction.y };
-      player.brain.lastShotDirection = direction;
-    }
-    
-    if (onAction) {
-      const targetGoalX = player.team === 'red' ? 800 : 0;
-      const isSuccessful = (player.team === 'red' && direction.x > 0) || 
-                          (player.team === 'blue' && direction.x < 0);
-      
-      onAction(player, 'shot', isSuccessful);
-    }
-    
-    console.log(`${player.team} ${player.role} shot the ball`);
-  }, [setBall, onAction]);
-
-  const handlePlayerPass = useCallback((player: Player, direction: Position): void => {
-    let velocityX = direction.x * PASS_POWER;
-    let velocityY = direction.y * PASS_POWER;
-    
-    velocityX += (Math.random() - 0.5) * 1.2;
-    velocityY += (Math.random() - 0.5) * 1.2;
-    
-    setBall(prevBall => ({
-      ...prevBall,
-      velocity: { x: velocityX, y: velocityY },
-      previousPosition: prevBall.position
-    }));
-    
-    if (player.brain) {
-      player.brain.lastAction = 'pass';
-      player.brain.lastOutput = { x: direction.x, y: direction.y };
-    }
-    
-    if (onAction) {
-      const isBackwardPass = (player.team === 'red' && direction.x < -0.5) || 
-                            (player.team === 'blue' && direction.x > 0.5);
-      const isSuccessful = !isBackwardPass;
-      
-      onAction(player, 'pass', isSuccessful);
-    }
-    
-    console.log(`${player.team} ${player.role} passed the ball`);
-  }, [setBall, onAction]);
-
-  const handleBallInterception = useCallback((player: Player): void => {
-    if (player.role === 'goalkeeper') {
-      setBall(prevBall => ({
-        ...prevBall,
-        velocity: { x: 0, y: 0 },
-        previousPosition: prevBall.position
-      }));
-      
-      if (player.brain) {
-        player.brain.lastAction = 'intercept';
-        player.brain.lastOutput = { x: 0, y: 0 };
-      }
-      
-      if (onAction) {
-        onAction(player, 'intercept', true);
-      }
-      
-      console.log(`${player.team} goalkeeper intercepted the ball`);
-    }
-  }, [setBall, onAction]);
-
-  const updateBallPosition = useCallback(() => {
+export const useBallMovement = ({ ball, setBall, players }: BallMovementSystemProps) => {
+  // Function to update ball position based on velocity
+  const updateBallPosition = React.useCallback(() => {
     setBall(prevBall => {
-      const newBall = { 
-        ...prevBall,
-        previousPosition: { ...prevBall.position }
+      // Apply friction to slow the ball down
+      const friction = 0.98;
+      
+      // Calculate new velocity with friction
+      const newVelocity = {
+        x: prevBall.velocity.x * friction,
+        y: prevBall.velocity.y * friction
       };
       
-      const playerWithBall = findClosestPlayer();
+      // Calculate new position based on velocity
+      const newPosition = {
+        x: prevBall.position.x + newVelocity.x,
+        y: prevBall.position.y + newVelocity.y
+      };
       
-      if (playerWithBall) {
-        if (onBallTouch) {
-          onBallTouch(playerWithBall);
-        }
-        
-        if (playerWithBall.role !== 'goalkeeper' && playerWithBall.brain && playerWithBall.brain.net) {
-          try {
-            if (isNetworkValid(playerWithBall.brain.net)) {
-              const teammates = players.filter(p => p.team === playerWithBall.team && p.id !== playerWithBall.id);
-              const opponents = players.filter(p => p.team !== playerWithBall.team);
-              
-              const teamContext = {
-                teammates: teammates.map(t => t.position),
-                opponents: opponents.map(o => o.position),
-                ownGoal: { 
-                  x: playerWithBall.team === 'red' ? 0 : 800, 
-                  y: 300 
-                },
-                opponentGoal: { 
-                  x: playerWithBall.team === 'red' ? 800 : 0, 
-                  y: 300 
-                }
-              };
-              
-              const inputs = calculateNetworkInputs(newBall, playerWithBall, teamContext);
-              
-              const output = playerWithBall.brain.net.run(inputs);
-              
-              if (output) {
-                if (output.shootBall > 0.7) {
-                  const direction = {
-                    x: output.moveX * 2 - 1,
-                    y: output.moveY * 2 - 1
-                  };
-                  
-                  handlePlayerShot(playerWithBall, direction);
-                }
-                else if (output.passBall > 0.6) {
-                  const direction = {
-                    x: output.moveX * 2 - 1,
-                    y: output.moveY * 2 - 1
-                  };
-                  
-                  handlePlayerPass(playerWithBall, direction);
-                }
-                else if (output.intercept > 0.7 && playerWithBall.role === 'goalkeeper') {
-                  handleBallInterception(playerWithBall);
-                }
-                else {
-                  const actionThreshold = tournamentMode ? 0.03 : 0.05;
-                  
-                  if (Math.random() < actionThreshold) {
-                    if (Math.random() < 0.3) {
-                      const shootDirection = {
-                        x: playerWithBall.team === 'red' ? 1 : -1,
-                        y: (Math.random() - 0.5) * 0.8
-                      };
-                      
-                      handlePlayerShot(playerWithBall, shootDirection);
-                    } else {
-                      const passDirection = {
-                        x: (Math.random() * 2 - 1) * (playerWithBall.team === 'red' ? 0.8 : -0.8),
-                        y: (Math.random() - 0.5) * 1.2
-                      };
-                      
-                      handlePlayerPass(playerWithBall, passDirection);
-                    }
-                  }
-                }
-              }
-            }
-          } catch (error) {
-            console.error(`Error in neural network for ${playerWithBall.team} ${playerWithBall.role}:`, error);
-          }
-        }
-        else if (playerWithBall.role === 'goalkeeper') {
-          if (Math.random() < 0.1) {
-            const passDirection = {
-              x: playerWithBall.team === 'red' ? 0.8 : -0.8,
-              y: (Math.random() - 0.5) * 1.5
-            };
-            
-            handlePlayerPass(playerWithBall, passDirection);
-          }
-          else {
-            handleBallInterception(playerWithBall);
-          }
-        }
-        
-        if (newBall.velocity.x === 0 && newBall.velocity.y === 0) {
-          const offsetX = playerWithBall.team === 'red' ? 10 : -10;
-          newBall.position = {
-            x: playerWithBall.position.x + offsetX,
-            y: playerWithBall.position.y
-          };
-        }
-      }
+      // Check for boundary collisions (pitch edges)
+      const { position: boundedPosition, velocity: boundedVelocity } = 
+        checkBoundaryCollision(newPosition, newVelocity, BALL_RADIUS);
       
-      if (newBall.velocity.x !== 0 || newBall.velocity.y !== 0) {
-        newBall.velocity = applyFriction(newBall.velocity, 0.98);
-        newBall.velocity = applyBallAcceleration(newBall.velocity, newBall.position);
-        
-        const newPosition = {
-          x: newBall.position.x + newBall.velocity.x,
-          y: newBall.position.y + newBall.velocity.y
-        };
-        
-        const scoringTeam = checkGoal(newPosition);
-        if (scoringTeam !== null) {
-          return newBall;
-        }
-        
-        if (newPosition.x < BALL_RADIUS) {
-          newPosition.x = BALL_RADIUS;
-          newBall.velocity.x = -newBall.velocity.x * 0.8;
-        } else if (newPosition.x > 800 - BALL_RADIUS) {
-          newPosition.x = 800 - BALL_RADIUS;
-          newBall.velocity.x = -newBall.velocity.x * 0.8;
-        }
-        
-        if (newPosition.y < BALL_RADIUS) {
-          newPosition.y = BALL_RADIUS;
-          newBall.velocity.y = -newBall.velocity.y * 0.8;
-        } else if (newPosition.y > 600 - BALL_RADIUS) {
-          newPosition.y = 600 - BALL_RADIUS;
-          newBall.velocity.y = -newBall.velocity.y * 0.8;
-        }
-        
-        newBall.position = newPosition;
-      }
-      
-      return newBall;
+      // Return updated ball state
+      return {
+        ...prevBall,
+        position: boundedPosition,
+        velocity: boundedVelocity
+      };
     });
-  }, [
-    findClosestPlayer, 
-    onBallTouch, 
-    players, 
-    checkGoal, 
-    handlePlayerShot, 
-    handlePlayerPass, 
-    handleBallInterception,
-    tournamentMode
-  ]);
-
-  return { updateBallPosition };
-};
-
-export const useGoalkeeperReachAdjustment = () => {
-  return (elo: number) => {
-    const baseReach = 0;
-    const eloFactor = Math.max(0, (elo - 1500) / 1000);
-    return baseReach + (eloFactor * 3);
+  }, [setBall]);
+  
+  // Function to detect collisions between ball and players
+  const detectCollisions = React.useCallback(() => {
+    players.forEach(player => {
+      // Calculate distance between player and ball
+      const distance = calculateDistance(
+        player.position.x,
+        player.position.y,
+        ball.position.x,
+        ball.position.y
+      );
+      
+      // Player radius + ball radius = collision threshold
+      const collisionThreshold = player.radius + BALL_RADIUS;
+      
+      // Check if collision occurred
+      if (distance < collisionThreshold) {
+        handlePlayerBallCollision(player);
+      }
+    });
+  }, [players, ball, handlePlayerBallCollision]);
+  
+  // Function to handle collision between player and ball
+  const handlePlayerBallCollision = React.useCallback((player: Player) => {
+    setBall(prevBall => {
+      // Calculate collision vector (direction from player to ball)
+      const collisionVector = {
+        x: prevBall.position.x - player.position.x,
+        y: prevBall.position.y - player.position.y
+      };
+      
+      // Normalize collision vector
+      const distance = Math.sqrt(
+        collisionVector.x * collisionVector.x + 
+        collisionVector.y * collisionVector.y
+      );
+      
+      if (distance === 0) return prevBall; // Avoid division by zero
+      
+      const normalizedCollision = {
+        x: collisionVector.x / distance,
+        y: collisionVector.y / distance
+      };
+      
+      // Calculate player's impact on ball based on player attributes
+      let impactStrength = 2; // Base impact strength
+      
+      // Adjust impact based on player role
+      if (player.role !== 'goalkeeper') {
+        // Non-goalkeeper players have different impact strengths
+        if (player.role === 'defender') {
+          impactStrength = 2.5;
+        } else if (player.role === 'midfielder') {
+          impactStrength = 2.2;
+        } else if (player.role === 'forward') {
+          impactStrength = 2.0;
+        }
+      } else {
+        // Goalkeepers have stronger impact
+        impactStrength = 3.0;
+      }
+      
+      // Calculate new velocity based on collision
+      const newVelocity = {
+        x: normalizedCollision.x * impactStrength + player.velocity.x * 0.3,
+        y: normalizedCollision.y * impactStrength + player.velocity.y * 0.3
+      };
+      
+      // Ensure minimum separation to prevent sticking
+      const separationDistance = player.radius + BALL_RADIUS;
+      const newPosition = {
+        x: player.position.x + normalizedCollision.x * separationDistance,
+        y: player.position.y + normalizedCollision.y * separationDistance
+      };
+      
+      return {
+        ...prevBall,
+        position: newPosition,
+        velocity: newVelocity,
+        lastTouchedBy: player.id
+      };
+    });
+  }, [setBall]);
+  
+  // Main function to handle all ball physics in each frame
+  const handleBallPhysics = React.useCallback(() => {
+    detectCollisions();
+    updateBallPosition();
+  }, [detectCollisions, updateBallPosition]);
+  
+  return {
+    detectCollisions,
+    handlePlayerBallCollision,
+    updateBallPhysics: updateBallPosition,
+    handleBallPhysics
   };
 };
+
+export default useBallMovement;
