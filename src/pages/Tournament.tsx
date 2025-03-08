@@ -23,9 +23,11 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
     simulateSingleMatch,
     handleMatchComplete,
     startAutoSimulation,
+    randomizeCurrentRound,
     getWinner,
     setActiveMatch,
-    setPlayingMatch
+    setPlayingMatch,
+    setCurrentRound
   } = useTournament(embeddedMode);
 
   return (
@@ -43,6 +45,7 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
             simulationPaused={simulationPaused}
             resetTournament={resetTournament}
             startAutoSimulation={startAutoSimulation}
+            randomizeRound={randomizeCurrentRound}
           />
         ) : (
           <TournamentControls

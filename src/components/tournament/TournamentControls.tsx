@@ -2,7 +2,7 @@
 import React from 'react';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { RefreshCcw, PlayCircle, Trophy, Loader2 } from 'lucide-react';
+import { RefreshCcw, PlayCircle, Trophy, Loader2, Dices } from 'lucide-react';
 
 interface TournamentControlsProps {
   currentRound: number;
@@ -10,6 +10,7 @@ interface TournamentControlsProps {
   simulationPaused?: boolean;
   resetTournament: () => void;
   startAutoSimulation: () => void;
+  randomizeRound?: () => void;
 }
 
 const TournamentControls: React.FC<TournamentControlsProps> = ({ 
@@ -17,7 +18,8 @@ const TournamentControls: React.FC<TournamentControlsProps> = ({
   autoSimulation,
   simulationPaused = false,
   resetTournament,
-  startAutoSimulation
+  startAutoSimulation,
+  randomizeRound
 }) => {
   const isComplete = currentRound > 7;
   
@@ -41,6 +43,27 @@ const TournamentControls: React.FC<TournamentControlsProps> = ({
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
+
+      {!isComplete && randomizeRound && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="secondary"
+                size="sm"
+                onClick={randomizeRound}
+                disabled={autoSimulation}
+              >
+                <Dices className="h-4 w-4 mr-2" />
+                Randomize Round
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Randomly determine all matches in current round</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
 
       {!isComplete && (
         <TooltipProvider>

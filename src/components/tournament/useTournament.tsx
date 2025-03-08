@@ -1,9 +1,11 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { Match, TournamentTeam } from '../../types/tournament';
 import { teamKitColors } from '../../types/teamKits';
 import { Score } from '../../types/football';
 import { toast } from 'sonner';
 import { clearKitSelectionCache } from '../../types/kits';
+import { determineWinnerByElo, generateScore, shouldUseGoldenGoal } from '../../utils/tournament/eloCalculator';
 
 export const useTournament = (embeddedMode = false) => {
   const [teams, setTeams] = useState<TournamentTeam[]>([]);
@@ -170,18 +172,34 @@ export const useTournament = (embeddedMode = false) => {
     
     if (!currentMatch || !currentMatch.teamA || !currentMatch.teamB) return;
     
-    const teamAStrength = currentMatch.teamA.eloRating + Math.random() * 20;
-    const teamBStrength = currentMatch.teamB.eloRating + Math.random() * 20;
+    // Use the ELO-based probability for determining the winner
+    const winnerTeam = determineWinnerByElo(
+      currentMatch.teamA.eloRating, 
+      currentMatch.teamB.eloRating
+    );
     
-    const winner = teamAStrength > teamBStrength ? currentMatch.teamA : currentMatch.teamB;
+    // Set the winner based on the calculation
+    const winner = winnerTeam === 'A' ? currentMatch.teamA : currentMatch.teamB;
     currentMatch.winner = winner;
     currentMatch.played = true;
     
-    const strengthDiff = Math.abs(teamAStrength - teamBStrength);
-    const goalDiff = Math.min(Math.floor(strengthDiff / 25), 5);
-    const winnerGoals = 1 + Math.floor(Math.random() * 2) + Math.floor(goalDiff / 1.5);
-    const loserGoals = Math.max(0, winnerGoals - goalDiff);
+    // Check if we should use golden goal
+    const useGoldenGoal = shouldUseGoldenGoal(
+      currentMatch.teamA.eloRating,
+      currentMatch.teamB.eloRating
+    );
     
+    currentMatch.goldenGoal = useGoldenGoal;
+    
+    // Generate the score
+    const winnerElo = winner.eloRating;
+    const loserElo = winner.id === currentMatch.teamA.id 
+      ? currentMatch.teamB.eloRating 
+      : currentMatch.teamA.eloRating;
+    
+    const { winner: winnerGoals, loser: loserGoals } = generateScore(winnerElo, loserElo);
+    
+    // Set the score based on which team won
     if (winner.id === currentMatch.teamA.id) {
       currentMatch.score = {
         teamA: winnerGoals,
@@ -194,6 +212,7 @@ export const useTournament = (embeddedMode = false) => {
       };
     }
     
+    // Set up the next match if this isn't the final
     if (currentMatch.round < 7) {
       const nextRoundPosition = Math.ceil(currentMatch.position / 2);
       const nextMatch = updatedMatches.find(
@@ -210,7 +229,121 @@ export const useTournament = (embeddedMode = false) => {
     }
     
     setMatches(updatedMatches);
+    setMatchesPlayed(prev => prev + 1);
   }, [matches]);
+
+  // New function to randomize an entire round
+  const randomizeCurrentRound = useCallback(() => {
+    const currentRoundMatches = matches.filter(
+      m => m.round === currentRound && m.teamA && m.teamB && !m.played
+    );
+    
+    if (currentRoundMatches.length === 0) {
+      toast.error("No matches to randomize", {
+        description: "All matches in this round are already played or not set up yet."
+      });
+      return;
+    }
+    
+    const updatedMatches = [...matches];
+    let simulatedCount = 0;
+    
+    // Simulate all matches in the current round
+    for (const match of currentRoundMatches) {
+      const matchToUpdate = updatedMatches.find(m => m.id === match.id);
+      
+      if (matchToUpdate && matchToUpdate.teamA && matchToUpdate.teamB && !matchToUpdate.played) {
+        // Use the ELO-based probability for determining the winner
+        const winnerTeam = determineWinnerByElo(
+          matchToUpdate.teamA.eloRating, 
+          matchToUpdate.teamB.eloRating
+        );
+        
+        // Set the winner based on the calculation
+        const winner = winnerTeam === 'A' ? matchToUpdate.teamA : matchToUpdate.teamB;
+        matchToUpdate.winner = winner;
+        matchToUpdate.played = true;
+        
+        // Check if we should use golden goal
+        const useGoldenGoal = shouldUseGoldenGoal(
+          matchToUpdate.teamA.eloRating,
+          matchToUpdate.teamB.eloRating
+        );
+        
+        matchToUpdate.goldenGoal = useGoldenGoal;
+        
+        // Generate the score
+        const winnerElo = winner.eloRating;
+        const loserElo = winner.id === matchToUpdate.teamA.id 
+          ? matchToUpdate.teamB.eloRating 
+          : matchToUpdate.teamA.eloRating;
+        
+        const { winner: winnerGoals, loser: loserGoals } = generateScore(winnerElo, loserElo);
+        
+        // Set the score based on which team won
+        if (winner.id === matchToUpdate.teamA.id) {
+          matchToUpdate.score = {
+            teamA: winnerGoals,
+            teamB: loserGoals
+          };
+        } else {
+          matchToUpdate.score = {
+            teamA: loserGoals,
+            teamB: winnerGoals
+          };
+        }
+        
+        // Set up the next match if this isn't the final
+        if (matchToUpdate.round < 7) {
+          const nextRoundPosition = Math.ceil(matchToUpdate.position / 2);
+          const nextMatch = updatedMatches.find(
+            m => m.round === matchToUpdate.round + 1 && m.position === nextRoundPosition
+          );
+          
+          if (nextMatch) {
+            if (!nextMatch.teamA) {
+              nextMatch.teamA = winner;
+            } else {
+              nextMatch.teamB = winner;
+            }
+          }
+        }
+        
+        simulatedCount++;
+      }
+    }
+    
+    setMatches(updatedMatches);
+    setMatchesPlayed(prev => prev + simulatedCount);
+    
+    // Display toast notification with results
+    const roundName = currentRound === 1 ? "Round of 128" : 
+                      currentRound === 2 ? "Round of 64" : 
+                      currentRound === 3 ? "Round of 32" :
+                      currentRound === 4 ? "Round of 16" :
+                      currentRound === 5 ? "Quarter-finals" :
+                      currentRound === 6 ? "Semi-finals" : "Final";
+    
+    toast.success(`${roundName} randomized`, {
+      description: `${simulatedCount} matches simulated using ELO probability formula`
+    });
+    
+    // Check if all matches in this round are now played
+    const allRoundMatchesPlayed = updatedMatches
+      .filter(m => m.round === currentRound)
+      .every(m => m.played);
+    
+    if (allRoundMatchesPlayed && currentRound < 7) {
+      toast("Round complete", {
+        description: `Ready to progress to the next round`
+      });
+    } else if (currentRound === 7 && allRoundMatchesPlayed) {
+      const winner = updatedMatches.find(m => m.round === 7)?.winner;
+      toast.success("Tournament Complete!", {
+        description: `Champion: ${winner?.name || "Unknown"}`
+      });
+    }
+  }, [currentRound, matches]);
 
   const handleMatchComplete = useCallback((winnerName: string, finalScore: Score, wasGoldenGoal: boolean) => {
     if (!activeMatch) return;
@@ -299,8 +432,10 @@ export const useTournament = (embeddedMode = false) => {
     simulateSingleMatch,
     handleMatchComplete,
     startAutoSimulation,
+    randomizeCurrentRound,
     getWinner,
     setActiveMatch,
-    setPlayingMatch
+    setPlayingMatch,
+    setCurrentRound
   };
 };
