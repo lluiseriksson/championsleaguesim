@@ -1,4 +1,3 @@
-
 // Helper function to parse hex color to RGB
 export function parseHexColor(hex: string): { r: number, g: number, b: number } {
   // Handle invalid hex colors
@@ -336,6 +335,36 @@ export function areBlackColorsTooSimilar(color1: string, color2: string): boolea
     // If total difference is less than 45 (stricter threshold for black), 
     // consider them too similar
     return totalDiff < 45;
+  }
+  
+  return false;
+}
+
+// Add a new utility to specifically handle blue color conflicts
+export function areBlueColorsTooSimilar(color1: string, color2: string): boolean {
+  const rgb1 = parseHexColor(color1);
+  const rgb2 = parseHexColor(color2);
+  
+  const category1 = categorizeColor(color1);
+  const category2 = categorizeColor(color2);
+  
+  // If both are categorized as blue or navy
+  const bothBlueCategories = 
+    (category1 === ColorCategory.BLUE || category1 === ColorCategory.NAVY) &&
+    (category2 === ColorCategory.BLUE || category2 === ColorCategory.NAVY);
+    
+  if (bothBlueCategories) {
+    // Calculate how similar the blue values are
+    const blueDifference = Math.abs(rgb1.b - rgb2.b);
+    
+    // Check red and green component differences as well
+    const redDifference = Math.abs(rgb1.r - rgb2.r);
+    const greenDifference = Math.abs(rgb1.g - rgb2.g);
+    
+    // Blue kits are too similar if:
+    // 1. Blue channel difference is less than 30 units
+    // 2. Red and green channels are also close
+    return blueDifference < 30 && redDifference < 25 && greenDifference < 25;
   }
   
   return false;

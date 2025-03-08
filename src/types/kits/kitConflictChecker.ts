@@ -1,4 +1,3 @@
-
 import { KitType, TeamKit } from './kitTypes';
 import { teamKitColors } from './teamColorsData';
 import { 
@@ -9,7 +8,8 @@ import {
   areRedColorsTooSimilar,
   areWhiteColorsTooSimilar,
   areBlackColorsTooSimilar,
-  detectSpecificColorToneConflict
+  detectSpecificColorToneConflict,
+  areBlueColorsTooSimilar
 } from './colorUtils';
 
 // Teams with known conflicts that always require special handling
@@ -27,7 +27,8 @@ const conflictingTeamPairs: [string, string][] = [
   ['Girona', 'Celta'], 
   ['Brest', 'FC København'],
   ['Fulham', 'Las Palmas'],
-  ['RB Leipzig', 'Braga'] // Add RB Leipzig vs Braga to known conflicts
+  ['RB Leipzig', 'Braga'], 
+  ['Inter', 'Man United'] // Add Inter vs Man United to known conflicts
 ];
 
 // Check if two teams are in the known conflict list
@@ -77,6 +78,16 @@ export const teamHasBlackPrimaryColor = (teamName: string, kitType: KitType): bo
   return category === ColorCategory.BLACK;
 };
 
+// NEW: Check if a team's primary color is blue
+export const teamHasBluePrimaryColor = (teamName: string, kitType: KitType): boolean => {
+  if (!teamKitColors[teamName]) return false;
+  
+  const primary = teamKitColors[teamName][kitType].primary;
+  const category = categorizeColor(primary);
+  
+  return category === ColorCategory.BLUE || category === ColorCategory.NAVY;
+};
+
 // Special check for the known Forest vs Espanyol color conflict
 export const checkForestVsEspanyolConflict = (
   homeTeam: string, 
@@ -117,6 +128,28 @@ export const checkBlackKitConflict = (
     const awayPrimary = teamKitColors[awayTeam][awayKitType].primary;
     
     return areBlackColorsTooSimilar(homePrimary, awayPrimary);
+  }
+  
+  return false;
+};
+
+// NEW: Check for blue kit conflicts
+export const checkBlueKitConflict = (
+  homeTeam: string, 
+  awayTeam: string, 
+  awayKitType: KitType
+): boolean => {
+  if (!teamKitColors[homeTeam] || !teamKitColors[awayTeam]) return false;
+  
+  const homeIsBlue = teamHasBluePrimaryColor(homeTeam, 'home');
+  const awayIsBlue = teamHasBluePrimaryColor(awayTeam, awayKitType);
+  
+  if (homeIsBlue && awayIsBlue) {
+    // For blue kits, do an additional similarity check
+    const homePrimary = teamKitColors[homeTeam].home.primary;
+    const awayPrimary = teamKitColors[awayTeam][awayKitType].primary;
+    
+    return areBlueColorsTooSimilar(homePrimary, awayPrimary);
   }
   
   return false;
@@ -167,6 +200,13 @@ export const checkPrimarySecondaryConflict = (
   // NEW: Check for specific color tone conflicts (like Brest vs FC København)
   const specificToneConflict = detectSpecificColorToneConflict(team1Primary, team2Primary);
   
+  // Check for specific blue-related conflicts
+  const team1BluePrimaryVsTeam2BlueSecondary = teamHasBluePrimaryColor(team1, team1KitType) && 
+                                         categorizeColor(teamKitColors[team2][team2KitType].secondary) === ColorCategory.BLUE;
+  
+  const team2BluePrimaryVsTeam1BlueSecondary = teamHasBluePrimaryColor(team2, team2KitType) && 
+                                         categorizeColor(teamKitColors[team1][team1KitType].secondary) === ColorCategory.BLUE;
+  
   return team1PrimaryVsTeam2Secondary || 
          team2PrimaryVsTeam1Secondary || 
          team1PrimaryVsTeam2Primary || 
@@ -175,7 +215,9 @@ export const checkPrimarySecondaryConflict = (
          team2RedPrimaryVsTeam1RedSecondary ||
          team1BlackPrimaryVsTeam2BlackSecondary ||
          team2BlackPrimaryVsTeam1BlackSecondary ||
-         specificToneConflict;
+         specificToneConflict ||
+         team1BluePrimaryVsTeam2BlueSecondary ||
+         team2BluePrimaryVsTeam1BlueSecondary;
 };
 
 // Improved function to check for similar primary colors between teams
@@ -233,6 +275,26 @@ export const checkPrimarySimilarityConflict = (
     return anyChannelTooSimilar || similarColorTone;
   }
   
+  // UPDATED: Special check for blue-dominant colors (like Inter vs Man United)
+  const bothBlueDominant = (team1Rgb.b > team1Rgb.r && team1Rgb.b > team1Rgb.g) && 
+                           (team2Rgb.b > team2Rgb.r && team2Rgb.b > team2Rgb.g);
+  
+  if (bothBlueDominant) {
+    // For blue-dominant colors, check if they have similar color tone
+    const team1RedRatio = team1Rgb.r / team1Rgb.b;
+    const team1GreenRatio = team1Rgb.g / team1Rgb.b;
+    const team2RedRatio = team2Rgb.r / team2Rgb.b;
+    const team2GreenRatio = team2Rgb.g / team2Rgb.b;
+    
+    const redRatioDiff = Math.abs(team1RedRatio - team2RedRatio);
+    const greenRatioDiff = Math.abs(team1GreenRatio - team2GreenRatio);
+    
+    // If secondary color ratios are similar, the blues will appear to have the same tone
+    const similarBlueColorTone = redRatioDiff < 0.1 && greenRatioDiff < 0.1;
+    
+    return anyChannelTooSimilar || similarBlueColorTone;
+  }
+  
   return anyChannelTooSimilar;
 }
 
@@ -261,8 +323,13 @@ export const performFinalKitCheck = (
     return false;
   }
   
-  // NEW: Check for black kit conflicts
+  // Check for black kit conflicts
   if (checkBlackKitConflict(homeTeam, awayTeam, awayKitType)) {
+    return false;
+  }
+  
+  // Check for blue kit conflicts
+  if (checkBlueKitConflict(homeTeam, awayTeam, awayKitType)) {
     return false;
   }
   

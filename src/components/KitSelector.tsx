@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   teamKitColors, 
@@ -12,9 +11,11 @@ import {
   teamHasRedSecondaryColor,
   teamHasWhitePrimaryColor,
   teamHasBlackPrimaryColor,
+  teamHasBluePrimaryColor,
   areTeamsInConflictList,
   checkWhiteKitConflict,
   checkBlackKitConflict,
+  checkBlueKitConflict,
   checkPrimarySecondaryConflict
 } from '../types/kits/kitConflictChecker';
 import { Button } from './ui/button';
@@ -86,6 +87,20 @@ const KitSelector: React.FC = () => {
           <p className="text-sm font-semibold mb-1">⚠️ Black Kit Conflict!</p>
           <p className="text-xs">
             Both {homeTeam} and {awayTeam} have black primary colors in their selected kits.
+            This would cause confusion during a match.
+          </p>
+        </div>
+      );
+    }
+    
+    const blueKitConflict = checkBlueKitConflict(homeTeam, awayTeam, kitResult.awayTeamKitType);
+    
+    if (blueKitConflict) {
+      return (
+        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-800">
+          <p className="text-sm font-semibold mb-1">⚠️ Blue Kit Conflict!</p>
+          <p className="text-xs">
+            Both {homeTeam} and {awayTeam} have blue primary colors in their selected kits.
             This would cause confusion during a match.
           </p>
         </div>
@@ -211,6 +226,11 @@ const KitSelector: React.FC = () => {
     setHomeTeam('RB Leipzig');
     setAwayTeam('Braga');
   };
+  
+  const testInterVsManUnited = () => {
+    setHomeTeam('Inter');
+    setAwayTeam('Man United');
+  };
 
   return (
     <div className="p-4 bg-white rounded-lg shadow-md">
@@ -315,6 +335,14 @@ const KitSelector: React.FC = () => {
           className="w-full text-xs"
         >
           RB Leipzig vs Braga
+        </Button>
+        
+        <Button 
+          variant="outline" 
+          onClick={testInterVsManUnited}
+          className="w-full text-xs"
+        >
+          Inter vs Man United
         </Button>
       </div>
       
