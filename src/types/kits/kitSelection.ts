@@ -13,6 +13,7 @@ import {
 } from './colorUtils';
 import { 
   teamHasRedPrimaryColor,
+  teamHasRedSecondaryColor,
   teamHasWhitePrimaryColor,
   checkForestVsEspanyolConflict 
 } from './kitConflictChecker';
@@ -57,7 +58,8 @@ const teamConflictOverrides: Record<string, Record<string, KitType>> = {
   'Liverpool': {
     'Manchester United': 'third',
     'FC København': 'third',
-    'AC Milan': 'third'
+    'AC Milan': 'third',
+    'Genova': 'third'
   },
   'Manchester United': {
     'Liverpool': 'third',
@@ -91,6 +93,9 @@ const teamConflictOverrides: Record<string, Record<string, KitType>> = {
   },
   'Leicester': {
     'Atlanta': 'third'
+  },
+  'Genova': {
+    'Liverpool': 'third'
   }
 };
 
@@ -198,6 +203,26 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
     if (shouldLog) {
       console.log(`RED vs BURGUNDY conflict detected between ${homeTeamName} and ${awayTeamName} - forcing third kit`);
     }
+    kitSelectionCache[cacheKey] = 'third';
+    kitConflictCache[cacheKey] = true;
+    return 'third';
+  }
+
+  const homeHasRedPrimary = teamHasRedPrimaryColor(homeTeamName, 'home');
+  const awayHasRedSecondary = teamHasRedSecondaryColor(awayTeamName, 'away');
+  
+  if (homeHasRedPrimary && awayHasRedSecondary) {
+    console.log(`Red primary vs red secondary conflict between ${homeTeamName} (primary) and ${awayTeamName} (secondary), using third kit`);
+    kitSelectionCache[cacheKey] = 'third';
+    kitConflictCache[cacheKey] = true;
+    return 'third';
+  }
+  
+  const awayHasRedPrimary = teamHasRedPrimaryColor(awayTeamName, 'away');
+  const homeHasRedSecondary = teamHasRedSecondaryColor(homeTeamName, 'home');
+  
+  if (awayHasRedPrimary && homeHasRedSecondary) {
+    console.log(`Red primary vs red secondary conflict between ${awayTeamName} (primary) and ${homeTeamName} (secondary), using third kit`);
     kitSelectionCache[cacheKey] = 'third';
     kitConflictCache[cacheKey] = true;
     return 'third';

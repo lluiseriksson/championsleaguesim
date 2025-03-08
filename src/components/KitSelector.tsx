@@ -8,6 +8,7 @@ import {
 import { 
   performFinalKitCheck, 
   teamHasRedPrimaryColor,
+  teamHasRedSecondaryColor,
   teamHasWhitePrimaryColor,
   areTeamsInConflictList,
   checkWhiteKitConflict,
@@ -92,6 +93,24 @@ const KitSelector: React.FC = () => {
       );
     }
     
+    // NEW: Check specifically for red primary vs red secondary
+    const homeHasRedPrimary = teamHasRedPrimaryColor(homeTeam, 'home');
+    const awayHasRedSecondary = teamHasRedSecondaryColor(awayTeam, kitResult.awayTeamKitType);
+    const awayHasRedPrimary = teamHasRedPrimaryColor(awayTeam, kitResult.awayTeamKitType);
+    const homeHasRedSecondary = teamHasRedSecondaryColor(homeTeam, 'home');
+    
+    if ((homeHasRedPrimary && awayHasRedSecondary) || (awayHasRedPrimary && homeHasRedSecondary)) {
+      return (
+        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-800">
+          <p className="text-sm font-semibold mb-1">⚠️ Red Primary-Secondary Color Conflict!</p>
+          <p className="text-xs">
+            One team has a red primary color while the other has a red secondary color.
+            This would cause confusion during a match.
+          </p>
+        </div>
+      );
+    }
+    
     // Check for primary-secondary color conflicts
     const primarySecondaryConflict = checkPrimarySecondaryConflict(
       homeTeam, 
@@ -136,22 +155,24 @@ const KitSelector: React.FC = () => {
     );
   };
 
-  // Test specific teams
   const testSevillaVsCrvenaZvezda = () => {
     setHomeTeam('Sevilla');
     setAwayTeam('Crvena Zvezda');
   };
   
-  // Test Leverkusen vs Monza
   const testLeverkusenVsMonza = () => {
     setHomeTeam('Leverkusen');
     setAwayTeam('Monza');
   };
   
-  // Test Atlanta vs Leicester
   const testAtlantaVsLeicester = () => {
     setHomeTeam('Atlanta');
     setAwayTeam('Leicester');
+  };
+
+  const testLiverpoolVsGenova = () => {
+    setHomeTeam('Liverpool');
+    setAwayTeam('Genova');
   };
 
   return (
@@ -186,29 +207,37 @@ const KitSelector: React.FC = () => {
         </div>
       </div>
       
-      <div className="grid grid-cols-3 gap-4 mb-4">
+      <div className="grid grid-cols-4 gap-2 mb-4">
         <Button 
           variant="outline" 
           onClick={testSevillaVsCrvenaZvezda}
-          className="w-full"
+          className="w-full text-xs"
         >
-          Test Sevilla vs Crvena Zvezda
+          Sevilla vs Crvena Zvezda
         </Button>
         
         <Button 
           variant="outline" 
           onClick={testLeverkusenVsMonza}
-          className="w-full"
+          className="w-full text-xs"
         >
-          Test Leverkusen vs Monza
+          Leverkusen vs Monza
         </Button>
         
         <Button 
           variant="outline" 
           onClick={testAtlantaVsLeicester}
-          className="w-full"
+          className="w-full text-xs"
         >
-          Test Atlanta vs Leicester
+          Atlanta vs Leicester
+        </Button>
+        
+        <Button 
+          variant="outline" 
+          onClick={testLiverpoolVsGenova}
+          className="w-full text-xs"
+        >
+          Liverpool vs Genova
         </Button>
       </div>
       

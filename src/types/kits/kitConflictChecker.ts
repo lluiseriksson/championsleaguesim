@@ -19,7 +19,8 @@ const conflictingTeamPairs: [string, string][] = [
   ['Liverpool', 'AC Milan'],
   ['Liverpool', 'Manchester United'],
   ['Bayern Munich', 'FC København'],
-  ['Atlanta', 'Leicester'] // Add the new conflict pair
+  ['Atlanta', 'Leicester'], 
+  ['Liverpool', 'Genova'] // Add Liverpool vs Genova to known conflicts
 ];
 
 // Check if two teams are in the known conflict list
@@ -35,6 +36,16 @@ export const teamHasRedPrimaryColor = (teamName: string, kitType: KitType): bool
   
   const primary = teamKitColors[teamName][kitType].primary;
   const category = categorizeColor(primary);
+  
+  return category === ColorCategory.RED || category === ColorCategory.BURGUNDY;
+};
+
+// NEW: Check if a team's secondary color is red
+export const teamHasRedSecondaryColor = (teamName: string, kitType: KitType): boolean => {
+  if (!teamKitColors[teamName]) return false;
+  
+  const secondary = teamKitColors[teamName][kitType].secondary;
+  const category = categorizeColor(secondary);
   
   return category === ColorCategory.RED || category === ColorCategory.BURGUNDY;
 };
@@ -99,11 +110,20 @@ export const checkPrimarySecondaryConflict = (
   
   // 2. Are both teams' secondaries too similar (could cause confusion)
   const team1SecondaryVsTeam2Secondary = !areColorsSufficientlyDifferent(team1Secondary, team2Secondary);
+
+  // NEW: Specific check for red primary vs red secondary conflicts
+  const team1RedPrimaryVsTeam2RedSecondary = teamHasRedPrimaryColor(team1, team1KitType) && 
+                                             teamHasRedSecondaryColor(team2, team2KitType);
+  
+  const team2RedPrimaryVsTeam1RedSecondary = teamHasRedPrimaryColor(team2, team2KitType) && 
+                                             teamHasRedSecondaryColor(team1, team1KitType);
   
   return team1PrimaryVsTeam2Secondary || 
          team2PrimaryVsTeam1Secondary || 
          team1PrimaryVsTeam2Primary || 
-         team1SecondaryVsTeam2Secondary;
+         team1SecondaryVsTeam2Secondary ||
+         team1RedPrimaryVsTeam2RedSecondary ||
+         team2RedPrimaryVsTeam1RedSecondary;
 };
 
 // Resolve kit conflict by selecting an alternative kit
