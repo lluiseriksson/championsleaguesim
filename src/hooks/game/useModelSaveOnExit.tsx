@@ -15,25 +15,38 @@ interface ModelSaveOnExitProps {
 export const useModelSaveOnExit = ({
   players,
   tournamentMode = false,
-  homeTeamLearning = true,  // Default: home team (red) learns
-  awayTeamLearning = false  // Default: away team (blue) doesn't learn
+  homeTeamLearning = true,  // Default value is ignored when using ELO-based learning
+  awayTeamLearning = false  // Default value is ignored when using ELO-based learning
 }: ModelSaveOnExitProps) => {
   
   // Effect to save models on component unmount
   React.useEffect(() => {
     return () => {
+      // Find the team with higher ELO rating
+      const redTeamElo = players.find(p => p.team === 'red')?.teamElo || 1500;
+      const blueTeamElo = players.find(p => p.team === 'blue')?.teamElo || 1500;
+      
+      // Determine which team should learn based on ELO
+      const higherEloTeam = redTeamElo > blueTeamElo ? 'red' : 'blue';
+      const lowerEloTeam = redTeamElo > blueTeamElo ? 'blue' : 'red';
+      
+      // Only higher ELO team should learn
+      const higherEloTeamShouldLearn = true;
+      const lowerEloTeamShouldLearn = false;
+      
       // When unmounting, save current models (selectively in tournament mode)
       if (!tournamentMode) {
         players
           .filter(p => {
-            // Filter based on team learning settings
+            // Filter based on ELO-based learning settings
             if (p.role === 'goalkeeper') return false;
-            if (p.team === 'red' && !homeTeamLearning) return false;
-            if (p.team === 'blue' && !awayTeamLearning) return false;
+            if (p.team === higherEloTeam && !higherEloTeamShouldLearn) return false;
+            if (p.team === lowerEloTeam && !lowerEloTeamShouldLearn) return false;
             return true;
           })
           .forEach(player => {
-            const teamLabel = player.team === 'red' ? 'Home Team' : 'Away Team';
+            const isHigherEloTeam = player.team === higherEloTeam;
+            const teamLabel = isHigherEloTeam ? 'Higher ELO Team' : 'Lower ELO Team';
             logNeuralNetworkStatus(player.team, player.role, player.id, `Saving ${teamLabel} model on exit`);
             
             // Save model to database
@@ -57,11 +70,11 @@ export const useModelSaveOnExit = ({
         if (Math.random() < 0.05) { // 5% chance to save any model
           const randomPlayer = players.find(p => 
             p.role === 'forward' && 
-            ((p.team === 'red' && homeTeamLearning) || (p.team === 'blue' && awayTeamLearning))
+            p.team === higherEloTeam // Only save higher ELO team models
           );
           
           if (randomPlayer) {
-            const teamLabel = randomPlayer.team === 'red' ? 'Home Team' : 'Away Team';
+            const teamLabel = `Higher ELO Team (${randomPlayer.team})`;
             console.log(`Saving single random model in tournament mode (${teamLabel})`);
             logNeuralNetworkStatus(randomPlayer.team, randomPlayer.role, randomPlayer.id, "Saving random model in tournament mode");
             saveModel(randomPlayer)
@@ -79,5 +92,5 @@ export const useModelSaveOnExit = ({
         }
       }
     };
-  }, [players, tournamentMode, homeTeamLearning, awayTeamLearning]);
+  }, [players, tournamentMode]);
 };

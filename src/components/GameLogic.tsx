@@ -1,4 +1,3 @@
-
 import React, { useRef } from 'react';
 import { Player, Ball, Score, Position } from '../types/football';
 import { useBallMovementSystem } from './game/BallMovementSystem';
@@ -42,13 +41,17 @@ const GameLogic: React.FC<GameLogicProps> = ({
   const homeTeamElo = players.find(p => p.team === 'red')?.teamElo || 1500;
   const awayTeamElo = players.find(p => p.team === 'blue')?.teamElo || 1500;
   
-  // Default setup: home team (red) always learns, away team (blue) never learns
-  const homeTeamLearning = true;
-  const awayTeamLearning = false;
+  // Determine which team has higher ELO
+  const higherEloTeam = homeTeamElo > awayTeamElo ? 'red' : 'blue';
+  const lowerEloTeam = homeTeamElo > awayTeamElo ? 'blue' : 'red';
+  
+  // Only higher ELO team should learn, regardless of red/blue designation
+  const higherEloTeamShouldLearn = true;  // Higher ELO team always learns
+  const lowerEloTeamShouldLearn = false;  // Lower ELO team never learns
   
   // Log ELO comparison for debugging
-  console.log(`Team ELO comparison - Home Team: ${homeTeamElo}, Away Team: ${awayTeamElo}`);
-  console.log(`Learning configuration - Home team: ${homeTeamLearning ? 'YES' : 'NO'}, Away team: ${awayTeamLearning ? 'YES' : 'NO'}`);
+  console.log(`Team ELO comparison - Home Team (red): ${homeTeamElo}, Away Team (blue): ${awayTeamElo}`);
+  console.log(`Learning configuration - Higher ELO team (${higherEloTeam}): ${higherEloTeamShouldLearn ? 'YES' : 'NO'}, Lower ELO team (${lowerEloTeam}): ${lowerEloTeamShouldLearn ? 'YES' : 'NO'}`);
 
   // Get team context functions
   const { getTeamContext } = useTeamContext({ players });
@@ -64,7 +67,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
     tournamentMode
   });
 
-  // Model synchronization system with tournament mode flag and performance monitoring
+  // Model synchronization system with ELO-based learning
   const { 
     syncModels, 
     incrementSyncCounter, 
@@ -166,8 +169,8 @@ const GameLogic: React.FC<GameLogicProps> = ({
   useModelSaveOnExit({ 
     players, 
     tournamentMode,
-    homeTeamLearning,
-    awayTeamLearning
+    homeTeamLearning: higherEloTeam === 'red' ? higherEloTeamShouldLearn : lowerEloTeamShouldLearn,
+    awayTeamLearning: higherEloTeam === 'blue' ? higherEloTeamShouldLearn : lowerEloTeamShouldLearn
   });
 
   return null;

@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Player } from '../../types/football';
 import { saveModel } from '../../utils/neural/modelPersistence';
@@ -35,13 +36,20 @@ export const useModelSyncSystem = ({
   const frameTimesRef = useRef<number[]>([]);
   const [hasPerformedHistoricalTraining, setHasPerformedHistoricalTraining] = useState(false);
   
+  // Find the team with higher ELO rating
   const redTeamElo = players.find(p => p.team === 'red')?.teamElo || 1500;
   const blueTeamElo = players.find(p => p.team === 'blue')?.teamElo || 1500;
   
-  const homeTeamShouldLearn = true; // Home team (red) always learns
-  const awayTeamShouldLearn = false; // Away team (blue) never learns
+  // Determine which team should learn based on ELO, not color
+  const higherEloTeam = redTeamElo > blueTeamElo ? 'red' : 'blue';
+  const lowerEloTeam = redTeamElo > blueTeamElo ? 'blue' : 'red';
   
-  const redTeamShouldLearn = homeTeamShouldLearn && (redTeamElo >= blueTeamElo);
+  // Only higher ELO team should learn
+  const higherEloTeamShouldLearn = true;  // Higher ELO team always learns
+  const lowerEloTeamShouldLearn = false;  // Lower ELO team never learns
+  
+  console.log(`Team ELO comparison - Red Team: ${redTeamElo}, Blue Team: ${blueTeamElo}`);
+  console.log(`Learning configuration - Higher ELO team (${higherEloTeam}): ${higherEloTeamShouldLearn ? 'YES' : 'NO'}, Lower ELO team (${lowerEloTeam}): ${lowerEloTeamShouldLearn ? 'YES' : 'NO'}`);
   
   const incrementSyncCounter = () => {
     syncCounter.current += 1;
@@ -105,12 +113,13 @@ export const useModelSyncSystem = ({
         const playersToSync = players.filter((p, index) => {
           if (index % 3 !== syncGroup) return false;
           if (p.role === 'goalkeeper') return false;
-          if (p.team === 'red' && !redTeamShouldLearn) return false;
-          if (p.team === 'blue' && !awayTeamShouldLearn) return false;
+          // Use team's ELO status to determine learning, not color
+          if (p.team === higherEloTeam && !higherEloTeamShouldLearn) return false;
+          if (p.team === lowerEloTeam && !lowerEloTeamShouldLearn) return false;
           return true;
         });
         
-        console.log(`Syncing ${playersToSync.length} players (home: ${redTeamShouldLearn}, away: ${awayTeamShouldLearn})`);
+        console.log(`Syncing ${playersToSync.length} players (higher ELO team ${higherEloTeam}: ${higherEloTeamShouldLearn}, lower ELO team ${lowerEloTeam}: ${lowerEloTeamShouldLearn})`);
         
         let syncCount = 0;
         let validationCount = 0;
@@ -152,7 +161,7 @@ export const useModelSyncSystem = ({
       
       syncCounter.current = 0;
     }
-  }, [players, setPlayers, tournamentMode, lastSyncTime, isLowPerformance, redTeamShouldLearn, awayTeamShouldLearn]);
+  }, [players, setPlayers, tournamentMode, lastSyncTime, isLowPerformance, higherEloTeam, lowerEloTeam, higherEloTeamShouldLearn, lowerEloTeamShouldLearn]);
   
   const checkLearningProgress = React.useCallback(() => {
     if (isLowPerformance && Math.random() > 0.2) {
@@ -166,8 +175,9 @@ export const useModelSyncSystem = ({
       
       setPlayers(currentPlayers => 
         currentPlayers.map(player => {
-          if (player.team === 'red' && !redTeamShouldLearn) return player;
-          if (player.team === 'blue' && !awayTeamShouldLearn) return player;
+          // Use team's ELO status to determine learning, not color
+          if (player.team === higherEloTeam && !higherEloTeamShouldLearn) return player;
+          if (player.team === lowerEloTeam && !lowerEloTeamShouldLearn) return player;
           
           if (player.role === 'goalkeeper') {
             return player;
@@ -201,7 +211,7 @@ export const useModelSyncSystem = ({
       
       learningCheckCounter.current = 0;
     }
-  }, [setPlayers, tournamentMode, isLowPerformance, redTeamShouldLearn, awayTeamShouldLearn]);
+  }, [setPlayers, tournamentMode, isLowPerformance, higherEloTeam, lowerEloTeam, higherEloTeamShouldLearn, lowerEloTeamShouldLearn]);
 
   const performHistoricalTraining = React.useCallback(async () => {
     if (tournamentMode || (isLowPerformance && Math.random() > 0.1)) {
@@ -216,7 +226,7 @@ export const useModelSyncSystem = ({
         
         const playersToTrain = players.filter(p => 
           p.role !== 'goalkeeper' && 
-          ((p.team === 'red' && redTeamShouldLearn) || (p.team === 'blue' && awayTeamShouldLearn)) &&
+          ((p.team === higherEloTeam && higherEloTeamShouldLearn) || (p.team === lowerEloTeam && lowerEloTeamShouldLearn)) &&
           ['forward', 'midfielder'].includes(p.role) && 
           Math.random() < 0.7
         );
@@ -251,7 +261,7 @@ export const useModelSyncSystem = ({
       setHasPerformedHistoricalTraining(true);
       historicalTrainingCounter.current = 0;
     }
-  }, [players, setPlayers, tournamentMode, isLowPerformance, hasPerformedHistoricalTraining, redTeamShouldLearn, awayTeamShouldLearn]);
+  }, [players, setPlayers, tournamentMode, isLowPerformance, hasPerformedHistoricalTraining, higherEloTeam, lowerEloTeam, higherEloTeamShouldLearn, lowerEloTeamShouldLearn]);
   
   return { 
     syncModels, 

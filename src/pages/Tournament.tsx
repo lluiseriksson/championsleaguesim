@@ -31,14 +31,14 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
   } = useTournament(embeddedMode);
 
   return (
-    <div className="container mx-auto px-1 py-4 max-w-full">
-      <div className="text-left">
+    <div className="mx-auto px-0 py-2 max-w-full">
+      <div className="text-left pl-1">
         <TournamentHeader 
           currentRound={currentRound}
           getWinner={getWinner}
         />
       
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-2 flex items-center justify-between">
           <TournamentControls
             currentRound={currentRound}
             autoSimulation={autoSimulation}

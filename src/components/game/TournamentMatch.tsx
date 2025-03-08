@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import GameBoard from './GameBoard';
 import usePlayerMovement from './PlayerMovement';
@@ -99,7 +98,21 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       
       setKitConflictResolved(true);
       
-      initializePlayers(awayTeamKitType);
+      // During initialization, we'll determine which team gets higher ELO
+      // We'll randomize it but with a bias toward the home team
+      const homeTeamGetsHigherElo = Math.random() < 0.6; // 60% chance home team gets higher ELO
+      
+      // Calculate ELO values with significant difference to ensure learning effect is visible
+      const higherElo = 2000;
+      const lowerElo = 1500;
+      
+      const homeTeamElo = homeTeamGetsHigherElo ? higherElo : lowerElo;
+      const awayTeamElo = homeTeamGetsHigherElo ? lowerElo : higherElo;
+      
+      console.log(`Team ELO assignment - ${homeTeam}: ${homeTeamElo}, ${awayTeam}: ${awayTeamElo}`);
+      console.log(`${homeTeamGetsHigherElo ? 'Home' : 'Away'} team has higher ELO and will use trained models`);
+      
+      initializePlayers(awayTeamKitType, homeTeamElo, awayTeamElo);
       
       setTimeout(() => {
         setGameStarted(true);
@@ -163,7 +176,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
     }
   }, [goldenGoal, lastScorer, score, homeTeam, awayTeam, onMatchComplete, goldenGoalScored, displayHomeTeam, displayAwayTeam]);
   
-  const initializePlayers = (awayTeamKitType: KitType) => {
+  const initializePlayers = (awayTeamKitType: KitType, homeTeamElo: number, awayTeamElo: number) => {
     const newPlayers: Player[] = [];
     
     console.log(`Tournament match: ${displayHomeTeam} (home) vs ${displayAwayTeam} (${awayTeamKitType})`);
@@ -202,6 +215,7 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         brain: redTeamBrains[i],
         targetPosition: { x: pos.x, y: pos.y },
         teamName: homeTeam,
+        teamElo: homeTeamElo,
         kitType: 'home',
         radius: PLAYER_RADIUS
       });
@@ -235,9 +249,10 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         position: { x: pos.x, y: pos.y },
         role: role,
         team: 'blue',
-        brain: mirroredBrain, // Reuse the brain from the red team
+        brain: mirroredBrain,
         targetPosition: { x: pos.x, y: pos.y },
         teamName: awayTeam,
+        teamElo: awayTeamElo,
         kitType: awayTeamKitType,
         radius: PLAYER_RADIUS
       });
