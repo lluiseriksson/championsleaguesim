@@ -174,20 +174,28 @@ export type KitType = 'home' | 'away' | 'third';
 export interface Player {
   id: number;
   position: Position;
+  velocity: Position;
   role: 'goalkeeper' | 'defender' | 'midfielder' | 'forward';
   team: 'red' | 'blue';
-  brain: NeuralNet;
-  targetPosition: Position;
+  kit: string;
+  brain: NeuralNet | null;
+  force: Position;
+  name: string;
+  goals: number;
+  assists: number;
+  isVirtual?: boolean;
+  radius: number;
+  targetPosition?: Position;
   teamName?: string;  
   kitType?: KitType;  
   teamElo?: number;   
-  radius: number;     // Add radius property for collision detection
 }
 
 export interface Ball {
   position: Position;
   velocity: Position;
-  previousPosition?: Position; // Add the previousPosition property as optional
+  previousPosition?: Position;
+  lastKickBy?: Player;
   bounceDetection?: {
     consecutiveBounces: number;
     lastBounceTime: number;
