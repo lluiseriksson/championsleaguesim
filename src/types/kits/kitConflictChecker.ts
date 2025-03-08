@@ -14,11 +14,12 @@ import {
 const conflictingTeamPairs: [string, string][] = [
   ['Forest', 'Espanyol'],
   ['Sevilla', 'Crvena Zvezda'],
-  ['Leverkusen', 'Monza'], // Add the new conflict pair
+  ['Leverkusen', 'Monza'], 
   ['Athletic Bilbao', 'AC Milan'],
   ['Liverpool', 'AC Milan'],
   ['Liverpool', 'Manchester United'],
-  ['Bayern Munich', 'FC København']
+  ['Bayern Munich', 'FC København'],
+  ['Atlanta', 'Leicester'] // Add the new conflict pair
 ];
 
 // Check if two teams are in the known conflict list
@@ -71,7 +72,7 @@ export const checkWhiteKitConflict = (
   return homeIsWhite && awayIsWhite;
 };
 
-// Check if primary color of one team is too similar to secondary color of the other
+// Enhanced check if primary color of one team is too similar to secondary color of the other
 export const checkPrimarySecondaryConflict = (
   team1: string,
   team2: string,
@@ -85,13 +86,24 @@ export const checkPrimarySecondaryConflict = (
   const team1Secondary = teamKitColors[team1][team1KitType].secondary;
   const team2Secondary = teamKitColors[team2][team2KitType].secondary;
   
+  // Enhanced check with stricter similarity thresholds
   // Check if team1's primary is too similar to team2's secondary
   const team1PrimaryVsTeam2Secondary = !areColorsSufficientlyDifferent(team1Primary, team2Secondary);
   
   // Check if team2's primary is too similar to team1's secondary
   const team2PrimaryVsTeam1Secondary = !areColorsSufficientlyDifferent(team2Primary, team1Secondary);
   
-  return team1PrimaryVsTeam2Secondary || team2PrimaryVsTeam1Secondary;
+  // Check for additional similar color scenarios:
+  // 1. Is team1's primary similar to team2's primary (base conflict)
+  const team1PrimaryVsTeam2Primary = !areColorsSufficientlyDifferent(team1Primary, team2Primary);
+  
+  // 2. Are both teams' secondaries too similar (could cause confusion)
+  const team1SecondaryVsTeam2Secondary = !areColorsSufficientlyDifferent(team1Secondary, team2Secondary);
+  
+  return team1PrimaryVsTeam2Secondary || 
+         team2PrimaryVsTeam1Secondary || 
+         team1PrimaryVsTeam2Primary || 
+         team1SecondaryVsTeam2Secondary;
 };
 
 // Resolve kit conflict by selecting an alternative kit
@@ -127,7 +139,7 @@ export const performFinalKitCheck = (
     return false;
   }
   
-  // Check for primary-secondary conflicts
+  // Check for primary-secondary conflicts with enhanced detection
   if (checkPrimarySecondaryConflict(homeTeam, awayTeam, 'home', awayKitType)) {
     return false;
   }

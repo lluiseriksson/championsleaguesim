@@ -147,6 +147,12 @@ const KitSelector: React.FC = () => {
     setHomeTeam('Leverkusen');
     setAwayTeam('Monza');
   };
+  
+  // Test Atlanta vs Leicester
+  const testAtlantaVsLeicester = () => {
+    setHomeTeam('Atlanta');
+    setAwayTeam('Leicester');
+  };
 
   return (
     <div className="p-4 bg-white rounded-lg shadow-md">
@@ -180,7 +186,7 @@ const KitSelector: React.FC = () => {
         </div>
       </div>
       
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-3 gap-4 mb-4">
         <Button 
           variant="outline" 
           onClick={testSevillaVsCrvenaZvezda}
@@ -195,6 +201,14 @@ const KitSelector: React.FC = () => {
           className="w-full"
         >
           Test Leverkusen vs Monza
+        </Button>
+        
+        <Button 
+          variant="outline" 
+          onClick={testAtlantaVsLeicester}
+          className="w-full"
+        >
+          Test Atlanta vs Leicester
         </Button>
       </div>
       

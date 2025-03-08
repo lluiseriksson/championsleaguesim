@@ -113,6 +113,11 @@ export function categorizeColor(hexColor: string): ColorCategory {
     return ColorCategory.RED;
   }
   
+  // Enhanced blue detection (helps with teams like Leicester with blue kits)
+  if (b > 150 && b > r * 1.2 && b > g * 1.2) {
+    return b > 200 ? ColorCategory.BLUE : ColorCategory.NAVY;
+  }
+  
   // Color categorization based on dominant channel and ratios
   if (r > g && r > b) {
     // Red dominant
@@ -189,19 +194,38 @@ export function areColorsTooSimilar(color1: string, color2: string): boolean {
   return distance < 180; // Increased threshold for better differentiation
 }
 
-// Function to check if colors are sufficiently different with stricter thresholds
+// Enhanced function to check if colors are sufficiently different with stricter thresholds
 export function areColorsSufficientlyDifferent(color1: string, color2: string): boolean {
   // First check categorical conflicts
   const categoricalConflict = areColorsConflicting(color1, color2);
   
-  // Then check numerical distance with increased threshold
+  // Parse colors to RGB for more detailed analysis
   const rgb1 = parseHexColor(color1);
   const rgb2 = parseHexColor(color2);
+  
+  // Calculate enhanced distance with increased threshold for better differentiation
   const enhancedDistance = getEnhancedColorDistance(rgb1, rgb2);
   
-  const isDistantEnough = enhancedDistance > 180; // Increased from 150
+  // Calculate component-wise differences (helps catch cases where only one channel is different)
+  const redDiff = Math.abs(rgb1.r - rgb2.r);
+  const greenDiff = Math.abs(rgb1.g - rgb2.g);
+  const blueDiff = Math.abs(rgb1.b - rgb2.b);
   
-  return !categoricalConflict && isDistantEnough;
+  // If any individual color channel is too similar, consider it a conflict
+  // This helps with teams like Atlanta and Leicester where one channel might be similar
+  const componentTooSimilar = (
+    (redDiff < 40 && greenDiff < 40) || 
+    (redDiff < 40 && blueDiff < 40) || 
+    (greenDiff < 40 && blueDiff < 40)
+  );
+  
+  // Consider colors different only if:
+  // 1. They're not in conflicting categories
+  // 2. The overall distance is large enough
+  // 3. At least two color components have sufficient difference
+  const isDistantEnough = enhancedDistance > 200; // Increased from 180
+  
+  return !categoricalConflict && isDistantEnough && !componentTooSimilar;
 }
 
 // Add a new utility to specifically handle red color conflicts

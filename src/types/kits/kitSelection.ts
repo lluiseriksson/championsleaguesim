@@ -1,4 +1,3 @@
-
 import { KitType, TeamKit } from './kitTypes';
 import { teamKitColors } from './teamColorsData';
 import { 
@@ -75,19 +74,23 @@ const teamConflictOverrides: Record<string, Record<string, KitType>> = {
   'Forest': {
     'Espanyol': 'third'
   },
-  // Add Sevilla and Crvena Zvezda conflict
   'Sevilla': {
     'Crvena Zvezda': 'third'
   },
   'Crvena Zvezda': {
     'Sevilla': 'third'
   },
-  // Add Leverkusen and Monza conflict
   'Leverkusen': {
     'Monza': 'third'
   },
   'Monza': {
     'Leverkusen': 'third'
+  },
+  'Atlanta': {
+    'Leicester': 'third'
+  },
+  'Leicester': {
+    'Atlanta': 'third'
   }
 };
 
@@ -122,21 +125,17 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
     return 'third';
   }
 
-  // Check for red kit conflicts
   const homeIsRed = teamHasRedPrimaryColor(homeTeamName, 'home');
   const awayIsRed = teamHasRedPrimaryColor(awayTeamName, 'away');
   
-  // Check for white kit conflicts
   const homeIsWhite = teamHasWhitePrimaryColor(homeTeamName, 'home');
   const awayIsWhite = teamHasWhitePrimaryColor(awayTeamName, 'away');
   
   const homeOutfieldPrimary = homeTeam.home.primary;
   const awayOutfieldPrimary = awayTeam.away.primary;
   
-  // Check for similar red colors
   const similarReds = areRedColorsTooSimilar(homeOutfieldPrimary, awayOutfieldPrimary);
   
-  // Check for similar white colors
   const similarWhites = areWhiteColorsTooSimilar(homeOutfieldPrimary, awayOutfieldPrimary);
   
   if ((homeIsRed && awayIsRed) || similarReds) {
@@ -176,7 +175,6 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
   const awayCategory = categorizeColor(awayPrimary);
   const thirdCategory = categorizeColor(thirdPrimary);
   
-  // Handle cases where both teams have white or nearly white kits
   if (homeCategory === ColorCategory.WHITE && awayCategory === ColorCategory.WHITE) {
     if (shouldLog) {
       console.log(`WHITE vs WHITE conflict detected between ${homeTeamName} and ${awayTeamName} - forcing third kit`);
