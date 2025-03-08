@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Ball, Position, PITCH_WIDTH, PITCH_HEIGHT, Player } from '../../types/football';
 
@@ -52,17 +53,20 @@ const isPointingTowardGoal = (position: Position, velocity: Position): boolean =
 };
 
 // Create a virtual player F for random kicks
-export const createPlayerF = (ballPosition: Position): Player => {
+export const createPlayerF = (ballPosition: Position, teamOverride?: 'red' | 'blue'): Player => {
   const position = {
     x: ballPosition.x + (Math.random() * 20) - 10,
     y: ballPosition.y + (Math.random() * 20) - 10
   };
   
+  // Use the team override if provided, otherwise randomly assign a team
+  const team = teamOverride || (Math.random() > 0.5 ? 'red' : 'blue');
+  
   return {
     id: 99,
     position: position,
     velocity: { x: 0, y: 0 },
-    team: Math.random() > 0.5 ? 'red' : 'blue',
+    team: team,
     kit: 'default',
     role: 'midfielder',
     radius: 15,
@@ -80,13 +84,14 @@ export const createPlayerF = (ballPosition: Position): Player => {
 export const applyRandomKick = (
   currentBall: Ball, 
   tournamentMode: boolean, 
-  onBallTouch?: (player: Player) => void
+  onBallTouch?: (player: Player) => void,
+  kickingTeam?: 'red' | 'blue' // Add parameter for the team that should kick
 ): Ball => {
   if (!tournamentMode) {
     console.log("Ball stuck in place or zero velocity, giving it a random kick from player F");
   }
   
-  const playerF = createPlayerF(currentBall.position);
+  const playerF = createPlayerF(currentBall.position, kickingTeam);
   
   if (onBallTouch) {
     onBallTouch(playerF);

@@ -1,15 +1,18 @@
 
 import React from 'react';
 import { Ball, Position, PITCH_WIDTH, PITCH_HEIGHT } from '../../types/football';
+import { applyRandomKick } from './useBallInitialization';
 
 interface BallGoalDetectionProps {
   checkGoal: (position: Position) => 'red' | 'blue' | null;
   tournamentMode?: boolean;
+  onBallTouch?: (player: any) => void;
 }
 
 export const useBallGoalDetection = ({ 
   checkGoal, 
-  tournamentMode = false 
+  tournamentMode = false,
+  onBallTouch
 }: BallGoalDetectionProps) => {
   
   const handleGoalCheck = React.useCallback((
@@ -25,14 +28,15 @@ export const useBallGoalDetection = ({
         console.log(`Goal detected for team ${goalScored}`);
       }
       
+      // Determine which team should do the kickoff (opposite of scoring team)
+      const kickoffTeam = goalScored === 'red' ? 'blue' : 'red';
+      
       // Reset ball position to center with a significant initial velocity
-      const updatedBall = {
+      // Apply a random kick with the kickoff team (the team that received the goal)
+      let updatedBall = {
         ...currentBall,
         position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
-        velocity: { 
-          x: goalScored === 'red' ? 5 : -5, 
-          y: (Math.random() - 0.5) * 5
-        },
+        velocity: { x: 0, y: 0 }, // Initially zero velocity
         bounceDetection: {
           consecutiveBounces: 0,
           lastBounceTime: 0,
@@ -41,11 +45,18 @@ export const useBallGoalDetection = ({
         }
       };
       
+      // Apply a kick with the team that received the goal
+      updatedBall = applyRandomKick(updatedBall, tournamentMode, onBallTouch, kickoffTeam);
+      
+      if (!tournamentMode) {
+        console.log(`Kickoff being taken by team ${kickoffTeam} after goal by team ${goalScored}`);
+      }
+      
       return { goalScored, updatedBall };
     }
     
     return { goalScored: null, updatedBall: currentBall };
-  }, [checkGoal, tournamentMode]);
+  }, [checkGoal, tournamentMode, onBallTouch]);
   
   return { handleGoalCheck };
 };

@@ -42,7 +42,11 @@ export const useBallMovement = ({
   } = useBallCollisionTracking();
   
   // Use goal detection hook
-  const { handleGoalCheck } = useBallGoalDetection({ checkGoal, tournamentMode });
+  const { handleGoalCheck } = useBallGoalDetection({ 
+    checkGoal, 
+    tournamentMode,
+    onBallTouch 
+  });
 
   // Reference to store previous ball position for tracking
   const previousBallPositionRef = React.useRef<Position>({ ...ball.position });
