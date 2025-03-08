@@ -74,8 +74,8 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
   }, [activeMatch]);
 
   // Determine which team has higher ELO (this team will be training)
-  const teamAElo = activeMatch.teamA.elo || 1500;
-  const teamBElo = activeMatch.teamB.elo || 1500;
+  const teamAElo = activeMatch.teamA.eloRating || 1500;
+  const teamBElo = activeMatch.teamB.eloRating || 1500;
   const trainingTeam = teamAElo > teamBElo ? 'A' : 'B';
   const nonTrainingTeam = trainingTeam === 'A' ? 'B' : 'A';
   
