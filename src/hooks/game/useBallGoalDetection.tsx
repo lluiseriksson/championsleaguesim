@@ -31,12 +31,12 @@ export const useBallGoalDetection = ({
       // Determine which team should do the kickoff (opposite of scoring team)
       const kickoffTeam = goalScored === 'red' ? 'blue' : 'red';
       
-      // Reset ball position to center with a significant initial velocity
-      // Apply a random kick with the kickoff team (the team that received the goal)
-      let updatedBall = {
+      // Reset ball position to center with zero initial velocity
+      const updatedBall: Ball = {
         ...currentBall,
         position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
         velocity: { x: 0, y: 0 }, // Initially zero velocity
+        // Preserve the structure but make a new bounce detection object
         bounceDetection: {
           consecutiveBounces: 0,
           lastBounceTime: 0,
@@ -46,13 +46,13 @@ export const useBallGoalDetection = ({
       };
       
       // Apply a kick with the team that received the goal
-      updatedBall = applyRandomKick(updatedBall, tournamentMode, onBallTouch, kickoffTeam);
+      const kickedBall = applyRandomKick(updatedBall, tournamentMode, onBallTouch, kickoffTeam);
       
       if (!tournamentMode) {
         console.log(`Kickoff being taken by team ${kickoffTeam} after goal by team ${goalScored}`);
       }
       
-      return { goalScored, updatedBall };
+      return { goalScored, updatedBall: kickedBall };
     }
     
     return { goalScored: null, updatedBall: currentBall };
