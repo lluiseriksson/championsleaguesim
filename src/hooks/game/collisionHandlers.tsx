@@ -1,6 +1,7 @@
 
 import { Player, Position } from '../../types/football';
 import { checkCollision, calculateNewVelocity } from '../../utils/gamePhysics';
+import { isForwardMovement, isBackwardMovement } from '../../utils/playerBrain';
 
 // Handle collisions between the ball and field players
 export function handleFieldPlayerCollisions(
@@ -39,10 +40,12 @@ export function handleFieldPlayerCollisions(
         const normalizedDx = dx / distance;
         const normalizedDy = dy / distance;
         
-        // ENHANCED: Check if this might be an own goal situation
+        // ENHANCED: Check if this might be an own goal situation or backward movement
         const ownGoalRisk = (player.team === 'red' && normalizedDx < 0) || 
                            (player.team === 'blue' && normalizedDx > 0);
                            
+        const isBackwardDeflection = isBackwardMovement(player.team, { x: normalizedDx, y: normalizedDy });
+        
         if (ownGoalRisk) {
           // IMPROVED: More aggressive prevention of own goals
           // If high risk of own goal, deflect ball more strongly to avoid shooting toward own goal
@@ -56,7 +59,14 @@ export function handleFieldPlayerCollisions(
           const sidewaysDeflection = normalizedDy * 3.0;
           newVelocity.y = sidewaysDeflection;
           console.log(`Strong own goal prevention for ${player.team} player - forcing ball away from own goal`);
-        } else {
+        } 
+        else if (isBackwardDeflection && Math.random() < 0.7) {
+          // NEW: Reduce backward passes/deflections by redirecting more forward
+          const forwardBias = player.team === 'red' ? 0.4 : -0.4; // Stronger bias forward
+          newVelocity.x += forwardBias * 2.5;
+          console.log(`${player.team} player's backward movement corrected with forward bias`);
+        }
+        else {
           // Normal deflection physics with slight directional bias towards opponent goal
           const directionBias = player.team === 'red' ? 0.2 : -0.2; // Positive for red, negative for blue
           const adjustedDx = normalizedDx + directionBias;

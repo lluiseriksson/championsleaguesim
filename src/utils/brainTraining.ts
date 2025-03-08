@@ -38,6 +38,12 @@ const SUCCESSFUL_PASS_REWARD = 0.9;
 const BALL_LOSS_PENALTY = -1.0;
 const AUTO_GOAL_SEVERE_PENALTY = -6.0;
 
+// NEW: Direction-based rewards and penalties
+const BACKWARD_PASS_PENALTY = -0.7;
+const BACKWARD_SHOT_PENALTY = -1.5;
+const FORWARD_PASS_REWARD = 0.5;
+const LATERAL_PASS_MODIFIER = 0.0; // Neutral
+
 // Reward positioning when the player creates space or finds open positions
 const calculatePositioningReward = (player: Player, context: TeamContext): number => {
   let reward = 0;
@@ -77,6 +83,33 @@ const calculatePositioningReward = (player: Player, context: TeamContext): numbe
   return reward;
 };
 
+// NEW: Calculate direction-based reward
+const calculateDirectionReward = (
+  player: Player, 
+  moveDirection: { x: number, y: number }
+): number => {
+  // For "home" team (red team), forward is positive x direction
+  // For "away" team (blue team), forward is negative x direction
+  const isHomeTeam = player.team === 'red';
+  const isForwardDirection = isHomeTeam ? moveDirection.x > 0 : moveDirection.x < 0;
+  const isBackwardDirection = isHomeTeam ? moveDirection.x < 0 : moveDirection.x > 0;
+  const isLateralDirection = Math.abs(moveDirection.x) < 0.3 && Math.abs(moveDirection.y) > 0.7;
+  
+  if (isBackwardDirection) {
+    const actionPenalty = player.brain.lastAction === 'shoot' ? 
+      BACKWARD_SHOT_PENALTY : BACKWARD_PASS_PENALTY;
+    
+    console.log(`${player.team} ${player.role} #${player.id} penalized for moving backward: ${actionPenalty}`);
+    return actionPenalty;
+  } else if (isForwardDirection) {
+    return FORWARD_PASS_REWARD;
+  } else if (isLateralDirection) {
+    return LATERAL_PASS_MODIFIER;
+  }
+  
+  return 0;
+};
+
 export const updatePlayerBrain = (
   brain: NeuralNet, 
   scored: boolean, 
@@ -98,6 +131,15 @@ export const updatePlayerBrain = (
   // Add positional rewards
   if (!scored && !isOwnGoal) {
     rewardFactor += calculatePositioningReward(player, context);
+  }
+  
+  // Add direction-based rewards/penalties if we have movement data
+  if (brain.lastOutput && (brain.lastAction === 'pass' || brain.lastAction === 'shoot' || brain.lastAction === 'move')) {
+    const directionReward = calculateDirectionReward(player, {
+      x: brain.lastOutput.x,
+      y: brain.lastOutput.y
+    });
+    rewardFactor += directionReward;
   }
 
   // Add tactical rewards

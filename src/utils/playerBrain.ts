@@ -22,6 +22,28 @@ export {
   calculateTacticalReward
 } from './experienceReplay';
 
+// NEW: Check if movement direction is forward for the team
+export const isForwardMovement = (
+  team: 'red' | 'blue',
+  moveDirection: Position
+): boolean => {
+  // For home team (red), positive X is forward
+  // For away team (blue), negative X is forward
+  return (team === 'red' && moveDirection.x > 0) || 
+         (team === 'blue' && moveDirection.x < 0);
+};
+
+// NEW: Check if movement direction is backward for the team
+export const isBackwardMovement = (
+  team: 'red' | 'blue',
+  moveDirection: Position
+): boolean => {
+  // For home team (red), negative X is backward
+  // For away team (blue), positive X is backward
+  return (team === 'red' && moveDirection.x < 0) || 
+         (team === 'blue' && moveDirection.x > 0);
+};
+
 // Utility function to determine if player movement is strategic
 export const isStrategicMovement = (
   playerPosition: Position,
@@ -162,7 +184,14 @@ export const calculateReceivingPositionQuality = (
   const maxPitchLength = 800;
   const goalProximityScore = Math.max(0, 1 - distanceToGoal / maxPitchLength);
   
-  // Calculate final score - weighted combination of factors
+  // NEW: Add bias against positions that would require backward passes
+  if ((playerPosition.team === 'red' && playerPosition.x < ballPosition.x - 20) ||
+      (playerPosition.team === 'blue' && playerPosition.x > ballPosition.x + 20)) {
+    // Penalize positions that would require a backward pass to reach
+    return Math.max(0, distanceScore * 0.7 + spaceScore * 0.3 + goalProximityScore * 0.1 - 0.1);
+  }
+  
+  // Original calculation for normal positions
   return 0.4 * distanceScore + 0.4 * spaceScore + 0.2 * goalProximityScore;
 };
 
@@ -212,6 +241,22 @@ export const shouldRequestPass = (
   const isAdvancedPosition = 
     (player.team === 'red' && player.position.x > ballCarrier.position.x + 50) ||
     (player.team === 'blue' && player.position.x < ballCarrier.position.x - 50);
+  
+  // NEW: Add direction check - don't request pass if you're behind the ball carrier 
+  // (would require backward pass)
+  const ballCarrier = teammates.find(p => 
+    calculateDistance(p.position, ballPosition) < 30
+  );
+  
+  if (ballCarrier) {
+    const isPositionedBackward = 
+      (player.team === 'red' && player.position.x < ballCarrier.position.x - 30) ||
+      (player.team === 'blue' && player.position.x > ballCarrier.position.x + 30);
+      
+    if (isPositionedBackward) {
+      return false; // Don't request pass if positioned behind ball carrier
+    }
+  }
   
   return isInSpace && isAdvancedPosition;
 };
@@ -331,6 +376,15 @@ export const isGoodShotOpportunity = (
     if (angleDiff < Math.PI / 6 && opponentDist < distanceToGoal * 0.8) {
       laneQuality *= (angleDiff / (Math.PI / 6));
     }
+  }
+  
+  // NEW: Add check to ensure player is moving forward for shots
+  const isGoodDirection = player.team === 'red' ? 
+    player.position.x < opponentGoal.x - 50 : // For home team, must be positioned properly
+    player.position.x > opponentGoal.x + 50;  // For away team, must be positioned properly
+    
+  if (!isGoodDirection) {
+    return false; // Not a good shot opportunity if not in forward position
   }
   
   return laneQuality > 0.6;
