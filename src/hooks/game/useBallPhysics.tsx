@@ -24,7 +24,7 @@ export const useBallPhysics = ({ ball, setBall, players }: BallPhysicsProps) => 
         y: prevBall.position.y + prevBall.velocity.y
       };
 
-      // Fixed: Passing correct arguments to checkBoundaryCollision
+      // Fixed: Passing correct arguments to checkBoundaryCollision (position, velocity, radius)
       const { position, velocity } = checkBoundaryCollision(
         newPosition, 
         prevBall.velocity,
