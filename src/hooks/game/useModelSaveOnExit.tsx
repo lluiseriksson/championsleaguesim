@@ -48,18 +48,15 @@ export const useModelSaveOnExit = ({
         const redTeamElo = redTeamPlayer.teamElo;
         const blueTeamElo = blueTeamPlayer.teamElo;
         
-        // Determine which team should learn based on ELO
-        const shouldRedTeamLearn = redTeamElo > blueTeamElo;
-        const shouldBlueTeamLearn = !shouldRedTeamLearn;
+        // Determine which team should learn based on ELO - ALWAYS higher ELO team learns
+        const higherEloTeam = redTeamElo > blueTeamElo ? 'red' : 'blue';
         
         if (!tournamentMode) {
           players
             .filter(p => {
-              // Filter based on which team should learn (higher ELO team)
-              if (p.role === 'goalkeeper') return false;
-              if (p.team === 'red' && !shouldRedTeamLearn) return false;
-              if (p.team === 'blue' && !shouldBlueTeamLearn) return false;
-              return true;
+              // Filter based on ELO, not team color
+              if (p.role === 'goalkeeper') return false; // Goalkeepers never learn
+              return p.team === higherEloTeam; // Only higher ELO team learns
             })
             .forEach(player => {
               const teamLabel = `${player.team} Team (Higher ELO)`;
@@ -84,8 +81,7 @@ export const useModelSaveOnExit = ({
           
           // Alternatively, save only a single model at most to minimize database load
           if (Math.random() < 0.05) { // 5% chance to save any model
-            const higherEloTeam = shouldRedTeamLearn ? 'red' : 'blue';
-            
+            // In tournament, still use the higher ELO team
             const randomPlayer = players.find(p => 
               p.role === 'forward' && p.team === higherEloTeam
             );

@@ -1,3 +1,4 @@
+
 import { useCallback } from 'react';
 import { Ball, Player, Position, BALL_RADIUS } from '../../types/football';
 import { calculateDistance } from '../../utils/neuralCore';
@@ -76,9 +77,16 @@ export const useBallPhysics = ({ ball, players, updateBallPosition }: BallPhysic
     console.log(`Ball deflected by ${player.team} ${player.role}`);
   }, []);
 
+  // Export handleBallPhysics function to fix the import error
+  const handleBallPhysics = useCallback(() => {
+    detectCollisions();
+    updateBallPosition();
+  }, [detectCollisions, updateBallPosition]);
+
   return {
     detectCollisions,
     handlePlayerBallCollision,
-    updateBallPhysics: updateBallPosition
+    updateBallPhysics: updateBallPosition,
+    handleBallPhysics
   };
 };
