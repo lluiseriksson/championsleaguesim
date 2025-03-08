@@ -211,21 +211,17 @@ export function areColorsSufficientlyDifferent(color1: string, color2: string): 
   const greenDiff = Math.abs(rgb1.g - rgb2.g);
   const blueDiff = Math.abs(rgb1.b - rgb2.b);
   
-  // If any individual color channel is too similar, consider it a conflict
-  // This helps with teams like Atlanta and Leicester where one channel might be similar
-  const componentTooSimilar = (
-    (redDiff < 40 && greenDiff < 40) || 
-    (redDiff < 40 && blueDiff < 40) || 
-    (greenDiff < 40 && blueDiff < 40)
-  );
+  // NEW: More strict detection - consider a conflict if ANY individual color channel is too similar
+  // This will catch subtle color differences that might be hard to distinguish
+  const anyComponentTooSimilar = (redDiff < 20 || greenDiff < 20 || blueDiff < 20);
   
   // Consider colors different only if:
   // 1. They're not in conflicting categories
   // 2. The overall distance is large enough
-  // 3. At least two color components have sufficient difference
-  const isDistantEnough = enhancedDistance > 200; // Increased from 180
+  // 3. No color components have a small difference
+  const isDistantEnough = enhancedDistance > 220; // Increased from 200
   
-  return !categoricalConflict && isDistantEnough && !componentTooSimilar;
+  return !categoricalConflict && isDistantEnough && !anyComponentTooSimilar;
 }
 
 // Add a new utility to specifically handle red color conflicts

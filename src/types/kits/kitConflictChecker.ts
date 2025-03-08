@@ -148,15 +148,11 @@ export const checkPrimarySimilarityConflict = (
   const gDiff = Math.abs(team1Rgb.g - team2Rgb.g);
   const bDiff = Math.abs(team1Rgb.b - team2Rgb.b);
   
-  // If two of the three channels are very similar (difference less than 30),
-  // consider it a conflict even if the third channel has some difference
-  const twoChannelsSimilar = (
-    (rDiff < 30 && gDiff < 30) || 
-    (rDiff < 30 && bDiff < 30) || 
-    (gDiff < 30 && bDiff < 30)
-  );
+  // Updated to consider a conflict if ANY channel is very similar (difference less than 20)
+  // This is more strict than before, where we required TWO channels to be similar
+  const anyChannelTooSimilar = (rDiff < 20 || gDiff < 20 || bDiff < 20);
   
-  return twoChannelsSimilar;
+  return anyChannelTooSimilar;
 }
 
 // Resolve kit conflict by selecting an alternative kit
@@ -197,7 +193,7 @@ export const performFinalKitCheck = (
     return false;
   }
   
-  // NEW: Check for similar primary colors
+  // Check for similar primary colors with stricter single-channel detection
   if (checkPrimarySimilarityConflict(homeTeam, awayTeam, 'home', awayKitType)) {
     return false;
   }
