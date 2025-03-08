@@ -129,7 +129,7 @@ export const useBallMovement = ({
         }
       }
       
-      // Fixed: Pass only the required parameters (position, velocity, radius)
+      // Fixed: Call checkBoundaryCollision with the correct number of arguments
       const { position: boundedPosition, velocity: boundedVelocity } = 
         checkBoundaryCollision(newPosition, newVelocity, BALL_RADIUS);
       

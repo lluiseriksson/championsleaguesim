@@ -1,3 +1,4 @@
+
 import { Position, Player, PLAYER_RADIUS, BALL_RADIUS, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
 import { calculateDistance } from './neuralCore';
 
@@ -304,6 +305,7 @@ export const updatePosition = (position: Position, velocity: Position): Position
   };
 };
 
+// Fixing the function signature to match how it's being called
 export const checkBoundaryCollision = (
   position: Position, 
   velocity: Position, 
