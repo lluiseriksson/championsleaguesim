@@ -1,3 +1,4 @@
+
 import { KitType, TeamKit } from './kitTypes';
 import { teamKitColors } from './teamColorsData';
 import { 
@@ -11,7 +12,10 @@ import {
   areRedColorsTooSimilar,
   areWhiteColorsTooSimilar,
   areBlackColorsTooSimilar,
-  detectSpecificColorToneConflict
+  detectSpecificColorToneConflict,
+  areBlueColorsTooSimilar,
+  areYellowGreenColorsTooSimilar,
+  arePurplePinkColorsTooSimilar
 } from './colorUtils';
 import { 
   teamHasRedPrimaryColor,
@@ -19,12 +23,17 @@ import {
   teamHasWhitePrimaryColor,
   teamHasBlackPrimaryColor,
   checkForestVsEspanyolConflict,
-  checkBlackKitConflict 
+  checkBlackKitConflict,
+  teamHasBluePrimaryColor,
+  checkBlueKitConflict,
+  checkYellowGreenKitConflict,
+  checkPurplePinkKitConflict
 } from './kitConflictChecker';
 
 const kitSelectionCache: Record<string, KitType> = {};
 const kitConflictCache: Record<string, boolean> = {};
 
+// Updated team conflict overrides to include all team conflicts
 const teamConflictOverrides: Record<string, Record<string, KitType>> = {
   'Fulham': {
     'Las Palmas': 'third'
@@ -103,9 +112,13 @@ const teamConflictOverrides: Record<string, Record<string, KitType>> = {
     'RB Leipzig': 'third'
   },
   'Inter': {
+    'Manchester United': 'third',
     'Man United': 'third'
   },
   'Man United': {
+    'Inter': 'third'
+  },
+  'Manchester United': {
     'Inter': 'third'
   }
 };
@@ -117,6 +130,7 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
     return kitSelectionCache[cacheKey];
   }
   
+  // Check for explicit overrides
   if (teamConflictOverrides[homeTeamName]?.[awayTeamName]) {
     const override = teamConflictOverrides[homeTeamName][awayTeamName];
     console.log(`Using explicit override for ${awayTeamName} against ${homeTeamName}: ${override}`);
@@ -133,6 +147,7 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
     return 'away';
   }
 
+  // Check for specific team conflicts
   if ((homeTeamName === 'Forest' && awayTeamName === 'Espanyol') || 
       (homeTeamName === 'Espanyol' && awayTeamName === 'Forest')) {
     console.log(`Special handling for ${homeTeamName} vs ${awayTeamName}`);
@@ -148,7 +163,16 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
     kitConflictCache[cacheKey] = true;
     return 'third';
   }
+  
+  if ((homeTeamName === 'Inter' && (awayTeamName === 'Manchester United' || awayTeamName === 'Man United')) || 
+      ((homeTeamName === 'Manchester United' || homeTeamName === 'Man United') && awayTeamName === 'Inter')) {
+    console.log(`Special handling for blue kit conflict: ${homeTeamName} vs ${awayTeamName}`);
+    kitSelectionCache[cacheKey] = 'third';
+    kitConflictCache[cacheKey] = true;
+    return 'third';
+  }
 
+  // Check primary color conflicts
   const homeIsRed = teamHasRedPrimaryColor(homeTeamName, 'home');
   const awayIsRed = teamHasRedPrimaryColor(awayTeamName, 'away');
   
@@ -158,13 +182,21 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
   const homeIsBlack = teamHasBlackPrimaryColor(homeTeamName, 'home');
   const awayIsBlack = teamHasBlackPrimaryColor(awayTeamName, 'away');
   
+  const homeIsBlue = teamHasBluePrimaryColor(homeTeamName, 'home');
+  const awayIsBlue = teamHasBluePrimaryColor(awayTeamName, 'away');
+  
   const homeOutfieldPrimary = homeTeam.home.primary;
   const awayOutfieldPrimary = awayTeam.away.primary;
   
+  // Enhanced color similarity checks
   const similarReds = areRedColorsTooSimilar(homeOutfieldPrimary, awayOutfieldPrimary);
   const similarWhites = areWhiteColorsTooSimilar(homeOutfieldPrimary, awayOutfieldPrimary);
   const similarBlacks = areBlackColorsTooSimilar(homeOutfieldPrimary, awayOutfieldPrimary);
+  const similarBlues = areBlueColorsTooSimilar(homeOutfieldPrimary, awayOutfieldPrimary);
+  const similarYellowGreens = areYellowGreenColorsTooSimilar(homeOutfieldPrimary, awayOutfieldPrimary);
+  const similarPurplePinks = arePurplePinkColorsTooSimilar(homeOutfieldPrimary, awayOutfieldPrimary);
   
+  // Check for specific color conflicts
   if ((homeIsBlack && awayIsBlack) || similarBlacks) {
     console.log(`Black kit conflict between ${homeTeamName} and ${awayTeamName}, using third kit`);
     kitSelectionCache[cacheKey] = 'third';
@@ -185,7 +217,29 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
     kitConflictCache[cacheKey] = true;
     return 'third';
   }
+  
+  if ((homeIsBlue && awayIsBlue) || similarBlues) {
+    console.log(`Blue kit conflict between ${homeTeamName} and ${awayTeamName}, using third kit`);
+    kitSelectionCache[cacheKey] = 'third';
+    kitConflictCache[cacheKey] = true;
+    return 'third';
+  }
+  
+  if (similarYellowGreens) {
+    console.log(`Yellow/Green kit conflict between ${homeTeamName} and ${awayTeamName}, using third kit`);
+    kitSelectionCache[cacheKey] = 'third';
+    kitConflictCache[cacheKey] = true;
+    return 'third';
+  }
+  
+  if (similarPurplePinks) {
+    console.log(`Purple/Pink kit conflict between ${homeTeamName} and ${awayTeamName}, using third kit`);
+    kitSelectionCache[cacheKey] = 'third';
+    kitConflictCache[cacheKey] = true;
+    return 'third';
+  }
 
+  // Check secondary color conflicts
   const homeOutfieldSecondary = homeTeam.home.secondary;
   const homeGkPrimary = homeTeam.goalkeeper.primary;
   const homeGkSecondary = homeTeam.goalkeeper.secondary;
@@ -205,47 +259,22 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
     console.log(`Third kit primary: ${thirdPrimary} (${categorizeColor(thirdPrimary)})`);
   }
 
+  // Check categorized colors
   const homeCategory = categorizeColor(homeOutfieldPrimary);
   const awayCategory = categorizeColor(awayPrimary);
   const thirdCategory = categorizeColor(thirdPrimary);
   
-  if (homeCategory === ColorCategory.WHITE && awayCategory === ColorCategory.WHITE) {
+  // Check for same color category conflicts
+  if (homeCategory === awayCategory) {
     if (shouldLog) {
-      console.log(`WHITE vs WHITE conflict detected between ${homeTeamName} and ${awayTeamName} - forcing third kit`);
-    }
-    kitSelectionCache[cacheKey] = 'third';
-    kitConflictCache[cacheKey] = true;
-    return 'third';
-  }
-  
-  if (homeCategory === ColorCategory.BLACK && awayCategory === ColorCategory.BLACK) {
-    if (shouldLog) {
-      console.log(`BLACK vs BLACK conflict detected between ${homeTeamName} and ${awayTeamName} - forcing third kit`);
-    }
-    kitSelectionCache[cacheKey] = 'third';
-    kitConflictCache[cacheKey] = true;
-    return 'third';
-  }
-  
-  if (homeCategory === ColorCategory.RED && awayCategory === ColorCategory.RED) {
-    if (shouldLog) {
-      console.log(`RED vs RED conflict detected between ${homeTeamName} and ${awayTeamName} - forcing third kit`);
-    }
-    kitSelectionCache[cacheKey] = 'third';
-    kitConflictCache[cacheKey] = true;
-    return 'third';
-  }
-  
-  if ((homeCategory === ColorCategory.RED && awayCategory === ColorCategory.BURGUNDY) ||
-      (homeCategory === ColorCategory.BURGUNDY && awayCategory === ColorCategory.RED)) {
-    if (shouldLog) {
-      console.log(`RED vs BURGUNDY conflict detected between ${homeTeamName} and ${awayTeamName} - forcing third kit`);
+      console.log(`${homeCategory} vs ${awayCategory} category conflict detected between ${homeTeamName} and ${awayTeamName} - forcing third kit`);
     }
     kitSelectionCache[cacheKey] = 'third';
     kitConflictCache[cacheKey] = true;
     return 'third';
   }
 
+  // Red primary vs red secondary check
   const homeHasRedPrimary = teamHasRedPrimaryColor(homeTeamName, 'home');
   const awayHasRedSecondary = teamHasRedSecondaryColor(awayTeamName, 'away');
   
@@ -266,6 +295,7 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
     return 'third';
   }
 
+  // Enhanced color difference checks
   const awayVsHomeOutfieldConflict = !areColorsSufficientlyDifferent(homeOutfieldPrimary, awayPrimary);
   const thirdVsHomeOutfieldConflict = !areColorsSufficientlyDifferent(homeOutfieldPrimary, thirdPrimary);
   
@@ -283,28 +313,30 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
     console.log(`Third vs Home conflicts: outfield=${thirdVsHomeOutfieldConflict}, GK=${thirdVsHomeGkConflict}`);
   }
   
+  // Calculate conflict scores with adjusted weights
   const awayKitConflictScore = 
-    (awayVsHomeOutfieldConflict ? 1.0 : 0) + 
-    (awayVsHomeGkConflict ? 1.5 : 0) + 
-    (awaySecondaryVsHomeConflict ? 0.3 : 0) + 
-    (awaySecondaryVsGkConflict ? 0.5 : 0);
+    (awayVsHomeOutfieldConflict ? 1.2 : 0) + 
+    (awayVsHomeGkConflict ? 1.8 : 0) + 
+    (awaySecondaryVsHomeConflict ? 0.5 : 0) + 
+    (awaySecondaryVsGkConflict ? 0.7 : 0);
   
   const thirdKitConflictScore = 
-    (thirdVsHomeOutfieldConflict ? 1.0 : 0) + 
-    (thirdVsHomeGkConflict ? 1.5 : 0) + 
-    (thirdSecondaryVsHomeConflict ? 0.3 : 0) + 
-    (thirdSecondaryVsGkConflict ? 0.5 : 0);
+    (thirdVsHomeOutfieldConflict ? 1.2 : 0) + 
+    (thirdVsHomeGkConflict ? 1.8 : 0) + 
+    (thirdSecondaryVsHomeConflict ? 0.5 : 0) + 
+    (thirdSecondaryVsGkConflict ? 0.7 : 0);
   
   if (shouldLog) {
     console.log(`Conflict scores: away=${awayKitConflictScore}, third=${thirdKitConflictScore}`);
   }
   
+  // Check for no-conflict scenarios
   if (awayKitConflictScore === 0 && thirdKitConflictScore > 0) {
     if (shouldLog) {
       console.log(`Selected away kit for ${awayTeamName} (no conflicts)`);
     }
     kitSelectionCache[cacheKey] = 'away';
-    kitConflictCache[cacheKey] = true;
+    kitConflictCache[cacheKey] = false;
     return 'away';
   }
   
@@ -313,16 +345,17 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
       console.log(`Selected third kit for ${awayTeamName} (no conflicts)`);
     }
     kitSelectionCache[cacheKey] = 'third';
-    kitConflictCache[cacheKey] = true;
+    kitConflictCache[cacheKey] = false;
     return 'third';
   }
   
+  // Choose the kit with fewer conflicts
   if (awayKitConflictScore < thirdKitConflictScore) {
     if (shouldLog) {
       console.log(`Selected away kit for ${awayTeamName} (fewer conflicts)`);
     }
     kitSelectionCache[cacheKey] = 'away';
-    kitConflictCache[cacheKey] = true;
+    kitConflictCache[cacheKey] = awayKitConflictScore > 0;
     return 'away';
   } 
   
@@ -331,10 +364,11 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
       console.log(`Selected third kit for ${awayTeamName} (fewer conflicts)`);
     }
     kitSelectionCache[cacheKey] = 'third';
-    kitConflictCache[cacheKey] = true;
+    kitConflictCache[cacheKey] = thirdKitConflictScore > 0;
     return 'third';
   }
   
+  // If conflict scores are equal, use enhanced color distance to determine the best kit
   const homeOutfieldRgb = parseHexColor(homeOutfieldPrimary);
   const homeGkRgb = parseHexColor(homeGkPrimary);
   const awayRgb = parseHexColor(awayPrimary);
@@ -345,8 +379,9 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
   const awayVsGkDistance = getEnhancedColorDistance(homeGkRgb, awayRgb);
   const thirdVsGkDistance = getEnhancedColorDistance(homeGkRgb, thirdRgb);
   
-  const totalAwayDistance = awayVsHomeDistance + (awayVsGkDistance * 1.5);
-  const totalThirdDistance = thirdVsHomeDistance + (thirdVsGkDistance * 1.5);
+  // Adjusted weights for better distinction
+  const totalAwayDistance = awayVsHomeDistance + (awayVsGkDistance * 1.8);
+  const totalThirdDistance = thirdVsHomeDistance + (thirdVsGkDistance * 1.8);
   
   if (shouldLog) {
     console.log(`Enhanced distances: away total=${totalAwayDistance}, third total=${totalThirdDistance}`);
@@ -366,11 +401,14 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
   }
   
   kitSelectionCache[cacheKey] = selectedKit;
+  kitConflictCache[cacheKey] = true;
   
+  // Manage cache size
   if (Object.keys(kitSelectionCache).length > 200) {
     const keys = Object.keys(kitSelectionCache);
     for (let i = 0; i < 50; i++) {
       delete kitSelectionCache[keys[i]];
+      delete kitConflictCache[keys[i]];
     }
   }
   
