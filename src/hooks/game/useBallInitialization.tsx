@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Ball, Position, PITCH_WIDTH, PITCH_HEIGHT, Player } from '../../types/football';
 
@@ -52,12 +51,20 @@ const isPointingTowardGoal = (position: Position, velocity: Position): boolean =
   return false;
 };
 
-// Create a virtual player F for random kicks
-export const createPlayerF = (ballPosition: Position, teamOverride?: 'red' | 'blue'): Player => {
-  const position = {
-    x: ballPosition.x + (Math.random() * 20) - 10,
-    y: ballPosition.y + (Math.random() * 20) - 10
-  };
+// Create a player F for random kicks
+export const createPlayerF = (
+  ballPosition: Position, 
+  teamOverride?: 'red' | 'blue',
+  isKickoff: boolean = false
+): Player => {
+  // For kickoff, position F in the center of the field
+  // Otherwise, position F near the ball
+  const position = isKickoff 
+    ? { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 } 
+    : {
+        x: ballPosition.x + (Math.random() * 20) - 10,
+        y: ballPosition.y + (Math.random() * 20) - 10
+      };
   
   // Use the team override if provided, otherwise randomly assign a team
   const team = teamOverride || (Math.random() > 0.5 ? 'red' : 'blue');
@@ -85,13 +92,14 @@ export const applyRandomKick = (
   currentBall: Ball, 
   tournamentMode: boolean, 
   onBallTouch?: (player: Player) => void,
-  kickingTeam?: 'red' | 'blue' // Add parameter for the team that should kick
+  kickingTeam?: 'red' | 'blue', // Add parameter for the team that should kick
+  isKickoff: boolean = false // Add parameter to indicate if this is a kickoff
 ): Ball => {
   if (!tournamentMode) {
-    console.log("Ball stuck in place or zero velocity, giving it a random kick from player F");
+    console.log(`${isKickoff ? "Kickoff" : "Ball stuck in place or zero velocity"}, giving it a random kick from player F`);
   }
   
-  const playerF = createPlayerF(currentBall.position, kickingTeam);
+  const playerF = createPlayerF(currentBall.position, kickingTeam, isKickoff);
   
   if (onBallTouch) {
     onBallTouch(playerF);

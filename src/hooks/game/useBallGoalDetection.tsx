@@ -36,17 +36,17 @@ export const useBallGoalDetection = ({
         ...currentBall,
         position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
         velocity: { x: 0, y: 0 }, // Initially zero velocity
-        // Preserve the structure but make a new bounce detection object
-        bounceDetection: {
+        bounceDetection: currentBall.bounceDetection ? {
           consecutiveBounces: 0,
           lastBounceTime: 0,
           lastBounceSide: '',
           sideEffect: false
-        }
+        } : undefined
       };
       
       // Apply a kick with the team that received the goal
-      const kickedBall = applyRandomKick(updatedBall, tournamentMode, onBallTouch, kickoffTeam);
+      // This will place the F player in the center for kickoff
+      const kickedBall = applyRandomKick(updatedBall, tournamentMode, onBallTouch, kickoffTeam, true);
       
       if (!tournamentMode) {
         console.log(`Kickoff being taken by team ${kickoffTeam} after goal by team ${goalScored}`);
