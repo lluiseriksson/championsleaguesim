@@ -1,3 +1,4 @@
+
 // Helper function to parse hex color to RGB
 export function parseHexColor(hex: string): { r: number, g: number, b: number } {
   // Handle invalid hex colors
@@ -95,9 +96,15 @@ export function categorizeColor(hexColor: string): ColorCategory {
     return ColorCategory.WHITE;
   }
   
+  // Enhanced black detection with stricter thresholds
+  // Check if all RGB values are very low and close to each other
+  if (r < 30 && g < 30 && b < 30 && chroma < 15) {
+    return ColorCategory.BLACK;
+  }
+  
   // Stricter gray/black/white detection
   if (chroma < 40) {
-    if (lightness < 50) return ColorCategory.BLACK;
+    if (lightness < 40) return ColorCategory.BLACK; // More strict black threshold
     if (lightness > 180) return ColorCategory.WHITE;
     return ColorCategory.GRAY;
   }
@@ -177,7 +184,7 @@ export function areColorsConflicting(color1: string, color2: string): boolean {
     [ColorCategory.PURPLE]: [ColorCategory.BURGUNDY, ColorCategory.NAVY, ColorCategory.PINK],
     [ColorCategory.PINK]: [ColorCategory.RED, ColorCategory.PURPLE],
     [ColorCategory.BROWN]: [ColorCategory.BURGUNDY, ColorCategory.ORANGE],
-    [ColorCategory.BLACK]: [ColorCategory.NAVY, ColorCategory.GRAY],
+    [ColorCategory.BLACK]: [ColorCategory.NAVY, ColorCategory.GRAY], // Black conflicts with navy and gray
     [ColorCategory.WHITE]: [ColorCategory.GRAY],
     [ColorCategory.GRAY]: [ColorCategory.BLACK, ColorCategory.WHITE]
   };
@@ -213,8 +220,18 @@ export function areColorsSufficientlyDifferent(color1: string, color2: string): 
   const blueDiff = Math.abs(rgb1.b - rgb2.b);
   
   // UPDATED: Even more strict detection - consider a conflict if ANY individual color channel is too similar
-  // Reduced from 20 to 15 for stricter margins
-  const anyComponentTooSimilar = (redDiff < 15 || greenDiff < 15 || blueDiff < 15);
+  // Reduced from 15 to 12 for stricter margins
+  const anyComponentTooSimilar = (redDiff < 12 || greenDiff < 12 || blueDiff < 12);
+  
+  // New: Check for black kit conflicts specifically
+  const bothDark = (rgb1.r < 60 && rgb1.g < 60 && rgb1.b < 60) && 
+                   (rgb2.r < 60 && rgb2.g < 60 && rgb2.b < 60);
+  
+  // For dark kits, be even more strict
+  if (bothDark) {
+    const totalDiff = redDiff + greenDiff + blueDiff;
+    if (totalDiff < 50) return false; // Total difference needs to be higher for dark kits
+  }
   
   // UPDATED: For reds specifically, be even more strict
   // If both colors have red as dominant channel and their red values are close
@@ -226,6 +243,7 @@ export function areColorsSufficientlyDifferent(color1: string, color2: string): 
   // 2. The overall distance is large enough
   // 3. No color components have a small difference
   // 4. If both are red-dominant, they need to be far enough apart
+  // 5. If both are dark, they need to have sufficient total difference
   const isDistantEnough = enhancedDistance > 250; // Increased from 220 for more strict checking
   
   return !categoricalConflict && isDistantEnough && !anyComponentTooSimilar && !redsTooClose;
@@ -294,6 +312,30 @@ export function detectSpecificColorToneConflict(color1: string, color2: string):
     // If both have similar red but the secondary colors give different tones,
     // they might still be too similar for visual distinction
     return greenRatio < 0.1 && blueRatio < 0.1;
+  }
+  
+  return false;
+}
+
+// New: Function to check if two kits have similar black colors
+export function areBlackColorsTooSimilar(color1: string, color2: string): boolean {
+  const category1 = categorizeColor(color1);
+  const category2 = categorizeColor(color2);
+  
+  // If both are categorized as black
+  if (category1 === ColorCategory.BLACK && category2 === ColorCategory.BLACK) {
+    const rgb1 = parseHexColor(color1);
+    const rgb2 = parseHexColor(color2);
+    
+    // For black kits, calculate total RGB difference
+    const totalDiff = 
+      Math.abs(rgb1.r - rgb2.r) + 
+      Math.abs(rgb1.g - rgb2.g) + 
+      Math.abs(rgb1.b - rgb2.b);
+    
+    // If total difference is less than 45 (stricter threshold for black), 
+    // consider them too similar
+    return totalDiff < 45;
   }
   
   return false;

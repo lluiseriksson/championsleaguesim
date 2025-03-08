@@ -1,3 +1,4 @@
+
 import { KitType, TeamKit } from './kitTypes';
 import { teamKitColors } from './teamColorsData';
 import { 
@@ -7,6 +8,7 @@ import {
   areColorsSufficientlyDifferent,
   areRedColorsTooSimilar,
   areWhiteColorsTooSimilar,
+  areBlackColorsTooSimilar,
   detectSpecificColorToneConflict
 } from './colorUtils';
 
@@ -24,7 +26,8 @@ const conflictingTeamPairs: [string, string][] = [
   ['Freiburg', 'Strasbourg'],
   ['Girona', 'Celta'], 
   ['Brest', 'FC København'],
-  ['Fulham', 'Las Palmas'] // Add Fulham vs Las Palmas to known conflicts
+  ['Fulham', 'Las Palmas'],
+  ['RB Leipzig', 'Braga'] // Add RB Leipzig vs Braga to known conflicts
 ];
 
 // Check if two teams are in the known conflict list
@@ -64,6 +67,16 @@ export const teamHasWhitePrimaryColor = (teamName: string, kitType: KitType): bo
   return category === ColorCategory.WHITE;
 };
 
+// NEW: Check if a team's primary color is black or very dark
+export const teamHasBlackPrimaryColor = (teamName: string, kitType: KitType): boolean => {
+  if (!teamKitColors[teamName]) return false;
+  
+  const primary = teamKitColors[teamName][kitType].primary;
+  const category = categorizeColor(primary);
+  
+  return category === ColorCategory.BLACK;
+};
+
 // Special check for the known Forest vs Espanyol color conflict
 export const checkForestVsEspanyolConflict = (
   homeTeam: string, 
@@ -85,6 +98,28 @@ export const checkWhiteKitConflict = (
   const awayIsWhite = teamHasWhitePrimaryColor(awayTeam, awayKitType);
   
   return homeIsWhite && awayIsWhite;
+};
+
+// NEW: Check for black kit conflicts
+export const checkBlackKitConflict = (
+  homeTeam: string, 
+  awayTeam: string, 
+  awayKitType: KitType
+): boolean => {
+  if (!teamKitColors[homeTeam] || !teamKitColors[awayTeam]) return false;
+  
+  const homeIsBlack = teamHasBlackPrimaryColor(homeTeam, 'home');
+  const awayIsBlack = teamHasBlackPrimaryColor(awayTeam, awayKitType);
+  
+  if (homeIsBlack && awayIsBlack) {
+    // For black kits, do an additional similarity check
+    const homePrimary = teamKitColors[homeTeam].home.primary;
+    const awayPrimary = teamKitColors[awayTeam][awayKitType].primary;
+    
+    return areBlackColorsTooSimilar(homePrimary, awayPrimary);
+  }
+  
+  return false;
 };
 
 // Enhanced check if primary color of one team is too similar to secondary color of the other
@@ -122,6 +157,13 @@ export const checkPrimarySecondaryConflict = (
   const team2RedPrimaryVsTeam1RedSecondary = teamHasRedPrimaryColor(team2, team2KitType) && 
                                              teamHasRedSecondaryColor(team1, team1KitType);
   
+  // NEW: Specific check for black primary colors
+  const team1BlackPrimaryVsTeam2BlackSecondary = teamHasBlackPrimaryColor(team1, team1KitType) &&
+                                               categorizeColor(team2Secondary) === ColorCategory.BLACK;
+                                               
+  const team2BlackPrimaryVsTeam1BlackSecondary = teamHasBlackPrimaryColor(team2, team2KitType) &&
+                                               categorizeColor(team1Secondary) === ColorCategory.BLACK;
+  
   // NEW: Check for specific color tone conflicts (like Brest vs FC København)
   const specificToneConflict = detectSpecificColorToneConflict(team1Primary, team2Primary);
   
@@ -131,6 +173,8 @@ export const checkPrimarySecondaryConflict = (
          team1SecondaryVsTeam2Secondary ||
          team1RedPrimaryVsTeam2RedSecondary ||
          team2RedPrimaryVsTeam1RedSecondary ||
+         team1BlackPrimaryVsTeam2BlackSecondary ||
+         team2BlackPrimaryVsTeam1BlackSecondary ||
          specificToneConflict;
 };
 
@@ -155,8 +199,18 @@ export const checkPrimarySimilarityConflict = (
   const gDiff = Math.abs(team1Rgb.g - team2Rgb.g);
   const bDiff = Math.abs(team1Rgb.b - team2Rgb.b);
   
-  // UPDATED: More strict detection - lowered the threshold from 20 to 15
-  const anyChannelTooSimilar = (rDiff < 15 || gDiff < 15 || bDiff < 15);
+  // UPDATED: More strict detection - lowered the threshold from 15 to 12
+  const anyChannelTooSimilar = (rDiff < 12 || gDiff < 12 || bDiff < 12);
+  
+  // NEW: More strict detection for dark/black kits
+  const bothDark = (team1Rgb.r < 60 && team1Rgb.g < 60 && team1Rgb.b < 60) && 
+                  (team2Rgb.r < 60 && team2Rgb.g < 60 && team2Rgb.b < 60);
+                  
+  if (bothDark) {
+    // For dark/black kits, we need a higher total difference
+    const totalDiff = rDiff + gDiff + bDiff;
+    if (totalDiff < 50) return true; // More strict - consider conflict if total diff < 50
+  }
   
   // UPDATED: Special check for red-dominant colors (like Brest vs FC København)
   const bothRedDominant = (team1Rgb.r > team1Rgb.g && team1Rgb.r > team1Rgb.b) && 
@@ -204,6 +258,11 @@ export const performFinalKitCheck = (
   
   // Check for white kit conflicts
   if (checkWhiteKitConflict(homeTeam, awayTeam, awayKitType)) {
+    return false;
+  }
+  
+  // NEW: Check for black kit conflicts
+  if (checkBlackKitConflict(homeTeam, awayTeam, awayKitType)) {
     return false;
   }
   

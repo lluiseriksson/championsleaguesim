@@ -10,45 +10,22 @@ import {
   areColorsSufficientlyDifferent,
   areRedColorsTooSimilar,
   areWhiteColorsTooSimilar,
+  areBlackColorsTooSimilar,
   detectSpecificColorToneConflict
 } from './colorUtils';
 import { 
   teamHasRedPrimaryColor,
   teamHasRedSecondaryColor,
   teamHasWhitePrimaryColor,
-  checkForestVsEspanyolConflict 
+  teamHasBlackPrimaryColor,
+  checkForestVsEspanyolConflict,
+  checkBlackKitConflict 
 } from './kitConflictChecker';
 
 const kitSelectionCache: Record<string, KitType> = {};
 const kitConflictCache: Record<string, boolean> = {};
 
 const teamConflictOverrides: Record<string, Record<string, KitType>> = {
-  'Athletic Bilbao': {
-    'Union Berlin': 'third',
-    'AC Milan': 'third',
-    'Southampton': 'third'
-  },
-  'Union Berlin': {
-    'Athletic Bilbao': 'third',
-    'AC Milan': 'third',
-    'Southampton': 'third'
-  },
-  'Ajax': {
-    'Real Madrid': 'third',
-    'Fulham': 'third'
-  },
-  'Real Madrid': {
-    'Ajax': 'away',
-    'Leeds United': 'third'
-  },
-  'Leeds United': {
-    'Real Madrid': 'away',
-    'Las Palmas': 'third'
-  },
-  'Las Palmas': {
-    'Leeds United': 'third',
-    'Fulham': 'third'
-  },
   'Fulham': {
     'Las Palmas': 'third'
   },
@@ -117,6 +94,12 @@ const teamConflictOverrides: Record<string, Record<string, KitType>> = {
   },
   'Brest': {
     'FC København': 'third'
+  },
+  'RB Leipzig': {
+    'Braga': 'third'
+  },
+  'Braga': {
+    'RB Leipzig': 'third'
   }
 };
 
@@ -151,18 +134,36 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
     return 'third';
   }
 
+  if ((homeTeamName === 'RB Leipzig' && awayTeamName === 'Braga') || 
+      (homeTeamName === 'Braga' && awayTeamName === 'RB Leipzig')) {
+    console.log(`Special handling for black kit conflict: ${homeTeamName} vs ${awayTeamName}`);
+    kitSelectionCache[cacheKey] = 'third';
+    kitConflictCache[cacheKey] = true;
+    return 'third';
+  }
+
   const homeIsRed = teamHasRedPrimaryColor(homeTeamName, 'home');
   const awayIsRed = teamHasRedPrimaryColor(awayTeamName, 'away');
   
   const homeIsWhite = teamHasWhitePrimaryColor(homeTeamName, 'home');
   const awayIsWhite = teamHasWhitePrimaryColor(awayTeamName, 'away');
   
+  const homeIsBlack = teamHasBlackPrimaryColor(homeTeamName, 'home');
+  const awayIsBlack = teamHasBlackPrimaryColor(awayTeamName, 'away');
+  
   const homeOutfieldPrimary = homeTeam.home.primary;
   const awayOutfieldPrimary = awayTeam.away.primary;
   
   const similarReds = areRedColorsTooSimilar(homeOutfieldPrimary, awayOutfieldPrimary);
-  
   const similarWhites = areWhiteColorsTooSimilar(homeOutfieldPrimary, awayOutfieldPrimary);
+  const similarBlacks = areBlackColorsTooSimilar(homeOutfieldPrimary, awayOutfieldPrimary);
+  
+  if ((homeIsBlack && awayIsBlack) || similarBlacks) {
+    console.log(`Black kit conflict between ${homeTeamName} and ${awayTeamName}, using third kit`);
+    kitSelectionCache[cacheKey] = 'third';
+    kitConflictCache[cacheKey] = true;
+    return 'third';
+  }
   
   if ((homeIsRed && awayIsRed) || similarReds) {
     console.log(`Red kit conflict between ${homeTeamName} and ${awayTeamName}, using third kit`);
@@ -204,6 +205,15 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
   if (homeCategory === ColorCategory.WHITE && awayCategory === ColorCategory.WHITE) {
     if (shouldLog) {
       console.log(`WHITE vs WHITE conflict detected between ${homeTeamName} and ${awayTeamName} - forcing third kit`);
+    }
+    kitSelectionCache[cacheKey] = 'third';
+    kitConflictCache[cacheKey] = true;
+    return 'third';
+  }
+  
+  if (homeCategory === ColorCategory.BLACK && awayCategory === ColorCategory.BLACK) {
+    if (shouldLog) {
+      console.log(`BLACK vs BLACK conflict detected between ${homeTeamName} and ${awayTeamName} - forcing third kit`);
     }
     kitSelectionCache[cacheKey] = 'third';
     kitConflictCache[cacheKey] = true;
