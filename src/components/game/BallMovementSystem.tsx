@@ -10,6 +10,7 @@ interface BallMovementSystemProps {
   checkGoal: (position: Position) => 'red' | 'blue' | null;
   onBallTouch: (player: Player) => void;
   tournamentMode?: boolean;
+  gameEnded?: boolean; // Added gameEnded prop to the interface
 }
 
 // Custom hook to apply ELO-based radius adjustments - FIXED IMPLEMENTATION
