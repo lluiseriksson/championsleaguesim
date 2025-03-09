@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from 'react';
 import { Player, Ball, Score, Position } from '../types/football';
 import { useBallMovementSystem } from './game/BallMovementSystem';
@@ -67,6 +66,29 @@ const GameLogic: React.FC<GameLogicProps> = ({
   }, [score]);
   
   console.log(`GameLogic rendered with players: ${players.length}, tournamentMode: ${tournamentMode}, matchEnded: ${matchEnded}`);
+
+  // NEW: Define target FPS based on device performance
+  const [targetFPS, setTargetFPS] = useState(60);
+  
+  // NEW: Detect device performance on component mount
+  useEffect(() => {
+    // Simple performance detection - could be expanded
+    const detectPerformance = () => {
+      const highEndDevice = window.navigator.hardwareConcurrency > 4;
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent
+      );
+      
+      // If it's a mobile device or low-end device, use lower FPS
+      const detectedFPS = highEndDevice && !isMobile ? 60 : 40;
+      console.log(`Device performance detection: FPS set to ${detectedFPS}, high-end: ${highEndDevice}, mobile: ${isMobile}`);
+      setTargetFPS(detectedFPS);
+    };
+    
+    detectPerformance();
+  }, []);
+  
+  console.log(`GameLogic rendered with players: ${players.length}, tournamentMode: ${tournamentMode}, matchEnded: ${matchEnded}, targetFPS: ${targetFPS}`);
 
   // Find team ELO values for comparison
   const homeTeamElo = players.find(p => p.team === 'red')?.teamElo || 1500;
@@ -151,7 +173,8 @@ const GameLogic: React.FC<GameLogicProps> = ({
     score,
     tournamentMode,
     isLowPerformance,
-    gameEnded: matchEnded // NEW: Pass matchEnded to useGameLoop
+    gameEnded: matchEnded,
+    targetFPS // Pass target FPS to game loop
   });
 
   // Goal notification hook
@@ -187,7 +210,8 @@ const GameLogic: React.FC<GameLogicProps> = ({
       lastPlayerTouchRef.current = player;
       console.log(`Ball touched by ${player.team === 'red' ? 'home' : 'away'} ${player.role} #${player.id}`);
     },
-    tournamentMode
+    tournamentMode,
+    gameEnded: matchEnded // NEW: Pass gameEnded to useBallMovementSystem
   });
 
   // Run game loop with actual functions and performance monitoring
@@ -205,7 +229,8 @@ const GameLogic: React.FC<GameLogicProps> = ({
     score,
     tournamentMode,
     isLowPerformance,
-    gameEnded: matchEnded // NEW: Pass matchEnded to useGameLoop
+    gameEnded: matchEnded,
+    targetFPS // Pass target FPS to game loop
   });
 
   // Save models on component unmount

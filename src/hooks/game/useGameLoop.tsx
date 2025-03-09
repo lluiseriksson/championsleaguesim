@@ -17,6 +17,7 @@ interface GameLoopProps {
   tournamentMode?: boolean;
   isLowPerformance?: boolean;
   gameEnded?: boolean; // NEW: Add gameEnded flag to stop the game loop
+  targetFPS?: number; // NEW: Target frame rate for consistent gameplay
 }
 
 export const useGameLoop = ({
@@ -33,10 +34,13 @@ export const useGameLoop = ({
   score,
   tournamentMode,
   isLowPerformance,
-  gameEnded = false // NEW: Default to false
+  gameEnded = false, // NEW: Default to false
+  targetFPS = 60 // NEW: Default target framerate
 }: GameLoopProps) => {
   const [gameActive, setGameActive] = useState(true);
   const totalGoalsRef = useRef(0);
+  const frameRateRef = useRef<number[]>([]);
+  const lastFpsUpdateTime = useRef(0);
 
   useEffect(() => {
     console.log(`GameLoop - Goals scored: ${totalGoalsRef.current}`);
@@ -67,6 +71,8 @@ export const useGameLoop = ({
     let lastFrameTime = performance.now();
     let deltaTime = 0;
     let frameCount = 0;
+    let accumulator = 0;
+    const timeStep = 1000 / targetFPS; // Time step in ms for target frame rate
 
     const gameLoop = (currentTime: number) => {
       // Check if game is still active before continuing
@@ -79,50 +85,63 @@ export const useGameLoop = ({
       deltaTime = currentTime - lastFrameTime;
       lastFrameTime = currentTime;
       
+      // Track frame rate
+      frameRateRef.current.push(1000 / deltaTime);
+      if (frameRateRef.current.length > 60) {
+        frameRateRef.current.shift();
+      }
+      
+      // Log FPS every second
+      if (currentTime - lastFpsUpdateTime.current > 1000) {
+        const avgFps = frameRateRef.current.reduce((sum, fps) => sum + fps, 0) / frameRateRef.current.length;
+        console.log(`Current FPS: ${avgFps.toFixed(1)}`);
+        lastFpsUpdateTime.current = currentTime;
+      }
+      
       // Skip frames if delta time is too high (tab was inactive)
-      if (deltaTime > 100) {
+      if (deltaTime > 200) {
+        console.log(`Large time jump detected: ${deltaTime.toFixed(1)}ms - skipping frame`);
         animationFrameId = requestAnimationFrame(gameLoop);
         return;
       }
 
-      // Cap delta time to prevent physics issues on slow devices
-      deltaTime = Math.min(deltaTime, 33);
+      // Accumulate time and update in fixed time steps
+      accumulator += deltaTime;
       
-      // Do not update more than 12 times in slow mode
-      if (isLowPerformance && frameCount % 3 !== 0) {
+      // Process updates at fixed intervals to normalize gameplay speed
+      while (accumulator >= timeStep) {
+        // Update counter for managing model synchronization
+        incrementSyncCounter();
+        
+        // Periodically check if we need to sync models
+        syncModels();
+        
+        // Periodically check learning progress
+        checkLearningProgress();
+        
+        // Periodically check performance
+        checkPerformance();
+        
+        // Periodically check training effectiveness
+        if (checkTrainingEffectiveness && frameCount % 60 === 0) {
+          checkTrainingEffectiveness();
+        }
+        
+        // Periodically run historical training
+        if (frameCount % 600 === 0) {
+          performHistoricalTraining();
+        }
+
+        // Update game entities with fixed time step
+        updatePlayerPositions();
+        updateBallPosition();
+        
+        // Reduce from accumulator
+        accumulator -= timeStep;
+        
+        // Increment frame counter
         frameCount++;
-        animationFrameId = requestAnimationFrame(gameLoop);
-        return;
       }
-
-      // Update counter for managing model synchronization
-      incrementSyncCounter();
-      
-      // Periodically check if we need to sync models
-      syncModels();
-      
-      // Periodically check learning progress
-      checkLearningProgress();
-      
-      // Periodically check performance
-      checkPerformance();
-      
-      // Periodically check training effectiveness
-      if (checkTrainingEffectiveness && frameCount % 60 === 0) {
-        checkTrainingEffectiveness();
-      }
-      
-      // Periodically run historical training
-      if (frameCount % 600 === 0) {
-        performHistoricalTraining();
-      }
-
-      // Update game entities
-      updatePlayerPositions();
-      updateBallPosition();
-
-      // Increment frame counter
-      frameCount++;
 
       // Continue the game loop if still active
       if (gameActive && !gameEnded) {
@@ -154,7 +173,8 @@ export const useGameLoop = ({
     performHistoricalTraining,
     checkTrainingEffectiveness,
     isLowPerformance,
-    gameEnded // NEW: Add gameEnded to dependencies
+    gameEnded, // NEW: Add gameEnded to dependencies
+    targetFPS // NEW: Add targetFPS to dependencies
   ]);
 
   return { totalGoalsRef };

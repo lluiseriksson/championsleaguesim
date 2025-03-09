@@ -17,7 +17,7 @@ interface BallMovementProps {
   checkGoal: (position: Position) => 'red' | 'blue' | null;
   onBallTouch: (player: Player) => void;
   tournamentMode?: boolean;
-  gameEnded?: boolean; // NEW: Add gameEnded prop
+  gameEnded?: boolean; // Prop for game ended state
 }
 
 export const useBallMovement = ({ 
@@ -27,7 +27,7 @@ export const useBallMovement = ({
   checkGoal, 
   onBallTouch,
   tournamentMode = false,
-  gameEnded = false // NEW: Default to false
+  gameEnded = false // Default to false
 }: BallMovementProps) => {
   // Memoize player categorization
   const { goalkeepers, fieldPlayers } = React.useMemo(() => ({
@@ -52,6 +52,9 @@ export const useBallMovement = ({
 
   // Reference to store previous ball position for tracking
   const previousBallPositionRef = React.useRef<Position>({ ...ball.position });
+  
+  // NEW: Reference for max velocity to limit ball speed
+  const maxBallVelocityRef = React.useRef<number>(17); // Maximum velocity magnitude
 
   const updateBallPosition = React.useCallback(() => {
     // If the game has ended, don't update ball position
@@ -97,14 +100,29 @@ export const useBallMovement = ({
         };
       }
       
+      // NEW: Ensure ball velocity doesn't exceed max speed
+      let velocityX = currentBall.velocity.x;
+      let velocityY = currentBall.velocity.y;
+      const velocityMagnitude = Math.sqrt(velocityX * velocityX + velocityY * velocityY);
+      
+      if (velocityMagnitude > maxBallVelocityRef.current) {
+        const scaleFactor = maxBallVelocityRef.current / velocityMagnitude;
+        velocityX *= scaleFactor;
+        velocityY *= scaleFactor;
+      }
+      
       // Calculate new position based on current velocity
       const newPosition = {
-        x: currentBall.position.x + currentBall.velocity.x,
-        y: currentBall.position.y + currentBall.velocity.y
+        x: currentBall.position.x + velocityX,
+        y: currentBall.position.y + velocityY
       };
 
       // First check if a goal was scored
-      const { goalScored, updatedBall: ballAfterGoalCheck } = handleGoalCheck(currentBall, newPosition);
+      const { goalScored, updatedBall: ballAfterGoalCheck } = handleGoalCheck(
+        { ...currentBall, velocity: { x: velocityX, y: velocityY } }, 
+        newPosition
+      );
+      
       if (goalScored) {
         return {
           ...ballAfterGoalCheck,
@@ -114,7 +132,7 @@ export const useBallMovement = ({
 
       // Handle ball collisions and movement
       const ballAfterPhysics = handleBallPhysics(
-        currentBall,
+        { ...currentBall, velocity: { x: velocityX, y: velocityY } },
         newPosition,
         goalkeepers,
         fieldPlayers,
@@ -136,7 +154,7 @@ export const useBallMovement = ({
     onBallTouch, 
     tournamentMode, 
     handleGoalCheck,
-    gameEnded // NEW: Add gameEnded to dependencies
+    gameEnded // Add gameEnded to dependencies
   ]);
 
   return { updateBallPosition };
