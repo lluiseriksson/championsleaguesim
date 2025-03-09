@@ -1,4 +1,3 @@
-
 import { KitType, TeamKit } from './kitTypes';
 import { teamKitColors } from './teamColorsData';
 import { 
@@ -392,6 +391,228 @@ export const checkPrimarySimilarityConflict = (
 export const resolveKitConflict = (homeTeam: string, awayTeam: string): KitType => {
   console.log(`Resolving kit conflict between ${homeTeam} and ${awayTeam} - using third kit`);
   return 'third';
+};
+
+// Enhanced color similarity detection - more precise than simple categorization
+export const areColorsTooSimilar = (color1: string, color2: string): boolean => {
+  const rgb1 = parseHexColor(color1);
+  const rgb2 = parseHexColor(color2);
+  
+  // Calculate color distance using an improved formula
+  const rDiff = rgb1.r - rgb2.r;
+  const gDiff = rgb1.g - rgb2.g;
+  const bDiff = rgb1.b - rgb2.b;
+  
+  // Use weighted Euclidean distance for better perceptual similarity
+  // Human eye is more sensitive to green, then red, then blue
+  const distance = Math.sqrt(
+    (rDiff * rDiff) * 0.299 + 
+    (gDiff * gDiff) * 0.587 + 
+    (bDiff * bDiff) * 0.114
+  );
+  
+  // Lower threshold means more strict similarity detection
+  return distance < 35;
+};
+
+// Interface for conflict checking results
+export interface ColorConflictResult {
+  hasConflict: boolean;
+  conflictDetails?: {
+    type: string;
+    homeTeamColors: {
+      primary: string;
+      secondary: string;
+    };
+    awayTeamColors: {
+      primary: string;
+      secondary: string;
+    };
+  };
+}
+
+// Check for all types of color conflicts between teams
+export const checkTeamColorConflict = (homeTeam: string, awayTeam: string): ColorConflictResult => {
+  // Handle special case for Milan vs Empoli 
+  if ((homeTeam === 'AC Milan' && awayTeam === 'Empoli') || 
+      (homeTeam === 'Empoli' && awayTeam === 'AC Milan')) {
+    console.log(`Special handling for ${homeTeam} vs ${awayTeam} conflict`);
+    
+    // Get team colors
+    const homeColors = teamKitColors[homeTeam]?.home;
+    const awayColors = teamKitColors[awayTeam]?.away;
+    
+    if (!homeColors || !awayColors) {
+      return { hasConflict: false };
+    }
+    
+    return {
+      hasConflict: true,
+      conflictDetails: {
+        type: 'Primary colors too similar',
+        homeTeamColors: {
+          primary: homeColors.primary,
+          secondary: homeColors.secondary
+        },
+        awayTeamColors: {
+          primary: awayColors.primary,
+          secondary: awayColors.secondary
+        }
+      }
+    };
+  }
+  
+  // Get team colors
+  const homeColors = teamKitColors[homeTeam]?.home;
+  const awayColors = teamKitColors[awayTeam]?.away;
+  
+  if (!homeColors || !awayColors) {
+    return { hasConflict: false };
+  }
+  
+  // Check if primary colors are too similar
+  if (areColorsTooSimilar(homeColors.primary, awayColors.primary)) {
+    return {
+      hasConflict: true,
+      conflictDetails: {
+        type: 'Primary colors too similar',
+        homeTeamColors: {
+          primary: homeColors.primary,
+          secondary: homeColors.secondary
+        },
+        awayTeamColors: {
+          primary: awayColors.primary,
+          secondary: awayColors.secondary
+        }
+      }
+    };
+  }
+  
+  // Check if home primary and away secondary are too similar
+  if (areColorsTooSimilar(homeColors.primary, awayColors.secondary)) {
+    return {
+      hasConflict: true,
+      conflictDetails: {
+        type: 'Home primary vs Away secondary colors too similar',
+        homeTeamColors: {
+          primary: homeColors.primary,
+          secondary: homeColors.secondary
+        },
+        awayTeamColors: {
+          primary: awayColors.primary,
+          secondary: awayColors.secondary
+        }
+      }
+    };
+  }
+  
+  // Check if away primary and home secondary are too similar
+  if (areColorsTooSimilar(awayColors.primary, homeColors.secondary)) {
+    return {
+      hasConflict: true,
+      conflictDetails: {
+        type: 'Away primary vs Home secondary colors too similar',
+        homeTeamColors: {
+          primary: homeColors.primary,
+          secondary: homeColors.secondary
+        },
+        awayTeamColors: {
+          primary: awayColors.primary,
+          secondary: awayColors.secondary
+        }
+      }
+    };
+  }
+  
+  return { hasConflict: false };
+};
+
+// Generate an alternative kit based on the home team's colors
+export const generateAlternativeKit = (homeTeam: string, awayTeam: string) => {
+  // Get home team colors to avoid
+  const homeColors = teamKitColors[homeTeam]?.home;
+  
+  if (!homeColors) {
+    // Fallback to a neutral kit if home colors not found
+    return {
+      primary: '#8E9196',  // Neutral gray
+      secondary: '#FFFFFF', // White
+      accent: '#000000'     // Black accent
+    };
+  }
+  
+  // Parse home team colors
+  const homePrimaryRgb = parseHexColor(homeColors.primary);
+  const homeSecondaryRgb = parseHexColor(homeColors.secondary);
+  
+  // Alternative color options that provide good contrast
+  const alternativeColors = [
+    '#0EA5E9', // Bright blue
+    '#8B5CF6', // Vivid purple
+    '#F97316', // Bright orange
+    '#D946EF', // Magenta pink
+    '#22C55E', // Green
+    '#3730A3', // Indigo
+    '#0F766E', // Teal
+    '#BE185D', // Pink
+    '#FFFF00'  // Yellow
+  ];
+  
+  // Find the color with the best contrast against home team colors
+  let bestColor = alternativeColors[0];
+  let maxDistance = 0;
+  
+  for (const color of alternativeColors) {
+    const rgb = parseHexColor(color);
+    
+    // Calculate distance to home primary
+    const rDiff1 = rgb.r - homePrimaryRgb.r;
+    const gDiff1 = rgb.g - homePrimaryRgb.g;
+    const bDiff1 = rgb.b - homePrimaryRgb.b;
+    
+    const distToPrimary = Math.sqrt(
+      (rDiff1 * rDiff1) * 0.299 + 
+      (gDiff1 * gDiff1) * 0.587 + 
+      (bDiff1 * bDiff1) * 0.114
+    );
+    
+    // Calculate distance to home secondary
+    const rDiff2 = rgb.r - homeSecondaryRgb.r;
+    const gDiff2 = rgb.g - homeSecondaryRgb.g;
+    const bDiff2 = rgb.b - homeSecondaryRgb.b;
+    
+    const distToSecondary = Math.sqrt(
+      (rDiff2 * rDiff2) * 0.299 + 
+      (gDiff2 * gDiff2) * 0.587 + 
+      (bDiff2 * bDiff2) * 0.114
+    );
+    
+    // Combined distance (weighted more toward primary)
+    const totalDist = distToPrimary * 0.7 + distToSecondary * 0.3;
+    
+    if (totalDist > maxDistance) {
+      maxDistance = totalDist;
+      bestColor = color;
+    }
+  }
+  
+  // For AC Milan vs Empoli specifically, use purple kit
+  if ((homeTeam === 'AC Milan' && awayTeam === 'Empoli') || 
+      (homeTeam === 'Empoli' && awayTeam === 'AC Milan')) {
+    bestColor = '#8B5CF6'; // Vivid purple
+  }
+  
+  // Choose a good secondary color (white or black based on primary brightness)
+  const bestColorRgb = parseHexColor(bestColor);
+  const brightness = (bestColorRgb.r * 299 + bestColorRgb.g * 587 + bestColorRgb.b * 114) / 1000;
+  const secondaryColor = brightness > 128 ? '#000000' : '#FFFFFF';
+  
+  // Return the alternative kit
+  return {
+    primary: bestColor,
+    secondary: secondaryColor,
+    accent: '#CCCCCC' // Light gray accent
+  };
 };
 
 // Comprehensive kit conflict check

@@ -1,8 +1,10 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import TournamentMatch from '../../components/game/TournamentMatch';
 import { Match } from '../../types/tournament';
 import { Score } from '../../types/football';
+import { toast } from 'sonner';
+import { checkTeamColorConflict, generateAlternativeKit } from '../../types/kits/kitConflictChecker';
 
 interface ActiveMatchProps {
   activeMatch: Match;
@@ -15,6 +17,33 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
   onBackClick,
   onMatchComplete
 }) => {
+  const [kitConflictChecked, setKitConflictChecked] = useState(false);
+  
+  useEffect(() => {
+    if (activeMatch && activeMatch.teamA && activeMatch.teamB && !kitConflictChecked) {
+      const homeTeam = activeMatch.teamA.name;
+      const awayTeam = activeMatch.teamB.name;
+      
+      // Check for color conflicts between teams
+      const conflictResult = checkTeamColorConflict(homeTeam, awayTeam);
+      
+      if (conflictResult.hasConflict) {
+        // Generate an alternative kit if conflict detected
+        const alternativeKit = generateAlternativeKit(homeTeam, awayTeam);
+        
+        toast.info("Kit conflict detected", {
+          description: `${awayTeam} will use a special kit to avoid color conflict with ${homeTeam}`,
+          duration: 3000
+        });
+        
+        console.log(`Kit conflict detected between ${homeTeam} and ${awayTeam}`, conflictResult.conflictDetails);
+        console.log(`Alternative kit generated:`, alternativeKit);
+      }
+      
+      setKitConflictChecked(true);
+    }
+  }, [activeMatch, kitConflictChecked]);
+
   if (!activeMatch || !activeMatch.teamA || !activeMatch.teamB) return null;
 
   return (

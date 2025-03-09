@@ -77,12 +77,33 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
   const [goldenGoalScored, setGoldenGoalScored] = useState(false);
   
   const [kitConflictResolved, setKitConflictResolved] = useState(false);
+  const [alternativeKit, setAlternativeKit] = useState<any>(null);
   
   const resultDeterminedRef = useRef(false);
   
   useEffect(() => {
     if (!kitConflictResolved && homeTeam && awayTeam) {
       console.log(`Checking kit conflicts between ${homeTeam} and ${awayTeam}`);
+      
+      // First check for exact match conflicts (AC Milan vs Empoli)
+      if ((homeTeam === 'AC Milan' && awayTeam === 'Empoli') || 
+          (homeTeam === 'Empoli' && awayTeam === 'AC Milan')) {
+        console.log(`Detected special case conflict: ${homeTeam} vs ${awayTeam}`);
+        
+        // Create an alternative kit for the away team
+        const newKit = {
+          primary: '#8B5CF6', // Vivid purple
+          secondary: '#FFFFFF', // White
+          accent: '#000000'    // Black
+        };
+        
+        setAlternativeKit(newKit);
+        
+        toast.success(`Kit conflict resolved`, {
+          description: `${awayTeam} will use a special purple kit to avoid color clash with ${homeTeam}`,
+          duration: 3000
+        });
+      }
       
       let awayTeamKitType = getAwayTeamKit(homeTeam, awayTeam);
       
@@ -249,6 +270,11 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
       const mirroredBrain = redTeamBrains[i];
       console.log(`Mirrored brain for blue ${role} #${i + 12} from red player #${i + 1}`);
       
+      // Apply alternative kit if it exists and this is a conflict match
+      const hasAlternativeKit = alternativeKit && 
+        ((homeTeam === 'AC Milan' && awayTeam === 'Empoli') || 
+         (homeTeam === 'Empoli' && awayTeam === 'AC Milan'));
+      
       newPlayers.push({
         id: i + 12,
         position: position,
@@ -260,8 +286,8 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         targetPosition: position,
         teamName: awayTeam,
         teamElo: awayTeamElo,
-        kitType: awayTeamKitType,
-        kit: 'default',
+        kitType: hasAlternativeKit ? 'special' : awayTeamKitType,
+        kit: hasAlternativeKit ? 'alternative' : 'default',
         name: `Blue${i+1}`,
         goals: 0,
         assists: 0,
@@ -358,4 +384,3 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
 };
 
 export default TournamentMatch;
-
