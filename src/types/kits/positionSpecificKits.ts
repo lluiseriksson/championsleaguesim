@@ -1,3 +1,4 @@
+
 import { teamKitColors } from './teamColorsData';
 import { KitType, TeamKit, TeamKitColors } from './kitTypes';
 import { 
@@ -61,10 +62,10 @@ export function getPositionSpecificKits(
 
   // Track conflicts for each position - define with all required kit types
   const positionConflicts: Record<PlayerPosition, Record<KitType, number>> = {
-    goalkeeper: { home: 0, away: 0, third: 0 },
-    defender: { home: 0, away: 0, third: 0 },
-    midfielder: { home: 0, away: 0, third: 0 },
-    forward: { home: 0, away: 0, third: 0 }
+    goalkeeper: { home: 0, away: 0, third: 0, special: 0 },
+    defender: { home: 0, away: 0, third: 0, special: 0 },
+    midfielder: { home: 0, away: 0, third: 0, special: 0 },
+    forward: { home: 0, away: 0, third: 0, special: 0 }
   };
 
   // Check goalkeeper conflicts (highest priority)

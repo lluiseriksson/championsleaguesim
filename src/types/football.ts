@@ -1,4 +1,3 @@
-
 import * as brain from 'brain.js';
 
 export interface Position {
@@ -169,7 +168,7 @@ export interface NeuralNet {
   lastSituationContext?: SituationContext;
 }
 
-export type KitType = 'home' | 'away' | 'third';
+export type KitType = 'home' | 'away' | 'third' | 'special';
 
 export interface Player {
   id: number;
