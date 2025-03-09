@@ -29,7 +29,8 @@ const conflictingTeamPairs: [string, string][] = [
   ['Girona', 'Celta'], 
   ['Brest', 'FC København'],
   ['Fulham', 'Las Palmas'],
-  ['RB Leipzig', 'Braga'], 
+  ['RB Leipzig', 'Braga'],
+  ['RB Leipzig', 'Rangers'],
   ['Inter', 'Manchester United'],
   ['Inter', 'Man United']
 ];

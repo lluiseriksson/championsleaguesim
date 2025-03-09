@@ -1,4 +1,3 @@
-
 import { teamKitColors } from './teamColorsData';
 import { KitType, TeamKit, TeamKitColors } from './kitTypes';
 import { 
@@ -21,6 +20,20 @@ export interface KitSelectionResult {
 
 // Cache for kit selection results to avoid recalculations
 const positionKitCache: Record<string, KitSelectionResult> = {};
+
+// Teams with known dark kit conflicts (e.g., black vs black)
+const darkKitConflictTeams: [string, string][] = [
+  ['RB Leipzig', 'Rangers'],
+  ['RB Leipzig', 'Braga'],
+  ['AC Milan', 'Athletic Bilbao']
+];
+
+// Check if teams have a known dark kit conflict
+const hasDarkKitConflict = (team1: string, team2: string): boolean => {
+  return darkKitConflictTeams.some(
+    ([a, b]) => (a === team1 && b === team2) || (a === team2 && b === team1)
+  );
+};
 
 /**
  * Determines the optimal kit selection for the away team based on position-specific color conflicts
@@ -48,6 +61,15 @@ export function getPositionSpecificKits(
     return { 
       awayTeamKitType: 'away', 
       needsSpecialKit: false 
+    };
+  }
+  
+  // Check for known dark kit conflicts
+  if (hasDarkKitConflict(homeTeamName, awayTeamName)) {
+    return {
+      awayTeamKitType: 'third',
+      needsSpecialKit: false,
+      conflictDescription: `Known dark kit conflict between ${homeTeamName} and ${awayTeamName}. Using third kit.`
     };
   }
 
