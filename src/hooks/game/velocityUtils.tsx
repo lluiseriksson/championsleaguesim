@@ -1,16 +1,16 @@
 import { Position } from '../../types/football';
 import { normalizeVelocity, denormalizeVelocity } from '../../utils/gamePhysics';
 
-// Reduced speed from 8.4 to 6.0 (about 30% slower)
-const MIN_BALL_SPEED = 6.0;
+// Aumento del 15% sobre el valor anterior (6.0 * 1.15 = ~6.9)
+const MIN_BALL_SPEED = 6.9;
 
 // Apply subtle deceleration and minimum velocity
 export function applyVelocityAdjustments(velocity: Position): Position {
   // Apply very mild deceleration - we want ball to keep moving
-  // Increased deceleration factor to slow down ball slightly more
+  // Reduced deceleration factor to make ball 15% faster
   let adjustedVelocity = {
-    x: velocity.x * 0.997, // More deceleration (from 0.998)
-    y: velocity.y * 0.997  // More deceleration (from 0.998)
+    x: velocity.x * 0.9975, // Less deceleration (from 0.997)
+    y: velocity.y * 0.9975  // Less deceleration (from 0.997)
   };
   
   // Never let the ball stop completely unless it's stationary to begin with

@@ -107,22 +107,23 @@ export const applyRandomKick = (
     onBallTouch(playerF);
   }
   
+  // INCREASED random kick velocity by 15%
   let newVelocity = {
-    x: (Math.random() * 7.2) - 3.6,
-    y: (Math.random() * 7.2) - 3.6
+    x: (Math.random() * 8.3) - 4.15, // Increased from 7.2/3.6 (15% faster)
+    y: (Math.random() * 8.3) - 4.15  // Increased from 7.2/3.6 (15% faster)
   };
   
   let attempts = 0;
   while (isPointingTowardGoal(currentBall.position, newVelocity) && attempts < 5) {
     newVelocity = {
-      x: (Math.random() * 7.2) - 3.6,
-      y: (Math.random() * 7.2) - 3.6
+      x: (Math.random() * 8.3) - 4.15, // Increased from 7.2/3.6 (15% faster)
+      y: (Math.random() * 8.3) - 4.15  // Increased from 7.2/3.6 (15% faster)
     };
     attempts++;
   }
   
   if (isPointingTowardGoal(currentBall.position, newVelocity)) {
-    newVelocity.y = (Math.random() * 3) - 1.5;
+    newVelocity.y = (Math.random() * 3.45) - 1.72; // Increased from 3/1.5 (15% faster)
     const moveTowardCenter = currentBall.position.x < PITCH_WIDTH / 2 ? 1 : -1;
     newVelocity.x = Math.abs(newVelocity.x) * moveTowardCenter;
   }
