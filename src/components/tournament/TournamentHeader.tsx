@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { Trophy } from 'lucide-react';
 import { TournamentTeam } from '../../types/tournament';
 import { getTeamKitColor } from '../../types/teamKits';
@@ -52,10 +51,6 @@ const TournamentHeader: React.FC<TournamentHeaderProps> = ({
             </div>
           </div>
         )}
-      </div>
-      
-      <div className="mb-6">
-        <Link to="/" className="text-blue-600 hover:underline">← Back to Home</Link>
       </div>
     </>
   );
