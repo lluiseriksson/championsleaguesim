@@ -102,20 +102,6 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
         ← Back to Tournament
       </button>
       
-      <div className="mb-4 p-3 bg-white rounded border border-gray-200">
-        <h3 className="font-semibold text-lg mb-2">Match Kit Information</h3>
-        <p className="text-sm text-gray-700">
-          <span className="font-medium">{activeMatch.teamA.name} (Home):</span> Primary Kit
-        </p>
-        <p className="text-sm text-gray-700">
-          <span className="font-medium">{activeMatch.teamB.name} (Away):</span> {' '}
-          {selectedAwayKitType === 'away' ? 'Secondary Kit' : 
-           selectedAwayKitType === 'third' ? 'Third Kit' : 
-           selectedAwayKitType === 'special' ? 'Special Fourth Kit' : 
-           selectedAwayKitType}
-        </p>
-      </div>
-      
       <TournamentMatch 
         homeTeam={activeMatch.teamA.name}
         awayTeam={activeMatch.teamB.name}
