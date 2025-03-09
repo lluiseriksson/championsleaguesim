@@ -5,6 +5,8 @@ import { Match } from '../../types/tournament';
 import { Score } from '../../types/football';
 import { toast } from 'sonner';
 import { checkTeamColorConflict, generateAlternativeKit } from '../../types/kits/kitConflictChecker';
+import { teamKitColors } from '../../types/kits/teamColorsData';
+import { getAwayTeamKit } from '../../types/kits/kitSelection';
 
 interface ActiveMatchProps {
   activeMatch: Match;
@@ -23,6 +25,30 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
     if (activeMatch && activeMatch.teamA && activeMatch.teamB && !kitConflictChecked) {
       const homeTeam = activeMatch.teamA.name;
       const awayTeam = activeMatch.teamB.name;
+      
+      // Get home team kit colors
+      const homeTeamKit = teamKitColors[homeTeam]?.home;
+      if (!homeTeamKit) {
+        console.warn(`Home team ${homeTeam} kit colors not found`);
+      } else {
+        console.log(`Home team ${homeTeam} using primary kit:`, homeTeamKit.primary);
+      }
+      
+      // Determine best away team kit to use
+      const awayKitType = getAwayTeamKit(homeTeam, awayTeam);
+      const awayTeamKit = teamKitColors[awayTeam]?.[awayKitType];
+      
+      if (!awayTeamKit) {
+        console.warn(`Away team ${awayTeam} kit colors not found`);
+      } else {
+        console.log(`Away team ${awayTeam} using ${awayKitType} kit:`, awayTeamKit.primary);
+        
+        // Show kit selection to user
+        toast.info(`Kit selection for ${awayTeam}`, {
+          description: `Using ${awayKitType} kit to avoid color conflict with ${homeTeam}`,
+          duration: 3000
+        });
+      }
       
       // Check for color conflicts between teams
       const conflictResult = checkTeamColorConflict(homeTeam, awayTeam);

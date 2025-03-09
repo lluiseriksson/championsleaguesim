@@ -1,3 +1,4 @@
+
 import { teamKitColors } from './teamColorsData';
 import { KitType, TeamKit, TeamKitColors } from './kitTypes';
 import { 
@@ -25,7 +26,8 @@ const positionKitCache: Record<string, KitSelectionResult> = {};
 const darkKitConflictTeams: [string, string][] = [
   ['RB Leipzig', 'Rangers'],
   ['RB Leipzig', 'Braga'],
-  ['AC Milan', 'Athletic Bilbao']
+  ['AC Milan', 'Athletic Bilbao'],
+  ['Brest', 'Krasnodar'] // Adding Brest vs Krasnodar as they have similar red kits
 ];
 
 // Check if teams have a known dark kit conflict
@@ -38,6 +40,8 @@ const hasDarkKitConflict = (team1: string, team2: string): boolean => {
 /**
  * Determines the optimal kit selection for the away team based on position-specific color conflicts
  * with the home team.
+ * 
+ * Home team always uses their primary kit. Away team selects the most distinct kit to avoid conflicts.
  * 
  * @param homeTeamName - Name of the home team
  * @param awayTeamName - Name of the away team
@@ -66,10 +70,12 @@ export function getPositionSpecificKits(
   
   // Check for known dark kit conflicts
   if (hasDarkKitConflict(homeTeamName, awayTeamName)) {
+    console.log(`Known kit conflict between ${homeTeamName} and ${awayTeamName}`);
+    // For known conflicts, use the third kit as it's usually designed for maximum contrast
     return {
       awayTeamKitType: 'third',
       needsSpecialKit: false,
-      conflictDescription: `Known dark kit conflict between ${homeTeamName} and ${awayTeamName}. Using third kit.`
+      conflictDescription: `Known kit conflict between ${homeTeamName} and ${awayTeamName}. Using third kit.`
     };
   }
 
@@ -77,7 +83,7 @@ export function getPositionSpecificKits(
   const homeGkColors = homeTeam.goalkeeper;
   const homeOutfieldColors = homeTeam.home;
 
-  // Extract away team options
+  // Extract away team options - check both away and third kits
   const awayKitColors = awayTeam.away;
   const thirdKitColors = awayTeam.third;
   const awayGkColors = awayTeam.goalkeeper;
@@ -141,6 +147,12 @@ export function getPositionSpecificKits(
   const awayVsGkDistance = getEnhancedColorDistance(homeGkRgb, awayKitRgb);
   const thirdVsGkDistance = getEnhancedColorDistance(homeGkRgb, thirdKitRgb);
 
+  // For debugging
+  console.log(`${homeTeamName} (home) vs ${awayTeamName} (away) kit distances:`);
+  console.log(`Home primary: ${homeOutfieldColors.primary}`);
+  console.log(`Away kit: ${awayKitColors.primary}, distance: ${awayVsHomeDistance.toFixed(0)}`);
+  console.log(`Third kit: ${thirdKitColors.primary}, distance: ${thirdVsHomeDistance.toFixed(0)}`);
+
   // Determine the best overall kit for outfield players
   let mainKitType: KitType = 'away';
   let needsSpecialKit = false;
@@ -170,7 +182,11 @@ export function getPositionSpecificKits(
     const totalAwayDistance = awayVsHomeDistance * 1.5 + awayVsGkDistance;
     const totalThirdDistance = thirdVsHomeDistance * 1.5 + thirdVsGkDistance;
     
+    // Choose the kit with the greater distance (more distinct)
     mainKitType = totalThirdDistance > totalAwayDistance ? 'third' : 'away';
+    
+    console.log(`Kit distances - Away total: ${totalAwayDistance.toFixed(0)}, Third total: ${totalThirdDistance.toFixed(0)}`);
+    console.log(`Selected ${mainKitType} kit for ${awayTeamName} based on better contrast`);
   }
   
   // Check if we need position-specific overrides
@@ -184,6 +200,7 @@ export function getPositionSpecificKits(
   // Special case: If all options have significant conflicts
   if (awayConflictScore > 3 && thirdConflictScore > 3) {
     needsSpecialKit = true;
+    console.log(`Both away and third kits have significant conflicts, marking need for special kit`);
   }
   
   // Build conflict description for debugging
@@ -259,6 +276,8 @@ export function generateSpecialKit(
       bestColor = color;
     }
   }
+  
+  console.log(`Generated special kit with color ${bestColor} for maximum contrast`);
   
   // Create a special kit based on the best contrasting color
   return {

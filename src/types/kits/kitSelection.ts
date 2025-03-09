@@ -102,7 +102,11 @@ const teamConflictOverrides: Record<string, Record<string, KitType>> = {
     'Girona': 'third'
   },
   'Brest': {
-    'FC København': 'third'
+    'FC København': 'third',
+    'Krasnodar': 'third'
+  },
+  'Krasnodar': {
+    'Brest': 'third'
   },
   'RB Leipzig': {
     'Braga': 'third',
