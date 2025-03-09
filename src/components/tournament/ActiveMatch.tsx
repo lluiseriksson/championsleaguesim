@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { checkTeamColorConflict, generateAlternativeKit } from '../../types/kits/kitConflictChecker';
 import { teamKitColors } from '../../types/kits/teamColorsData';
 import { getAwayTeamKit } from '../../types/kits/kitSelection';
+import { KitType } from '../../types/kits/kitTypes';
 
 interface ActiveMatchProps {
   activeMatch: Match;
@@ -20,13 +21,14 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
   onMatchComplete
 }) => {
   const [kitConflictChecked, setKitConflictChecked] = useState(false);
+  const [selectedAwayKitType, setSelectedAwayKitType] = useState<KitType>('away');
   
   useEffect(() => {
     if (activeMatch && activeMatch.teamA && activeMatch.teamB && !kitConflictChecked) {
       const homeTeam = activeMatch.teamA.name;
       const awayTeam = activeMatch.teamB.name;
       
-      // Get home team kit colors
+      // Get home team kit colors (always use primary/home kit)
       const homeTeamKit = teamKitColors[homeTeam]?.home;
       if (!homeTeamKit) {
         console.warn(`Home team ${homeTeam} kit colors not found`);
@@ -34,8 +36,10 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
         console.log(`Home team ${homeTeam} using primary kit:`, homeTeamKit.primary);
       }
       
-      // Determine best away team kit to use
+      // Determine best away team kit to use (may be away, third, or special)
       const awayKitType = getAwayTeamKit(homeTeam, awayTeam);
+      setSelectedAwayKitType(awayKitType);
+      
       const awayTeamKit = teamKitColors[awayTeam]?.[awayKitType];
       
       if (!awayTeamKit) {
@@ -43,10 +47,25 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
       } else {
         console.log(`Away team ${awayTeam} using ${awayKitType} kit:`, awayTeamKit.primary);
         
-        // Show kit selection to user
+        // Show kit selection to user with more descriptive message
+        let kitDescription = '';
+        switch(awayKitType) {
+          case 'away':
+            kitDescription = 'away (secondary)';
+            break;
+          case 'third':
+            kitDescription = 'third (alternative)';
+            break;
+          case 'special':
+            kitDescription = 'special fourth kit';
+            break;
+          default:
+            kitDescription = awayKitType;
+        }
+        
         toast.info(`Kit selection for ${awayTeam}`, {
-          description: `Using ${awayKitType} kit to avoid color conflict with ${homeTeam}`,
-          duration: 3000
+          description: `Using ${kitDescription} kit to avoid color conflict with ${homeTeam}`,
+          duration: 4000
         });
       }
       
@@ -57,10 +76,12 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
         // Generate an alternative kit if conflict detected
         const alternativeKit = generateAlternativeKit(homeTeam, awayTeam);
         
-        toast.info("Kit conflict detected", {
-          description: `${awayTeam} will use a special kit to avoid color conflict with ${homeTeam}`,
-          duration: 3000
-        });
+        if (awayKitType === 'special') {
+          toast.info("Special kit needed", {
+            description: `${awayTeam} will use a unique fourth kit to avoid severe color conflict with ${homeTeam}`,
+            duration: 4000
+          });
+        }
         
         console.log(`Kit conflict detected between ${homeTeam} and ${awayTeam}`, conflictResult.conflictDetails);
         console.log(`Alternative kit generated:`, alternativeKit);
@@ -80,6 +101,21 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
       >
         ← Back to Tournament
       </button>
+      
+      <div className="mb-4 p-3 bg-white rounded border border-gray-200">
+        <h3 className="font-semibold text-lg mb-2">Match Kit Information</h3>
+        <p className="text-sm text-gray-700">
+          <span className="font-medium">{activeMatch.teamA.name} (Home):</span> Primary Kit
+        </p>
+        <p className="text-sm text-gray-700">
+          <span className="font-medium">{activeMatch.teamB.name} (Away):</span> {' '}
+          {selectedAwayKitType === 'away' ? 'Secondary Kit' : 
+           selectedAwayKitType === 'third' ? 'Third Kit' : 
+           selectedAwayKitType === 'special' ? 'Special Fourth Kit' : 
+           selectedAwayKitType}
+        </p>
+      </div>
+      
       <TournamentMatch 
         homeTeam={activeMatch.teamA.name}
         awayTeam={activeMatch.teamB.name}
