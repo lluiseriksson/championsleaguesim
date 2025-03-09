@@ -1,3 +1,4 @@
+
 import { teamKitColors } from './teamColorsData';
 import { KitType, TeamKitColors } from './kitTypes';
 import { getColorDistance, parseHexColor, isWhiteColor } from './colorUtils';
@@ -68,8 +69,8 @@ export function getAwayTeamKit(homeTeamName: string, awayTeamName: string): KitT
       console.log(`Severe kit conflict between ${homeTeamName} and ${awayTeamName} - both away and third kits conflict`);
       console.log(`Generating special fourth kit for ${awayTeamName}`);
       
-      // Fixed: Generate a special fourth kit and use the return value
-      generateSpecialKit(awayTeam, homeTeam);
+      // Fix: Pass homeTeam.home instead of homeTeam to match the expected TeamKitColors type
+      generateSpecialKit(awayTeam, homeTeam.home);
       
       // Store in cache and return
       kitSelectionCache[cacheKey] = 'special';

@@ -1,4 +1,3 @@
-
 // Helper function to parse hex color to RGB
 export function parseHexColor(hex: string): { r: number, g: number, b: number } {
   // Handle invalid hex colors
@@ -59,6 +58,14 @@ export function getEnhancedColorDistance(
   
   // Combine all factors with increased weights for better differentiation
   return baseDistance * 0.7 + brightnessDiff * 80 + hueDiff * 60; // Further increased weights for better differentiation
+}
+
+// Add the missing isWhiteColor function
+export function isWhiteColor(hexColor: string): boolean {
+  if (!hexColor) return false;
+  
+  const rgb = parseHexColor(hexColor);
+  return rgb.r > 230 && rgb.g > 230 && rgb.b > 230;
 }
 
 // Color category system

@@ -1,4 +1,3 @@
-
 import { teamKitColors } from './teamColorsData';
 import { KitType, TeamKit, TeamKitColors } from './kitTypes';
 import { 
@@ -239,12 +238,12 @@ export function clearPositionKitCache(): void {
 /**
  * Generate a special fourth kit for extreme conflict cases
  * @param awayTeam The away team's kit information
- * @param homeTeam The home team's kit information
+ * @param homeTeamKit The home team's kit colors (primary kit)
  * @returns A modified kit with distinct colors
  */
 export function generateSpecialKit(
   awayTeam: TeamKit,
-  homeTeam: TeamKit
+  homeTeamKit: TeamKitColors
 ): TeamKitColors {
   // Create vibrant alternatives that will be distinct from both teams
   const specialColors = [
@@ -262,8 +261,8 @@ export function generateSpecialKit(
   let bestColor = specialColors[0];
   let maxDistance = 0;
   
-  const homeOutfieldRgb = parseHexColor(homeTeam.home.primary);
-  const homeGkRgb = parseHexColor(homeTeam.goalkeeper.primary);
+  const homeOutfieldRgb = parseHexColor(homeTeamKit.primary);
+  const homeGkRgb = parseHexColor(awayTeam.goalkeeper.primary);
   
   for (const color of specialColors) {
     const colorRgb = parseHexColor(color);
