@@ -1,4 +1,5 @@
-import { KitType, TeamKit } from './kitTypes';
+
+import { KitType, TeamKit, TeamKitColors } from './kitTypes';
 import { teamKitColors } from './teamColorsData';
 import { 
   parseHexColor, 
@@ -230,8 +231,9 @@ export const getAwayTeamKit = (homeTeamName: string, awayTeamName: string): KitT
     console.log(`Severe kit conflict between ${homeTeamName} and ${awayTeamName} - both away and third kits conflict`);
     console.log(`Generating special fourth kit for ${awayTeamName}`);
     
-    // Generate a special fourth kit
-    const specialKit = generateSpecialKit(awayTeam, homeTeam);
+    // Fixed: Pass the correct type to generateSpecialKit
+    // The function expects TeamKit objects, not TeamKitColors
+    generateSpecialKit(awayTeam, homeTeam);
     
     // Store in cache and return
     kitSelectionCache[cacheKey] = 'special';
