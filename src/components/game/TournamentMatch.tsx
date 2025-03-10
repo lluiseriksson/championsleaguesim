@@ -45,14 +45,16 @@ interface TournamentMatchProps {
   homeTeam: string;
   awayTeam: string;
   onMatchComplete: (winner: string, finalScore: Score, wasGoldenGoal: boolean) => void;
-  matchDuration?: number; // in seconds
+  matchDuration?: number;
+  awayKitType: KitType;
 }
 
 const TournamentMatch: React.FC<TournamentMatchProps> = ({ 
   homeTeam, 
   awayTeam, 
   onMatchComplete,
-  matchDuration = 60 // 1 minute default (changed from 120)
+  matchDuration = 60,
+  awayKitType
 }) => {
   const displayHomeTeam = transliterateRussianName(homeTeam);
   const displayAwayTeam = transliterateRussianName(awayTeam);
