@@ -12,7 +12,9 @@ const knownConflictTeams: string[] = [
   'RB Leipzig-Rangers',
   'RB Leipzig-Braga',
   'AC Milan-Athletic Bilbao',
-  'Brest-Krasnodar'
+  'Brest-Krasnodar',
+  'Stuttgart-Verona', // Add Stuttgart-Verona as a known conflict
+  'Juventus-Fulham'   // Add Juventus-Fulham as they both have white primary kits
 ];
 
 // Function to determine which kit the away team should use
@@ -42,11 +44,25 @@ export function getAwayTeamKit(homeTeamName: string, awayTeamName: string): KitT
     return 'third';
   }
 
-  // Check if home team has white primary and away has white primary
-  if (isWhiteColor(homeKit.primary) && isWhiteColor(awayKit.primary)) {
-    console.log(`Both teams have white primary colors, using third kit for ${awayTeamName}`);
-    kitSelectionCache[cacheKey] = 'third';
-    return 'third';
+  // Special handling for teams with white primary kits
+  // If home team has white primary and away has white primary or very light color
+  if (isWhiteColor(homeKit.primary)) {
+    // If away team's away kit is also white or very light, use third kit
+    if (isWhiteColor(awayKit.primary)) {
+      console.log(`Both teams have white primary colors, using third kit for ${awayTeamName}`);
+      kitSelectionCache[cacheKey] = 'third';
+      return 'third';
+    }
+    
+    // Extra check for light-colored away kits (not just pure white)
+    const awayRgb = parseHexColor(awayKit.primary);
+    const isVeryLightKit = awayRgb.r > 220 && awayRgb.g > 220 && awayRgb.b > 220;
+    
+    if (isVeryLightKit) {
+      console.log(`Away kit for ${awayTeamName} is very light colored, using third kit to contrast with ${homeTeamName}'s white kit`);
+      kitSelectionCache[cacheKey] = 'third';
+      return 'third';
+    }
   }
   
   // Calculate color distances between kits
