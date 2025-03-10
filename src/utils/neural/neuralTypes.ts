@@ -19,10 +19,12 @@ export const calculateEloRadiusAdjustment = (teamElo: number = 1500, opponentElo
   // The issue was that the function returned positive values for weaker teams and negative for stronger teams
   if (teamElo > opponentElo) {
     // Correct bonus for higher-rated team (0 to 20 units)
-    return Math.sqrt(eloDifference / 500) * 20;
+    // Reduced by 10%
+    return Math.sqrt(eloDifference / 500) * 18; // Reduced from 20 to 18
   } else if (teamElo < opponentElo) {
     // Correct penalty for lower-rated team (0 to -20 units)
-    return -Math.sqrt(eloDifference / 500) * 20;
+    // Reduced by 10%
+    return -Math.sqrt(eloDifference / 500) * 18; // Reduced from 20 to 18
   }
   
   return 0; // No adjustment for equal ratings
@@ -41,20 +43,20 @@ export const calculateEloGoalkeeperReachAdjustment = (
   if (teamElo > opponentElo) {
     // Higher-rated team's goalkeeper gets improved reach
     if (isAngledShot) {
-      // Bonus for angled shots (up to 12 units)
-      return Math.sqrt(eloDifference / 500) * 12;
+      // Bonus for angled shots (up to 10.8 units, reduced by 10%)
+      return Math.sqrt(eloDifference / 500) * 10.8; // Reduced from 12 to 10.8
     } else {
-      // Major bonus for straight shots (up to 30 units)
-      return Math.sqrt(eloDifference / 500) * 30;
+      // Major bonus for straight shots (up to 27 units, reduced by 10%)
+      return Math.sqrt(eloDifference / 500) * 27; // Reduced from 30 to 27
     }
   } else if (teamElo < opponentElo) {
     // Lower-rated team's goalkeeper gets reduced reach
     if (isAngledShot) {
-      // Penalty for angled shots (up to -25 units)
-      return -Math.sqrt(eloDifference / 500) * 25;
+      // Penalty for angled shots (up to -22.5 units, reduced by 10%)
+      return -Math.sqrt(eloDifference / 500) * 22.5; // Reduced from 25 to 22.5
     } else {
-      // Penalty for straight shots too (up to -10 units)
-      return -Math.sqrt(eloDifference / 500) * 10;
+      // Penalty for straight shots too (up to -9 units, reduced by 10%)
+      return -Math.sqrt(eloDifference / 500) * 9; // Reduced from 10 to 9
     }
   }
   
