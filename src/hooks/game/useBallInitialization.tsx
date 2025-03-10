@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Ball, Position, PITCH_WIDTH, PITCH_HEIGHT, Player } from '../../types/football';
 
@@ -107,23 +106,23 @@ export const applyRandomKick = (
     onBallTouch(playerF);
   }
   
-  // INCREASED random kick velocity by 15%
+  // INCREASED random kick velocity by 10%
   let newVelocity = {
-    x: (Math.random() * 8.3) - 4.15, // Increased from 7.2/3.6 (15% faster)
-    y: (Math.random() * 8.3) - 4.15  // Increased from 7.2/3.6 (15% faster)
+    x: (Math.random() * 9.1) - 4.55, // Increased from 8.3/4.15 (10% faster)
+    y: (Math.random() * 9.1) - 4.55  // Increased from 8.3/4.15 (10% faster)
   };
   
   let attempts = 0;
   while (isPointingTowardGoal(currentBall.position, newVelocity) && attempts < 5) {
     newVelocity = {
-      x: (Math.random() * 8.3) - 4.15, // Increased from 7.2/3.6 (15% faster)
-      y: (Math.random() * 8.3) - 4.15  // Increased from 7.2/3.6 (15% faster)
+      x: (Math.random() * 9.1) - 4.55, // Increased from 8.3/4.15 (10% faster)
+      y: (Math.random() * 9.1) - 4.55  // Increased from 8.3/4.15 (10% faster)
     };
     attempts++;
   }
   
   if (isPointingTowardGoal(currentBall.position, newVelocity)) {
-    newVelocity.y = (Math.random() * 3.45) - 1.72; // Increased from 3/1.5 (15% faster)
+    newVelocity.y = (Math.random() * 3.8) - 1.9; // Increased from 3.45/1.72 (10% faster)
     const moveTowardCenter = currentBall.position.x < PITCH_WIDTH / 2 ? 1 : -1;
     newVelocity.x = Math.abs(newVelocity.x) * moveTowardCenter;
   }

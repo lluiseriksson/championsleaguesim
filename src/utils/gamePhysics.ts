@@ -1,9 +1,9 @@
 import { Position, Player, PLAYER_RADIUS, BALL_RADIUS, PITCH_WIDTH, PITCH_HEIGHT } from '../types/football';
 import { calculateDistance } from './neuralCore';
 
-// Aumentamos las velocidades un 15% en relación a los valores reducidos previamente
-const MAX_BALL_SPEED = 15; // Increased from 13 (about 15% faster)
-const MIN_BALL_SPEED = 6.9; // Increased from 6.0 (about 15% faster)
+// Aumentamos las velocidades un 10% en relación a los valores anteriores
+const MAX_BALL_SPEED = 16.5; // Increased from 15 (about 10% faster)
+const MIN_BALL_SPEED = 7.6; // Increased from 6.9 (about 10% faster)
 
 // Helper functions for coordinate mirroring
 export const normalizeCoordinates = (position: Position, team: 'red' | 'blue'): Position => {
@@ -138,7 +138,7 @@ export const calculateNewVelocity = (
   // Calculate incident angle
   const incidentAngle = Math.atan2(currentVelocity.y, currentVelocity.x);
   
-  // Special handling for goalkeeper - INCREASED SPEEDS BY 15%
+  // Special handling for goalkeeper - INCREASED SPEEDS BY 10%
   if (isGoalkeeper) {
     // Determine which goal the goalkeeper is defending
     const isLeftGoalkeeper = playerPosition.x < PITCH_WIDTH / 2;
@@ -152,15 +152,15 @@ export const calculateNewVelocity = (
       // Apply extra power for angled shots but less effective goalkeeper response
       const angledShotMultiplier = isAngledShot ? 1.2 : 1.0; // Keep same multiplier
       
-      // Calculate horizontal deflection direction (away from the goal) - 15% FASTER
-      const deflectionX = isLeftGoalkeeper ? 4.1 * angledShotMultiplier : -4.1 * angledShotMultiplier; // Increased from 3.6
+      // Calculate horizontal deflection direction (away from the goal) - 10% FASTER
+      const deflectionX = isLeftGoalkeeper ? 4.5 * angledShotMultiplier : -4.5 * angledShotMultiplier; // Increased from 4.1
       
       // Calculate vertical deflection to push ball away from goal center
       const verticalOffset = ballPosition.y - centerY;
-      const verticalFactor = Math.sign(verticalOffset) * (0.92 + Math.min(Math.abs(verticalOffset) / 100, 0.92)); // Increased by 15%
+      const verticalFactor = Math.sign(verticalOffset) * (1.01 + Math.min(Math.abs(verticalOffset) / 100, 1.01)); // Increased by 10%
       
-      // Goalkeeper saves have more balanced power - 15% FASTER
-      const baseSpeed = isAngledShot ? 10.4 : 9.2; // Increased from 9/8 (15% faster)
+      // Goalkeeper saves have more balanced power - 10% FASTER
+      const baseSpeed = isAngledShot ? 11.4 : 10.1; // Increased from 10.4/9.2 (10% faster)
       
       // Add randomness to saves - sometimes goalkeeper misjudges
       const misjudgeFactor = Math.random();
@@ -181,19 +181,19 @@ export const calculateNewVelocity = (
     }
     
     // When not directly saving, still direct the ball towards the correct side of the field
-    // but with increased power by 15%
+    // but with increased power by 10%
     const teamDirection = isLeftGoalkeeper ? 1 : -1; // 1 for red (left goalkeeper), -1 for blue (right goalkeeper)
     
     return limitSpeed({
-      x: Math.abs(currentVelocity.x) * teamDirection * 1.5, // Increased from 1.3
+      x: Math.abs(currentVelocity.x) * teamDirection * 1.65, // Increased from 1.5
       y: currentVelocity.y
     });
   }
 
-  // INCREASED directional shooting for field players by 15%
+  // INCREASED directional shooting for field players by 10%
   // Add team-specific logic to make the ball tend to go in the right direction
   const team = playerPosition.x < PITCH_WIDTH / 2 ? 'red' : 'blue';
-  const directionalBias = team === 'red' ? 0.29 : -0.29; // Increased from 0.25
+  const directionalBias = team === 'red' ? 0.32 : -0.32; // Increased from 0.29
   
   // For other players or when the ball isn't going toward goal
   const normalizedDx = dx / distance;
@@ -205,8 +205,8 @@ export const calculateNewVelocity = (
     currentVelocity.y * currentVelocity.y
   );
   
-  // INCREASED base speed for all balls by 15%
-  const adjustedSpeed = Math.max(8.05, speed * 1.38);  // Increased from 7/1.2
+  // INCREASED base speed for all balls by 10%
+  const adjustedSpeed = Math.max(8.86, speed * 1.52);  // Increased from 8.05/1.38
   
   // Add directional bias to reflection angle
   const reflectionAngle = angle + (angle - incidentAngle) + directionalBias;
@@ -214,8 +214,8 @@ export const calculateNewVelocity = (
   // Add slight random variation to the reflection - KEEP SAME
   const randomVariation = (Math.random() - 0.5) * 0.3; // Keep as is
   
-  // INCREASED multiplier for player kicks by 15%
-  const speedMultiplier = isGoalkeeper ? 1.61 : 1.61; // Increased from 1.4
+  // INCREASED multiplier for player kicks by 10%
+  const speedMultiplier = isGoalkeeper ? 1.77 : 1.77; // Increased from 1.61
   
   // Calculate new velocity with all factors combined
   let newVelocity = {

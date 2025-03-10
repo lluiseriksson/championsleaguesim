@@ -52,8 +52,8 @@ export const useBallMovement = ({
   // Reference to store previous ball position for tracking
   const previousBallPositionRef = React.useRef<Position>({ ...ball.position });
   
-  // NEW: Reference for max velocity to limit ball speed - INCREASED BY 15%
-  const maxBallVelocityRef = React.useRef<number>(19.5); // Increased from 17 (15% faster)
+  // Reference for max velocity to limit ball speed - INCREASED BY 10%
+  const maxBallVelocityRef = React.useRef<number>(21.5); // Increased from 19.5 (10% faster)
 
   const updateBallPosition = React.useCallback(() => {
     // If the game has ended, don't update ball position
