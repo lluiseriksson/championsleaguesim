@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import TournamentBracket from '../components/TournamentBracket';
 import TournamentHeader from '../components/tournament/TournamentHeader';
 import TournamentControls from '../components/tournament/TournamentControls';
@@ -12,6 +12,8 @@ interface TournamentProps {
 }
 
 const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
+  const [isSimulationStuck, setIsSimulationStuck] = useState(false);
+  
   const {
     matches,
     currentRound,
@@ -50,6 +52,42 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
       }
     }
   }, [matches, currentRound, playingMatch, autoSimulation, setCurrentRound]);
+
+  // Add safety check for stuck simulation
+  useEffect(() => {
+    let stuckTimer: NodeJS.Timeout;
+    
+    if (autoSimulation && !playingMatch) {
+      stuckTimer = setTimeout(() => {
+        const anyPendingMatches = matches.some(m => 
+          m.round === currentRound && !m.played && m.teamA && m.teamB
+        );
+        
+        if (anyPendingMatches) {
+          setIsSimulationStuck(true);
+          console.log("Simulation appears to be stuck, attempting to restart the process");
+          
+          // Attempt to fix stuck simulation by restarting auto-simulation
+          const nextMatch = matches.find(m => 
+            m.round === currentRound && !m.played && m.teamA && m.teamB
+          );
+          
+          if (nextMatch) {
+            if (embeddedMode) {
+              simulateSingleMatch(nextMatch);
+            } else {
+              playMatch(nextMatch);
+            }
+            setIsSimulationStuck(false);
+          }
+        }
+      }, 2000); // Check after 2 seconds of inactivity
+    }
+    
+    return () => {
+      clearTimeout(stuckTimer);
+    };
+  }, [autoSimulation, playingMatch, matches, currentRound, embeddedMode, simulateSingleMatch, playMatch]);
 
   return (
     <div className="mx-auto px-0 py-2 max-w-full">

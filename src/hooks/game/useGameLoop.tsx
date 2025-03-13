@@ -16,8 +16,8 @@ interface GameLoopProps {
   score: Score;
   tournamentMode?: boolean;
   isLowPerformance?: boolean;
-  gameEnded?: boolean; // NEW: Add gameEnded flag to stop the game loop
-  targetFPS?: number; // NEW: Target frame rate for consistent gameplay
+  gameEnded?: boolean; // Flag to stop the game loop
+  targetFPS?: number; // Target frame rate for consistent gameplay
 }
 
 export const useGameLoop = ({
@@ -34,23 +34,30 @@ export const useGameLoop = ({
   score,
   tournamentMode,
   isLowPerformance,
-  gameEnded = false, // NEW: Default to false
-  targetFPS = 60 // NEW: Default target framerate
+  gameEnded = false, // Default to false
+  targetFPS = 60 // Default target framerate
 }: GameLoopProps) => {
   const [gameActive, setGameActive] = useState(true);
   const totalGoalsRef = useRef(0);
   const frameRateRef = useRef<number[]>([]);
   const lastFpsUpdateTime = useRef(0);
+  const requestIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     console.log(`GameLoop - Goals scored: ${totalGoalsRef.current}`);
   }, [totalGoalsRef.current]);
 
-  // NEW: Update gameActive when gameEnded changes
+  // Update gameActive when gameEnded changes
   useEffect(() => {
     if (gameEnded) {
       console.log('Game ended, stopping game loop');
       setGameActive(false);
+      
+      // Cancel any existing animation frame
+      if (requestIdRef.current) {
+        cancelAnimationFrame(requestIdRef.current);
+        requestIdRef.current = null;
+      }
     }
   }, [gameEnded]);
 
@@ -58,6 +65,12 @@ export const useGameLoop = ({
     setGameActive(true);
     return () => {
       setGameActive(false);
+      
+      // Ensure we cancel animation frame on unmount
+      if (requestIdRef.current) {
+        cancelAnimationFrame(requestIdRef.current);
+        requestIdRef.current = null;
+      }
     };
   }, []);
 
@@ -67,7 +80,6 @@ export const useGameLoop = ({
       return;
     }
 
-    let animationFrameId: number;
     let lastFrameTime = performance.now();
     let deltaTime = 0;
     let frameCount = 0;
@@ -75,9 +87,12 @@ export const useGameLoop = ({
     const timeStep = 1000 / targetFPS; // Time step in ms for target frame rate
 
     const gameLoop = (currentTime: number) => {
+      // Store animation frame ID for potential cancellation
+      requestIdRef.current = null;
+      
       // Check if game is still active before continuing
-      if (!gameActive) {
-        console.log('Game loop terminated during frame');
+      if (!gameActive || gameEnded) {
+        console.log('Game loop terminated - gameActive:', gameActive, 'gameEnded:', gameEnded);
         return;
       }
 
@@ -101,7 +116,7 @@ export const useGameLoop = ({
       // Skip frames if delta time is too high (tab was inactive)
       if (deltaTime > 200) {
         console.log(`Large time jump detected: ${deltaTime.toFixed(1)}ms - skipping frame`);
-        animationFrameId = requestAnimationFrame(gameLoop);
+        requestIdRef.current = requestAnimationFrame(gameLoop);
         return;
       }
 
@@ -145,19 +160,20 @@ export const useGameLoop = ({
 
       // Continue the game loop if still active
       if (gameActive && !gameEnded) {
-        animationFrameId = requestAnimationFrame(gameLoop);
+        requestIdRef.current = requestAnimationFrame(gameLoop);
       } else {
-        console.log('Game loop terminating - gameActive:', gameActive, 'gameEnded:', gameEnded);
+        console.log('Game loop terminating without requesting next frame');
       }
     };
 
     // Start the game loop
-    animationFrameId = requestAnimationFrame(gameLoop);
+    requestIdRef.current = requestAnimationFrame(gameLoop);
 
     // Clean up on unmount
     return () => {
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
+      if (requestIdRef.current) {
+        cancelAnimationFrame(requestIdRef.current);
+        requestIdRef.current = null;
         console.log('Cleaning up game loop animation frame');
       }
     };
@@ -173,8 +189,8 @@ export const useGameLoop = ({
     performHistoricalTraining,
     checkTrainingEffectiveness,
     isLowPerformance,
-    gameEnded, // NEW: Add gameEnded to dependencies
-    targetFPS // NEW: Add targetFPS to dependencies
+    gameEnded,
+    targetFPS
   ]);
 
   return { totalGoalsRef };

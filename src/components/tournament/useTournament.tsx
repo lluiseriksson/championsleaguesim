@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Match, TournamentTeam } from '../../types/tournament';
 import { teamKitColors } from '../../types/teamKits';
 import { Score } from '../../types/football';
@@ -17,18 +17,34 @@ export const useTournament = (embeddedMode = false) => {
   const [autoSimulation, setAutoSimulation] = useState(false);
   const [simulationPaused, setSimulationPaused] = useState(false);
   const [matchesPlayed, setMatchesPlayed] = useState(0);
+  
+  // Add simulation timeout ref for cleanup
+  const simulationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!initialized) {
       initializeTournament();
       setInitialized(true);
     }
+    
+    // Cleanup function to clear any pending timeouts
+    return () => {
+      if (simulationTimeoutRef.current) {
+        clearTimeout(simulationTimeoutRef.current);
+      }
+    };
   }, [initialized]);
 
   useEffect(() => {
-    if (!autoSimulation || playingMatch || currentRound > 7) return;
+    // Clear any existing timeout to prevent race conditions
+    if (simulationTimeoutRef.current) {
+      clearTimeout(simulationTimeoutRef.current);
+      simulationTimeoutRef.current = null;
+    }
     
-    let timeoutId: NodeJS.Timeout;
+    if (!autoSimulation || simulationPaused || playingMatch || currentRound > 7) {
+      return;
+    }
     
     const findNextUnplayedMatch = () => {
       return matches.find(m => 
@@ -43,7 +59,11 @@ export const useTournament = (embeddedMode = false) => {
       const nextMatch = findNextUnplayedMatch();
       
       if (nextMatch) {
-        playMatch(nextMatch);
+        if (embeddedMode) {
+          simulateSingleMatch(nextMatch);
+        } else {
+          playMatch(nextMatch);
+        }
       } else {
         const roundMatches = matches.filter(m => m.round === currentRound);
         const allRoundMatchesPlayed = roundMatches.every(m => m.played);
@@ -63,7 +83,7 @@ export const useTournament = (embeddedMode = false) => {
           
           setCurrentRound(nextRoundNumber);
           
-          timeoutId = setTimeout(() => {
+          simulationTimeoutRef.current = setTimeout(() => {
             simulateNextMatch();
           }, 300);
         } else if (currentRound === 7 && allRoundMatchesPlayed) {
@@ -77,14 +97,16 @@ export const useTournament = (embeddedMode = false) => {
       }
     };
     
-    const totalDelay = 400;
+    const totalDelay = embeddedMode ? 200 : 400;
     
-    timeoutId = setTimeout(simulateNextMatch, totalDelay);
+    simulationTimeoutRef.current = setTimeout(simulateNextMatch, totalDelay);
     
     return () => {
-      clearTimeout(timeoutId);
+      if (simulationTimeoutRef.current) {
+        clearTimeout(simulationTimeoutRef.current);
+      }
     };
-  }, [autoSimulation, playingMatch, currentRound, matches, matchesPlayed]);
+  }, [autoSimulation, simulationPaused, playingMatch, currentRound, matches, matchesPlayed, embeddedMode]);
 
   const initializeTournament = useCallback(() => {
     const tournamentTeams: TournamentTeam[] = Object.entries(teamKitColors)
@@ -220,6 +242,7 @@ export const useTournament = (embeddedMode = false) => {
       toast.success("Tournament Complete!", {
         description: `Champion: ${winner.name}`
       });
+      setAutoSimulation(false);
     } else if (currentMatch.round < 7) {
       const nextRoundPosition = Math.ceil(currentMatch.position / 2);
       const nextMatch = updatedMatches.find(
@@ -424,6 +447,7 @@ export const useTournament = (embeddedMode = false) => {
 
   const startAutoSimulation = useCallback(() => {
     setAutoSimulation(true);
+    setSimulationPaused(false);
     
     const nextMatch = matches.find(m => 
       m.round === currentRound && 
@@ -434,14 +458,18 @@ export const useTournament = (embeddedMode = false) => {
     
     if (nextMatch) {
       setTimeout(() => {
-        playMatch(nextMatch);
+        if (embeddedMode) {
+          simulateSingleMatch(nextMatch);
+        } else {
+          playMatch(nextMatch);
+        }
       }, 50);
     }
     
     toast.success("Auto Simulation Started", {
       description: "Tournament will progress automatically"
     });
-  }, [matches, currentRound, playMatch]);
+  }, [matches, currentRound, playMatch, simulateSingleMatch, embeddedMode]);
 
   const getWinner = useCallback(() => {
     const finalMatch = matches.find(m => m.round === 7);

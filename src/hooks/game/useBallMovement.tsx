@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Player, Ball, Position } from '../../types/football';
 import { handleBallPhysics } from './useBallPhysics';
@@ -99,7 +100,7 @@ export const useBallMovement = ({
         };
       }
       
-      // NEW: Ensure ball velocity doesn't exceed max speed
+      // Ensure ball velocity doesn't exceed max speed
       let velocityX = currentBall.velocity.x;
       let velocityY = currentBall.velocity.y;
       const velocityMagnitude = Math.sqrt(velocityX * velocityX + velocityY * velocityY);
