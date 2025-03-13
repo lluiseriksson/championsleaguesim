@@ -17,7 +17,7 @@ interface BallMovementProps {
   checkGoal: (position: Position) => 'red' | 'blue' | null;
   onBallTouch: (player: Player) => void;
   tournamentMode?: boolean;
-  gameEnded?: boolean; // Prop for game ended state
+  gameEnded?: boolean;
 }
 
 export const useBallMovement = ({ 
@@ -27,7 +27,7 @@ export const useBallMovement = ({
   checkGoal, 
   onBallTouch,
   tournamentMode = false,
-  gameEnded = false // Default to false
+  gameEnded = false
 }: BallMovementProps) => {
   // Memoize player categorization
   const { goalkeepers, fieldPlayers } = React.useMemo(() => ({
@@ -56,9 +56,15 @@ export const useBallMovement = ({
   // Reference for max velocity to limit ball speed - INCREASED BY 10%
   const maxBallVelocityRef = React.useRef<number>(21.5); // Increased from 19.5 (10% faster)
 
+  // Log when gameEnded changes
+  React.useEffect(() => {
+    console.log(`useBallMovement - gameEnded changed to: ${gameEnded}`);
+  }, [gameEnded]);
+
   const updateBallPosition = React.useCallback(() => {
-    // If the game has ended, don't update ball position
+    // Immediately return if the game has ended - this is a critical check
     if (gameEnded) {
+      console.log("Ball movement stopped: game ended");
       return;
     }
 
@@ -154,7 +160,7 @@ export const useBallMovement = ({
     onBallTouch, 
     tournamentMode, 
     handleGoalCheck,
-    gameEnded // Add gameEnded to dependencies
+    gameEnded // Ensure gameEnded is included in dependencies
   ]);
 
   return { updateBallPosition };

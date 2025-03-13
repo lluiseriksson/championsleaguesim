@@ -18,7 +18,7 @@ interface GameLogicProps {
   setScore: React.Dispatch<React.SetStateAction<Score>>;
   updatePlayerPositions: () => void;
   tournamentMode?: boolean;
-  matchEnded?: boolean; // NEW: Add matchEnded prop
+  matchEnded?: boolean; 
 }
 
 const GameLogic: React.FC<GameLogicProps> = ({
@@ -30,7 +30,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
   setScore,
   updatePlayerPositions,
   tournamentMode = false,
-  matchEnded = false // Default to false
+  matchEnded = false
 }) => {
   // Reference to track the last player who touched the ball
   const lastPlayerTouchRef = useRef<Player | null>(null);
@@ -44,8 +44,13 @@ const GameLogic: React.FC<GameLogicProps> = ({
     score: { red: number, blue: number } 
   } | null>(null);
   
+  // Track if component is mounted to prevent state updates after unmount
+  const isMountedRef = useRef(true);
+  
   // Watch for score changes to update match result
   useEffect(() => {
+    if (!isMountedRef.current) return;
+    
     // Only update if we have a significant score difference
     if (score.red >= 3 && score.red > score.blue + 1) {
       setMatchResult({
@@ -66,14 +71,21 @@ const GameLogic: React.FC<GameLogicProps> = ({
     }
   }, [score]);
   
-  // Log component lifecycle and key props
+  // Handle component mount/unmount
   useEffect(() => {
     console.log(`GameLogic mounted with tournamentMode: ${tournamentMode}, matchEnded: ${matchEnded}`);
+    isMountedRef.current = true;
     
     return () => {
       console.log(`GameLogic unmounting with tournamentMode: ${tournamentMode}, matchEnded: ${matchEnded}`);
+      isMountedRef.current = false;
     };
   }, [tournamentMode, matchEnded]);
+  
+  // Log when matchEnded changes
+  useEffect(() => {
+    console.log(`matchEnded changed to: ${matchEnded}`);
+  }, [matchEnded]);
   
   console.log(`GameLogic rendered with players: ${players.length}, tournamentMode: ${tournamentMode}, matchEnded: ${matchEnded}`);
 
@@ -109,10 +121,6 @@ const GameLogic: React.FC<GameLogicProps> = ({
   // Only higher ELO team should learn, regardless of red/blue designation
   const higherEloTeamShouldLearn = true;  // Higher ELO team always learns
   const lowerEloTeamShouldLearn = false;  // Lower ELO team never learns
-  
-  // Log ELO comparison for debugging
-  console.log(`Team ELO comparison - Home Team (red): ${homeTeamElo}, Away Team (blue): ${awayTeamElo}`);
-  console.log(`Learning configuration - Higher ELO team (${higherEloTeam}): ${higherEloTeamShouldLearn ? 'YES' : 'NO'}, Lower ELO team (${lowerEloTeam}): ${lowerEloTeamShouldLearn ? 'YES' : 'NO'}`);
 
   // Get team context functions
   const { getTeamContext } = useTeamContext({ players });
@@ -182,7 +190,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
     tournamentMode,
     isLowPerformance,
     gameEnded: matchEnded,
-    targetFPS // Pass target FPS to game loop
+    targetFPS
   });
 
   // Goal notification hook
@@ -219,7 +227,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
       console.log(`Ball touched by ${player.team === 'red' ? 'home' : 'away'} ${player.role} #${player.id}`);
     },
     tournamentMode,
-    gameEnded: matchEnded // Pass gameEnded to useBallMovementSystem
+    gameEnded: matchEnded
   });
 
   // Run game loop with actual functions and performance monitoring
