@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Match, TournamentTeam } from '../../types/tournament';
 import { teamKitColors } from '../../types/teamKits';
@@ -495,6 +496,8 @@ export const useTournament = (embeddedMode = false) => {
     getWinner,
     setActiveMatch,
     setPlayingMatch,
-    setCurrentRound
+    setCurrentRound,
+    setAutoSimulation,  // This was missing in the return object
+    setSimulationPaused  // Adding this for completeness
   };
 };
