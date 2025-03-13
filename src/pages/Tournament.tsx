@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import TournamentBracket from '../components/TournamentBracket';
 import TournamentHeader from '../components/tournament/TournamentHeader';
@@ -112,10 +113,17 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
             }
           }
         } else if (recoveryAttemptsRef.current < 5) {
-          // Try more aggressive recovery: randomize current round
-          console.log("Recovery attempt: Randomizing current round");
-          randomizeCurrentRound();
-          lastProgressTimeRef.current = currentTime;
+          // Ya no usamos randomize para simular toda la ronda
+          // Intentamos jugar el siguiente partido individualmente
+          const nextMatch = matches.find(m => 
+            m.round === currentRound && !m.played && m.teamA && m.teamB
+          );
+          
+          if (nextMatch) {
+            console.log("Recovery attempt: Force playing next available match");
+            lastProgressTimeRef.current = currentTime;
+            simulateSingleMatch(nextMatch);
+          }
         } else {
           // Last resort: restart auto simulation
           console.log("Recovery attempt: Restarting auto simulation");
