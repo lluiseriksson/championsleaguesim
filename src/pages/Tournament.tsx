@@ -65,9 +65,9 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
     }
   }, [matches, currentRound, playingMatch, autoSimulation, setCurrentRound]);
 
-  // Comprehensive stuck simulation detection and recovery
+  // Comprehensive stuck simulation detection and recovery - only try recovery if not currently playing a match
   useEffect(() => {
-    if (!autoSimulation || simulationPaused) {
+    if (!autoSimulation || simulationPaused || playingMatch) {
       return;
     }
     
@@ -91,11 +91,15 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
             console.log("Recovery attempt: Force playing next available match");
             lastProgressTimeRef.current = currentTime;
             
-            if (embeddedMode) {
-              simulateSingleMatch(nextMatch);
-            } else {
-              playMatch(nextMatch);
-            }
+            // Important: Wait a short time before trying to simulate again
+            // to allow any in-progress operations to complete
+            setTimeout(() => {
+              if (embeddedMode) {
+                simulateSingleMatch(nextMatch);
+              } else {
+                playMatch(nextMatch);
+              }
+            }, 1000);
           } else {
             // If no matches left in round, try advancing round
             console.log("No pending matches found - trying to advance round");
@@ -113,16 +117,19 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
             }
           }
         } else if (recoveryAttemptsRef.current < 5) {
-          // Ya no usamos randomize para simular toda la ronda
-          // Intentamos jugar el siguiente partido individualmente
+          // Try to find and play the next match with a different approach
           const nextMatch = matches.find(m => 
             m.round === currentRound && !m.played && m.teamA && m.teamB
           );
           
           if (nextMatch) {
-            console.log("Recovery attempt: Force playing next available match");
+            console.log("Recovery attempt: Force playing next available match with delay");
             lastProgressTimeRef.current = currentTime;
-            simulateSingleMatch(nextMatch);
+            
+            // Use a longer delay for this recovery attempt
+            setTimeout(() => {
+              simulateSingleMatch(nextMatch);
+            }, 2000);
           }
         } else {
           // Last resort: restart auto simulation
@@ -130,9 +137,12 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
           setAutoSimulation(false);
           
           setTimeout(() => {
-            startAutoSimulation();
-            lastProgressTimeRef.current = currentTime;
-          }, 1000);
+            // Make sure we're not in the middle of playing a match
+            if (!playingMatch) {
+              startAutoSimulation();
+              lastProgressTimeRef.current = currentTime;
+            }
+          }, 3000);
         }
         
         recoveryAttemptsRef.current++;
@@ -164,7 +174,8 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
     setCurrentRound, 
     randomizeCurrentRound, 
     setAutoSimulation, 
-    startAutoSimulation
+    startAutoSimulation,
+    playingMatch
   ]);
 
   return (

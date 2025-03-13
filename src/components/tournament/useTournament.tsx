@@ -20,6 +20,8 @@ export const useTournament = (embeddedMode = false) => {
   
   // Add simulation timeout ref for cleanup
   const simulationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Add a lock to prevent starting new matches while one is still being processed
+  const processingMatchRef = useRef(false);
 
   useEffect(() => {
     if (!initialized) {
@@ -42,7 +44,7 @@ export const useTournament = (embeddedMode = false) => {
       simulationTimeoutRef.current = null;
     }
     
-    if (!autoSimulation || simulationPaused || playingMatch || currentRound > 7) {
+    if (!autoSimulation || simulationPaused || processingMatchRef.current || currentRound > 7) {
       return;
     }
     
@@ -56,13 +58,26 @@ export const useTournament = (embeddedMode = false) => {
     };
     
     const simulateNextMatch = () => {
+      // If we're already processing a match, don't start another one
+      if (processingMatchRef.current) {
+        return;
+      }
+      
       const nextMatch = findNextUnplayedMatch();
       
       if (nextMatch) {
+        // Set the lock before starting the match simulation
+        processingMatchRef.current = true;
+        
         if (embeddedMode) {
           simulateSingleMatch(nextMatch);
+          // Reset the lock after a short delay to allow state updates to complete
+          setTimeout(() => {
+            processingMatchRef.current = false;
+          }, 500);
         } else {
           playMatch(nextMatch);
+          // For manual play, the lock will be reset in handleMatchComplete
         }
       } else {
         const roundMatches = matches.filter(m => m.round === currentRound);
@@ -83,9 +98,11 @@ export const useTournament = (embeddedMode = false) => {
           
           setCurrentRound(nextRoundNumber);
           
+          // Allow a delay before processing the next round
           simulationTimeoutRef.current = setTimeout(() => {
+            processingMatchRef.current = false; // Make sure to reset the lock
             simulateNextMatch();
-          }, 300);
+          }, 800); // Slightly longer delay between rounds
         } else if (currentRound === 7 && allRoundMatchesPlayed) {
           const winner = matches.find(m => m.round === 7)?.winner;
           toast.success(`Tournament Complete!`, {
@@ -93,13 +110,16 @@ export const useTournament = (embeddedMode = false) => {
           });
           
           setAutoSimulation(false);
+          processingMatchRef.current = false; // Reset lock at end of tournament
         }
       }
     };
     
-    const totalDelay = embeddedMode ? 200 : 400;
-    
-    simulationTimeoutRef.current = setTimeout(simulateNextMatch, totalDelay);
+    // Only schedule next match simulation if not currently processing a match
+    if (!processingMatchRef.current) {
+      const totalDelay = embeddedMode ? 200 : 400;
+      simulationTimeoutRef.current = setTimeout(simulateNextMatch, totalDelay);
+    }
     
     return () => {
       if (simulationTimeoutRef.current) {
@@ -172,6 +192,7 @@ export const useTournament = (embeddedMode = false) => {
     setPlayingMatch(false);
     setInitialized(false);
     setAutoSimulation(false);
+    processingMatchRef.current = false; // Reset processing lock on tournament reset
     
     clearKitSelectionCache();
     setMatches([]);
@@ -182,19 +203,25 @@ export const useTournament = (embeddedMode = false) => {
   }, []);
 
   const playMatch = useCallback((match: Match) => {
-    if (!match.teamA || !match.teamB) return;
+    if (!match.teamA || !match.teamB || processingMatchRef.current) return;
     
+    processingMatchRef.current = true; // Set lock when playing a match manually
     setActiveMatch(match);
     setPlayingMatch(true);
   }, []);
 
   const simulateSingleMatch = useCallback((match: Match) => {
-    if (!match.teamA || !match.teamB) return;
+    if (!match.teamA || !match.teamB || processingMatchRef.current) return;
+    
+    processingMatchRef.current = true; // Set lock when simulating a single match
     
     const updatedMatches = [...matches];
     const currentMatch = updatedMatches.find(m => m.id === match.id);
     
-    if (!currentMatch || !currentMatch.teamA || !currentMatch.teamB) return;
+    if (!currentMatch || !currentMatch.teamA || !currentMatch.teamB) {
+      processingMatchRef.current = false; // Reset lock if match is invalid
+      return;
+    }
     
     const winnerTeam = determineWinnerByElo(
       currentMatch.teamA.eloRating, 
@@ -260,6 +287,11 @@ export const useTournament = (embeddedMode = false) => {
     
     setMatches(updatedMatches);
     setMatchesPlayed(prev => prev + 1);
+    
+    // Small delay before releasing the lock to prevent race conditions
+    setTimeout(() => {
+      processingMatchRef.current = false;
+    }, 200);
   }, [matches]);
 
   const randomizeCurrentRound = useCallback(() => {
@@ -308,12 +340,18 @@ export const useTournament = (embeddedMode = false) => {
   }, [currentRound, matches, simulateSingleMatch]);
 
   const handleMatchComplete = useCallback((winnerName: string, finalScore: Score, wasGoldenGoal: boolean) => {
-    if (!activeMatch) return;
+    if (!activeMatch) {
+      processingMatchRef.current = false; // Reset lock if no active match
+      return;
+    }
     
     const updatedMatches = [...matches];
     const currentMatch = updatedMatches.find(m => m.id === activeMatch.id);
     
-    if (!currentMatch || !currentMatch.teamA || !currentMatch.teamB) return;
+    if (!currentMatch || !currentMatch.teamA || !currentMatch.teamB) {
+      processingMatchRef.current = false; // Reset lock if match invalid
+      return;
+    }
     
     const winner = winnerName === currentMatch.teamA.name 
       ? currentMatch.teamA 
@@ -351,9 +389,15 @@ export const useTournament = (embeddedMode = false) => {
     setActiveMatch(null);
     setPlayingMatch(false);
     setMatchesPlayed(prev => prev + 1);
+    
+    // Reset the lock after match is complete
+    processingMatchRef.current = false;
   }, [activeMatch, matches]);
 
   const startAutoSimulation = useCallback(() => {
+    // Don't start auto simulation if we're already processing a match
+    if (processingMatchRef.current) return;
+    
     setAutoSimulation(true);
     setSimulationPaused(false);
     
@@ -365,6 +409,7 @@ export const useTournament = (embeddedMode = false) => {
     );
     
     if (nextMatch) {
+      processingMatchRef.current = true; // Set lock before starting first match
       setTimeout(() => {
         if (embeddedMode) {
           simulateSingleMatch(nextMatch);
