@@ -76,7 +76,7 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
       const timeSinceLastProgress = currentTime - lastProgressTimeRef.current;
       
       // If no progress for 5 seconds, try recovery steps
-      if (timeSinceLastProgress > 5000) {
+      if (timeSinceLastProgress > 5000 && !playingMatch) {
         console.log(`Simulation appears stuck for ${timeSinceLastProgress}ms, attempting recovery...`);
         setIsSimulationStuck(true);
         
@@ -94,10 +94,12 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
             // Important: Wait a short time before trying to simulate again
             // to allow any in-progress operations to complete
             setTimeout(() => {
-              if (embeddedMode) {
-                simulateSingleMatch(nextMatch);
-              } else {
-                playMatch(nextMatch);
+              if (!playingMatch) {
+                if (embeddedMode) {
+                  simulateSingleMatch(nextMatch);
+                } else {
+                  playMatch(nextMatch);
+                }
               }
             }, 1000);
           } else {
@@ -122,13 +124,15 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
             m.round === currentRound && !m.played && m.teamA && m.teamB
           );
           
-          if (nextMatch) {
+          if (nextMatch && !playingMatch) {
             console.log("Recovery attempt: Force playing next available match with delay");
             lastProgressTimeRef.current = currentTime;
             
             // Use a longer delay for this recovery attempt
             setTimeout(() => {
-              simulateSingleMatch(nextMatch);
+              if (!playingMatch) {
+                simulateSingleMatch(nextMatch);
+              }
             }, 2000);
           }
         } else {

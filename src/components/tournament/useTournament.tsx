@@ -8,6 +8,7 @@ import { determineWinnerByElo, generateScore, shouldUseGoldenGoal } from '../../
 import { teamEloRatings } from '../../utils/tournament/eloRatings';
 
 export const useTournament = (embeddedMode = false) => {
+  
   const [teams, setTeams] = useState<TournamentTeam[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [initialized, setInitialized] = useState(false);
@@ -44,7 +45,7 @@ export const useTournament = (embeddedMode = false) => {
       simulationTimeoutRef.current = null;
     }
     
-    if (!autoSimulation || simulationPaused || processingMatchRef.current || currentRound > 7) {
+    if (!autoSimulation || simulationPaused || playingMatch || currentRound > 7) {
       return;
     }
     
@@ -59,7 +60,7 @@ export const useTournament = (embeddedMode = false) => {
     
     const simulateNextMatch = () => {
       // If we're already processing a match, don't start another one
-      if (processingMatchRef.current) {
+      if (processingMatchRef.current || playingMatch) {
         return;
       }
       
@@ -80,6 +81,7 @@ export const useTournament = (embeddedMode = false) => {
           // For manual play, the lock will be reset in handleMatchComplete
         }
       } else {
+        // Check if the current round is complete
         const roundMatches = matches.filter(m => m.round === currentRound);
         const allRoundMatchesPlayed = roundMatches.every(m => m.played);
         
@@ -401,6 +403,9 @@ export const useTournament = (embeddedMode = false) => {
     setAutoSimulation(true);
     setSimulationPaused(false);
     
+    // Immediately find and play the first match to kickstart the simulation
+    processingMatchRef.current = false; // Ensure lock is not set
+    
     const nextMatch = matches.find(m => 
       m.round === currentRound && 
       !m.played && 
@@ -409,7 +414,7 @@ export const useTournament = (embeddedMode = false) => {
     );
     
     if (nextMatch) {
-      processingMatchRef.current = true; // Set lock before starting first match
+      // Set a very short delay to ensure state updates have propagated
       setTimeout(() => {
         if (embeddedMode) {
           simulateSingleMatch(nextMatch);
@@ -417,6 +422,14 @@ export const useTournament = (embeddedMode = false) => {
           playMatch(nextMatch);
         }
       }, 50);
+    } else {
+      // If no matches in current round, try to advance to the next round
+      const roundMatches = matches.filter(m => m.round === currentRound);
+      const allRoundMatchesPlayed = roundMatches.every(m => m.played);
+      
+      if (allRoundMatchesPlayed && currentRound < 7) {
+        setCurrentRound(currentRound + 1);
+      }
     }
     
     toast.success("Auto Simulation Started", {
