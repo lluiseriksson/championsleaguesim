@@ -45,7 +45,7 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
     }
   }, [matchesPlayed, currentRound, autoSimulation, simulationPaused]);
 
-  // Check if current round is complete and needs to advance
+  // Check if current round is complete and needs to advance - only when not in auto mode
   useEffect(() => {
     if (!playingMatch && !autoSimulation) {
       const currentRoundMatches = matches.filter(m => m.round === currentRound);
@@ -101,7 +101,7 @@ const Tournament: React.FC<TournamentProps> = ({ embeddedMode = false }) => {
                   playMatch(nextMatch);
                 }
               }
-            }, 1000);
+            }, 800); // Increased delay for better recovery
           } else {
             // If no matches left in round, try advancing round
             console.log("No pending matches found - trying to advance round");

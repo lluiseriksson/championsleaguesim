@@ -47,7 +47,7 @@ export const useTournament = (embeddedMode = false) => {
       simulationTimeoutRef.current = null;
     }
     
-    if (!autoSimulation || simulationPaused || playingMatch || currentRound > 7) {
+    if (!autoSimulation || simulationPaused || currentRound > 7) {
       return;
     }
     
@@ -77,18 +77,8 @@ export const useTournament = (embeddedMode = false) => {
         
         if (embeddedMode) {
           simulateSingleMatch(nextMatch);
-          // Reset the lock after a short delay to allow state updates to complete
-          setTimeout(() => {
-            processingMatchRef.current = false;
-            
-            // Trigger next match after a short delay
-            if (continueSimulationRef.current && autoSimulation && !simulationPaused) {
-              simulationTimeoutRef.current = setTimeout(simulateNextMatch, 400);
-            }
-          }, 500);
         } else {
           playMatch(nextMatch);
-          // For manual play, the lock will be reset in handleMatchComplete
         }
       } else {
         // Check if the current round is complete
@@ -109,15 +99,14 @@ export const useTournament = (embeddedMode = false) => {
           });
           
           setCurrentRound(nextRoundNumber);
-          processingMatchRef.current = false; // Make sure to reset the lock
+          processingMatchRef.current = false;
           
           // Allow a delay before processing the next round
           simulationTimeoutRef.current = setTimeout(() => {
-            processingMatchRef.current = false; // Make sure to reset the lock
             if (autoSimulation && !simulationPaused) {
               simulateNextMatch();
             }
-          }, 800); // Slightly longer delay between rounds
+          }, 800);
         } else if (currentRound === 7 && allRoundMatchesPlayed) {
           const winner = matches.find(m => m.round === 7)?.winner;
           toast.success(`Tournament Complete!`, {
@@ -125,15 +114,16 @@ export const useTournament = (embeddedMode = false) => {
           });
           
           setAutoSimulation(false);
-          processingMatchRef.current = false; // Reset lock at end of tournament
+          processingMatchRef.current = false;
           continueSimulationRef.current = false;
         }
       }
     };
     
-    // Only schedule next match simulation if not currently processing a match
-    if (!processingMatchRef.current) {
-      const totalDelay = embeddedMode ? 200 : 400;
+    // Make sure we're not in the middle of a match before scheduling the next one
+    if (!processingMatchRef.current && !playingMatch) {
+      // Important: Use a shorter delay for embedded mode for better continuity
+      const totalDelay = embeddedMode ? 100 : 300;
       simulationTimeoutRef.current = setTimeout(simulateNextMatch, totalDelay);
     }
     
@@ -223,26 +213,26 @@ export const useTournament = (embeddedMode = false) => {
     if (!match.teamA || !match.teamB || processingMatchRef.current) return;
     
     console.log(`Playing match #${match.id} in round ${match.round} manually`);
-    processingMatchRef.current = true; // Set lock when playing a match manually
+    processingMatchRef.current = true;
     setActiveMatch(match);
     setPlayingMatch(true);
   }, []);
 
   const simulateSingleMatch = useCallback((match: Match) => {
-    if (!match.teamA || !match.teamB || processingMatchRef.current) {
-      console.log(`Cannot simulate match #${match.id} - either invalid teams or another match is being processed`);
+    if (!match.teamA || !match.teamB) {
+      console.log(`Cannot simulate match #${match.id} - invalid teams`);
+      processingMatchRef.current = false;
       return;
     }
     
     console.log(`Simulating match #${match.id} in round ${match.round}`);
-    processingMatchRef.current = true; // Set lock when simulating a single match
     
     const updatedMatches = [...matches];
     const currentMatch = updatedMatches.find(m => m.id === match.id);
     
     if (!currentMatch || !currentMatch.teamA || !currentMatch.teamB) {
       console.log(`Match #${match.id} not found or invalid teams`);
-      processingMatchRef.current = false; // Reset lock if match is invalid
+      processingMatchRef.current = false;
       return;
     }
     
@@ -314,17 +304,34 @@ export const useTournament = (embeddedMode = false) => {
     setMatches(updatedMatches);
     setMatchesPlayed(prev => prev + 1);
     
-    // Small delay before releasing the lock to prevent race conditions
-    setTimeout(() => {
+    // Important: Keep the simulation chain going for auto mode
+    if (autoSimulation && !simulationPaused && continueSimulationRef.current) {
+      // Release the lock immediately for embedded mode to speed up simulation
       processingMatchRef.current = false;
       
-      // If auto simulation is still on, and this wasn't a final match,
-      // continue to the next match
-      if (autoSimulation && !simulationPaused && continueSimulationRef.current && currentMatch.round < 7) {
-        console.log("Auto simulation will continue to next match after short delay");
-      }
-    }, 200);
-  }, [matches]);
+      // Schedule next match with a slight delay for smoother UI updates
+      simulationTimeoutRef.current = setTimeout(() => {
+        // Directly trigger the next match if in auto mode
+        const nextMatchToPlay = updatedMatches.find(m => 
+          m.round === currentRound && 
+          !m.played && 
+          m.teamA && 
+          m.teamB
+        );
+        
+        if (nextMatchToPlay) {
+          console.log(`Auto-continuing to next match #${nextMatchToPlay.id}`);
+          simulateSingleMatch(nextMatchToPlay);
+        } else {
+          // If round is complete, let the main effect handle advancing to next round
+          console.log("No more matches in current round, will check for round advancement");
+        }
+      }, embeddedMode ? 100 : 300);
+    } else {
+      // If not in auto mode, just release the lock
+      processingMatchRef.current = false;
+    }
+  }, [matches, currentRound, autoSimulation, simulationPaused]);
 
   const randomizeCurrentRound = useCallback(() => {
     const currentRoundMatches = matches.filter(
@@ -438,7 +445,7 @@ export const useTournament = (embeddedMode = false) => {
   const handleMatchComplete = useCallback((winnerName: string, finalScore: Score, wasGoldenGoal: boolean) => {
     if (!activeMatch) {
       console.log("No active match to complete");
-      processingMatchRef.current = false; // Reset lock if no active match
+      processingMatchRef.current = false;
       return;
     }
     
@@ -449,7 +456,7 @@ export const useTournament = (embeddedMode = false) => {
     
     if (!currentMatch || !currentMatch.teamA || !currentMatch.teamB) {
       console.log("Match not found or invalid teams");
-      processingMatchRef.current = false; // Reset lock if match invalid
+      processingMatchRef.current = false;
       return;
     }
     
@@ -493,28 +500,31 @@ export const useTournament = (embeddedMode = false) => {
     
     console.log(`Match #${currentMatch.id} completion handled, continuing auto simulation: ${autoSimulation && continueSimulationRef.current}`);
     
-    // Reset the lock after match is complete
+    // Release the processing lock
     processingMatchRef.current = false;
     
-    // If auto simulation is active and this wasn't the final match, continue simulation
+    // Critical fix: If in auto mode, immediately schedule the next match
     if (autoSimulation && !simulationPaused && continueSimulationRef.current && currentMatch.round < 7) {
-      // Schedule the next match with a delay to allow state updates
+      console.log("Auto simulation active, directly scheduling next match");
+      
+      // Directly check for and play the next match with a minimal delay
       setTimeout(() => {
-        const nextMatch = matches.find(m => 
+        const nextMatchToPlay = updatedMatches.find(m => 
           m.round === currentRound && 
           !m.played && 
           m.teamA && 
           m.teamB
         );
         
-        if (nextMatch) {
+        if (nextMatchToPlay) {
+          console.log(`Auto-continuing to next match #${nextMatchToPlay.id}`);
           if (embeddedMode) {
-            simulateSingleMatch(nextMatch);
+            simulateSingleMatch(nextMatchToPlay);
           } else {
-            playMatch(nextMatch);
+            playMatch(nextMatchToPlay);
           }
         }
-      }, 500);
+      }, embeddedMode ? 50 : 200);
     }
   }, [activeMatch, matches, currentRound, autoSimulation, simulationPaused, embeddedMode, simulateSingleMatch, playMatch]);
 
@@ -533,6 +543,7 @@ export const useTournament = (embeddedMode = false) => {
     // Immediately find and play the first match to kickstart the simulation
     processingMatchRef.current = false; // Ensure lock is not set
     
+    // Force immediate start of first match without waiting for the effect
     const nextMatch = matches.find(m => 
       m.round === currentRound && 
       !m.played && 
@@ -541,14 +552,13 @@ export const useTournament = (embeddedMode = false) => {
     );
     
     if (nextMatch) {
-      // Set a very short delay to ensure state updates have propagated
-      setTimeout(() => {
-        if (embeddedMode) {
-          simulateSingleMatch(nextMatch);
-        } else {
-          playMatch(nextMatch);
-        }
-      }, 50);
+      // Immediate execution instead of timeout for first match
+      console.log(`Immediately starting first match #${nextMatch.id}`);
+      if (embeddedMode) {
+        simulateSingleMatch(nextMatch);
+      } else {
+        playMatch(nextMatch);
+      }
     } else {
       // If no matches in current round, try to advance to the next round
       const roundMatches = matches.filter(m => m.round === currentRound);
