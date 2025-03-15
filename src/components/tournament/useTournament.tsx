@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Match, TournamentTeam } from '../../types/tournament';
 import { teamKitColors } from '../../types/teamKits';
@@ -361,13 +360,77 @@ export const useTournament = (embeddedMode = false) => {
       return;
     }
     
-    // MODIFICADO: En lugar de randomizar toda la ronda, sólo simula un partido a la vez
+    // Simulate all unplayed matches in the current round
     if (currentRoundMatches.length > 0) {
-      // Simular solo el primer partido sin jugar de la ronda actual
-      simulateSingleMatch(currentRoundMatches[0]);
+      const updatedMatches = [...matches];
       
-      toast.success("Match simulated", {
-        description: `Match result determined using ELO probability formula`
+      for (const match of currentRoundMatches) {
+        if (match.teamA && match.teamB) {
+          const winnerTeam = determineWinnerByElo(
+            match.teamA.eloRating, 
+            match.teamB.eloRating
+          );
+          
+          const winner = winnerTeam === 'A' ? match.teamA : match.teamB;
+          const useGoldenGoal = shouldUseGoldenGoal(
+            match.teamA.eloRating,
+            match.teamB.eloRating
+          );
+          
+          const winnerElo = winner.eloRating;
+          const loserElo = winner.id === match.teamA.id 
+            ? match.teamB.eloRating 
+            : match.teamA.eloRating;
+          
+          const { winner: winnerGoals, loser: loserGoals } = generateScore(
+            winnerElo, 
+            loserElo, 
+            useGoldenGoal
+          );
+          
+          // Update the match in the matches array with its result
+          const matchToUpdate = updatedMatches.find(m => m.id === match.id);
+          if (matchToUpdate) {
+            if (winner.id === matchToUpdate.teamA?.id) {
+              matchToUpdate.score = {
+                teamA: winnerGoals,
+                teamB: loserGoals
+              };
+            } else {
+              matchToUpdate.score = {
+                teamA: loserGoals,
+                teamB: winnerGoals
+              };
+            }
+            
+            matchToUpdate.played = true;
+            matchToUpdate.winner = winner;
+            matchToUpdate.goldenGoal = useGoldenGoal;
+            
+            // Update the next round match with the winner
+            if (matchToUpdate.round < 7) {
+              const nextRoundPosition = Math.ceil(matchToUpdate.position / 2);
+              const nextMatch = updatedMatches.find(
+                m => m.round === matchToUpdate.round + 1 && m.position === nextRoundPosition
+              );
+              
+              if (nextMatch) {
+                if (!nextMatch.teamA) {
+                  nextMatch.teamA = winner;
+                } else {
+                  nextMatch.teamB = winner;
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      setMatches(updatedMatches);
+      setMatchesPlayed(prev => prev + currentRoundMatches.length);
+      
+      toast.success(`Round randomized`, {
+        description: `${currentRoundMatches.length} matches simulated using ELO probability formula`
       });
     }
   }, [currentRound, matches, simulateSingleMatch]);
