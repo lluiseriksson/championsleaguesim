@@ -94,12 +94,18 @@ export const useGoalkeeperReachAdjustment = (
 
 // Re-export the hook as useBallMovementSystem for backwards compatibility
 export const useBallMovementSystem = (props: BallMovementSystemProps) => {
+  // CRITICAL FIX: Ensure ball movement isn't stopped by gameEnded
+  const modifiedProps = {
+    ...props,
+    gameEnded: false // Override gameEnded to false to ensure ball always moves
+  };
+  
   // Create a wrapped version of the original hook that applies radius adjustments
   const originalHook = useBallMovement({
-    ...props,
-    players: props.players.map(player => {
+    ...modifiedProps,
+    players: modifiedProps.players.map(player => {
       // Apply radius adjustment based on ELO differences
-      const adjustedRadius = useAdjustedPlayerRadius(player, props.players);
+      const adjustedRadius = useAdjustedPlayerRadius(player, modifiedProps.players);
       
       // Log significant adjustments
       if (Math.abs(adjustedRadius - player.radius) > 5) {

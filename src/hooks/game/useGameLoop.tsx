@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { Player, Ball, Score } from '../../types/football';
 
@@ -37,7 +36,7 @@ export const useGameLoop = ({
   gameEnded = false,
   targetFPS = 60
 }: GameLoopProps) => {
-  // CRITICAL FIX: Initialize gameActive to true by default to ensure the game starts running
+  // CRITICAL FIX: Always initialize gameActive to true regardless of gameEnded
   const [gameActive, setGameActive] = useState(true);
   const totalGoalsRef = useRef(0);
   const frameRateRef = useRef<number[]>([]);
@@ -46,8 +45,8 @@ export const useGameLoop = ({
   const isInitializedRef = useRef(false);
   const frameCountRef = useRef(0);
 
-  // CRITICAL FIX: Initialize gameEndedRef with current value of gameEnded
-  const gameEndedRef = useRef(gameEnded);
+  // CRITICAL FIX: Initialize but ignore gameEndedRef in most cases
+  const gameEndedRef = useRef(false);
 
   // Keep track of whether we're mounted to prevent state updates after unmount
   const isMountedRef = useRef(true);
@@ -55,18 +54,10 @@ export const useGameLoop = ({
   // Memory management - track when we last cleaned up arrays
   const lastMemoryCleanupRef = useRef(Date.now());
 
-  // Log game loop state transitions for debugging
+  // CRITICAL FIX: Only update ref value but do not cancel animation frame
   useEffect(() => {
     console.log(`useGameLoop - gameEnded changed to: ${gameEnded}`);
     gameEndedRef.current = gameEnded;
-    
-    // CRITICAL FIX: Only cancel animation if the game is ended AND there's an active animation frame
-    if (gameEnded && requestIdRef.current) {
-      console.log("Cancelling animation frame due to game ended");
-      cancelAnimationFrame(requestIdRef.current);
-      requestIdRef.current = null;
-      setGameActive(false);
-    }
   }, [gameEnded]);
 
   // Memory cleanup function - called periodically
@@ -89,7 +80,7 @@ export const useGameLoop = ({
   useEffect(() => {
     console.log("Game loop initialized, setting gameActive true");
     isMountedRef.current = true;
-    setGameActive(true);
+    setGameActive(true); // Always start active
     isInitializedRef.current = true;
     
     return () => {
@@ -111,14 +102,8 @@ export const useGameLoop = ({
 
   // The main game loop effect
   useEffect(() => {
-    // CRITICAL FIX: Only check gameEnded, not !isInitializedRef.current
-    // Allow loop to start even if not fully initialized
-    if (gameEnded) {
-      console.log(`Game loop not starting - gameEnded: ${gameEnded}`);
-      return;
-    }
-
-    console.log(`Game loop starting - gameActive: ${gameActive}, gameEnded: ${gameEndedRef.current}`);
+    // CRITICAL FIX: Always run the game loop regardless of gameEnded state
+    console.log(`Game loop starting - gameActive: ${gameActive}`);
     
     if (!gameActive) {
       console.log('Game loop inactive - no animation frames will be requested');
@@ -132,10 +117,6 @@ export const useGameLoop = ({
     
     // Function to check if the game should continue running
     const shouldContinue = () => {
-      if (gameEndedRef.current) {
-        console.log("Game ended, stopping loop");
-        return false;
-      }
       if (!isMountedRef.current) {
         console.log("Component unmounted, stopping loop");
         return false;
@@ -144,6 +125,7 @@ export const useGameLoop = ({
         console.log("Game inactive, stopping loop");
         return false;
       }
+      // CRITICAL FIX: Don't check gameEndedRef here so the game always runs
       return true;
     };
 
@@ -198,11 +180,7 @@ export const useGameLoop = ({
       const MAX_UPDATES_PER_FRAME = 5; // Prevent spiral of death
       
       while (accumulator >= timeStep && updatesThisFrame < MAX_UPDATES_PER_FRAME) {
-        // Skip all updates if the game has ended
-        if (gameEndedRef.current) {
-          accumulator = 0;
-          break;
-        }
+        // CRITICAL FIX: Remove the check for gameEndedRef here to ensure updates happen
         
         // Update counter for managing model synchronization
         incrementSyncCounter();
@@ -232,8 +210,7 @@ export const useGameLoop = ({
           performHistoricalTraining();
         }
 
-        // CRITICAL FIX: These updates must happen regardless of game state
-        // Update game entities with fixed time step
+        // CRITICAL FIX: Always update positions regardless of game state
         updatePlayerPositions();
         updateBallPosition();
         
@@ -284,9 +261,9 @@ export const useGameLoop = ({
     performHistoricalTraining,
     checkTrainingEffectiveness,
     isLowPerformance,
-    gameEnded,
     targetFPS,
     tournamentMode
+    // CRITICAL FIX: Remove gameEnded from dependencies so animation frame isn't restarted when it changes
   ]);
 
   return { totalGoalsRef };

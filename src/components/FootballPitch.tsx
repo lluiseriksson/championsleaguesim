@@ -9,7 +9,6 @@ const FootballPitch: React.FC = () => {
   const [players, setPlayers] = React.useState<Player[]>([]);
   const [ball, setBall] = React.useState<BallType>({
     position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
-    // CRITICAL FIX: Ensure stronger initial velocity to prevent stalling
     velocity: { x: Math.random() > 0.5 ? 5 : -5, y: (Math.random() - 0.5) * 5 },
     bounceDetection: {
       consecutiveBounces: 0,
@@ -22,6 +21,8 @@ const FootballPitch: React.FC = () => {
   const [gameReady, setGameReady] = React.useState(false);
   const [homeTeam, setHomeTeam] = React.useState<string>('Home');
   const [awayTeam, setAwayTeam] = React.useState<string>('Away');
+  // CRITICAL: Initialize gameActive state to true to ensure movement happens
+  const [gameActive, setGameActive] = React.useState<boolean>(true);
 
   // Update team names when players are initialized
   React.useEffect(() => {
@@ -44,7 +45,9 @@ const FootballPitch: React.FC = () => {
     players, 
     setPlayers, 
     ball, 
-    gameReady 
+    gameReady,
+    // Pass gameActive to ensure player movement
+    gameActive
   });
 
   if (!gameReady) {
@@ -62,7 +65,7 @@ const FootballPitch: React.FC = () => {
       updatePlayerPositions={updatePlayerPositions}
       homeTeam={homeTeam}
       awayTeam={awayTeam}
-      // CRITICAL FIX: Explicitly set matchEnded to false here
+      // Always set matchEnded to false in the main game to ensure movement
       matchEnded={false}
     />
   );
