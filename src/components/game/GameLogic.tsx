@@ -1,12 +1,13 @@
+
 import React, { useRef, useState, useEffect } from 'react';
-import { Player, Ball, Score, Position } from '../types/football';
-import { useBallMovementSystem } from './game/BallMovementSystem';
+import { Player, Ball, Score, Position } from '../../types/football';
+import { useBallMovementSystem } from './BallMovementSystem';
 import { useModelSyncSystem } from './ModelSyncSystem';
 import { useGoalSystem } from './GoalSystem';
-import { useGameLoop } from '../hooks/game/useGameLoop';
-import { useGoalNotification } from '../hooks/game/useGoalNotification';
-import { useModelSaveOnExit } from '../hooks/game/useModelSaveOnExit';
-import { useTeamContext } from '../hooks/game/useTeamContext';
+import { useGameLoop } from '../../hooks/game/useGameLoop';
+import { useGoalNotification } from '../../hooks/game/useGoalNotification';
+import { useModelSaveOnExit } from '../../hooks/game/useModelSaveOnExit';
+import { useTeamContext } from '../../hooks/game/useTeamContext';
 
 interface GameLogicProps {
   players: Player[];
