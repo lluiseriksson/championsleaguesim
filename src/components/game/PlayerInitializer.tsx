@@ -63,108 +63,231 @@ const PlayerInitializer: React.FC<PlayerInitializerProps> = ({ setPlayers, setGa
         const displayHomeTeamName = transliterateRussianName(homeTeamName);
         const displayAwayTeamName = transliterateRussianName(awayTeamName);
         
+        // Get kit information with extra logging for debugging
         const awayTeamKitType = getAwayTeamKit(homeTeamName, awayTeamName);
         
-        console.log(`Match: ${displayHomeTeamName} (home) vs ${displayAwayTeamName} (${awayTeamKitType})`);
+        // Gather colors for logging
+        const homeTeamPrimaryColor = teamKitColors[homeTeamName]?.home?.primary || 'unknown';
+        const awayTeamAwayColor = teamKitColors[awayTeamName]?.away?.primary || 'unknown';
+        const awayTeamThirdColor = teamKitColors[awayTeamName]?.third?.primary || 'unknown';
+        const awayTeamSelectedColor = teamKitColors[awayTeamName]?.[awayTeamKitType]?.primary || 'unknown';
         
-        const redTeamPositions = [
-          { x: 50, y: PITCH_HEIGHT/2, role: 'goalkeeper' },
-          { x: 150, y: PITCH_HEIGHT/4, role: 'defender' },
-          { x: 150, y: PITCH_HEIGHT/2, role: 'defender' },
-          { x: 150, y: (PITCH_HEIGHT*3)/4, role: 'defender' },
-          { x: 300, y: PITCH_HEIGHT/5, role: 'midfielder' },
-          { x: 300, y: (PITCH_HEIGHT*2)/5, role: 'midfielder' },
-          { x: 300, y: (PITCH_HEIGHT*3)/5, role: 'midfielder' },
-          { x: 300, y: (PITCH_HEIGHT*4)/5, role: 'midfielder' },
-          { x: 500, y: PITCH_HEIGHT/4, role: 'forward' },
-          { x: 500, y: PITCH_HEIGHT/2, role: 'forward' },
-          { x: 500, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
-        ];
+        console.log(`Match initialization: ${displayHomeTeamName} (home) vs ${displayAwayTeamName} (${awayTeamKitType})`);
+        console.log(`Home team primary color: ${homeTeamPrimaryColor}`);
+        console.log(`Away team colors - Away: ${awayTeamAwayColor}, Third: ${awayTeamThirdColor}`);
+        console.log(`Selected ${awayTeamKitType} kit with color ${awayTeamSelectedColor}`);
         
-        for (let i = 0; i < redTeamPositions.length; i++) {
-          const pos = redTeamPositions[i];
-          const role = pos.role as Player['role'];
-          const position = { x: pos.x, y: pos.y };
+        // Special handling for problematic team pairs (like Benfica-Auxerre)
+        const isKnownProblemPair = 
+          (homeTeamName === 'Benfica' && awayTeamName === 'Auxerre') || 
+          (homeTeamName === 'Auxerre' && awayTeamName === 'Benfica');
+        
+        if (isKnownProblemPair && awayTeamKitType !== 'third') {
+          console.warn(`⚠️ Known problematic team pair detected but not using third kit: ${homeTeamName} vs ${awayTeamName}`);
+          console.warn(`Forcing third kit use for ${awayTeamName}`);
+          // Force third kit use for known problematic pairs
+          const forcedKitType: KitType = 'third';
           
-          let brain;
-          if (role === 'goalkeeper') {
-            brain = createPlayerBrain();
-          } else {
-            try {
-              brain = await initializePlayerBrain('red', role);
-            } catch (error) {
-              console.error(`Error loading brain for red ${role}:`, error);
+          const redTeamPositions = [
+            { x: 50, y: PITCH_HEIGHT/2, role: 'goalkeeper' },
+            { x: 150, y: PITCH_HEIGHT/4, role: 'defender' },
+            { x: 150, y: PITCH_HEIGHT/2, role: 'defender' },
+            { x: 150, y: (PITCH_HEIGHT*3)/4, role: 'defender' },
+            { x: 300, y: PITCH_HEIGHT/5, role: 'midfielder' },
+            { x: 300, y: (PITCH_HEIGHT*2)/5, role: 'midfielder' },
+            { x: 300, y: (PITCH_HEIGHT*3)/5, role: 'midfielder' },
+            { x: 300, y: (PITCH_HEIGHT*4)/5, role: 'midfielder' },
+            { x: 500, y: PITCH_HEIGHT/4, role: 'forward' },
+            { x: 500, y: PITCH_HEIGHT/2, role: 'forward' },
+            { x: 500, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
+          ];
+          
+          for (let i = 0; i < redTeamPositions.length; i++) {
+            const pos = redTeamPositions[i];
+            const role = pos.role as Player['role'];
+            const position = { x: pos.x, y: pos.y };
+            
+            let brain;
+            if (role === 'goalkeeper') {
               brain = createPlayerBrain();
+            } else {
+              try {
+                brain = await initializePlayerBrain('red', role);
+              } catch (error) {
+                console.error(`Error loading brain for red ${role}:`, error);
+                brain = createPlayerBrain();
+              }
             }
+            
+            initialPlayers.push({
+              id: i + 1,
+              position: position,
+              velocity: { x: 0, y: 0 },
+              force: { x: 0, y: 0 },
+              role: role,
+              team: 'red',
+              brain: brain,
+              targetPosition: position,
+              teamName: homeTeamName,
+              kitType: 'home' as KitType,
+              kit: 'default',
+              name: `Red${i+1}`,
+              goals: 0,
+              assists: 0,
+              radius: PLAYER_RADIUS
+            });
           }
-          
-          initialPlayers.push({
-            id: i + 1,
-            position: position,
-            velocity: { x: 0, y: 0 },
-            force: { x: 0, y: 0 },
-            role: role,
-            team: 'red',
-            brain: brain,
-            targetPosition: position,
-            teamName: homeTeamName,
-            kitType: 'home' as KitType,
-            kit: 'default',
-            name: `Red${i+1}`,
-            goals: 0,
-            assists: 0,
-            radius: PLAYER_RADIUS
-          });
-        }
 
-        const blueTeamPositions = [
-          { x: PITCH_WIDTH - 50, y: PITCH_HEIGHT/2, role: 'goalkeeper' },
-          { x: PITCH_WIDTH - 150, y: PITCH_HEIGHT/4, role: 'defender' },
-          { x: PITCH_WIDTH - 150, y: PITCH_HEIGHT/2, role: 'defender' },
-          { x: PITCH_WIDTH - 150, y: (PITCH_HEIGHT*3)/4, role: 'defender' },
-          { x: PITCH_WIDTH - 300, y: PITCH_HEIGHT/5, role: 'midfielder' },
-          { x: PITCH_WIDTH - 300, y: (PITCH_HEIGHT*2)/5, role: 'midfielder' },
-          { x: PITCH_WIDTH - 300, y: (PITCH_HEIGHT*3)/5, role: 'midfielder' },
-          { x: PITCH_WIDTH - 300, y: (PITCH_HEIGHT*4)/5, role: 'midfielder' },
-          { x: PITCH_WIDTH - 500, y: PITCH_HEIGHT/4, role: 'forward' },
-          { x: PITCH_WIDTH - 500, y: PITCH_HEIGHT/2, role: 'forward' },
-          { x: PITCH_WIDTH - 500, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
-        ];
-        
-        for (let i = 0; i < blueTeamPositions.length; i++) {
-          const pos = blueTeamPositions[i];
-          const role = pos.role as Player['role'];
-          const position = { x: pos.x, y: pos.y };
+          const blueTeamPositions = [
+            { x: PITCH_WIDTH - 50, y: PITCH_HEIGHT/2, role: 'goalkeeper' },
+            { x: PITCH_WIDTH - 150, y: PITCH_HEIGHT/4, role: 'defender' },
+            { x: PITCH_WIDTH - 150, y: PITCH_HEIGHT/2, role: 'defender' },
+            { x: PITCH_WIDTH - 150, y: (PITCH_HEIGHT*3)/4, role: 'defender' },
+            { x: PITCH_WIDTH - 300, y: PITCH_HEIGHT/5, role: 'midfielder' },
+            { x: PITCH_WIDTH - 300, y: (PITCH_HEIGHT*2)/5, role: 'midfielder' },
+            { x: PITCH_WIDTH - 300, y: (PITCH_HEIGHT*3)/5, role: 'midfielder' },
+            { x: PITCH_WIDTH - 300, y: (PITCH_HEIGHT*4)/5, role: 'midfielder' },
+            { x: PITCH_WIDTH - 500, y: PITCH_HEIGHT/4, role: 'forward' },
+            { x: PITCH_WIDTH - 500, y: PITCH_HEIGHT/2, role: 'forward' },
+            { x: PITCH_WIDTH - 500, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
+          ];
           
-          let brain;
-          if (role === 'goalkeeper') {
-            brain = createPlayerBrain();
-          } else {
-            try {
-              brain = await initializePlayerBrain('blue', role);
-            } catch (error) {
-              console.error(`Error loading brain for blue ${role}:`, error);
+          for (let i = 0; i < blueTeamPositions.length; i++) {
+            const pos = blueTeamPositions[i];
+            const role = pos.role as Player['role'];
+            const position = { x: pos.x, y: pos.y };
+            
+            let brain;
+            if (role === 'goalkeeper') {
               brain = createPlayerBrain();
+            } else {
+              try {
+                brain = await initializePlayerBrain('blue', role);
+              } catch (error) {
+                console.error(`Error loading brain for blue ${role}:`, error);
+                brain = createPlayerBrain();
+              }
             }
+            
+            initialPlayers.push({
+              id: i + 12,
+              position: position,
+              velocity: { x: 0, y: 0 },
+              force: { x: 0, y: 0 },
+              role: role,
+              team: 'blue',
+              brain: brain,
+              targetPosition: position,
+              teamName: awayTeamName,
+              kitType: forcedKitType as KitType,
+              kit: 'default',
+              name: `Blue${i+1}`,
+              goals: 0,
+              assists: 0,
+              radius: PLAYER_RADIUS
+            });
           }
+        } else {
+          // Regular case - use the kit determined by getAwayTeamKit
+          const redTeamPositions = [
+            { x: 50, y: PITCH_HEIGHT/2, role: 'goalkeeper' },
+            { x: 150, y: PITCH_HEIGHT/4, role: 'defender' },
+            { x: 150, y: PITCH_HEIGHT/2, role: 'defender' },
+            { x: 150, y: (PITCH_HEIGHT*3)/4, role: 'defender' },
+            { x: 300, y: PITCH_HEIGHT/5, role: 'midfielder' },
+            { x: 300, y: (PITCH_HEIGHT*2)/5, role: 'midfielder' },
+            { x: 300, y: (PITCH_HEIGHT*3)/5, role: 'midfielder' },
+            { x: 300, y: (PITCH_HEIGHT*4)/5, role: 'midfielder' },
+            { x: 500, y: PITCH_HEIGHT/4, role: 'forward' },
+            { x: 500, y: PITCH_HEIGHT/2, role: 'forward' },
+            { x: 500, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
+          ];
           
-          initialPlayers.push({
-            id: i + 12,
-            position: position,
-            velocity: { x: 0, y: 0 },
-            force: { x: 0, y: 0 },
-            role: role,
-            team: 'blue',
-            brain: brain,
-            targetPosition: position,
-            teamName: awayTeamName,
-            kitType: awayTeamKitType as KitType,
-            kit: 'default',
-            name: `Blue${i+1}`,
-            goals: 0,
-            assists: 0,
-            radius: PLAYER_RADIUS
-          });
+          for (let i = 0; i < redTeamPositions.length; i++) {
+            const pos = redTeamPositions[i];
+            const role = pos.role as Player['role'];
+            const position = { x: pos.x, y: pos.y };
+            
+            let brain;
+            if (role === 'goalkeeper') {
+              brain = createPlayerBrain();
+            } else {
+              try {
+                brain = await initializePlayerBrain('red', role);
+              } catch (error) {
+                console.error(`Error loading brain for red ${role}:`, error);
+                brain = createPlayerBrain();
+              }
+            }
+            
+            initialPlayers.push({
+              id: i + 1,
+              position: position,
+              velocity: { x: 0, y: 0 },
+              force: { x: 0, y: 0 },
+              role: role,
+              team: 'red',
+              brain: brain,
+              targetPosition: position,
+              teamName: homeTeamName,
+              kitType: 'home' as KitType,
+              kit: 'default',
+              name: `Red${i+1}`,
+              goals: 0,
+              assists: 0,
+              radius: PLAYER_RADIUS
+            });
+          }
+
+          const blueTeamPositions = [
+            { x: PITCH_WIDTH - 50, y: PITCH_HEIGHT/2, role: 'goalkeeper' },
+            { x: PITCH_WIDTH - 150, y: PITCH_HEIGHT/4, role: 'defender' },
+            { x: PITCH_WIDTH - 150, y: PITCH_HEIGHT/2, role: 'defender' },
+            { x: PITCH_WIDTH - 150, y: (PITCH_HEIGHT*3)/4, role: 'defender' },
+            { x: PITCH_WIDTH - 300, y: PITCH_HEIGHT/5, role: 'midfielder' },
+            { x: PITCH_WIDTH - 300, y: (PITCH_HEIGHT*2)/5, role: 'midfielder' },
+            { x: PITCH_WIDTH - 300, y: (PITCH_HEIGHT*3)/5, role: 'midfielder' },
+            { x: PITCH_WIDTH - 300, y: (PITCH_HEIGHT*4)/5, role: 'midfielder' },
+            { x: PITCH_WIDTH - 500, y: PITCH_HEIGHT/4, role: 'forward' },
+            { x: PITCH_WIDTH - 500, y: PITCH_HEIGHT/2, role: 'forward' },
+            { x: PITCH_WIDTH - 500, y: (PITCH_HEIGHT*3)/4, role: 'forward' },
+          ];
+          
+          for (let i = 0; i < blueTeamPositions.length; i++) {
+            const pos = blueTeamPositions[i];
+            const role = pos.role as Player['role'];
+            const position = { x: pos.x, y: pos.y };
+            
+            let brain;
+            if (role === 'goalkeeper') {
+              brain = createPlayerBrain();
+            } else {
+              try {
+                brain = await initializePlayerBrain('blue', role);
+              } catch (error) {
+                console.error(`Error loading brain for blue ${role}:`, error);
+                brain = createPlayerBrain();
+              }
+            }
+            
+            initialPlayers.push({
+              id: i + 12,
+              position: position,
+              velocity: { x: 0, y: 0 },
+              force: { x: 0, y: 0 },
+              role: role,
+              team: 'blue',
+              brain: brain,
+              targetPosition: position,
+              teamName: awayTeamName,
+              kitType: awayTeamKitType as KitType,
+              kit: 'default',
+              name: `Blue${i+1}`,
+              goals: 0,
+              assists: 0,
+              radius: PLAYER_RADIUS
+            });
+          }
         }
 
         setPlayers(initialPlayers);

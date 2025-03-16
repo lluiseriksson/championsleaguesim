@@ -8,7 +8,7 @@ import { checkTeamColorConflict, generateAlternativeKit } from '../../types/kits
 import { teamKitColors } from '../../types/kits/teamColorsData';
 import { getAwayTeamKit } from '../../types/kits/kitSelection';
 import { KitType } from '../../types/kits/kitTypes';
-import { isWhiteColor } from '../../types/kits/colorUtils';
+import { isWhiteColor, parseHexColor } from '../../types/kits/colorUtils';
 
 interface ActiveMatchProps {
   activeMatch: Match;
@@ -54,6 +54,45 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
             setKitConflictChecked(true);
             return;
           }
+        }
+      }
+      
+      // Enhanced logging for debugging kit conflicts
+      console.log(`=============================================`);
+      console.log(`Kit selection for match: ${homeTeam} vs ${awayTeam}`);
+      console.log(`Home team ${homeTeam} primary color: ${homeTeamKit?.primary}`);
+      
+      const awayPrimaryKit = teamKitColors[awayTeam]?.away?.primary;
+      const awayThirdKit = teamKitColors[awayTeam]?.third?.primary;
+      
+      if (awayPrimaryKit) {
+        console.log(`Away team ${awayTeam} away kit color: ${awayPrimaryKit}`);
+      }
+      
+      if (awayThirdKit) {
+        console.log(`Away team ${awayTeam} third kit color: ${awayThirdKit}`);
+      }
+      
+      // Calculate color similarities for logging
+      if (homeTeamKit && awayPrimaryKit && awayThirdKit) {
+        const homeRgb = parseHexColor(homeTeamKit.primary);
+        const awayRgb = parseHexColor(awayPrimaryKit);
+        const thirdRgb = parseHexColor(awayThirdKit);
+        
+        // Manual RGB comparison for debugging
+        console.log(`Home RGB: R${homeRgb.r} G${homeRgb.g} B${homeRgb.b}`);
+        console.log(`Away RGB: R${awayRgb.r} G${awayRgb.g} B${awayRgb.b}`);
+        console.log(`Third RGB: R${thirdRgb.r} G${thirdRgb.g} B${thirdRgb.b}`);
+        
+        // Check for specific problematic combinations like Benfica-Auxerre
+        const isRedWhiteConflict = 
+          (homeRgb.r > 200 && homeRgb.g < 100 && homeRgb.b < 100 && 
+           awayRgb.r > 180 && awayRgb.g > 180 && awayRgb.b > 180) ||
+          (awayRgb.r > 200 && awayRgb.g < 100 && awayRgb.b < 100 && 
+           homeRgb.r > 180 && homeRgb.g > 180 && homeRgb.b > 180);
+        
+        if (isRedWhiteConflict) {
+          console.log(`⚠️ Red-White conflict detected between ${homeTeam} and ${awayTeam}`);
         }
       }
       
@@ -108,6 +147,7 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
         console.log(`Alternative kit generated:`, alternativeKit);
       }
       
+      console.log(`=============================================`);
       setKitConflictChecked(true);
     }
   }, [activeMatch, kitConflictChecked]);

@@ -14,7 +14,8 @@ const knownConflictTeams: string[] = [
   'AC Milan-Athletic Bilbao',
   'Brest-Krasnodar',
   'Stuttgart-Verona', // Add Stuttgart-Verona as a known conflict
-  'Juventus-Fulham'   // Add Juventus-Fulham as they both have white primary kits
+  'Juventus-Fulham',   // Add Juventus-Fulham as they both have white primary kits
+  'Benfica-Auxerre'    // Add Benfica-Auxerre as they have similar red/white kits
 ];
 
 // Function to determine which kit the away team should use
@@ -65,6 +66,21 @@ export function getAwayTeamKit(homeTeamName: string, awayTeamName: string): KitT
     }
   }
   
+  // Enhanced handling for red-white kit combinations (like Benfica vs Auxerre)
+  // Check if one team is primarily red and the other has red elements
+  const homeIsMainlyRed = homeKit.primary.toLowerCase().includes('f') && 
+                          homeKit.primary.toLowerCase().charAt(1) > '7' && 
+                          homeKit.primary.toLowerCase().charAt(3) < '3';
+                          
+  const awayHasRedElements = awayKit.primary.toLowerCase().includes('f') && 
+                            awayKit.primary.toLowerCase().charAt(1) > '5';
+                            
+  if (homeIsMainlyRed && awayHasRedElements) {
+    console.log(`Red kit conflict detected between ${homeTeamName} (red primary) and ${awayTeamName} (has red elements)`);
+    kitSelectionCache[cacheKey] = 'third';
+    return 'third';
+  }
+  
   // Calculate color distances between kits
   const homeRgb = parseHexColor(homeKit.primary);
   const awayRgb = parseHexColor(awayKit.primary);
@@ -73,15 +89,16 @@ export function getAwayTeamKit(homeTeamName: string, awayTeamName: string): KitT
   const awayVsHomeDistance = getColorDistance(homeRgb, awayRgb);
   const thirdVsHomeDistance = getColorDistance(homeRgb, thirdRgb);
   
-  // If home and away are too similar, use third
-  if (awayVsHomeDistance < 90) {
+  // Lower the threshold for kit conflict detection to be more cautious
+  // Changed from 90 to 100 for better detection
+  if (awayVsHomeDistance < 100) {
     if (thirdVsHomeDistance > 120) {
       console.log(`Away kit too similar to home (${awayVsHomeDistance}), using third kit with distance ${thirdVsHomeDistance}`);
       kitSelectionCache[cacheKey] = 'third';
       return 'third';
     }
     // Both away and third are too similar to home, need a special kit
-    else if (thirdVsHomeDistance < 90) {
+    else if (thirdVsHomeDistance < 100) {
       console.log(`Severe kit conflict between ${homeTeamName} and ${awayTeamName} - both away and third kits conflict`);
       console.log(`Generating special fourth kit for ${awayTeamName}`);
       
@@ -92,6 +109,24 @@ export function getAwayTeamKit(homeTeamName: string, awayTeamName: string): KitT
       kitSelectionCache[cacheKey] = 'special';
       return 'special';
     }
+  }
+  
+  // Check for pattern-based conflicts (like red-white stripes vs white-red)
+  // This is more of a heuristic than a precise measurement
+  const isStripedKit = (color: string) => {
+    // Striped kits often have secondary colors that are heavily featured
+    // We can approximate this by checking for red+white or black+white combinations
+    const rgb = parseHexColor(color);
+    const hasStrongRedComponent = rgb.r > 180 && rgb.g < 100 && rgb.b < 100;
+    const hasStrongWhiteComponent = rgb.r > 200 && rgb.g > 200 && rgb.b > 200;
+    return hasStrongRedComponent && hasStrongWhiteComponent;
+  };
+  
+  // If one team has striped pattern, be more cautious with kit selection
+  if (isStripedKit(homeKit.primary) && isStripedKit(awayKit.primary)) {
+    console.log(`Potential striped kit pattern conflict between ${homeTeamName} and ${awayTeamName}`);
+    kitSelectionCache[cacheKey] = 'third';
+    return 'third';
   }
   
   // If away kit is clearly better than third kit, use it
@@ -108,10 +143,11 @@ export function getAwayTeamKit(homeTeamName: string, awayTeamName: string): KitT
     return 'third';
   }
   
-  // For close cases, prefer away kit as it's the traditional choice
-  console.log(`Similar contrasts - away (${awayVsHomeDistance}) vs third (${thirdVsHomeDistance}), defaulting to away kit`);
-  kitSelectionCache[cacheKey] = 'away';
-  return 'away';
+  // For close cases, prefer the third kit for better distinction
+  // Changed from preferring away kit to preferring third kit for better visual distinction
+  console.log(`Similar contrasts - away (${awayVsHomeDistance}) vs third (${thirdVsHomeDistance}), using third kit for better distinction`);
+  kitSelectionCache[cacheKey] = 'third';
+  return 'third';
 }
 
 /**
