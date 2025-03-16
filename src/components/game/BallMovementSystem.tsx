@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Player, Ball, Position } from '../../types/football';
 import { useBallMovement } from '../../hooks/game/useBallMovement';
@@ -10,10 +11,10 @@ interface BallMovementSystemProps {
   checkGoal: (position: Position) => 'red' | 'blue' | null;
   onBallTouch: (player: Player) => void;
   tournamentMode?: boolean;
-  gameEnded?: boolean; // Added gameEnded prop to the interface
+  gameEnded?: boolean;
 }
 
-// Custom hook to apply ELO-based radius adjustments - FIXED IMPLEMENTATION
+// Custom hook to apply ELO-based radius adjustments
 export const useAdjustedPlayerRadius = (player: Player, allPlayers: Player[]): number => {
   // Get ELO ratings for both teams
   const redTeamPlayer = allPlayers.find(p => p.team === 'red' && p.teamElo !== undefined);

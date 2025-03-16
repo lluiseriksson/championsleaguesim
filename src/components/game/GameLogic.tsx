@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from 'react';
 import { Player, Ball, Score, Position } from '../../types/football';
 import { useBallMovementSystem } from './BallMovementSystem';
@@ -174,7 +173,8 @@ const GameLogic: React.FC<GameLogicProps> = ({
     }
   };
 
-  // Goal notification system
+  // Goal notification system - IMPORTANT: This should be before updateBallPosition
+  // We set updateBallPosition to empty here since we'll override it, but need it to retrieve totalGoalsRef
   const { totalGoalsRef } = useGameLoop({
     players,
     updatePlayerPositions: updatePlayerPositions,
@@ -201,7 +201,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
     setBall
   });
 
-  // Ball movement system
+  // Ball movement system - CRITICAL: This needs the updated checkGoal with matchEnded check
   const { updateBallPosition } = useBallMovementSystem({
     ball,
     setBall,
@@ -231,6 +231,7 @@ const GameLogic: React.FC<GameLogicProps> = ({
   });
 
   // Run game loop with actual functions and performance monitoring
+  // IMPORTANT: We need to call useGameLoop again with the real updateBallPosition
   useGameLoop({
     players,
     updatePlayerPositions,
@@ -253,8 +254,8 @@ const GameLogic: React.FC<GameLogicProps> = ({
   useModelSaveOnExit({ 
     players, 
     tournamentMode,
-    homeTeamLearning: higherEloTeam === 'red' ? higherEloTeamShouldLearn : lowerEloTeamShouldLearn,
-    awayTeamLearning: higherEloTeam === 'blue' ? higherEloTeamShouldLearn : lowerEloTeamShouldLearn
+    homeTeamLearning: homeTeamElo > awayTeamElo,
+    awayTeamLearning: awayTeamElo > homeTeamElo
   });
 
   return null;

@@ -62,8 +62,8 @@ export const useBallMovement = ({
   }, [gameEnded]);
 
   const updateBallPosition = React.useCallback(() => {
-    // IMPORTANT: Don't check gameEnded here to ensure ball still moves even if game is ended
-    // We'll let the gameLoop handle stopping all movements instead
+    // CRITICAL FIX: Don't check gameEnded here
+    // Let the gameLoop handle stopping all movements instead
     
     setBall(currentBall => {
       // Store current position as previous before updating

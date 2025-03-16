@@ -9,7 +9,8 @@ const FootballPitch: React.FC = () => {
   const [players, setPlayers] = React.useState<Player[]>([]);
   const [ball, setBall] = React.useState<BallType>({
     position: { x: PITCH_WIDTH / 2, y: PITCH_HEIGHT / 2 },
-    velocity: { x: Math.random() > 0.5 ? 3 : -3, y: (Math.random() - 0.5) * 3 },
+    // CRITICAL FIX: Ensure stronger initial velocity to prevent stalling
+    velocity: { x: Math.random() > 0.5 ? 5 : -5, y: (Math.random() - 0.5) * 5 },
     bounceDetection: {
       consecutiveBounces: 0,
       lastBounceTime: 0,
@@ -61,6 +62,8 @@ const FootballPitch: React.FC = () => {
       updatePlayerPositions={updatePlayerPositions}
       homeTeam={homeTeam}
       awayTeam={awayTeam}
+      // CRITICAL FIX: Explicitly set matchEnded to false here
+      matchEnded={false}
     />
   );
 };

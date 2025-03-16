@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { Player, Ball, Score } from '../../types/football';
 
@@ -36,16 +37,16 @@ export const useGameLoop = ({
   gameEnded = false,
   targetFPS = 60
 }: GameLoopProps) => {
+  // CRITICAL FIX: Initialize gameActive to true by default to ensure the game starts running
   const [gameActive, setGameActive] = useState(true);
   const totalGoalsRef = useRef(0);
   const frameRateRef = useRef<number[]>([]);
   const lastFpsUpdateTime = useRef(0);
   const requestIdRef = useRef<number | null>(null);
   const isInitializedRef = useRef(false);
-  const frameCountRef = useRef(0); // Use ref instead of local variable for frame count
+  const frameCountRef = useRef(0);
 
-  // Keep track of our game ending state to prevent unnecessary 
-  // animation frames after the game has ended
+  // CRITICAL FIX: Initialize gameEndedRef with current value of gameEnded
   const gameEndedRef = useRef(gameEnded);
 
   // Keep track of whether we're mounted to prevent state updates after unmount
@@ -59,6 +60,7 @@ export const useGameLoop = ({
     console.log(`useGameLoop - gameEnded changed to: ${gameEnded}`);
     gameEndedRef.current = gameEnded;
     
+    // CRITICAL FIX: Only cancel animation if the game is ended AND there's an active animation frame
     if (gameEnded && requestIdRef.current) {
       console.log("Cancelling animation frame due to game ended");
       cancelAnimationFrame(requestIdRef.current);
@@ -109,9 +111,10 @@ export const useGameLoop = ({
 
   // The main game loop effect
   useEffect(() => {
-    // If the game is ended, don't even start the loop
-    if (gameEnded || !isInitializedRef.current) {
-      console.log(`Game loop not starting - gameEnded: ${gameEnded}, initialized: ${isInitializedRef.current}`);
+    // CRITICAL FIX: Only check gameEnded, not !isInitializedRef.current
+    // Allow loop to start even if not fully initialized
+    if (gameEnded) {
+      console.log(`Game loop not starting - gameEnded: ${gameEnded}`);
       return;
     }
 
@@ -229,6 +232,7 @@ export const useGameLoop = ({
           performHistoricalTraining();
         }
 
+        // CRITICAL FIX: These updates must happen regardless of game state
         // Update game entities with fixed time step
         updatePlayerPositions();
         updateBallPosition();
