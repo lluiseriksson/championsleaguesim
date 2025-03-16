@@ -78,6 +78,7 @@ interface PlayerMovementProps {
   gameTime?: number;
   score?: { red: number, blue: number };
   isLowPerformance?: boolean;
+  gameActive?: boolean; // Add gameActive prop to interface
 }
 
 const usePlayerMovement = ({ 
@@ -87,7 +88,8 @@ const usePlayerMovement = ({
   gameReady,
   gameTime = 0,
   score = { red: 0, blue: 0 },
-  isLowPerformance = false
+  isLowPerformance = false,
+  gameActive = true // Add default value of true
 }: PlayerMovementProps) => {
   const [formations, setFormations] = useState({ redFormation: [], blueFormation: [] });
   const [possession, setPossession] = useState({ team: null, player: null, duration: 0 });
@@ -387,7 +389,7 @@ const usePlayerMovement = ({
   };
 
   const updatePlayerPositions = React.useCallback(() => {
-    if (!gameReady) return;
+    if (!gameReady || !gameActive) return; // Check gameActive before updating positions
     
     setPlayers(currentPlayers => {
       const proposedPositions = currentPlayers.map(player => {
@@ -586,7 +588,7 @@ const usePlayerMovement = ({
       
       return processedPlayers;
     });
-  }, [ball, gameReady, setPlayers, gameTime, score, isLowPerformance]);
+  }, [ball, gameReady, setPlayers, gameTime, score, isLowPerformance, gameActive]); // Add gameActive to dependencies
 
   return { updatePlayerPositions, formations, possession };
 };
