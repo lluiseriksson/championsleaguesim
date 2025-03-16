@@ -42,6 +42,7 @@ export const useGameLoop = ({
   const lastFpsUpdateTime = useRef(0);
   const requestIdRef = useRef<number | null>(null);
   const isInitializedRef = useRef(false);
+  const frameCountRef = useRef(0); // Use ref instead of local variable for frame count
 
   // Keep track of our game ending state to prevent unnecessary 
   // animation frames after the game has ended
@@ -49,6 +50,9 @@ export const useGameLoop = ({
 
   // Keep track of whether we're mounted to prevent state updates after unmount
   const isMountedRef = useRef(true);
+
+  // Memory management - track when we last cleaned up arrays
+  const lastMemoryCleanupRef = useRef(Date.now());
 
   // Log game loop state transitions for debugging
   useEffect(() => {
@@ -63,9 +67,21 @@ export const useGameLoop = ({
     }
   }, [gameEnded]);
 
-  useEffect(() => {
-    console.log(`GameLoop - Goals scored: ${totalGoalsRef.current}`);
-  }, [totalGoalsRef.current]);
+  // Memory cleanup function - called periodically
+  const performMemoryCleanup = () => {
+    // Clear frame rate history
+    if (frameRateRef.current.length > 30) {
+      frameRateRef.current = frameRateRef.current.slice(-30);
+    }
+    
+    // Reset any accumulated counters if they're too large
+    if (frameCountRef.current > 100000) {
+      frameCountRef.current = 0;
+    }
+
+    // Update last cleanup time
+    lastMemoryCleanupRef.current = Date.now();
+  };
 
   // Initial setup and cleanup on mount/unmount
   useEffect(() => {
@@ -85,6 +101,9 @@ export const useGameLoop = ({
         cancelAnimationFrame(requestIdRef.current);
         requestIdRef.current = null;
       }
+      
+      // Final memory cleanup
+      performMemoryCleanup();
     };
   }, []);
 
@@ -105,7 +124,6 @@ export const useGameLoop = ({
 
     let lastFrameTime = performance.now();
     let deltaTime = 0;
-    let frameCount = 0;
     let accumulator = 0;
     const timeStep = 1000 / targetFPS; // Time step in ms for target frame rate
     
@@ -137,7 +155,7 @@ export const useGameLoop = ({
       }
 
       // Calculate frame delta time for consistent movement
-      deltaTime = currentTime - lastFrameTime;
+      deltaTime = Math.min(currentTime - lastFrameTime, 100); // Cap delta time to prevent huge jumps
       lastFrameTime = currentTime;
       
       // Track frame rate
@@ -164,11 +182,19 @@ export const useGameLoop = ({
         return;
       }
 
+      // Periodically clean up memory (every 30 seconds)
+      if (currentTime - lastMemoryCleanupRef.current > 30000) {
+        performMemoryCleanup();
+      }
+
       // Accumulate time and update in fixed time steps
       accumulator += deltaTime;
       
       // Process updates at fixed intervals to normalize gameplay speed
-      while (accumulator >= timeStep) {
+      let updatesThisFrame = 0;
+      const MAX_UPDATES_PER_FRAME = 5; // Prevent spiral of death
+      
+      while (accumulator >= timeStep && updatesThisFrame < MAX_UPDATES_PER_FRAME) {
         // Skip all updates if the game has ended
         if (gameEndedRef.current) {
           accumulator = 0;
@@ -178,22 +204,28 @@ export const useGameLoop = ({
         // Update counter for managing model synchronization
         incrementSyncCounter();
         
-        // Periodically check if we need to sync models
-        syncModels();
+        // Periodically check if we need to sync models - reduce frequency in tournament
+        if (frameCountRef.current % (tournamentMode ? 120 : 60) === 0) {
+          syncModels();
+        }
         
-        // Periodically check learning progress
-        checkLearningProgress();
+        // Periodically check learning progress - reduce frequency in tournament
+        if (frameCountRef.current % (tournamentMode ? 240 : 120) === 0) {
+          checkLearningProgress();
+        }
         
         // Periodically check performance
-        checkPerformance();
+        if (frameCountRef.current % 180 === 0) {
+          checkPerformance();
+        }
         
         // Periodically check training effectiveness
-        if (checkTrainingEffectiveness && frameCount % 60 === 0) {
+        if (checkTrainingEffectiveness && frameCountRef.current % 600 === 0) {
           checkTrainingEffectiveness();
         }
         
-        // Periodically run historical training
-        if (frameCount % 600 === 0) {
+        // Periodically run historical training with reduced frequency
+        if (frameCountRef.current % 1200 === 0) {
           performHistoricalTraining();
         }
 
@@ -205,7 +237,14 @@ export const useGameLoop = ({
         accumulator -= timeStep;
         
         // Increment frame counter
-        frameCount++;
+        frameCountRef.current++;
+        updatesThisFrame++;
+      }
+      
+      // If we still have too much accumulated time, dump some to prevent lag spiral
+      if (accumulator > timeStep * 5) {
+        console.log(`Dumping excess time accumulation: ${accumulator.toFixed(2)}ms`);
+        accumulator = timeStep * 2;
       }
 
       // Continue the game loop only if we should
@@ -242,7 +281,8 @@ export const useGameLoop = ({
     checkTrainingEffectiveness,
     isLowPerformance,
     gameEnded,
-    targetFPS
+    targetFPS,
+    tournamentMode
   ]);
 
   return { totalGoalsRef };
