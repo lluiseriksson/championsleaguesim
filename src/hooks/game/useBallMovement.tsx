@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Player, Ball, Position } from '../../types/football';
 import { handleBallPhysics } from './useBallPhysics';
@@ -52,8 +53,8 @@ export const useBallMovement = ({
   // Reference to store previous ball position for tracking
   const previousBallPositionRef = React.useRef<Position>({ ...ball.position });
   
-  // Reference for max velocity to limit ball speed - INCREASED BY 10%
-  const maxBallVelocityRef = React.useRef<number>(21.5); // Increased from 19.5 (10% faster)
+  // Reference for max velocity to limit ball speed
+  const maxBallVelocityRef = React.useRef<number>(21.5);
 
   // Log when gameEnded changes
   React.useEffect(() => {
@@ -61,12 +62,9 @@ export const useBallMovement = ({
   }, [gameEnded]);
 
   const updateBallPosition = React.useCallback(() => {
-    // Immediately return if the game has ended - this is a critical check
-    if (gameEnded) {
-      console.log("Ball movement stopped: game ended");
-      return;
-    }
-
+    // IMPORTANT: Don't check gameEnded here to ensure ball still moves even if game is ended
+    // We'll let the gameLoop handle stopping all movements instead
+    
     setBall(currentBall => {
       // Store current position as previous before updating
       const previousPosition = { ...currentBall.position };
@@ -84,8 +82,7 @@ export const useBallMovement = ({
       // Update last position reference
       lastPositionRef.current = { ...currentBall.position };
       
-      // If ball is stuck, give it a random kick and simulate player F
-      // in a regular position (not kickoff)
+      // If ball is stuck, give it a random kick and simulate player touch
       if (isStuck) {
         const kickedBall = applyRandomKick(currentBall, tournamentMode, onBallTouch, undefined, false);
         return {
@@ -95,8 +92,7 @@ export const useBallMovement = ({
       }
       
       // If ball has zero velocity (should only happen at game start/reset),
-      // give it a small push in a random direction and simulate player F
-      // in a regular position (not kickoff)
+      // give it a small push in a random direction
       if (currentSpeed === 0) {
         const kickedBall = applyRandomKick(currentBall, tournamentMode, onBallTouch, undefined, false);
         return {
@@ -158,9 +154,8 @@ export const useBallMovement = ({
     fieldPlayers, 
     onBallTouch, 
     tournamentMode, 
-    handleGoalCheck,
-    gameEnded // Ensure gameEnded is included in dependencies
-  ]);
+    handleGoalCheck
+  ]);  // Removed gameEnded from dependencies to ensure ball movement continues
 
   return { updateBallPosition };
 };

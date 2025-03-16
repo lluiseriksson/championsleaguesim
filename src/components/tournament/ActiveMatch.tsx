@@ -23,6 +23,7 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
 }) => {
   const [kitConflictChecked, setKitConflictChecked] = useState(false);
   const [selectedAwayKitType, setSelectedAwayKitType] = useState<KitType>('away');
+  const [matchCompleted, setMatchCompleted] = useState(false);
   
   useEffect(() => {
     if (activeMatch && activeMatch.teamA && activeMatch.teamB && !kitConflictChecked) {
@@ -93,6 +94,19 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
         
         if (isRedWhiteConflict) {
           console.log(`⚠️ Red-White conflict detected between ${homeTeam} and ${awayTeam}`);
+          
+          // Force third kit for Benfica-Auxerre matches
+          if ((homeTeam === 'Benfica' && awayTeam === 'Auxerre') || 
+              (homeTeam === 'Auxerre' && awayTeam === 'Benfica')) {
+            console.log(`Forcing third kit for known problematic match: ${homeTeam} vs ${awayTeam}`);
+            setSelectedAwayKitType('third');
+            toast.info(`Special kit resolution`, {
+              description: `${awayTeam} will use third kit to avoid red-white conflict with ${homeTeam}`,
+              duration: 4000
+            });
+            setKitConflictChecked(true);
+            return;
+          }
         }
       }
       
@@ -152,6 +166,12 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
     }
   }, [activeMatch, kitConflictChecked]);
 
+  const handleMatchComplete = (winnerName: string, finalScore: Score, wasGoldenGoal: boolean) => {
+    console.log(`Match completed: ${winnerName} wins. Score: ${finalScore.red}-${finalScore.blue}`);
+    setMatchCompleted(true);
+    onMatchComplete(winnerName, finalScore, wasGoldenGoal);
+  };
+
   if (!activeMatch || !activeMatch.teamA || !activeMatch.teamB) return null;
 
   return (
@@ -159,7 +179,7 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
       <TournamentMatch 
         homeTeam={activeMatch.teamA.name}
         awayTeam={activeMatch.teamB.name}
-        onMatchComplete={onMatchComplete}
+        onMatchComplete={handleMatchComplete}
         matchDuration={60} // 60 real seconds match duration
         awayKitType={selectedAwayKitType} // Pass the selected kit type to TournamentMatch
       />
