@@ -8,7 +8,7 @@ import { checkTeamColorConflict, generateAlternativeKit } from '../../types/kits
 import { teamKitColors } from '../../types/kits/teamColorsData';
 import { getAwayTeamKit } from '../../types/kits/kitSelection';
 import { KitType } from '../../types/kits/kitTypes';
-import { isWhiteColor, parseHexColor } from '../../types/kits/colorUtils';
+import { isWhiteColor } from '../../types/kits/colorUtils';
 
 interface ActiveMatchProps {
   activeMatch: Match;
@@ -23,7 +23,6 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
 }) => {
   const [kitConflictChecked, setKitConflictChecked] = useState(false);
   const [selectedAwayKitType, setSelectedAwayKitType] = useState<KitType>('away');
-  const [matchCompleted, setMatchCompleted] = useState(false);
   
   useEffect(() => {
     if (activeMatch && activeMatch.teamA && activeMatch.teamB && !kitConflictChecked) {
@@ -50,58 +49,6 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
             setSelectedAwayKitType('third');
             toast.info(`White kit conflict detected`, {
               description: `${awayTeam} will use third kit to avoid white-on-white conflict with ${homeTeam}`,
-              duration: 4000
-            });
-            setKitConflictChecked(true);
-            return;
-          }
-        }
-      }
-      
-      // Enhanced logging for debugging kit conflicts
-      console.log(`=============================================`);
-      console.log(`Kit selection for match: ${homeTeam} vs ${awayTeam}`);
-      console.log(`Home team ${homeTeam} primary color: ${homeTeamKit?.primary}`);
-      
-      const awayPrimaryKit = teamKitColors[awayTeam]?.away?.primary;
-      const awayThirdKit = teamKitColors[awayTeam]?.third?.primary;
-      
-      if (awayPrimaryKit) {
-        console.log(`Away team ${awayTeam} away kit color: ${awayPrimaryKit}`);
-      }
-      
-      if (awayThirdKit) {
-        console.log(`Away team ${awayTeam} third kit color: ${awayThirdKit}`);
-      }
-      
-      // Calculate color similarities for logging
-      if (homeTeamKit && awayPrimaryKit && awayThirdKit) {
-        const homeRgb = parseHexColor(homeTeamKit.primary);
-        const awayRgb = parseHexColor(awayPrimaryKit);
-        const thirdRgb = parseHexColor(awayThirdKit);
-        
-        // Manual RGB comparison for debugging
-        console.log(`Home RGB: R${homeRgb.r} G${homeRgb.g} B${homeRgb.b}`);
-        console.log(`Away RGB: R${awayRgb.r} G${awayRgb.g} B${awayRgb.b}`);
-        console.log(`Third RGB: R${thirdRgb.r} G${thirdRgb.g} B${thirdRgb.b}`);
-        
-        // Check for specific problematic combinations like Benfica-Auxerre
-        const isRedWhiteConflict = 
-          (homeRgb.r > 200 && homeRgb.g < 100 && homeRgb.b < 100 && 
-           awayRgb.r > 180 && awayRgb.g > 180 && awayRgb.b > 180) ||
-          (awayRgb.r > 200 && awayRgb.g < 100 && awayRgb.b < 100 && 
-           homeRgb.r > 180 && homeRgb.g > 180 && homeRgb.b > 180);
-        
-        if (isRedWhiteConflict) {
-          console.log(`⚠️ Red-White conflict detected between ${homeTeam} and ${awayTeam}`);
-          
-          // Force third kit for Benfica-Auxerre matches
-          if ((homeTeam === 'Benfica' && awayTeam === 'Auxerre') || 
-              (homeTeam === 'Auxerre' && awayTeam === 'Benfica')) {
-            console.log(`Forcing third kit for known problematic match: ${homeTeam} vs ${awayTeam}`);
-            setSelectedAwayKitType('third');
-            toast.info(`Special kit resolution`, {
-              description: `${awayTeam} will use third kit to avoid red-white conflict with ${homeTeam}`,
               duration: 4000
             });
             setKitConflictChecked(true);
@@ -161,16 +108,9 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
         console.log(`Alternative kit generated:`, alternativeKit);
       }
       
-      console.log(`=============================================`);
       setKitConflictChecked(true);
     }
   }, [activeMatch, kitConflictChecked]);
-
-  const handleMatchComplete = (winnerName: string, finalScore: Score, wasGoldenGoal: boolean) => {
-    console.log(`Match completed: ${winnerName} wins. Score: ${finalScore.red}-${finalScore.blue}`);
-    setMatchCompleted(true);
-    onMatchComplete(winnerName, finalScore, wasGoldenGoal);
-  };
 
   if (!activeMatch || !activeMatch.teamA || !activeMatch.teamB) return null;
 
@@ -179,7 +119,7 @@ const ActiveMatch: React.FC<ActiveMatchProps> = ({
       <TournamentMatch 
         homeTeam={activeMatch.teamA.name}
         awayTeam={activeMatch.teamB.name}
-        onMatchComplete={handleMatchComplete}
+        onMatchComplete={onMatchComplete}
         matchDuration={60} // 60 real seconds match duration
         awayKitType={selectedAwayKitType} // Pass the selected kit type to TournamentMatch
       />

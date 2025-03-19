@@ -1,12 +1,11 @@
-import React, { useRef, useState, useEffect } from 'react';
+
+import React from 'react';
 import { Player, Ball, Score, Position } from '../../types/football';
+import { saveModel } from '../../utils/neuralModelService';
 import { useBallMovementSystem } from './BallMovementSystem';
 import { useModelSyncSystem } from './ModelSyncSystem';
 import { useGoalSystem } from './GoalSystem';
-import { useGameLoop } from '../../hooks/game/useGameLoop';
-import { useGoalNotification } from '../../hooks/game/useGoalNotification';
-import { useModelSaveOnExit } from '../../hooks/game/useModelSaveOnExit';
-import { useTeamContext } from '../../hooks/game/useTeamContext';
+import { toast } from 'sonner';
 
 interface GameLogicProps {
   players: Player[];
@@ -17,7 +16,6 @@ interface GameLogicProps {
   setScore: React.Dispatch<React.SetStateAction<Score>>;
   updatePlayerPositions: () => void;
   tournamentMode?: boolean;
-  matchEnded?: boolean; 
 }
 
 const GameLogic: React.FC<GameLogicProps> = ({
@@ -28,235 +26,194 @@ const GameLogic: React.FC<GameLogicProps> = ({
   score,
   setScore,
   updatePlayerPositions,
-  tournamentMode = false,
-  matchEnded = false
+  tournamentMode = false
 }) => {
   // Reference to track the last player who touched the ball
-  const lastPlayerTouchRef = useRef<Player | null>(null);
+  const lastPlayerTouchRef = React.useRef<Player | null>(null);
   
-  // Control the frequency of historical training
-  const historicalTrainingCountRef = useRef(0);
+  // Track total goals for learning progress
+  const totalGoalsRef = React.useRef(0);
+  const lastScoreRef = React.useRef({ red: 0, blue: 0 });
   
-  // Track match result for training effectiveness
-  const [matchResult, setMatchResult] = useState<{ 
-    winner: string | null, 
-    score: { red: number, blue: number } 
-  } | null>(null);
-  
-  // Track if component is mounted to prevent state updates after unmount
-  const isMountedRef = useRef(true);
-  
-  // Watch for score changes to update match result
-  useEffect(() => {
-    if (!isMountedRef.current) return;
-    
-    // Only update if we have a significant score difference
-    if (score.red >= 3 && score.red > score.blue + 1) {
-      setMatchResult({
-        winner: 'red',
-        score: { ...score }
-      });
-    } else if (score.blue >= 3 && score.blue > score.red + 1) {
-      setMatchResult({
-        winner: 'blue',
-        score: { ...score }
-      });
-    } else if (score.red >= 1 && score.blue >= 1) {
-      // If scores are close, set as a draw
-      setMatchResult({
-        winner: null, // draw
-        score: { ...score }
-      });
-    }
-  }, [score]);
-  
-  // Handle component mount/unmount
-  useEffect(() => {
-    console.log(`GameLogic mounted with tournamentMode: ${tournamentMode}, matchEnded: ${matchEnded}`);
-    isMountedRef.current = true;
-    
-    return () => {
-      console.log(`GameLogic unmounting with tournamentMode: ${tournamentMode}, matchEnded: ${matchEnded}`);
-      isMountedRef.current = false;
-    };
-  }, [tournamentMode, matchEnded]);
-  
-  // Log when matchEnded changes
-  useEffect(() => {
-    console.log(`matchEnded changed to: ${matchEnded}`);
-  }, [matchEnded]);
-  
-  console.log(`GameLogic rendered with players: ${players.length}, tournamentMode: ${tournamentMode}, matchEnded: ${matchEnded}`);
+  console.log(`GameLogic rendered with players: ${players.length}, tournamentMode: ${tournamentMode}`);
 
-  // Define target FPS based on device performance
-  const [targetFPS, setTargetFPS] = useState(60);
-  
-  // Detect device performance on component mount
-  useEffect(() => {
-    // Simple performance detection - could be expanded
-    const detectPerformance = () => {
-      const highEndDevice = window.navigator.hardwareConcurrency > 4;
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-        navigator.userAgent
-      );
-      
-      // If it's a mobile device or low-end device, use lower FPS
-      const detectedFPS = highEndDevice && !isMobile ? 60 : 40;
-      console.log(`Device performance detection: FPS set to ${detectedFPS}, high-end: ${highEndDevice}, mobile: ${isMobile}`);
-      setTargetFPS(detectedFPS);
-    };
-    
-    detectPerformance();
-  }, []);
+  // Memoize team context to avoid unnecessary recalculations
+  const getTeamContext = React.useCallback((player: Player) => ({
+    teammates: players.filter(p => p.team === player.team && p.id !== player.id).map(p => p.position),
+    opponents: players.filter(p => p.team !== player.team).map(p => p.position),
+    ownGoal: player.team === 'red' ? { x: 0, y: 500/2 } : { x: 800, y: 500/2 },
+    opponentGoal: player.team === 'red' ? { x: 800, y: 500/2 } : { x: 0, y: 500/2 }
+  }), [players]);
 
-  // Find team ELO values for comparison
-  const homeTeamElo = players.find(p => p.team === 'red')?.teamElo || 1500;
-  const awayTeamElo = players.find(p => p.team === 'blue')?.teamElo || 1500;
-  
-  // Determine which team has higher ELO
-  const higherEloTeam = homeTeamElo > awayTeamElo ? 'red' : 'blue';
-  const lowerEloTeam = homeTeamElo > awayTeamElo ? 'blue' : 'red';
-  
-  // Only higher ELO team should learn, regardless of red/blue designation
-  const higherEloTeamShouldLearn = true;  // Higher ELO team always learns
-  const lowerEloTeamShouldLearn = false;  // Lower ELO team never learns
-
-  // Get team context functions
-  const { getTeamContext } = useTeamContext({ players });
-
-  // Goal system for checking and processing goals
+  // Goal system
   const { checkGoal, processGoal } = useGoalSystem({ 
     setScore, 
     players, 
     setPlayers, 
     getTeamContext, 
     ball,
-    lastPlayerTouchRef,
-    tournamentMode
+    lastPlayerTouchRef
   });
 
-  // Model synchronization system with ELO-based learning
-  const { 
-    syncModels, 
-    incrementSyncCounter, 
-    checkLearningProgress,
-    checkPerformance,
-    performHistoricalTraining,
-    checkTrainingEffectiveness,
-    trainingEffectiveness,
-    isLowPerformance
-  } = useModelSyncSystem({
-    players,
-    setPlayers,
-    tournamentMode,
-    matchResult
-  });
-
-  // Create a throttled version of the historical training function
-  const throttledHistoricalTraining = () => {
-    // Only run historical training occasionally to prevent performance issues
-    historicalTrainingCountRef.current += 1;
-    
-    // In tournament mode, run it even less frequently
-    const threshold = tournamentMode ? 5 : 3;
-    
-    if (historicalTrainingCountRef.current >= threshold) {
-      historicalTrainingCountRef.current = 0;
-      
-      // Actually perform the training
-      if (performHistoricalTraining) {
-        console.log("Running scheduled historical training");
-        performHistoricalTraining();
-      }
-    } else {
-      console.log(`Skipping historical training (${historicalTrainingCountRef.current}/${threshold})`);
-    }
-  };
-
-  // Goal notification system - IMPORTANT: This should be before updateBallPosition
-  // We set updateBallPosition to empty here since we'll override it, but need it to retrieve totalGoalsRef
-  const { totalGoalsRef } = useGameLoop({
-    players,
-    updatePlayerPositions: updatePlayerPositions,
-    updateBallPosition: () => {}, // Will be overridden below
-    incrementSyncCounter,
-    syncModels,
-    checkLearningProgress,
-    checkPerformance,
-    performHistoricalTraining: throttledHistoricalTraining,
-    checkTrainingEffectiveness,
-    ball,
-    score,
-    tournamentMode,
-    isLowPerformance,
-    gameEnded: matchEnded,
-    targetFPS
-  });
-
-  // Goal notification hook
-  const { handleGoalScored } = useGoalNotification({
-    tournamentMode,
-    totalGoalsRef,
-    ball,
-    setBall
-  });
-
-  // Ball movement system - CRITICAL: This needs the updated checkGoal with matchEnded check
+  // Ball movement system
   const { updateBallPosition } = useBallMovementSystem({
     ball,
     setBall,
     players,
     checkGoal: (position) => {
-      // Don't check for goals if match has ended
-      if (matchEnded) {
-        return null;
-      }
-
       const scoringTeam = checkGoal(position);
       if (scoringTeam) {
         // If a goal is scored, process it immediately
+        console.log(`Goal scored by team ${scoringTeam}`);
         processGoal(scoringTeam);
         
-        // Handle goal notification and ball reset
-        return handleGoalScored(scoringTeam);
+        // Increment total goals counter to track learning progress
+        totalGoalsRef.current += 1;
+        
+        // Show goal notification less frequently in tournament mode
+        if (!tournamentMode || totalGoalsRef.current % 250 === 0) {
+          toast(`${totalGoalsRef.current} goals played!`, {
+            description: "Neural networks continue learning...",
+          });
+        }
+        
+        // Reset ball position to center after goal
+        setBall(prev => ({
+          ...prev,
+          position: { x: 800/2, y: 500/2 },
+          velocity: { 
+            x: Math.random() * 2 - 1, 
+            y: Math.random() * 2 - 1 
+          }
+        }));
+        
+        return scoringTeam;
       }
       return null;
     },
     onBallTouch: (player) => {
       lastPlayerTouchRef.current = player;
-      console.log(`Ball touched by ${player.team === 'red' ? 'home' : 'away'} ${player.role} #${player.id}`);
-    },
-    tournamentMode,
-    gameEnded: matchEnded
+      console.log(`Ball touched by ${player.team} ${player.role} #${player.id}`);
+    }
   });
 
-  // Run game loop with actual functions and performance monitoring
-  // IMPORTANT: We need to call useGameLoop again with the real updateBallPosition
-  useGameLoop({
+  // Model synchronization system with tournament mode flag
+  const { syncModels, incrementSyncCounter, checkLearningProgress } = useModelSyncSystem({
     players,
-    updatePlayerPositions,
-    updateBallPosition,
-    incrementSyncCounter,
-    syncModels,
-    checkLearningProgress,
-    checkPerformance,
-    performHistoricalTraining: throttledHistoricalTraining,
-    checkTrainingEffectiveness,
-    ball,
-    score,
-    tournamentMode,
-    isLowPerformance,
-    gameEnded: matchEnded,
-    targetFPS
+    setPlayers,
+    tournamentMode
   });
 
-  // Save models on component unmount
-  useModelSaveOnExit({ 
-    players, 
-    tournamentMode,
-    homeTeamLearning: homeTeamElo > awayTeamElo,
-    awayTeamLearning: awayTeamElo > homeTeamElo
-  });
+  // Track if game is running
+  const isRunningRef = React.useRef(true);
+
+  // Check for score changes to track goals
+  React.useEffect(() => {
+    const newTotalGoals = score.red + score.blue;
+    const prevTotalGoals = lastScoreRef.current.red + lastScoreRef.current.blue;
+    
+    if (newTotalGoals > prevTotalGoals) {
+      // Update total goals reference with actual score data
+      totalGoalsRef.current = newTotalGoals;
+    }
+    
+    lastScoreRef.current = { ...score };
+  }, [score]);
+
+  React.useEffect(() => {
+    console.log("Game loop started");
+    let frameId: number;
+    let lastTime = performance.now();
+    const TIME_STEP = 16; // 60 FPS target
+    
+    const gameLoop = () => {
+      const currentTime = performance.now();
+      const deltaTime = currentTime - lastTime;
+      
+      if (deltaTime >= TIME_STEP) {
+        // Update player positions
+        updatePlayerPositions();
+
+        // Update ball position and handle collisions
+        updateBallPosition();
+
+        // Increment sync counter
+        incrementSyncCounter();
+        
+        lastTime = currentTime;
+      }
+      
+      frameId = requestAnimationFrame(gameLoop);
+    };
+
+    // Start the game loop immediately
+    frameId = requestAnimationFrame(gameLoop);
+    
+    // Sync models on startup only if not in tournament mode
+    if (!tournamentMode) {
+      syncModels();
+    }
+    
+    // Check learning progress on mount only if not in tournament mode
+    if (!tournamentMode) {
+      setTimeout(() => {
+        checkLearningProgress();
+      }, 5000); // Check after 5 seconds to allow initial loading
+    }
+    
+    console.log("Game loop initialized");
+
+    // Debug timer to log ball state every 5 seconds (less frequent in tournament mode)
+    const debugInterval = setInterval(() => {
+      if (isRunningRef.current && !tournamentMode) {
+        console.log("Ball state:", {
+          position: ball.position,
+          velocity: ball.velocity,
+          speed: Math.sqrt(ball.velocity.x * ball.velocity.x + ball.velocity.y * ball.velocity.y)
+        });
+        console.log("Current score:", score);
+      }
+    }, tournamentMode ? 15000 : 5000);
+
+    // Setup periodic learning progress check (disabled in tournament mode)
+    const learningCheckInterval = setInterval(() => {
+      if (isRunningRef.current && !tournamentMode) {
+        checkLearningProgress();
+      }
+    }, 120000); // Check every 2 minutes
+
+    return () => {
+      console.log("Game loop cleanup");
+      cancelAnimationFrame(frameId);
+      clearInterval(debugInterval);
+      clearInterval(learningCheckInterval);
+      isRunningRef.current = false;
+      
+      // When unmounting, save current models (selectively in tournament mode)
+      if (!tournamentMode) {
+        players
+          .filter(p => p.role !== 'goalkeeper')
+          .forEach(player => {
+            saveModel(player)
+              .catch(err => console.error(`Error saving model on exit:`, err));
+          });
+      } else {
+        // In tournament mode, only save a few key players to reduce API calls
+        const keyPlayers = players.filter(p => 
+          p.role !== 'goalkeeper' && 
+          (p.role === 'forward' || Math.random() < 0.1) // Only save forwards and ~10% of others
+        );
+        
+        if (keyPlayers.length > 0) {
+          console.log(`Saving ${keyPlayers.length} key players on tournament match exit`);
+          keyPlayers.forEach(player => {
+            saveModel(player)
+              .catch(err => console.error(`Error saving model on tournament exit:`, err));
+          });
+        }
+      }
+    };
+  }, [players, updatePlayerPositions, updateBallPosition, incrementSyncCounter, syncModels, checkLearningProgress, ball, score, tournamentMode]);
 
   return null;
 };

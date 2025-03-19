@@ -19,21 +19,9 @@ export const useModelSaveOnExit = ({
   awayTeamLearning = false  // Default value is ignored when using ELO-based learning
 }: ModelSaveOnExitProps) => {
   
-  // Reference to track if we're in saving mode
-  const isSavingRef = React.useRef(false);
-  
   // Effect to save models on component unmount
   React.useEffect(() => {
     return () => {
-      // Prevent double save attempts
-      if (isSavingRef.current) {
-        console.log("Already in saving process, skipping redundant save");
-        return;
-      }
-      
-      isSavingRef.current = true;
-      console.log("Starting model save process on exit");
-      
       // Find the team with higher ELO rating
       const redTeamElo = players.find(p => p.team === 'red')?.teamElo || 1500;
       const blueTeamElo = players.find(p => p.team === 'blue')?.teamElo || 1500;
@@ -48,8 +36,7 @@ export const useModelSaveOnExit = ({
       
       // When unmounting, save current models (selectively in tournament mode)
       if (!tournamentMode) {
-        // Limit the number of saves to avoid memory pressure
-        const playersToSave = players
+        players
           .filter(p => {
             // Filter based on ELO-based learning settings
             if (p.role === 'goalkeeper') return false;
@@ -57,32 +44,24 @@ export const useModelSaveOnExit = ({
             if (p.team === lowerEloTeam && !lowerEloTeamShouldLearn) return false;
             return true;
           })
-          .slice(0, 3); // Only save up to 3 players
-        
-        Promise.all(playersToSave.map(player => {
-          const isHigherEloTeam = player.team === higherEloTeam;
-          const teamLabel = isHigherEloTeam ? 'Higher ELO Team' : 'Lower ELO Team';
-          logNeuralNetworkStatus(player.team, player.role, player.id, `Saving ${teamLabel} model on exit`);
-          
-          // Save model to database
-          return saveModel(player)
-            .catch(err => {
-              console.error(`Error saving model on exit:`, err);
-              logNeuralNetworkStatus(player.team, player.role, player.id, "Error saving model on exit", err);
-            });
-        })).then(() => {
-          console.log("Model save on exit completed");
-          isSavingRef.current = false;
-        });
-        
-        // Only save historical data for one player
-        const historyPlayer = playersToSave[0];
-        if (historyPlayer) {
-          syncPlayerHistoricalData(historyPlayer)
-            .catch(err => {
-              console.error(`Error saving historical data on exit:`, err);
-            });
-        }
+          .forEach(player => {
+            const isHigherEloTeam = player.team === higherEloTeam;
+            const teamLabel = isHigherEloTeam ? 'Higher ELO Team' : 'Lower ELO Team';
+            logNeuralNetworkStatus(player.team, player.role, player.id, `Saving ${teamLabel} model on exit`);
+            
+            // Save model to database
+            saveModel(player)
+              .catch(err => {
+                console.error(`Error saving model on exit:`, err);
+                logNeuralNetworkStatus(player.team, player.role, player.id, "Error saving model on exit", err);
+              });
+              
+            // Save historical training data
+            syncPlayerHistoricalData(player)
+              .catch(err => {
+                console.error(`Error saving historical data on exit:`, err);
+              });
+          });
       } else {
         // In tournament mode, completely disable model saving to prevent crashes
         console.log('Tournament mode: skipping model saving to prevent database overload');
@@ -99,19 +78,17 @@ export const useModelSaveOnExit = ({
             console.log(`Saving single random model in tournament mode (${teamLabel})`);
             logNeuralNetworkStatus(randomPlayer.team, randomPlayer.role, randomPlayer.id, "Saving random model in tournament mode");
             saveModel(randomPlayer)
-              .then(() => {
-                isSavingRef.current = false;
-              })
               .catch(err => {
                 console.error(`Error saving model in tournament:`, err);
                 logNeuralNetworkStatus(randomPlayer.team, randomPlayer.role, randomPlayer.id, "Error saving tournament model", err);
-                isSavingRef.current = false;
               });
               
-            // No historical data saving in tournament mode to reduce API calls
+            // Still save historical data even in tournament mode
+            syncPlayerHistoricalData(randomPlayer)
+              .catch(err => {
+                console.error(`Error saving tournament historical data:`, err);
+              });
           }
-        } else {
-          isSavingRef.current = false;
         }
       }
     };

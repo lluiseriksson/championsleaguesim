@@ -36,51 +36,42 @@ export const useGameLoop = ({
   gameEnded = false,
   targetFPS = 60
 }: GameLoopProps) => {
-  // CRITICAL FIX: Always initialize gameActive to true regardless of gameEnded
   const [gameActive, setGameActive] = useState(true);
   const totalGoalsRef = useRef(0);
   const frameRateRef = useRef<number[]>([]);
   const lastFpsUpdateTime = useRef(0);
   const requestIdRef = useRef<number | null>(null);
   const isInitializedRef = useRef(false);
-  const frameCountRef = useRef(0);
 
-  // CRITICAL FIX: Initialize but ignore gameEndedRef in most cases
-  const gameEndedRef = useRef(false);
+  // Keep track of our game ending state to prevent unnecessary 
+  // animation frames after the game has ended
+  const gameEndedRef = useRef(gameEnded);
 
   // Keep track of whether we're mounted to prevent state updates after unmount
   const isMountedRef = useRef(true);
 
-  // Memory management - track when we last cleaned up arrays
-  const lastMemoryCleanupRef = useRef(Date.now());
-
-  // CRITICAL FIX: Only update ref value but do not cancel animation frame
+  // Log game loop state transitions for debugging
   useEffect(() => {
     console.log(`useGameLoop - gameEnded changed to: ${gameEnded}`);
     gameEndedRef.current = gameEnded;
+    
+    if (gameEnded && requestIdRef.current) {
+      console.log("Cancelling animation frame due to game ended");
+      cancelAnimationFrame(requestIdRef.current);
+      requestIdRef.current = null;
+      setGameActive(false);
+    }
   }, [gameEnded]);
 
-  // Memory cleanup function - called periodically
-  const performMemoryCleanup = () => {
-    // Clear frame rate history
-    if (frameRateRef.current.length > 30) {
-      frameRateRef.current = frameRateRef.current.slice(-30);
-    }
-    
-    // Reset any accumulated counters if they're too large
-    if (frameCountRef.current > 100000) {
-      frameCountRef.current = 0;
-    }
-
-    // Update last cleanup time
-    lastMemoryCleanupRef.current = Date.now();
-  };
+  useEffect(() => {
+    console.log(`GameLoop - Goals scored: ${totalGoalsRef.current}`);
+  }, [totalGoalsRef.current]);
 
   // Initial setup and cleanup on mount/unmount
   useEffect(() => {
     console.log("Game loop initialized, setting gameActive true");
     isMountedRef.current = true;
-    setGameActive(true); // Always start active
+    setGameActive(true);
     isInitializedRef.current = true;
     
     return () => {
@@ -94,16 +85,18 @@ export const useGameLoop = ({
         cancelAnimationFrame(requestIdRef.current);
         requestIdRef.current = null;
       }
-      
-      // Final memory cleanup
-      performMemoryCleanup();
     };
   }, []);
 
   // The main game loop effect
   useEffect(() => {
-    // CRITICAL FIX: Always run the game loop regardless of gameEnded state
-    console.log(`Game loop starting - gameActive: ${gameActive}`);
+    // If the game is ended, don't even start the loop
+    if (gameEnded || !isInitializedRef.current) {
+      console.log(`Game loop not starting - gameEnded: ${gameEnded}, initialized: ${isInitializedRef.current}`);
+      return;
+    }
+
+    console.log(`Game loop starting - gameActive: ${gameActive}, gameEnded: ${gameEndedRef.current}`);
     
     if (!gameActive) {
       console.log('Game loop inactive - no animation frames will be requested');
@@ -112,11 +105,16 @@ export const useGameLoop = ({
 
     let lastFrameTime = performance.now();
     let deltaTime = 0;
+    let frameCount = 0;
     let accumulator = 0;
     const timeStep = 1000 / targetFPS; // Time step in ms for target frame rate
     
     // Function to check if the game should continue running
     const shouldContinue = () => {
+      if (gameEndedRef.current) {
+        console.log("Game ended, stopping loop");
+        return false;
+      }
       if (!isMountedRef.current) {
         console.log("Component unmounted, stopping loop");
         return false;
@@ -125,7 +123,6 @@ export const useGameLoop = ({
         console.log("Game inactive, stopping loop");
         return false;
       }
-      // CRITICAL FIX: Don't check gameEndedRef here so the game always runs
       return true;
     };
 
@@ -140,7 +137,7 @@ export const useGameLoop = ({
       }
 
       // Calculate frame delta time for consistent movement
-      deltaTime = Math.min(currentTime - lastFrameTime, 100); // Cap delta time to prevent huge jumps
+      deltaTime = currentTime - lastFrameTime;
       lastFrameTime = currentTime;
       
       // Track frame rate
@@ -167,50 +164,40 @@ export const useGameLoop = ({
         return;
       }
 
-      // Periodically clean up memory (every 30 seconds)
-      if (currentTime - lastMemoryCleanupRef.current > 30000) {
-        performMemoryCleanup();
-      }
-
       // Accumulate time and update in fixed time steps
       accumulator += deltaTime;
       
       // Process updates at fixed intervals to normalize gameplay speed
-      let updatesThisFrame = 0;
-      const MAX_UPDATES_PER_FRAME = 5; // Prevent spiral of death
-      
-      while (accumulator >= timeStep && updatesThisFrame < MAX_UPDATES_PER_FRAME) {
-        // CRITICAL FIX: Remove the check for gameEndedRef here to ensure updates happen
+      while (accumulator >= timeStep) {
+        // Skip all updates if the game has ended
+        if (gameEndedRef.current) {
+          accumulator = 0;
+          break;
+        }
         
         // Update counter for managing model synchronization
         incrementSyncCounter();
         
-        // Periodically check if we need to sync models - reduce frequency in tournament
-        if (frameCountRef.current % (tournamentMode ? 120 : 60) === 0) {
-          syncModels();
-        }
+        // Periodically check if we need to sync models
+        syncModels();
         
-        // Periodically check learning progress - reduce frequency in tournament
-        if (frameCountRef.current % (tournamentMode ? 240 : 120) === 0) {
-          checkLearningProgress();
-        }
+        // Periodically check learning progress
+        checkLearningProgress();
         
         // Periodically check performance
-        if (frameCountRef.current % 180 === 0) {
-          checkPerformance();
-        }
+        checkPerformance();
         
         // Periodically check training effectiveness
-        if (checkTrainingEffectiveness && frameCountRef.current % 600 === 0) {
+        if (checkTrainingEffectiveness && frameCount % 60 === 0) {
           checkTrainingEffectiveness();
         }
         
-        // Periodically run historical training with reduced frequency
-        if (frameCountRef.current % 1200 === 0) {
+        // Periodically run historical training
+        if (frameCount % 600 === 0) {
           performHistoricalTraining();
         }
 
-        // CRITICAL FIX: Always update positions regardless of game state
+        // Update game entities with fixed time step
         updatePlayerPositions();
         updateBallPosition();
         
@@ -218,14 +205,7 @@ export const useGameLoop = ({
         accumulator -= timeStep;
         
         // Increment frame counter
-        frameCountRef.current++;
-        updatesThisFrame++;
-      }
-      
-      // If we still have too much accumulated time, dump some to prevent lag spiral
-      if (accumulator > timeStep * 5) {
-        console.log(`Dumping excess time accumulation: ${accumulator.toFixed(2)}ms`);
-        accumulator = timeStep * 2;
+        frameCount++;
       }
 
       // Continue the game loop only if we should
@@ -261,9 +241,8 @@ export const useGameLoop = ({
     performHistoricalTraining,
     checkTrainingEffectiveness,
     isLowPerformance,
-    targetFPS,
-    tournamentMode
-    // CRITICAL FIX: Remove gameEnded from dependencies so animation frame isn't restarted when it changes
+    gameEnded,
+    targetFPS
   ]);
 
   return { totalGoalsRef };

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Player } from '../../types/football';
 import { 
@@ -11,17 +10,14 @@ import { toast } from 'sonner';
 import { validatePlayerBrain } from '../../utils/neural/networkValidator';
 import { trainFromPreviousGames } from '../../utils/neural/historicalTraining';
 
-// Reduce sync frequency in tournament mode to prevent memory issues
-const DEFAULT_SYNC_INTERVAL = 1800; // 30 seconds at 60fps
-const TOURNAMENT_SYNC_INTERVAL = 14400; // 240 seconds at 60fps (doubled from previous)
+const DEFAULT_SYNC_INTERVAL = 1800; // 30 seconds at 60fps (was 600)
+const TOURNAMENT_SYNC_INTERVAL = 7200; // 120 seconds at 60fps (doubled from 3600)
 
-// Reduce learning check frequency in tournament mode
 const LEARNING_CHECK_INTERVAL = 3600; // 60 seconds at 60fps
-const TOURNAMENT_LEARNING_CHECK_INTERVAL = 7200; // 120 seconds at 60fps
-
 const EFFECTIVENESS_CHECK_INTERVAL = 7200; // 120 seconds at 60fps
+
 const PERFORMANCE_CHECK_INTERVAL = 300; // 5 seconds at 60fps
-const HISTORICAL_TRAINING_INTERVAL = 10800; // 180 seconds at 60fps (doubled from previous)
+const HISTORICAL_TRAINING_INTERVAL = 5400; // 90 seconds at 60fps
 
 interface ModelSyncSystemProps {
   players: Player[];
@@ -51,9 +47,6 @@ export const useModelSyncSystem = ({
     blueTeam: { isEffective: boolean, ratio: number } | null
   }>({ redTeam: null, blueTeam: null });
   
-  // Crash recovery mechanism - detect if we've experienced a crash
-  const recoveryAttemptRef = useRef(0);
-  
   // Find the team with higher ELO rating
   const redTeamElo = players.find(p => p.team === 'red')?.teamElo || 1500;
   const blueTeamElo = players.find(p => p.team === 'blue')?.teamElo || 1500;
@@ -65,30 +58,6 @@ export const useModelSyncSystem = ({
   // Only higher ELO team should learn
   const higherEloTeamShouldLearn = true;  // Higher ELO team always learns
   const lowerEloTeamShouldLearn = false;  // Lower ELO team never learns
-  
-  // Memory cleanup function to prevent leaks
-  const cleanupMemory = React.useCallback(() => {
-    if (frameTimesRef.current.length > 10) {
-      frameTimesRef.current = frameTimesRef.current.slice(-10);
-    }
-    
-    // Reset counters if they get too large to prevent integer overflow
-    if (syncCounter.current > 100000) syncCounter.current = 0;
-    if (learningCheckCounter.current > 100000) learningCheckCounter.current = 0;
-    if (performanceCheckCounter.current > 100000) performanceCheckCounter.current = 0;
-    if (historicalTrainingCounter.current > 100000) historicalTrainingCounter.current = 0;
-    if (effectivenessCheckCounter.current > 100000) effectivenessCheckCounter.current = 0;
-    
-  }, []);
-  
-  // Perform regular memory cleanup
-  useEffect(() => {
-    const cleanupInterval = setInterval(() => {
-      cleanupMemory();
-    }, 60000); // Once per minute
-    
-    return () => clearInterval(cleanupInterval);
-  }, [cleanupMemory]);
   
   console.log(`Team ELO comparison - Red Team: ${redTeamElo}, Blue Team: ${blueTeamElo}`);
   console.log(`Learning configuration - Higher ELO team (${higherEloTeam}): ${higherEloTeamShouldLearn ? 'YES' : 'NO'}, Lower ELO team (${lowerEloTeam}): ${lowerEloTeamShouldLearn ? 'YES' : 'NO'}`);
@@ -133,12 +102,6 @@ export const useModelSyncSystem = ({
   // NEW: Check training effectiveness periodically
   const checkTrainingEffectiveness = React.useCallback(async () => {
     if (effectivenessCheckCounter.current < EFFECTIVENESS_CHECK_INTERVAL) {
-      return;
-    }
-    
-    // Skip in tournament mode to reduce API calls
-    if (tournamentMode && Math.random() > 0.2) {
-      effectivenessCheckCounter.current = 0;
       return;
     }
     
@@ -194,26 +157,20 @@ export const useModelSyncSystem = ({
         const avgFrameTime = frameTimesRef.current.reduce((a, b) => a + b, 0) / frameTimesRef.current.length;
         const fps = 1000 / avgFrameTime;
         
-        // Stricter low performance detection in tournament mode to conserve resources
-        const fpsThreshold = tournamentMode ? 50 : 45;
-        const recoveryThreshold = tournamentMode ? 58 : 55;
-        
-        if (fps < fpsThreshold && !isLowPerformance) {
-          console.log(`Low performance detected (${fps.toFixed(1)} FPS), reducing neural activity`);
+        if (fps < 45 && !isLowPerformance) {
+          console.log('Low performance detected, reducing neural activity');
           setIsLowPerformance(true);
-        } else if (fps >= recoveryThreshold && isLowPerformance) {
-          console.log(`Performance recovered (${fps.toFixed(1)} FPS), resuming normal neural activity`);
+        } else if (fps >= 55 && isLowPerformance) {
+          console.log('Performance recovered, resuming normal neural activity');
           setIsLowPerformance(false);
         }
       }
     }
-  }, [isLowPerformance, tournamentMode]);
+  }, [isLowPerformance]);
   
   const syncModels = React.useCallback(async () => {
     if (tournamentMode) {
-      const syncInterval = TOURNAMENT_SYNC_INTERVAL;
-      
-      if (syncCounter.current >= syncInterval && Math.random() < 0.1) {
+      if (syncCounter.current >= TOURNAMENT_SYNC_INTERVAL && Math.random() < 0.2) {
         console.log('Performing rare tournament mode sync');
         syncCounter.current = 0;
       }
@@ -233,19 +190,16 @@ export const useModelSyncSystem = ({
       if (timeSinceLastSync >= 5000) {
         console.log('Synchronizing neural models...');
         
-        // In tournament mode, sync even fewer players
-        const syncProbability = tournamentMode ? 0.1 : 0.33;
         const syncGroup = syncCounter.current % 3;
         
         const playersToSync = players.filter((p, index) => {
-          if (tournamentMode && Math.random() > syncProbability) return false;
-          if (!tournamentMode && index % 3 !== syncGroup) return false;
+          if (index % 3 !== syncGroup) return false;
           if (p.role === 'goalkeeper') return false;
           // Use team's ELO status to determine learning, not color
           if (p.team === higherEloTeam && !higherEloTeamShouldLearn) return false;
           if (p.team === lowerEloTeam && !lowerEloTeamShouldLearn) return false;
           
-          // Check if team's training is effective
+          // NEW: Check if team's training is effective
           const teamEffectiveness = p.team === 'red' ? 
             trainingEffectiveness.redTeam : 
             trainingEffectiveness.blueTeam;
@@ -254,6 +208,7 @@ export const useModelSyncSystem = ({
           if (teamEffectiveness && !teamEffectiveness.isEffective) {
             // With poor effectiveness, only sync 30% of the time
             if (Math.random() > 0.3) {
+              console.log(`Skipping sync for ${p.team} ${p.role} due to ineffective training`);
               return false;
             }
           }
@@ -261,16 +216,12 @@ export const useModelSyncSystem = ({
           return true;
         });
         
-        // In tournament mode, limit the max number of players to sync
-        const maxSyncPlayers = tournamentMode ? 2 : playersToSync.length;
-        const limitedPlayersToSync = playersToSync.slice(0, maxSyncPlayers);
-        
-        console.log(`Syncing ${limitedPlayersToSync.length} players (higher ELO team ${higherEloTeam}: ${higherEloTeamShouldLearn}, lower ELO team ${lowerEloTeam}: ${lowerEloTeamShouldLearn})`);
+        console.log(`Syncing ${playersToSync.length} players (higher ELO team ${higherEloTeam}: ${higherEloTeamShouldLearn}, lower ELO team ${lowerEloTeam}: ${lowerEloTeamShouldLearn})`);
         
         let syncCount = 0;
         let validationCount = 0;
         
-        for (const player of limitedPlayersToSync) {
+        for (const player of playersToSync) {
           try {
             const validatedPlayer = validatePlayerBrain(player);
             
@@ -310,25 +261,17 @@ export const useModelSyncSystem = ({
   }, [players, setPlayers, tournamentMode, lastSyncTime, isLowPerformance, higherEloTeam, lowerEloTeam, higherEloTeamShouldLearn, lowerEloTeamShouldLearn, trainingEffectiveness]);
   
   const checkLearningProgress = React.useCallback(() => {
-    const interval = tournamentMode ? TOURNAMENT_LEARNING_CHECK_INTERVAL : LEARNING_CHECK_INTERVAL;
-    
     if (isLowPerformance && Math.random() > 0.2) {
       return;
     }
     
-    if (learningCheckCounter.current >= interval) {
+    if (learningCheckCounter.current >= LEARNING_CHECK_INTERVAL) {
       console.log('Checking neural network learning progress...');
-      
-      // In tournament mode, check fewer players
-      const checkProbability = tournamentMode ? 0.5 : 1.0;
       
       let enhancedPlayers = 0;
       
       setPlayers(currentPlayers => 
         currentPlayers.map(player => {
-          // Skip checks randomly in tournament mode
-          if (tournamentMode && Math.random() > checkProbability) return player;
-          
           // Use team's ELO status to determine learning, not color
           if (player.team === higherEloTeam && !higherEloTeamShouldLearn) return player;
           if (player.team === lowerEloTeam && !lowerEloTeamShouldLearn) return player;
@@ -368,28 +311,22 @@ export const useModelSyncSystem = ({
   }, [setPlayers, tournamentMode, isLowPerformance, higherEloTeam, lowerEloTeam, higherEloTeamShouldLearn, lowerEloTeamShouldLearn]);
   
   const performHistoricalTraining = React.useCallback(async () => {
-    // Dramatically reduce historical training in tournament mode to prevent memory issues
     if (tournamentMode || (isLowPerformance && Math.random() > 0.1)) {
       return;
     }
 
-    const trainingInterval = tournamentMode ? HISTORICAL_TRAINING_INTERVAL * 2 : HISTORICAL_TRAINING_INTERVAL;
-
-    if (historicalTrainingCounter.current >= trainingInterval && !hasPerformedHistoricalTraining) {
+    if (historicalTrainingCounter.current >= HISTORICAL_TRAINING_INTERVAL && !hasPerformedHistoricalTraining) {
       console.log('Starting training from historical game data...');
       
       try {
         let trainedPlayers = 0;
         
-        // Limit the number of players to train in tournament mode
-        const maxPlayersToTrain = tournamentMode ? 1 : 3;
-        
         const playersToTrain = players.filter(p => 
           p.role !== 'goalkeeper' && 
           ((p.team === higherEloTeam && higherEloTeamShouldLearn) || (p.team === lowerEloTeam && lowerEloTeamShouldLearn)) &&
           ['forward', 'midfielder'].includes(p.role) && 
-          Math.random() < (tournamentMode ? 0.3 : 0.7)
-        ).slice(0, maxPlayersToTrain);
+          Math.random() < 0.7
+        );
         
         if (playersToTrain.length > 0) {
           const updatedPlayers = await trainFromPreviousGames(playersToTrain);

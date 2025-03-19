@@ -144,11 +144,6 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
     console.log('TournamentMatch: matchDuration =', matchDuration);
   }, [matchDuration]);
   
-  // Log when match ended state changes
-  useEffect(() => {
-    console.log(`Match ended state changed to: ${matchEnded}`);
-  }, [matchEnded]);
-  
   const handleTimeEnd = useMemo(() => {
     return () => {
       console.log("Time ended. Score:", score);
@@ -170,12 +165,10 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         
         resultDeterminedRef.current = true;
         
-        // Set match ended immediately to stop gameplay
-        setMatchEnded(true);
-        
         setTimeout(() => {
+          setMatchEnded(true);
           onMatchComplete(winner, score, false);
-        }, 1000);  // Reduced timeout to 1 second
+        }, 2000);
       }
     };
   }, [score, homeTeam, awayTeam, onMatchComplete, displayHomeTeam, displayAwayTeam]);
@@ -195,12 +188,10 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         
         resultDeterminedRef.current = true;
         
-        // Set match ended immediately to stop gameplay
-        setMatchEnded(true);
-        
         setTimeout(() => {
+          setMatchEnded(true);
           onMatchComplete(winner, score, true);
-        }, 1000);  // Reduced timeout to 1 second
+        }, 2000);
       }
     }
   }, [goldenGoal, lastScorer, score, homeTeam, awayTeam, onMatchComplete, goldenGoalScored, displayHomeTeam, displayAwayTeam]);
@@ -389,7 +380,6 @@ const TournamentMatch: React.FC<TournamentMatchProps> = ({
         onGoalScored={handleGoalScored}
         homeTeam={homeTeam}
         awayTeam={awayTeam}
-        matchEnded={matchEnded}
       />
     </div>
   );
